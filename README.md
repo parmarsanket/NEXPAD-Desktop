@@ -15,7 +15,8 @@ Use the run configurations provided by the run widget in your IDE's toolbar. You
 
 - Desktop app:
   - Hot reload: `./gradlew :desktopApp:hotRun --auto`
-  - Standard run: `./gradlew :desktopApp:run`
+  - Standard run: `
+  - `
 
 ### Running tests
 

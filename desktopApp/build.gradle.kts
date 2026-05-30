@@ -13,6 +13,7 @@ dependencies {
     implementation(libs.kotlinx.coroutinesSwing)
 
     implementation(libs.compose.uiToolingPreview)
+    implementation(libs.compose.material3)
 
     // Networking & Serialization
     implementation(libs.ktor.network)

@@ -18,6 +18,7 @@ data class GamepadInput(
     var btnR3: Boolean = false,
     var btnStart: Boolean = false,
     var btnSelect: Boolean = false,
+    var btnGuide: Boolean = false,
     var triggerL2: Float = 0f,
     var triggerR2: Float = 0f,
     var leftStickX: Float = 0f,

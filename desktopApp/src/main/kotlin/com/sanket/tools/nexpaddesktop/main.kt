@@ -1,11 +1,12 @@
 package com.sanket.tools.nexpaddesktop
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.sanket.tools.nexpaddesktop.driver.VirtualGamepadDriver
@@ -14,13 +15,19 @@ import com.sanket.tools.nexpaddesktop.network.UdpServer
 import kotlinx.coroutines.launch
 
 fun main() = application {
-    val driver = remember { VirtualGamepadDriver() }
-    var latestInput by remember { mutableStateOf(GamepadInput()) }
     val scope = rememberCoroutineScope()
+    lateinit var server: UdpServer
+    
+    val driver = remember { 
+        VirtualGamepadDriver(onRumble = { feedback -> 
+            scope.launch { server.sendFeedback(feedback) }
+        }) 
+    }
+    var latestInput by remember { mutableStateOf(GamepadInput()) }
 
     DisposableEffect(Unit) {
         driver.connect()
-        val server = UdpServer(9999) { input ->
+        server = UdpServer(9999) { input ->
             latestInput = input
             driver.updateInput(input)
         }
@@ -36,8 +43,22 @@ fun main() = application {
         onCloseRequest = ::exitApplication,
         title = "NEXPAD PC Companion",
     ) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("UDP Server Running on Port 9999\nListening for NEXPAD Android App...\nLatest A Button State: ${latestInput.btnA}")
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp), 
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text("UDP Server Running on Port 9999")
+            Text("Listening for NEXPAD Android App...")
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Latest A Button State: ${latestInput.btnA}")
+            Text("Latest Guide Button State: ${latestInput.btnGuide}")
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            Button(onClick = { driver.simulateCrash() }) {
+                Text("💥 Simulate Off-Road Crash (Test Rumble) 💥")
+            }
         }
     }
 }
