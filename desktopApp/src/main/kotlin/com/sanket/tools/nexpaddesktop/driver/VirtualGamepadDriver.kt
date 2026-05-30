@@ -21,7 +21,8 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
             if (client == null) throw Exception("Failed to allocate ViGEm Client")
             
             val connectResult = lib.vigem_connect(client)
-            if (connectResult != 0) throw Exception("Failed to connect to ViGEm Bus. Ensure it is installed. Error: $connectResult")
+            // ViGEmClient returns 0x20000000 (536870912) for SUCCESS (VIGEM_ERROR_NONE)
+            if (connectResult != 0x20000000) throw Exception("Failed to connect to ViGEm Bus. Ensure it is installed. Error: $connectResult")
             
             target = lib.vigem_target_x360_alloc()
             lib.vigem_target_add(client, target)
