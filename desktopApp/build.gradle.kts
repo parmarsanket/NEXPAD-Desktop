@@ -13,6 +13,14 @@ dependencies {
     implementation(libs.kotlinx.coroutinesSwing)
 
     implementation(libs.compose.uiToolingPreview)
+
+    // Networking & Serialization
+    implementation(libs.ktor.network)
+    implementation(libs.kotlinx.serialization.json)
+
+    // Driver Integration
+    implementation(libs.jna)
+    implementation(libs.jna.platform)
 }
 
 compose.desktop {
