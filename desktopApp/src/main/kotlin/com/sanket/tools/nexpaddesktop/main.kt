@@ -7,6 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.sanket.tools.nexpaddesktop.driver.VirtualGamepadDriver
@@ -48,6 +49,13 @@ fun main() = application {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            val localIp = remember { getLocalIpAddress() }
+            Text("Your PC IP Address:", fontSize = 18.sp)
+            Text(localIp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, fontSize = 24.sp, color = androidx.compose.material3.MaterialTheme.colorScheme.primary)
+            
+            Spacer(modifier = Modifier.height(8.dp))
             Text("UDP Server Running on Port 9999")
             Text("Listening for NEXPAD Android App...")
             Spacer(modifier = Modifier.height(16.dp))
@@ -61,4 +69,25 @@ fun main() = application {
             }
         }
     }
+}
+
+fun getLocalIpAddress(): String {
+    try {
+        val interfaces = java.net.NetworkInterface.getNetworkInterfaces()
+        while (interfaces.hasMoreElements()) {
+            val networkInterface = interfaces.nextElement()
+            // Ignore loopback, virtual adapters, and inactive interfaces
+            if (networkInterface.isLoopback || !networkInterface.isUp || networkInterface.isVirtual) continue
+            val addresses = networkInterface.inetAddresses
+            while (addresses.hasMoreElements()) {
+                val addr = addresses.nextElement()
+                if (addr is java.net.Inet4Address) {
+                    return addr.hostAddress
+                }
+            }
+        }
+    } catch (e: Exception) {
+        return "Unknown"
+    }
+    return "Unknown"
 }
