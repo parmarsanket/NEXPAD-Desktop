@@ -29,7 +29,7 @@ compose.desktop {
         mainClass = "com.sanket.tools.nexpaddesktop.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            targetFormats(TargetFormat.Msi)
             packageName = "com.sanket.tools.nexpaddesktop"
             packageVersion = "1.0.0"
         }
