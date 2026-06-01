@@ -8,13 +8,13 @@ import com.sun.jna.Pointer
 import com.sanket.tools.nexpaddesktop.driver.jna.ViGEmClientLibrary
 import com.sanket.tools.nexpaddesktop.driver.jna.XUSBReport
 
-class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {}) {
+class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {}) : IGamepadDriver {
     private var isConnected = false
     private var client: Pointer? = null
     private var target: Pointer? = null
     private var notificationCallback: ViGEmClientLibrary.PVIGEM_X360_NOTIFICATION? = null
 
-    fun connect() {
+    override fun connect() {
         try {
             val lib = ViGEmClientLibrary.INSTANCE
             client = lib.vigem_alloc()
@@ -46,7 +46,7 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
         }
     }
 
-    fun disconnect() {
+    override fun disconnect() {
         if (client != null && target != null) {
             try {
                 val lib = ViGEmClientLibrary.INSTANCE
@@ -63,7 +63,7 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
         println("Disconnected Virtual Controller.")
     }
 
-    fun updateInput(input: GamepadInput) {
+    override fun updateInput(input: GamepadInput) {
         if (!isConnected || client == null || target == null) {
             // Fallback mock logic for testing without driver
             val active = mutableListOf<String>()
@@ -108,7 +108,7 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
     }
 
     // Simulate an off-road racing crash rumble from the Windows kernel
-    fun simulateCrash() {
+    override fun simulateCrash() {
         println("💥 Simulating CRASH! Sending heavy rumble feedback...")
         onRumble(GamepadFeedback(leftMotorSpeed = 255, rightMotorSpeed = 200))
     }
