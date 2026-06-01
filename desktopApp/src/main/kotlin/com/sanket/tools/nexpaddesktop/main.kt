@@ -18,19 +18,24 @@ fun main() = application {
             scope.launch { server.sendFeedback(feedback) }
         }) 
     }
+    val dsuServer = remember { com.sanket.tools.nexpaddesktop.network.DsuServer() }
     var latestInput by remember { mutableStateOf(GamepadInput()) }
 
     DisposableEffect(Unit) {
         driver.connect()
+        dsuServer.start()
+        
         server = UdpServer(9999) { input ->
             latestInput = input
             driver.updateInput(input)
+            dsuServer.updateInput(input)
         }
         scope.launch {
             server.start()
         }
         onDispose {
             driver.disconnect()
+            dsuServer.stop()
         }
     }
 
