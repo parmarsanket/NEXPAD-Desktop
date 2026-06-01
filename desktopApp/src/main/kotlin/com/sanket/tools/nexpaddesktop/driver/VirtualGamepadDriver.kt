@@ -13,6 +13,8 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
     private var client: Pointer? = null
     private var target: Pointer? = null
     private var notificationCallback: ViGEmClientLibrary.PVIGEM_X360_NOTIFICATION? = null
+    private var lastL3 = false
+    private var lastR3 = false
 
     override fun connect() {
         try {
@@ -85,6 +87,15 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
         if (input.btnSelect) buttons = (buttons.toInt() or XUSBReport.BACK.toInt()).toShort()
         if (input.btnL3) buttons = (buttons.toInt() or XUSBReport.LEFT_THUMB.toInt()).toShort()
         if (input.btnR3) buttons = (buttons.toInt() or XUSBReport.RIGHT_THUMB.toInt()).toShort()
+        
+        if (input.btnL3 != lastL3) {
+            println("NEXPAD_DEBUG Desktop: L3 changed to ${input.btnL3}")
+            lastL3 = input.btnL3
+        }
+        if (input.btnR3 != lastR3) {
+            println("NEXPAD_DEBUG Desktop: R3 changed to ${input.btnR3}")
+            lastR3 = input.btnR3
+        }
         if (input.btnL1) buttons = (buttons.toInt() or XUSBReport.LEFT_SHOULDER.toInt()).toShort()
         if (input.btnR1) buttons = (buttons.toInt() or XUSBReport.RIGHT_SHOULDER.toInt()).toShort()
         if (input.btnGuide) buttons = (buttons.toInt() or XUSBReport.GUIDE.toInt()).toShort()
