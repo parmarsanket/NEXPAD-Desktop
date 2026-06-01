@@ -39,8 +39,15 @@ fun MainApplicationWindow(
         Text("UDP Server Running on Port 9999")
         Text("Listening for NEXPAD Android App...")
         Spacer(modifier = Modifier.height(16.dp))
-        Text("Latest A Button State: ${latestInput.btnA}")
-        Text("Latest Guide Button State: ${latestInput.btnGuide}")
+        
+        Text("🎮 Input Debugger", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+        Text("A: ${latestInput.btnA} | Guide: ${latestInput.btnGuide}")
+        Text("Left Stick: X=${String.format("%.2f", latestInput.leftStickX)} Y=${String.format("%.2f", latestInput.leftStickY)}")
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("📱 6-Axis Motion Data (CemuHook Server)", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        Text("Accel: X=${String.format("%.2f", latestInput.accelX)} | Y=${String.format("%.2f", latestInput.accelY)} | Z=${String.format("%.2f", latestInput.accelZ)}")
+        Text("Gyro: X=${String.format("%.2f", latestInput.gyroX)} | Y=${String.format("%.2f", latestInput.gyroY)} | Z=${String.format("%.2f", latestInput.gyroZ)}")
         
         Spacer(modifier = Modifier.height(32.dp))
         
