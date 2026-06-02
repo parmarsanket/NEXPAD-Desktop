@@ -24,7 +24,8 @@ import com.sanket.tools.nexpaddesktop.utils.NetworkUtils
 @Composable
 fun MainApplicationWindow(
     driver: IGamepadDriver,
-    latestInput: GamepadInput
+    latestInput: GamepadInput,
+    dsuClientCount: Int
 ) {
     val scrollState = rememberScrollState()
 
@@ -79,6 +80,7 @@ fun MainApplicationWindow(
         
         Spacer(modifier = Modifier.height(8.dp))
         Text("📱 6-Axis Motion Data (CemuHook Server)", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        Text("Connected Emulators/Clients: $dsuClientCount", fontWeight = FontWeight.Bold, color = if(dsuClientCount > 0) Color(0xFF00C853) else Color.Red)
         Text("Accel: X=${String.format("%.2f", latestInput.accelX)} | Y=${String.format("%.2f", latestInput.accelY)} | Z=${String.format("%.2f", latestInput.accelZ)}")
         Text("Gyro: X=${String.format("%.2f", latestInput.gyroX)} | Y=${String.format("%.2f", latestInput.gyroY)} | Z=${String.format("%.2f", latestInput.gyroZ)}")
         

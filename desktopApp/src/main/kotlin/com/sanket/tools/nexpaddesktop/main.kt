@@ -43,6 +43,6 @@ fun main() = application {
         onCloseRequest = ::exitApplication,
         title = "NEXPAD PC Companion",
     ) {
-        MainApplicationWindow(driver, latestInput)
+        MainApplicationWindow(driver, latestInput, dsuServer.getClientCount())
     }
 }

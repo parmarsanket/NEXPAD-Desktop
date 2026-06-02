@@ -58,6 +58,10 @@ class DsuServer {
         socket = null
     }
 
+    fun getClientCount(): Int {
+        return clients.size
+    }
+
     private fun handleIncomingPacket(packet: DatagramPacket) {
         val buffer = ByteBuffer.wrap(packet.data, 0, packet.length).order(ByteOrder.LITTLE_ENDIAN)
         if (buffer.remaining() < 16) return
