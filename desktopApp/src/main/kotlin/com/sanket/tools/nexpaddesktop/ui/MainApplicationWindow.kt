@@ -1,6 +1,8 @@
 package com.sanket.tools.nexpaddesktop.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -19,10 +21,12 @@ fun MainApplicationWindow(
     driver: IGamepadDriver,
     latestInput: GamepadInput
 ) {
+    val scrollState = rememberScrollState()
+
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp), 
+        modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(scrollState), 
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Top
     ) {
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -41,8 +45,32 @@ fun MainApplicationWindow(
         Spacer(modifier = Modifier.height(16.dp))
         
         Text("🎮 Input Debugger", fontWeight = FontWeight.Bold, fontSize = 20.sp)
-        Text("A: ${latestInput.btnA} | Guide: ${latestInput.btnGuide}")
+        
+        // Face Buttons
+        Text("Face Buttons: A: ${latestInput.btnA} | B: ${latestInput.btnB} | X: ${latestInput.btnX} | Y: ${latestInput.btnY}")
+        
+        // D-Pad
+        Text("D-Pad: UP: ${latestInput.dpadUp} | DOWN: ${latestInput.dpadDown} | LEFT: ${latestInput.dpadLeft} | RIGHT: ${latestInput.dpadRight}")
+        
+        // Bumpers & Clicks
+        Text("Bumpers: LB: ${latestInput.btnL1} | RB: ${latestInput.btnR1} | LS Click: ${latestInput.btnL3} | RS Click: ${latestInput.btnR3}")
+        
+        // System Buttons
+        Text("System: Start: ${latestInput.btnStart} | Select: ${latestInput.btnSelect} | Guide: ${latestInput.btnGuide} | Share: ${latestInput.btnShare} | Screenshot: ${latestInput.btnScreenshot}")
+        
+        // Advanced / Elite
+        Text("Macro/Elite: M1: ${latestInput.btnM1} | M2: ${latestInput.btnM2} | M3: ${latestInput.btnM3} | M4: ${latestInput.btnM4} | Profile: ${latestInput.btnProfile} | Turbo: ${latestInput.btnTurbo}")
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // Triggers
+        Text("Triggers:", fontWeight = FontWeight.Bold)
+        Text("LT: ${String.format("%.2f", latestInput.triggerL2)} | RT: ${String.format("%.2f", latestInput.triggerR2)}")
+        
+        // Joysticks
+        Text("Joysticks:", fontWeight = FontWeight.Bold)
         Text("Left Stick: X=${String.format("%.2f", latestInput.leftStickX)} Y=${String.format("%.2f", latestInput.leftStickY)}")
+        Text("Right Stick: X=${String.format("%.2f", latestInput.rightStickX)} Y=${String.format("%.2f", latestInput.rightStickY)}")
         
         Spacer(modifier = Modifier.height(8.dp))
         Text("📱 6-Axis Motion Data (CemuHook Server)", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
@@ -54,5 +82,7 @@ fun MainApplicationWindow(
         Button(onClick = { driver.simulateCrash() }) {
             Text("💥 Simulate Off-Road Crash (Test Rumble) 💥")
         }
+        
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
