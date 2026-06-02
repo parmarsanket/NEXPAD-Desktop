@@ -21,11 +21,44 @@ import com.sanket.tools.nexpaddesktop.driver.IGamepadDriver
 import com.sanket.tools.nexpaddesktop.model.GamepadInput
 import com.sanket.tools.nexpaddesktop.utils.NetworkUtils
 
+enum class Screen { HOME, CONTROLLER_SETTINGS }
+enum class ControllerType(val displayName: String) { 
+    XBOX_360("Microsoft Xbox 360"), 
+    DUALSHOCK_4("Sony PlayStation 4 (DualShock 4)") 
+}
+
 @Composable
 fun MainApplicationWindow(
     driver: IGamepadDriver,
     latestInput: GamepadInput,
     dsuClientCount: Int
+) {
+    var currentScreen by remember { mutableStateOf(Screen.HOME) }
+    var activeController by remember { mutableStateOf(ControllerType.XBOX_360) }
+
+    when (currentScreen) {
+        Screen.HOME -> HomeScreen(
+            driver = driver,
+            latestInput = latestInput,
+            dsuClientCount = dsuClientCount,
+            activeController = activeController,
+            onNavigate = { currentScreen = it }
+        )
+        Screen.CONTROLLER_SETTINGS -> ControllerSettingsScreen(
+            activeController = activeController,
+            onNavigate = { currentScreen = it },
+            onSaveController = { activeController = it }
+        )
+    }
+}
+
+@Composable
+fun HomeScreen(
+    driver: IGamepadDriver,
+    latestInput: GamepadInput,
+    dsuClientCount: Int,
+    activeController: ControllerType,
+    onNavigate: (Screen) -> Unit
 ) {
     val scrollState = rememberScrollState()
 
@@ -34,6 +67,12 @@ fun MainApplicationWindow(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            Button(onClick = { onNavigate(Screen.CONTROLLER_SETTINGS) }) {
+                Text("⚙️ Controller Settings")
+            }
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
         
         val localIp = remember { NetworkUtils.getLocalIpAddress() }
@@ -50,7 +89,7 @@ fun MainApplicationWindow(
         Text("Listening for NEXPAD Android App...")
         Spacer(modifier = Modifier.height(16.dp))
         
-        Text("🎮 Input Debugger", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+        Text("🎮 Input Debugger (${activeController.displayName})", fontWeight = FontWeight.Bold, fontSize = 20.sp)
         
         // Face Buttons
         Text("Face Buttons: A: ${latestInput.btnA} | B: ${latestInput.btnB} | X: ${latestInput.btnX} | Y: ${latestInput.btnY}")
@@ -92,7 +131,6 @@ fun MainApplicationWindow(
             modifier = Modifier
                 .size(150.dp, 80.dp)
                 .graphicsLayer {
-                    // Convert m/s^2 to degrees for simple visualization
                     rotationZ = -(latestInput.accelX / 9.8f) * 90f
                     rotationX = (latestInput.accelY / 9.8f) * 90f
                 }
@@ -101,7 +139,6 @@ fun MainApplicationWindow(
         ) {
             Text("Your Phone", color = Color.White, fontWeight = FontWeight.Bold)
         }
-        // ----------------------------
         
         Spacer(modifier = Modifier.height(32.dp))
         
@@ -110,5 +147,84 @@ fun MainApplicationWindow(
         }
         
         Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+@Composable
+fun ControllerSettingsScreen(
+    activeController: ControllerType,
+    onNavigate: (Screen) -> Unit,
+    onSaveController: (ControllerType) -> Unit
+) {
+    var selectedType by remember { mutableStateOf(activeController) }
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp), 
+        horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.Top
+    ) {
+        Button(onClick = { onNavigate(Screen.HOME) }) {
+            Text("< Back to Home")
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Text("Controller Emulation Type", fontWeight = FontWeight.Bold, fontSize = 24.sp)
+        Text("Select which virtual controller NEXPAD should emulate to the PC.", color = Color.Gray)
+        
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box {
+                Button(onClick = { expanded = true }) {
+                    Text(selectedType.displayName + " ▼")
+                }
+                androidx.compose.material3.DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text(ControllerType.XBOX_360.displayName) },
+                        onClick = { 
+                            selectedType = ControllerType.XBOX_360 
+                            expanded = false 
+                        }
+                    )
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text(ControllerType.DUALSHOCK_4.displayName) },
+                        onClick = { 
+                            selectedType = ControllerType.DUALSHOCK_4 
+                            expanded = false 
+                        }
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Button(
+                onClick = { 
+                    onSaveController(selectedType) 
+                    onNavigate(Screen.HOME)
+                },
+                enabled = selectedType != activeController
+            ) {
+                Text("Save & Apply")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Conditional UI Block
+        if (selectedType == ControllerType.XBOX_360) {
+            Text("Xbox 360 Specific Settings", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("Xbox settings (like trigger sensitivity and ABXY mapping) will be added here.")
+        } else if (selectedType == ControllerType.DUALSHOCK_4) {
+            Text("DualShock 4 Specific Settings", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = MaterialTheme.colorScheme.secondary)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("PlayStation settings (like lightbar color, touchpad mapping, and gyro sensitivity) will be added here.")
+        }
     }
 }
