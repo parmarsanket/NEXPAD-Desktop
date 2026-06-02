@@ -24,17 +24,30 @@ interface ViGEmClientLibrary : Library {
         )
     }
 
+    class DS4_REPORT_EX : com.sun.jna.Structure {
+        @JvmField
+        var Report: ByteArray = ByteArray(63)
+        
+        constructor() : super() {
+            allocateMemory()
+        }
+        
+        override fun getFieldOrder(): List<String> = listOf("Report")
+    }
+
     fun vigem_alloc(): Pointer?
     fun vigem_free(client: Pointer?)
     fun vigem_connect(client: Pointer?): Int
     fun vigem_disconnect(client: Pointer?)
     
     fun vigem_target_x360_alloc(): Pointer?
+    fun vigem_target_ds4_alloc(): Pointer?
     fun vigem_target_add(client: Pointer?, target: Pointer?): Int
     fun vigem_target_remove(client: Pointer?, target: Pointer?): Int
     fun vigem_target_free(target: Pointer?)
     
     fun vigem_target_x360_update(client: Pointer?, target: Pointer?, report: XUSBReport): Int
+    fun vigem_target_ds4_update_ex(client: Pointer?, target: Pointer?, report: DS4_REPORT_EX): Int
     
     fun vigem_target_x360_register_notification(
         client: Pointer?,

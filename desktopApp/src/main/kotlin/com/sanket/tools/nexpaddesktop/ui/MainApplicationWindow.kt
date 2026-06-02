@@ -31,10 +31,11 @@ enum class ControllerType(val displayName: String) {
 fun MainApplicationWindow(
     driver: IGamepadDriver,
     latestInput: GamepadInput,
-    dsuClientCount: Int
+    dsuClientCount: Int,
+    activeController: ControllerType,
+    onControllerChange: (ControllerType) -> Unit
 ) {
     var currentScreen by remember { mutableStateOf(Screen.HOME) }
-    var activeController by remember { mutableStateOf(ControllerType.XBOX_360) }
 
     when (currentScreen) {
         Screen.HOME -> HomeScreen(
@@ -47,7 +48,7 @@ fun MainApplicationWindow(
         Screen.CONTROLLER_SETTINGS -> ControllerSettingsScreen(
             activeController = activeController,
             onNavigate = { currentScreen = it },
-            onSaveController = { activeController = it }
+            onSaveController = onControllerChange
         )
     }
 }
