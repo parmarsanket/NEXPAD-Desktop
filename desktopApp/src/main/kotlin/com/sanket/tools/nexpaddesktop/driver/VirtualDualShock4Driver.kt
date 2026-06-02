@@ -103,37 +103,16 @@ class VirtualDualShock4Driver(private val onRumble: (GamepadFeedback) -> Unit = 
         buffer.put(8, (input.triggerR2 * 255).toInt().toByte())
         
         // --- MOTION DATA ---
-        // DS4_REPORT_EX Motion Byte Offsets:
-        // 12: Gyro X (Pitch)
-        // 14: Gyro Y (Yaw)
-        // 16: Gyro Z (Roll)
-        // 18: Accel X
-        // 20: Accel Y
-        // 22: Accel Z
+        // Basic scaling: Gyro is rad/s, we multiply by an arbitrary large scalar for DS4 16-bit range.
+        // Needs fine tuning.
+        buffer.putShort(13, (input.gyroX * 1000).toInt().toShort()) // Pitch
+        buffer.putShort(15, (input.gyroY * 1000).toInt().toShort()) // Yaw
+        buffer.putShort(17, (input.gyroZ * 1000).toInt().toShort()) // Roll
         
-        // Gyro Scaling:
-        // DS4 firmware uses 2000 deg/s max range mapped to 16-bit signed (-32768 to 32767).
-        // 1 deg/s = 16.384 raw units.
-        // Android is rad/s. 1 rad/s = 57.2958 deg/s.
-        // Scalar = 57.2958 * 16.384 ≈ 938.7
-        val gyroScalar = 939.0f
-        
-        // Android X (Pitch) -> DS4 X
-        buffer.putShort(12, (input.gyroX * gyroScalar).toInt().toShort())
-        // Android Z (Yaw) -> DS4 Y (Assuming Y is Yaw in DS4)
-        buffer.putShort(14, (-input.gyroZ * gyroScalar).toInt().toShort()) 
-        // Android Y (Roll) -> DS4 Z (Assuming Z is Roll in DS4)
-        buffer.putShort(16, (-input.gyroY * gyroScalar).toInt().toShort()) 
-        
-        // Accelerometer Scaling:
-        // DS4 firmware uses 4G max range mapped to 16-bit signed.
-        // 1G = 8192 raw units.
-        // Android is m/s^2. 1 m/s^2 = 1G / 9.80665 ≈ 835.3 raw units.
-        val accelScalar = 835.3f
-        
-        buffer.putShort(18, (input.accelX * accelScalar).toInt().toShort())
-        buffer.putShort(20, (input.accelY * accelScalar).toInt().toShort())
-        buffer.putShort(22, (input.accelZ * accelScalar).toInt().toShort())
+        // Accelerometer scaling (m/s^2 to G-force 16-bit)
+        buffer.putShort(19, (input.accelX * 800).toInt().toShort())
+        buffer.putShort(21, (input.accelY * 800).toInt().toShort())
+        buffer.putShort(23, (input.accelZ * 800).toInt().toShort())
 
         try {
             ViGEmClientLibrary.INSTANCE.vigem_target_ds4_update_ex(client, target, reportEx)
