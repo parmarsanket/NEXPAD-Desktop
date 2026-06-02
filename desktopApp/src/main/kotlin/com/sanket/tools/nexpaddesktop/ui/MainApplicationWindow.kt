@@ -1,7 +1,10 @@
 package com.sanket.tools.nexpaddesktop.ui
 
+
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -9,6 +12,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -76,6 +81,25 @@ fun MainApplicationWindow(
         Text("📱 6-Axis Motion Data (CemuHook Server)", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         Text("Accel: X=${String.format("%.2f", latestInput.accelX)} | Y=${String.format("%.2f", latestInput.accelY)} | Z=${String.format("%.2f", latestInput.accelZ)}")
         Text("Gyro: X=${String.format("%.2f", latestInput.gyroX)} | Y=${String.format("%.2f", latestInput.gyroY)} | Z=${String.format("%.2f", latestInput.gyroZ)}")
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // --- 3D MOTION VISUALIZER ---
+        Text("Phone Tilt Visualizer", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+        Box(
+            modifier = Modifier
+                .size(150.dp, 80.dp)
+                .graphicsLayer {
+                    // Convert m/s^2 to degrees for simple visualization
+                    rotationZ = -(latestInput.accelX / 9.8f) * 90f
+                    rotationX = (latestInput.accelY / 9.8f) * 90f
+                }
+                .background(MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Your Phone", color = Color.White, fontWeight = FontWeight.Bold)
+        }
+        // ----------------------------
         
         Spacer(modifier = Modifier.height(32.dp))
         
