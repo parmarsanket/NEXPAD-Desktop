@@ -64,7 +64,7 @@ class DsuServer {
         
         val magic = ByteArray(4)
         buffer.get(magic)
-        if (String(magic) != "DSUC") return // Not a client message
+        if (String(magic, Charsets.US_ASCII) != "DSUC") return // Not a client message
         
         buffer.short // version
         buffer.short // length
@@ -78,16 +78,21 @@ class DsuServer {
 
         when (messageType) {
             0x100000 -> {
-                // Info Request -> Reply with Controller Info
-                sendInfoResponse(packet.address, packet.port)
+                // Protocol Info Request -> Reply with Protocol Version
+                sendProtocolResponse(packet.address, packet.port)
             }
             0x100001 -> {
-                // Controller data request -> send info immediately, then we continuously send data
-                sendInfoResponse(packet.address, packet.port)
+                // Ports Info Request -> Reply with Controller Info
+                sendPortsResponse(packet.address, packet.port)
             }
-            // 0x100002 is for data, clients don't usually send this to us, we send it to them
+            0x100002 -> {
+                // Pad Data Request -> Registers the client (already handled above)
+                // We don't reply immediately; the `updateInput` loop will spam the client
+            }
         }
     }
+
+    // ... (rest of the file stays same, but we add sendProtocolResponse and rename sendInfoResponse to sendPortsResponse)
 
     fun updateInput(input: GamepadInput) {
         if (!isRunning || clients.isEmpty()) return
@@ -112,7 +117,16 @@ class DsuServer {
         }
     }
 
-    private fun sendInfoResponse(ip: InetAddress, port: Int) {
+    private fun sendProtocolResponse(ip: InetAddress, port: Int) {
+        val buffer = ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN)
+        buffer.putShort(1001) // Version
+        val response = buildHeader(0x100000, buffer.array())
+        try {
+            socket?.send(DatagramPacket(response, response.size, ip, port))
+        } catch (e: Exception) {}
+    }
+
+    private fun sendPortsResponse(ip: InetAddress, port: Int) {
         val payload = buildInfoPayload()
         val response = buildHeader(0x100001, payload)
         try {
@@ -122,7 +136,7 @@ class DsuServer {
 
     private fun buildHeader(messageType: Int, payload: ByteArray): ByteArray {
         val buffer = ByteBuffer.allocate(16 + 4 + payload.size).order(ByteOrder.LITTLE_ENDIAN)
-        buffer.put("DSUS".toByteArray())
+        buffer.put("DSUS".toByteArray(Charsets.US_ASCII))
         buffer.putShort(1001) // Version
         buffer.putShort((payload.size + 4).toShort()) // Length (payload + message type)
         buffer.putInt(0) // CRC32 placeholder
