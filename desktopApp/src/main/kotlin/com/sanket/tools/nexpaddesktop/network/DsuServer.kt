@@ -158,8 +158,8 @@ class DsuServer {
     }
 
     private fun buildDataPayload(input: GamepadInput, pCount: Int): ByteArray {
-        // CemuHook data payload is 72 bytes
-        val buffer = ByteBuffer.allocate(72).order(ByteOrder.LITTLE_ENDIAN)
+        // CemuHook data payload is exactly 68 bytes
+        val buffer = ByteBuffer.allocate(68).order(ByteOrder.LITTLE_ENDIAN)
         
         buffer.put(0.toByte()) // Slot
         buffer.put(2.toByte()) // State (Connected)
