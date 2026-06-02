@@ -12,6 +12,12 @@ class VirtualDualShock4Driver(private val onRumble: (GamepadFeedback) -> Unit = 
     private var client: Pointer? = null
     private var target: Pointer? = null
 
+    private var gyroBiasX = 0f
+    private var gyroBiasY = 0f
+    private var gyroBiasZ = 0f
+    private var calibrationSamples = 0
+    private val MAX_CALIBRATION_SAMPLES = 100 // Collect ~1-2 seconds of data to find the resting bias
+
     override fun connect() {
         try {
             val lib = ViGEmClientLibrary.INSTANCE
@@ -24,8 +30,15 @@ class VirtualDualShock4Driver(private val onRumble: (GamepadFeedback) -> Unit = 
             target = lib.vigem_target_ds4_alloc()
             lib.vigem_target_add(client, target)
             
+            // Reset calibration on connect
+            gyroBiasX = 0f
+            gyroBiasY = 0f
+            gyroBiasZ = 0f
+            calibrationSamples = 0
+
             isConnected = true
             println("✅ Virtual Sony DualShock 4 Controller Connected successfully!")
+            println("⏳ Auto-calibrating Gyroscope... Please keep the phone stationary for 2 seconds.")
         } catch (e: Exception) {
             System.err.println("⚠️ ViGEm DS4 init failed: ${e.message}")
             isConnected = false
@@ -103,11 +116,35 @@ class VirtualDualShock4Driver(private val onRumble: (GamepadFeedback) -> Unit = 
         buffer.put(8, (input.triggerR2 * 255).toInt().toByte())
         
         // --- MOTION DATA ---
-        // Basic scaling: Gyro is rad/s, we multiply by an arbitrary large scalar for DS4 16-bit range.
-        // Needs fine tuning.
-        buffer.putShort(13, (input.gyroX * 1000).toInt().toShort()) // Pitch
-        buffer.putShort(15, (input.gyroY * 1000).toInt().toShort()) // Yaw
-        buffer.putShort(17, (input.gyroZ * 1000).toInt().toShort()) // Roll
+        if (calibrationSamples < MAX_CALIBRATION_SAMPLES) {
+            // Collect resting bias
+            gyroBiasX += input.gyroX
+            gyroBiasY += input.gyroY
+            gyroBiasZ += input.gyroZ
+            calibrationSamples++
+            
+            if (calibrationSamples == MAX_CALIBRATION_SAMPLES) {
+                gyroBiasX /= MAX_CALIBRATION_SAMPLES
+                gyroBiasY /= MAX_CALIBRATION_SAMPLES
+                gyroBiasZ /= MAX_CALIBRATION_SAMPLES
+                println("✅ Gyro Calibration Complete! Bias removed: X=$gyroBiasX, Y=$gyroBiasY, Z=$gyroBiasZ")
+            }
+            
+            // Send perfect 0 while calibrating to lock it dead center
+            buffer.putShort(13, 0)
+            buffer.putShort(15, 0)
+            buffer.putShort(17, 0)
+        } else {
+            // Apply bias correction to actual output
+            val calX = input.gyroX - gyroBiasX
+            val calY = input.gyroY - gyroBiasY
+            val calZ = input.gyroZ - gyroBiasZ
+
+            // Basic scaling using 1000 (kept original model offsets)
+            buffer.putShort(13, (calX * 1000).toInt().toShort()) // Pitch
+            buffer.putShort(15, (calY * 1000).toInt().toShort()) // Yaw
+            buffer.putShort(17, (calZ * 1000).toInt().toShort()) // Roll
+        }
         
         // Accelerometer scaling (m/s^2 to G-force 16-bit)
         buffer.putShort(19, (input.accelX * 800).toInt().toShort())
