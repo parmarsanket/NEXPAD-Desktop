@@ -50,7 +50,7 @@ interface ViGEmClientLibrary : Library {
         "wTimestamp", "bBatteryLvl", "wGyroX", "wGyroY", "wGyroZ",
         "wAccelX", "wAccelY", "wAccelZ", "padding"
     )
-    class DS4_REPORT_EX : com.sun.jna.Structure(ALIGN_NONE) {
+    open class DS4_REPORT_EX : com.sun.jna.Structure(ALIGN_NONE) {
         @JvmField var bThumbLX: Byte = 128.toByte()
         @JvmField var bThumbLY: Byte = 128.toByte()
         @JvmField var bThumbRX: Byte = 128.toByte()
@@ -68,6 +68,8 @@ interface ViGEmClientLibrary : Library {
         @JvmField var wAccelY: Short = 0
         @JvmField var wAccelZ: Short = 0
         @JvmField var padding: ByteArray = ByteArray(39) // 63 - 24 = 39 bytes of padding
+
+        class ByValue : DS4_REPORT_EX(), com.sun.jna.Structure.ByValue
     }
 
     fun vigem_alloc(): Pointer?
@@ -85,7 +87,7 @@ interface ViGEmClientLibrary : Library {
     fun vigem_target_set_pid(target: Pointer?, pid: Short)
     
     fun vigem_target_x360_update(client: Pointer?, target: Pointer?, report: XUSBReport): Int
-    fun vigem_target_ds4_update_ex(client: Pointer?, target: Pointer?, report: DS4_REPORT_EX): Int
+    fun vigem_target_ds4_update_ex(client: Pointer?, target: Pointer?, report: DS4_REPORT_EX.ByValue): Int
     
     fun vigem_target_x360_register_notification(
         client: Pointer?,

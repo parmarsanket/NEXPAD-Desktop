@@ -4,8 +4,7 @@ import com.sanket.tools.nexpaddesktop.model.GamepadInput
 import com.sanket.tools.nexpaddesktop.model.GamepadFeedback
 import com.sun.jna.Pointer
 import com.sanket.tools.nexpaddesktop.driver.jna.ViGEmClientLibrary
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
+import kotlin.math.roundToInt
 
 /**
  * Virtual DualShock 4 controller driver using ViGEm Bus.
@@ -88,8 +87,11 @@ class VirtualDualShock4Driver(
         //   ticks = elapsed_µs / 1.3333
         const val TIMESTAMP_DIVISOR = 1.3333
 
-        // Battery byte: 0x0B = full charge / USB powered
-        const val BATTERY_FULL: Byte = 0x0B
+        // Neutral DS4 extended-report values used by ViGEm-compatible DS4 packets.
+        const val BATTERY_FULL: Byte = 0xFF.toByte()
+        const val BATTERY_FULL_SPECIAL: Byte = 0x1A
+        const val TOUCH_PACKET_COUNT: Byte = 0x01
+        const val TOUCH_POINT_UP: Byte = 0x80.toByte()
 
         // Official Sony DualShock 4 USB identifiers
         const val DS4_VID: Short = 0x054C
@@ -189,7 +191,7 @@ class VirtualDualShock4Driver(
     override fun updateInput(input: GamepadInput) {
         if (!isConnected || client == null || target == null) return
 
-        val report = ViGEmClientLibrary.DS4_REPORT_EX()
+        val report = ViGEmClientLibrary.DS4_REPORT_EX.ByValue()
 
         // ── STICKS (bytes 0-3) ─────────────────────────────
         report.bThumbLX = stickToByte(input.leftStickX)
@@ -209,11 +211,6 @@ class VirtualDualShock4Driver(
         if (input.triggerL2 > 0.1f)  btn = btn or 0x0400   // L2 digital
         if (input.triggerR2 > 0.1f)  btn = btn or 0x0800   // R2 digital
         
-        // Buttons 9-12 for DS4
-        if (input.btnSelect || input.btnShare) btn = btn or 0x01000   // Share (Bit 12 in 0-indexed, wait actually it's button 9)
-        // Wait, the DS4 standard bitmask is:
-        // Bit 12 = Share (0x1000), Bit 13 = Options (0x2000), Bit 14 = L3 (0x4000), Bit 15 = R3 (0x8000)
-        // This is exactly what we had before, so we keep it!
         if (input.btnSelect || input.btnShare) btn = btn or 0x1000   // Share
         if (input.btnStart)                    btn = btn or 0x2000   // Options
         if (input.btnL3)                       btn = btn or 0x4000   // L3
@@ -241,6 +238,12 @@ class VirtualDualShock4Driver(
 
         // ── BATTERY ────────────────────────────────────────
         report.bBatteryLvl = BATTERY_FULL
+        report.padding[5] = BATTERY_FULL_SPECIAL
+        report.padding[8] = TOUCH_PACKET_COUNT
+        report.padding[10] = TOUCH_POINT_UP
+        report.padding[14] = TOUCH_POINT_UP
+        report.padding[18] = TOUCH_POINT_UP
+        report.padding[22] = TOUCH_POINT_UP
 
         // ── GYROSCOPE ──────────────────────────────────────
         val (calX, calY, calZ) = calibrateGyro(
@@ -298,7 +301,10 @@ class VirtualDualShock4Driver(
 
     /** Map stick float (−1 … +1) → DS4 byte (0 … 255, 128 = center) */
     private fun stickToByte(value: Float): Byte {
-        return ((value + 1f) / 2f * 255f).toInt().coerceIn(0, 255).toByte()
+        return ((value.coerceIn(-1f, 1f) + 1f) * 127.5f)
+            .roundToInt()
+            .coerceIn(0, 255)
+            .toByte()
     }
 
     /** Map trigger float (0 … 1) → DS4 byte (0 … 255) */
