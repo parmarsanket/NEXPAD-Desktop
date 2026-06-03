@@ -41,9 +41,9 @@ object ViGEmInputMapper {
         report.bRightTrigger = (input.triggerR2 * 255).toInt().toByte()
         
         report.sThumbLX = (input.leftStickX * 32767).toInt().toShort()
-        report.sThumbLY = (input.leftStickY * -32767).toInt().toShort() // Y is usually inverted
+        report.sThumbLY = (input.leftStickY * 32767).toInt().toShort() // XInput expects +32767 for UP
         report.sThumbRX = (input.rightStickX * 32767).toInt().toShort()
-        report.sThumbRY = (input.rightStickY * -32767).toInt().toShort()
+        report.sThumbRY = (input.rightStickY * 32767).toInt().toShort() // XInput expects +32767 for UP
         return report
     }
 }
