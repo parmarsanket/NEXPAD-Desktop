@@ -50,7 +50,7 @@ interface ViGEmClientLibrary : Library {
         "wTimestamp", "bBatteryLvl", "wGyroX", "wGyroY", "wGyroZ",
         "wAccelX", "wAccelY", "wAccelZ", "padding"
     )
-    class DS4_REPORT_EX : com.sun.jna.Structure() {
+    class DS4_REPORT_EX : com.sun.jna.Structure(ALIGN_NONE) {
         @JvmField var bThumbLX: Byte = 128.toByte()
         @JvmField var bThumbLY: Byte = 128.toByte()
         @JvmField var bThumbRX: Byte = 128.toByte()
