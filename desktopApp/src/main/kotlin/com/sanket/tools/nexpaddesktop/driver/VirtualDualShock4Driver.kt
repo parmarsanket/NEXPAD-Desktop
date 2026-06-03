@@ -71,6 +71,7 @@ class VirtualDualShock4Driver(
     // ── Timestamp base ─────────────────────────────────────
     private var startTimeNanos = System.nanoTime()
     private var lastLogTime = 0L
+    private var lastDs4DebugSignature = ""
 
     // ── Constants ──────────────────────────────────────────
     companion object {
@@ -227,9 +228,11 @@ class VirtualDualShock4Driver(
         
         report.bSpecial = special.toByte()
 
-        // ── TRIGGERS ───────────────────────────────────────
+        // ── TRIGGERS (bytes 7-8) ───────────────────────────
         report.bTriggerL = triggerToByte(input.triggerL2)
         report.bTriggerR = triggerToByte(input.triggerR2)
+
+        debugDs4Mapping(input, report)
 
         // ── TIMESTAMP ──────────────────────────────────────
         val elapsedUs = (System.nanoTime() - startTimeNanos) / 1000L
@@ -306,6 +309,51 @@ class VirtualDualShock4Driver(
             .coerceIn(0, 255)
             .toByte()
     }
+
+    private fun debugDs4Mapping(input: GamepadInput, report: ViGEmClientLibrary.DS4_REPORT_EX) {
+        val lx = report.bThumbLX.toUnsignedInt()
+        val ly = report.bThumbLY.toUnsignedInt()
+        val rx = report.bThumbRX.toUnsignedInt()
+        val ry = report.bThumbRY.toUnsignedInt()
+        val buttons = report.wButtons.toInt() and 0xFFFF
+        val special = report.bSpecial.toUnsignedInt()
+
+        val signature = listOf(
+            input.leftStickX.quantizeDebug(),
+            input.leftStickY.quantizeDebug(),
+            input.rightStickX.quantizeDebug(),
+            input.rightStickY.quantizeDebug(),
+            buttons,
+            special
+        ).joinToString("|")
+
+        if (signature == lastDs4DebugSignature) return
+        lastDs4DebugSignature = signature
+
+        println(
+            "NEXPAD_DS4_DEBUG " +
+                "RAW LS=(${input.leftStickX.formatDebug()}, ${input.leftStickY.formatDebug()}) " +
+                "RS=(${input.rightStickX.formatDebug()}, ${input.rightStickY.formatDebug()}) | " +
+                "DS4 LX=$lx(${axisName(lx, true)}) " +
+                "LY=$ly(${axisName(ly, false)}) " +
+                "RX=$rx(${axisName(rx, true)}) " +
+                "RY=$ry(${axisName(ry, false)}) | " +
+                "buttons=0x${buttons.toString(16).padStart(4, '0')} " +
+                "special=0x${special.toString(16).padStart(2, '0')}"
+        )
+    }
+
+    private fun axisName(value: Int, isX: Boolean): String = when {
+        value < 96 -> if (isX) "LEFT" else "UP" // Fixed: < 96 is UP for Y-axis (0 is UP)
+        value > 160 -> if (isX) "RIGHT" else "DOWN" // Fixed: > 160 is DOWN for Y-axis (255 is DOWN)
+        else -> "CENTER"
+    }
+
+    private fun Byte.toUnsignedInt(): Int = toInt() and 0xFF
+
+    private fun Float.quantizeDebug(): Int = (this * 10f).roundToInt()
+
+    private fun Float.formatDebug(): String = "%.2f".format(this)
 
     /** Map trigger float (0 … 1) → DS4 byte (0 … 255) */
     private fun triggerToByte(value: Float): Byte {
