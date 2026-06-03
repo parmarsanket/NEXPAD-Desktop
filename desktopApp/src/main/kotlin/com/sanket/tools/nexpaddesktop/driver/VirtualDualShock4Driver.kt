@@ -136,25 +136,27 @@ class VirtualDualShock4Driver(private val onRumble: (GamepadFeedback) -> Unit = 
             }
             
             // Send perfect 0 while calibrating to lock it dead center
-            buffer.putShort(13, 0)
-            buffer.putShort(15, 0)
-            buffer.putShort(17, 0)
+            buffer.putShort(12, 0)
+            buffer.putShort(14, 0)
+            buffer.putShort(16, 0)
         } else {
             // Apply bias correction to actual output
             val calX = input.gyroX - gyroBiasX
             val calY = input.gyroY - gyroBiasY
             val calZ = input.gyroZ - gyroBiasZ
 
-            // Basic scaling using 1000 (kept original model offsets)
-            buffer.putShort(13, (calX * 1000).toInt().toShort()) // Pitch
-            buffer.putShort(15, (calY * 1000).toInt().toShort()) // Yaw
-            buffer.putShort(17, (calZ * 1000).toInt().toShort()) // Roll
+            val gyroScalar = 939.0f
+            // Gyro: Pitch, Yaw, Roll
+            buffer.putShort(12, (calX * gyroScalar).toInt().toShort()) // Pitch
+            buffer.putShort(14, (-calZ * gyroScalar).toInt().toShort()) // Yaw (Swapped Z and Y for DS4)
+            buffer.putShort(16, (-calY * gyroScalar).toInt().toShort()) // Roll
         }
         
         // Accelerometer scaling (m/s^2 to G-force 16-bit)
-        buffer.putShort(19, (input.accelX * 800).toInt().toShort())
-        buffer.putShort(21, (input.accelY * 800).toInt().toShort())
-        buffer.putShort(23, (input.accelZ * 800).toInt().toShort())
+        val accelScalar = 835.3f
+        buffer.putShort(18, (input.accelX * accelScalar).toInt().toShort())
+        buffer.putShort(20, (input.accelY * accelScalar).toInt().toShort())
+        buffer.putShort(22, (input.accelZ * accelScalar).toInt().toShort())
 
         try {
             ViGEmClientLibrary.INSTANCE.vigem_target_ds4_update_ex(client, target, reportEx)
