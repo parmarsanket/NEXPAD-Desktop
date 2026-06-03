@@ -7,170 +7,355 @@ import com.sanket.tools.nexpaddesktop.driver.jna.ViGEmClientLibrary
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-class VirtualDualShock4Driver(private val onRumble: (GamepadFeedback) -> Unit = {}) : IGamepadDriver {
+/**
+ * Virtual DualShock 4 controller driver using ViGEm Bus.
+ *
+ * Implements the full DS4_REPORT_EX (63-byte) report including:
+ *   - Analog sticks, D-pad, face/shoulder/system buttons, analog triggers
+ *   - 6-axis IMU (Gyroscope + Accelerometer) with auto-calibration
+ *   - Monotonic timestamp for Steam Input gyro compatibility
+ *   - Battery status (always full / USB-powered)
+ *   - Rumble feedback (large + small motor) via ViGEm notification callback
+ *
+ * ──────────────────────────────────────────────────────────
+ *  DS4_REPORT_EX Byte Map (63 bytes total, packed, LE)
+ * ──────────────────────────────────────────────────────────
+ *   [0]      bThumbLX         Left Stick X   (0=left, 128=center, 255=right)
+ *   [1]      bThumbLY         Left Stick Y   (0=up,   128=center, 255=down)
+ *   [2]      bThumbRX         Right Stick X
+ *   [3]      bThumbRY         Right Stick Y
+ *   [4-5]    wButtons         D-pad (bits 0-3) + buttons (USHORT LE)
+ *   [6]      bSpecial         PS button (bit 0), Touchpad click (bit 1)
+ *   [7]      bTriggerL        L2 trigger (0–255)
+ *   [8]      bTriggerR        R2 trigger (0–255)
+ *   [9-10]   wTimestamp       16-bit monotonic counter (~188 µs / tick)
+ *   [11]     bBatteryLvl      Battery level
+ *   [12-13]  wGyroX           Gyro Pitch  (INT16 signed LE)
+ *   [14-15]  wGyroY           Gyro Yaw    (INT16 signed LE)
+ *   [16-17]  wGyroZ           Gyro Roll   (INT16 signed LE)
+ *   [18-19]  wAccelX          Accel X     (INT16 signed LE)
+ *   [20-21]  wAccelY          Accel Y     (INT16 signed LE)
+ *   [22-23]  wAccelZ          Accel Z     (INT16 signed LE)
+ *   [24-28]  padding
+ *   [29]     bBatterySpecial  Alternate battery byte
+ *   [30-31]  padding
+ *   [32]     bTouchPacketsN   Touch packet count
+ *   [33-62]  touch data
+ * ──────────────────────────────────────────────────────────
+ *
+ * Axis mapping (Android phone in landscape → DS4 held normally):
+ *   DS4 Pitch (wGyroX) =  Android gyroX
+ *   DS4 Yaw   (wGyroY) = −Android gyroZ   (swapped + negated)
+ *   DS4 Roll  (wGyroZ) = −Android gyroY   (negated)
+ *
+ * Scaling:
+ *   Gyro:  Android rad/s  × 939.0  → INT16  (BMI055 ±2000°/s ≈ 16.38 LSB/°/s × 57.296 °/rad)
+ *   Accel: Android m/s²   × 835.3  → INT16  (8192 LSB/g ÷ 9.80665 m/s²/g)
+ */
+class VirtualDualShock4Driver(
+    private val onRumble: (GamepadFeedback) -> Unit = {}
+) : IGamepadDriver {
+
+    // ── ViGEm handles ──────────────────────────────────────
     private var isConnected = false
     private var client: Pointer? = null
     private var target: Pointer? = null
+    private var notificationCallback: ViGEmClientLibrary.PVIGEM_DS4_NOTIFICATION? = null
 
+    // ── Gyro auto-calibration ──────────────────────────────
     private var gyroBiasX = 0f
     private var gyroBiasY = 0f
     private var gyroBiasZ = 0f
     private var calibrationSamples = 0
-    private var timestampCounter: Short = 0
-    private val MAX_CALIBRATION_SAMPLES = 100 // Collect ~1-2 seconds of data to find the resting bias
+    private val CALIBRATION_COUNT = 100   // ~1.7 s at 60 Hz
 
+    // ── Timestamp base ─────────────────────────────────────
+    private var startTimeNanos = System.nanoTime()
+    private var lastLogTime = 0L
+
+    // ── Constants ──────────────────────────────────────────
+    companion object {
+        // DS4 gyro (BMI055): ±2000°/s over INT16
+        //   32 767 / 2000 ≈ 16.38 LSB per °/s
+        //   Android sends rad/s → × (180/π) → °/s → × 16.38 ≈ 939.0
+        const val GYRO_SCALAR = 939.0f
+
+        // DS4 accel: 1 g ≈ 8192 raw
+        //   Android sends m/s² → 8192 / 9.80665 ≈ 835.3
+        const val ACCEL_SCALAR = 835.3f
+
+        // Timestamp: real DS4 ticks at ~188 µs (5.33 kHz)
+        //   ticks = elapsed_µs / 1.3333
+        const val TIMESTAMP_DIVISOR = 1.3333
+
+        // Battery byte: 0x0B = full charge / USB powered
+        const val BATTERY_FULL: Byte = 0x0B
+
+        // Official Sony DualShock 4 USB identifiers
+        const val DS4_VID: Short = 0x054C
+        const val DS4_PID: Short = 0x05C4
+    }
+
+
+    // ════════════════════════════════════════════════════════
+    //  CONNECT
+    // ════════════════════════════════════════════════════════
     override fun connect() {
         try {
             val lib = ViGEmClientLibrary.INSTANCE
+
             client = lib.vigem_alloc()
-            if (client == null) throw Exception("Failed to allocate ViGEm Client")
-            
-            val connectResult = lib.vigem_connect(client)
-            if (connectResult != 0x20000000) throw Exception("Failed to connect to ViGEm Bus. Error: $connectResult")
-            
+                ?: throw Exception("Failed to allocate ViGEm Client")
+
+            val result = lib.vigem_connect(client)
+            if (result != 0x20000000) {
+                throw Exception("ViGEm Bus connect failed: 0x${result.toString(16)}")
+            }
+
             target = lib.vigem_target_ds4_alloc()
+
+            // Official Sony VID/PID so Steam + Windows see a real PS4 controller
+            lib.vigem_target_set_vid(target, DS4_VID)
+            lib.vigem_target_set_pid(target, DS4_PID)
+
             lib.vigem_target_add(client, target)
-            
-            // Reset calibration on connect
+
+            // Register rumble/lightbar notification callback
+            notificationCallback = object : ViGEmClientLibrary.PVIGEM_DS4_NOTIFICATION {
+                override fun callback(
+                    client: Pointer?,
+                    target: Pointer?,
+                    largeMotor: Byte,
+                    smallMotor: Byte,
+                    lightbarColor: Int,
+                    userData: Pointer?
+                ) {
+                    try {
+                        val left  = largeMotor.toInt() and 0xFF
+                        val right = smallMotor.toInt() and 0xFF
+                        onRumble(GamepadFeedback(left, right))
+                    } catch (e: Throwable) {
+                        System.err.println("⚠️ DS4 rumble callback error: ${e.message}")
+                    }
+                }
+            }
+            lib.vigem_target_ds4_register_notification(
+                client, target, notificationCallback!!, null
+            )
+
+            // Reset calibration
             gyroBiasX = 0f
             gyroBiasY = 0f
             gyroBiasZ = 0f
             calibrationSamples = 0
+            startTimeNanos = System.nanoTime()
 
             isConnected = true
             println("✅ Virtual Sony DualShock 4 Controller Connected successfully!")
-            println("⏳ Auto-calibrating Gyroscope... Please keep the phone stationary for 2 seconds.")
+            println("⏳ Auto-calibrating Gyroscope... Keep the phone still for ~2 seconds.")
+
         } catch (e: Exception) {
             System.err.println("⚠️ ViGEm DS4 init failed: ${e.message}")
             isConnected = false
         }
     }
 
+
+    // ════════════════════════════════════════════════════════
+    //  DISCONNECT
+    // ════════════════════════════════════════════════════════
     override fun disconnect() {
-        if (client != null && target != null) {
-            try {
-                val lib = ViGEmClientLibrary.INSTANCE
+        try {
+            val lib = ViGEmClientLibrary.INSTANCE
+            if (target != null) lib.vigem_target_ds4_unregister_notification(target)
+            if (client != null && target != null) {
                 lib.vigem_target_remove(client, target)
                 lib.vigem_target_free(target)
                 lib.vigem_disconnect(client)
                 lib.vigem_free(client)
-            } catch (e: Exception) { }
-        }
+            }
+        } catch (_: Exception) { }
+
         isConnected = false
         client = null
         target = null
         println("Disconnected Virtual DS4 Controller.")
     }
 
+
+    // ════════════════════════════════════════════════════════
+    //  UPDATE INPUT  (called ~60 Hz from UDP receiver)
+    // ════════════════════════════════════════════════════════
     override fun updateInput(input: GamepadInput) {
         if (!isConnected || client == null || target == null) return
 
-        val reportEx = ViGEmClientLibrary.DS4_REPORT_EX()
-        val buffer = ByteBuffer.wrap(reportEx.Report).order(ByteOrder.LITTLE_ENDIAN)
-        
-        // 0: Left Stick X
-        buffer.put(0, mapStick(input.leftStickX))
-        // 1: Left Stick Y (Inverted for DS4)
-        buffer.put(1, mapStick(-input.leftStickY))
-        // 2: Right Stick X
-        buffer.put(2, mapStick(input.rightStickX))
-        // 3: Right Stick Y (Inverted for DS4)
-        buffer.put(3, mapStick(-input.rightStickY))
-        
-        // 4: D-Pad & Face Buttons
-        var dpad = 8 // Default released
-        if (input.dpadUp && input.dpadRight) dpad = 1
-        else if (input.dpadDown && input.dpadRight) dpad = 3
-        else if (input.dpadDown && input.dpadLeft) dpad = 5
-        else if (input.dpadUp && input.dpadLeft) dpad = 7
-        else if (input.dpadUp) dpad = 0
-        else if (input.dpadRight) dpad = 2
-        else if (input.dpadDown) dpad = 4
-        else if (input.dpadLeft) dpad = 6
-        
-        var faceBtns = 0
-        if (input.btnX) faceBtns = faceBtns or 0x10 // Square
-        if (input.btnA) faceBtns = faceBtns or 0x20 // Cross
-        if (input.btnB) faceBtns = faceBtns or 0x40 // Circle
-        if (input.btnY) faceBtns = faceBtns or 0x80 // Triangle
-        buffer.put(4, (dpad or faceBtns).toByte())
-        
-        // 5: Special Buttons
-        var specialBtns = 0
-        if (input.btnL1) specialBtns = specialBtns or 0x01
-        if (input.btnR1) specialBtns = specialBtns or 0x02
-        if (input.triggerL2 > 0.1f) specialBtns = specialBtns or 0x04
-        if (input.triggerR2 > 0.1f) specialBtns = specialBtns or 0x08
-        if (input.btnSelect) specialBtns = specialBtns or 0x10 // Share
-        if (input.btnStart) specialBtns = specialBtns or 0x20 // Options
-        if (input.btnL3) specialBtns = specialBtns or 0x40
-        if (input.btnR3) specialBtns = specialBtns or 0x80
-        buffer.put(5, specialBtns.toByte())
-        
-        // 6: PS Button
-        var psBtn = 0
-        if (input.btnGuide) psBtn = psBtn or 0x01
-        buffer.put(6, psBtn.toByte())
-        
-        // 7 & 8: Triggers
-        buffer.put(7, (input.triggerL2 * 255).toInt().toByte())
-        buffer.put(8, (input.triggerR2 * 255).toInt().toByte())
-        
-        // 9: Timestamp (Required for Steam Input Gyro)
-        buffer.putShort(9, timestampCounter)
-        timestampCounter++
-        
-        // --- MOTION DATA ---
-        if (calibrationSamples < MAX_CALIBRATION_SAMPLES) {
-            // Collect resting bias
-            gyroBiasX += input.gyroX
-            gyroBiasY += input.gyroY
-            gyroBiasZ += input.gyroZ
-            calibrationSamples++
-            
-            if (calibrationSamples == MAX_CALIBRATION_SAMPLES) {
-                gyroBiasX /= MAX_CALIBRATION_SAMPLES
-                gyroBiasY /= MAX_CALIBRATION_SAMPLES
-                gyroBiasZ /= MAX_CALIBRATION_SAMPLES
-                println("✅ Gyro Calibration Complete! Bias removed: X=$gyroBiasX, Y=$gyroBiasY, Z=$gyroBiasZ")
-            }
-            
-            // Send perfect 0 while calibrating to lock it dead center
-            buffer.putShort(12, 0)
-            buffer.putShort(14, 0)
-            buffer.putShort(16, 0)
-        } else {
-            // Apply bias correction to actual output
-            val calX = input.gyroX - gyroBiasX
-            val calY = input.gyroY - gyroBiasY
-            val calZ = input.gyroZ - gyroBiasZ
+        val report = ViGEmClientLibrary.DS4_REPORT_EX()
 
-            val gyroScalar = 939.0f
-            // Gyro: Pitch, Yaw, Roll
-            buffer.putShort(12, (calX * gyroScalar).toInt().toShort()) // Pitch
-            buffer.putShort(14, (-calZ * gyroScalar).toInt().toShort()) // Yaw (Swapped Z and Y for DS4)
-            buffer.putShort(16, (-calY * gyroScalar).toInt().toShort()) // Roll
+        // ── STICKS (bytes 0-3) ─────────────────────────────
+        report.bThumbLX = stickToByte(input.leftStickX)
+        report.bThumbLY = stickToByte(-input.leftStickY)     // Android UP = +1.0 -> inverted to -1.0 -> 0 (DS4 UP)
+        report.bThumbRX = stickToByte(input.rightStickX)
+        report.bThumbRY = stickToByte(-input.rightStickY)
+
+        // ── BUTTONS (wButtons USHORT LE) ───────────────────
+        var btn = encodeDPad(input)                     // bits 0-3 = hat
+
+        if (input.btnX)              btn = btn or 0x0010   // □ Square
+        if (input.btnA)              btn = btn or 0x0020   // ✕ Cross
+        if (input.btnB)              btn = btn or 0x0040   // ○ Circle
+        if (input.btnY)              btn = btn or 0x0080   // △ Triangle
+        if (input.btnL1)             btn = btn or 0x0100   // L1
+        if (input.btnR1)             btn = btn or 0x0200   // R1
+        if (input.triggerL2 > 0.1f)  btn = btn or 0x0400   // L2 digital
+        if (input.triggerR2 > 0.1f)  btn = btn or 0x0800   // R2 digital
+        
+        // Buttons 9-12 for DS4
+        if (input.btnSelect || input.btnShare) btn = btn or 0x01000   // Share (Bit 12 in 0-indexed, wait actually it's button 9)
+        // Wait, the DS4 standard bitmask is:
+        // Bit 12 = Share (0x1000), Bit 13 = Options (0x2000), Bit 14 = L3 (0x4000), Bit 15 = R3 (0x8000)
+        // This is exactly what we had before, so we keep it!
+        if (input.btnSelect || input.btnShare) btn = btn or 0x1000   // Share
+        if (input.btnStart)                    btn = btn or 0x2000   // Options
+        if (input.btnL3)                       btn = btn or 0x4000   // L3
+        if (input.btnR3)                       btn = btn or 0x8000   // R3
+
+        report.wButtons = btn.toShort()
+
+        // ── SPECIAL (bSpecial) ─────────────────────────────
+        var special = 0
+        if (input.btnGuide) special = special or 0x01      // PS button (Bit 0)
+        
+        // Map the phone's Screenshot/Capture button to the giant PS4 Touchpad Click!
+        if (input.btnScreenshot) special = special or 0x02 // Touchpad click (Bit 1)
+        
+        report.bSpecial = special.toByte()
+
+        // ── TRIGGERS ───────────────────────────────────────
+        report.bTriggerL = triggerToByte(input.triggerL2)
+        report.bTriggerR = triggerToByte(input.triggerR2)
+
+        // ── TIMESTAMP ──────────────────────────────────────
+        val elapsedUs = (System.nanoTime() - startTimeNanos) / 1000L
+        val tick = (elapsedUs / TIMESTAMP_DIVISOR).toLong()
+        report.wTimestamp = tick.toShort()
+
+        // ── BATTERY ────────────────────────────────────────
+        report.bBatteryLvl = BATTERY_FULL
+
+        // ── GYROSCOPE ──────────────────────────────────────
+        val (calX, calY, calZ) = calibrateGyro(
+            input.gyroX, input.gyroY, input.gyroZ
+        )
+
+        //  Android → DS4 axis mapping:
+        //    Pitch  =  gyroX
+        //    Yaw    = −gyroZ
+        //    Roll   = −gyroY
+        report.wGyroX = toSafeShort( calX * GYRO_SCALAR)   // Pitch
+        report.wGyroY = toSafeShort(-calZ * GYRO_SCALAR)   // Yaw
+        report.wGyroZ = toSafeShort(-calY * GYRO_SCALAR)   // Roll
+
+        // ── ACCELEROMETER ──────────────────────────────────
+        var ax = input.accelX * ACCEL_SCALAR
+        var ay = input.accelY * ACCEL_SCALAR
+        var az = input.accelZ * ACCEL_SCALAR
+
+        // If no accel data at all, fake 1 G downward so
+        // Steam's sensor-fusion doesn't disable the gyro.
+        if (ax == 0f && ay == 0f && az == 0f) {
+            ay = -8192f   // 1 g pointing down
         }
-        
-        // Accelerometer scaling (m/s^2 to G-force 16-bit)
-        val accelScalar = 835.3f
-        buffer.putShort(18, (input.accelX * accelScalar).toInt().toShort())
-        buffer.putShort(20, (input.accelY * accelScalar).toInt().toShort())
-        buffer.putShort(22, (input.accelZ * accelScalar).toInt().toShort())
 
+        report.wAccelX = toSafeShort(ax)
+        report.wAccelY = toSafeShort(ay)
+        report.wAccelZ = toSafeShort(az)
+
+        // ── SUBMIT ─────────────────────────────────────────
         try {
-            ViGEmClientLibrary.INSTANCE.vigem_target_ds4_update_ex(client, target, reportEx)
-        } catch (e: Exception) { }
+            ViGEmClientLibrary.INSTANCE.vigem_target_ds4_update_ex(
+                client, target, report
+            )
+        } catch (_: Exception) { }
     }
 
-    private fun mapStick(value: Float): Byte {
-        // Value goes -1.0 to 1.0. Map to 0..255
-        val mapped = ((value + 1.0f) / 2.0f * 255.0f).toInt()
-        return mapped.coerceIn(0, 255).toByte()
-    }
 
+    // ════════════════════════════════════════════════════════
+    //  SIMULATE CRASH  (test rumble from desktop UI)
+    // ════════════════════════════════════════════════════════
     override fun simulateCrash() {
-        // DS4 Rumble simulation
-        onRumble(GamepadFeedback(leftMotorSpeed = 255, rightMotorSpeed = 200))
+        try {
+            println("💥 Simulating DS4 CRASH! Sending heavy rumble feedback...")
+            onRumble(GamepadFeedback(leftMotorSpeed = 255, rightMotorSpeed = 200))
+        } catch (e: Throwable) {
+            println("⚠️ simulateCrash error: ${e.message}")
+        }
+    }
+
+
+    // ════════════════════════════════════════════════════════
+    //  PRIVATE HELPERS
+    // ════════════════════════════════════════════════════════
+
+    /** Map stick float (−1 … +1) → DS4 byte (0 … 255, 128 = center) */
+    private fun stickToByte(value: Float): Byte {
+        return ((value + 1f) / 2f * 255f).toInt().coerceIn(0, 255).toByte()
+    }
+
+    /** Map trigger float (0 … 1) → DS4 byte (0 … 255) */
+    private fun triggerToByte(value: Float): Byte {
+        return (value * 255f).toInt().coerceIn(0, 255).toByte()
+    }
+
+    /** Float → clamped Int16 (Short) without overflow */
+    private fun toSafeShort(value: Float): Short {
+        return value.toInt()
+            .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+            .toShort()
+    }
+
+    /** Encode D-pad booleans into DS4 hat switch value (0–8). */
+    private fun encodeDPad(input: GamepadInput): Int = when {
+        input.dpadUp   && input.dpadRight -> 1   // ↗
+        input.dpadDown && input.dpadRight -> 3   // ↘
+        input.dpadDown && input.dpadLeft  -> 5   // ↙
+        input.dpadUp   && input.dpadLeft  -> 7   // ↖
+        input.dpadUp                      -> 0   // ↑
+        input.dpadRight                   -> 2   // →
+        input.dpadDown                    -> 4   // ↓
+        input.dpadLeft                    -> 6   // ←
+        else                              -> 8   // released
+    }
+
+    /**
+     * Auto-calibrate gyro bias from the first [CALIBRATION_COUNT] samples.
+     * While calibrating, returns (0, 0, 0) to prevent initial drift.
+     * After calibration, subtracts the measured resting bias.
+     */
+    private fun calibrateGyro(
+        rawX: Float, rawY: Float, rawZ: Float
+    ): Triple<Float, Float, Float> {
+
+        if (calibrationSamples < CALIBRATION_COUNT) {
+            gyroBiasX += rawX
+            gyroBiasY += rawY
+            gyroBiasZ += rawZ
+            calibrationSamples++
+
+            if (calibrationSamples == CALIBRATION_COUNT) {
+                gyroBiasX /= CALIBRATION_COUNT
+                gyroBiasY /= CALIBRATION_COUNT
+                gyroBiasZ /= CALIBRATION_COUNT
+                println("✅ Gyro calibration complete — bias removed: " +
+                        "X=%.4f  Y=%.4f  Z=%.4f".format(gyroBiasX, gyroBiasY, gyroBiasZ))
+            }
+
+            return Triple(0f, 0f, 0f)   // dead-still during calibration
+        }
+
+        return Triple(
+            rawX - gyroBiasX,
+            rawY - gyroBiasY,
+            rawZ - gyroBiasZ
+        )
     }
 }
