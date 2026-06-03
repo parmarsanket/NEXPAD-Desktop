@@ -16,6 +16,7 @@ class VirtualDualShock4Driver(private val onRumble: (GamepadFeedback) -> Unit = 
     private var gyroBiasY = 0f
     private var gyroBiasZ = 0f
     private var calibrationSamples = 0
+    private var timestampCounter: Short = 0
     private val MAX_CALIBRATION_SAMPLES = 100 // Collect ~1-2 seconds of data to find the resting bias
 
     override fun connect() {
@@ -114,6 +115,10 @@ class VirtualDualShock4Driver(private val onRumble: (GamepadFeedback) -> Unit = 
         // 7 & 8: Triggers
         buffer.put(7, (input.triggerL2 * 255).toInt().toByte())
         buffer.put(8, (input.triggerR2 * 255).toInt().toByte())
+        
+        // 9: Timestamp (Required for Steam Input Gyro)
+        buffer.putShort(9, timestampCounter)
+        timestampCounter++
         
         // --- MOTION DATA ---
         if (calibrationSamples < MAX_CALIBRATION_SAMPLES) {
