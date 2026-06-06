@@ -253,28 +253,31 @@ class VirtualDualShock4Driver(
             input.gyroX, input.gyroY, input.gyroZ
         )
 
-        //  Android → DS4 axis mapping:
-        //    Pitch  =  gyroX
-        //    Yaw    = −gyroZ
-        //    Roll   = −gyroY
+        //  Android (Landscape) → DS4 physical axis mapping:
+        //    Phone X (Right)   -> DS4 X (Right)
+        //    Phone Y (Forward) -> DS4 Z (Forward)
+        //    Phone Z (Up)      -> DS4 Y (-Down)
+
         report.wGyroX = toSafeShort( calX * GYRO_SCALAR)   // Pitch
         report.wGyroY = toSafeShort(-calZ * GYRO_SCALAR)   // Yaw
-        report.wGyroZ = toSafeShort(-calY * GYRO_SCALAR)   // Roll
+        report.wGyroZ = toSafeShort( calY * GYRO_SCALAR)   // Roll (Positive!)
 
         // ── ACCELEROMETER ──────────────────────────────────
         var ax = input.accelX * ACCEL_SCALAR
         var ay = input.accelY * ACCEL_SCALAR
         var az = input.accelZ * ACCEL_SCALAR
 
-        // If no accel data at all, fake 1 G downward so
-        // Steam's sensor-fusion doesn't disable the gyro.
+        // If no accel data at all, fake 1 G downward so sensor-fusion doesn't break
         if (ax == 0f && ay == 0f && az == 0f) {
-            ay = -8192f   // 1 g pointing down
+            // DS4 Y is Down, resting flat means a reaction force of -1G on Y
+            report.wAccelX = 0
+            report.wAccelY = -8192
+            report.wAccelZ = 0
+        } else {
+            report.wAccelX = toSafeShort(ax)
+            report.wAccelY = toSafeShort(-az)  // DS4 Y (Down) = -Phone Z (Up)
+            report.wAccelZ = toSafeShort(ay)   // DS4 Z (Forward) = Phone Y (Forward)
         }
-
-        report.wAccelX = toSafeShort(ax)
-        report.wAccelY = toSafeShort(ay)
-        report.wAccelZ = toSafeShort(az)
 
         // ── SUBMIT ─────────────────────────────────────────
         try {
