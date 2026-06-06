@@ -20,7 +20,7 @@ data class GyroSettings(
     val invertX: Boolean = false,
     val invertY: Boolean = false,
     /** Which physical rotation maps to horizontal camera movement. */
-    val horizontalAxis: HorizontalAxis = HorizontalAxis.YAW,
+    val horizontalAxis: HorizontalAxis = HorizontalAxis.MIX,
 
     // ── Deadzone ─────────────────────────────────────────
     /** Rotation speed (°/s) below which input is ignored. Smooth ramp exit. */
@@ -117,7 +117,8 @@ data class GyroSettings(
 /** Which physical rotation axis maps to horizontal camera movement. */
 enum class HorizontalAxis(val displayName: String) {
     YAW("Yaw (Turn wrist left/right)"),
-    ROLL("Roll (Tilt controller sideways)")
+    ROLL("Roll (Tilt controller sideways)"),
+    MIX("Mix (Both Yaw and Roll)")
 }
 
 /** Type of acceleration curve applied to gyro input. */
