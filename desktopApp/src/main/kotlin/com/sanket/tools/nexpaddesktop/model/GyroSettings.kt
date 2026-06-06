@@ -13,8 +13,8 @@ data class GyroSettings(
     // ── Sensitivity ──────────────────────────────────────
     /** Horizontal sensitivity multiplier (0.1 – 5.0). Default 1.0 = 1:1 mapping. */
     val sensitivityX: Float = 1.0f,
-    /** Vertical sensitivity multiplier. Default = 56.25% of horizontal (16:9 ratio rule). */
-    val sensitivityY: Float = 0.5625f,
+    /** Vertical sensitivity multiplier. Default 1.0. */
+    val sensitivityY: Float = 1.0f,
 
     // ── Axis Control ─────────────────────────────────────
     val invertX: Boolean = false,
