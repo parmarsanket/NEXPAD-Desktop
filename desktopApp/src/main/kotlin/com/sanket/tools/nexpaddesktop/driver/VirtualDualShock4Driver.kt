@@ -253,30 +253,28 @@ class VirtualDualShock4Driver(
             input.gyroX, input.gyroY, input.gyroZ
         )
 
-        //  Android (Landscape) → DS4 physical axis mapping:
-        //    Phone X (Right)   -> DS4 X (Right)
-        //    Phone Y (Forward) -> DS4 Z (Forward)
-        //    Phone Z (Up)      -> DS4 Y (-Down)
+        //  Android (Landscape) Display Coordinates perfectly match the standard
+        //  DualShock 4 HID report layout (X=Right, Y=Up/Away, Z=Out/Towards User):
+        //  Therefore, a 1:1 direct mapping is the correct approach.
 
-        report.wGyroX = toSafeShort( calX * GYRO_SCALAR)   // Pitch
-        report.wGyroY = toSafeShort(-calZ * GYRO_SCALAR)   // Yaw
-        report.wGyroZ = toSafeShort( calY * GYRO_SCALAR)   // Roll (Positive!)
+        report.wGyroX = toSafeShort( calX * GYRO_SCALAR)
+        report.wGyroY = toSafeShort( calY * GYRO_SCALAR)
+        report.wGyroZ = toSafeShort( calZ * GYRO_SCALAR)
 
         // ── ACCELEROMETER ──────────────────────────────────
         var ax = input.accelX * ACCEL_SCALAR
         var ay = input.accelY * ACCEL_SCALAR
         var az = input.accelZ * ACCEL_SCALAR
 
-        // If no accel data at all, fake 1 G downward so sensor-fusion doesn't break
+        // If no accel data at all, fake 1 G on the Z axis (gravity pulling down on flat controller)
         if (ax == 0f && ay == 0f && az == 0f) {
-            // DS4 Y is Down, resting flat means a reaction force of -1G on Y
             report.wAccelX = 0
-            report.wAccelY = -8192
-            report.wAccelZ = 0
+            report.wAccelY = 0
+            report.wAccelZ = 8192
         } else {
             report.wAccelX = toSafeShort(ax)
-            report.wAccelY = toSafeShort(-az)  // DS4 Y (Down) = -Phone Z (Up)
-            report.wAccelZ = toSafeShort(ay)   // DS4 Z (Forward) = Phone Y (Forward)
+            report.wAccelY = toSafeShort(ay)
+            report.wAccelZ = toSafeShort(az)
         }
 
         // ── SUBMIT ─────────────────────────────────────────
