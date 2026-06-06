@@ -130,6 +130,42 @@ fun GyroSettingsScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         // ════════════════════════════════════════════════════
+        //  INPUT MODE
+        // ════════════════════════════════════════════════════
+        SectionCard("🕹️ Input Mode (Xbox Only)") {
+            Text("Determines how physical phone movement translates to virtual stick movement.", fontSize = 13.sp, color = Color.Gray)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                InputMode.entries.forEach { mode ->
+                    RadioButton(
+                        selected = settings.inputMode == mode,
+                        onClick = { onSettingsChange(settings.copy(inputMode = mode)) },
+                    )
+                    Text(mode.displayName, fontSize = 14.sp)
+                    Spacer(modifier = Modifier.width(16.dp))
+                }
+            }
+
+            if (settings.inputMode == InputMode.ABSOLUTE_TILT) {
+                Spacer(modifier = Modifier.height(12.dp))
+                LabeledSlider(
+                    label = "Max Steering Angle",
+                    value = settings.absoluteMaxTilt,
+                    valueRange = 10.0f..90.0f,
+                    format = "%.0f°",
+                    onValueChange = { onSettingsChange(settings.copy(absoluteMaxTilt = it)) },
+                )
+                Text(
+                    "The physical angle where the joystick reaches 100% deflection. Lower = more sensitive.",
+                    fontSize = 12.sp, color = Color.Gray,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // ════════════════════════════════════════════════════
         //  SENSITIVITY
         // ════════════════════════════════════════════════════
         SectionCard("🎚️ Sensitivity") {

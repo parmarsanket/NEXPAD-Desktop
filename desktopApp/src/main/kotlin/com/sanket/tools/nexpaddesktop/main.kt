@@ -95,6 +95,9 @@ fun main() = application {
                 rawGyroX = input.gyroX,
                 rawGyroY = input.gyroY,
                 rawGyroZ = input.gyroZ,
+                rawAccelX = input.accelX,
+                rawAccelY = input.accelY,
+                rawAccelZ = input.accelZ,
                 settings = gyroSettings,
                 isActivationButtonPressed = isActivationButtonPressed,
             )

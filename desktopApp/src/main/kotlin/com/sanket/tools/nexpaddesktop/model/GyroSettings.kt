@@ -9,6 +9,10 @@ package com.sanket.tools.nexpaddesktop.model
 data class GyroSettings(
     // ── Core ──────────────────────────────────────────────
     val enabled: Boolean = true,
+    /** Determines if gyro rotation speed (aiming) or absolute tilt angle (steering) drives the stick. */
+    val inputMode: InputMode = InputMode.VELOCITY,
+    /** In Absolute Tilt mode, the physical angle (in degrees) that results in 100% stick deflection. */
+    val absoluteMaxTilt: Float = 45.0f,
 
     // ── Sensitivity ──────────────────────────────────────
     /** Horizontal sensitivity multiplier (0.1 – 5.0). Default 1.0 = 1:1 mapping. */
@@ -133,4 +137,10 @@ enum class ActivationMode(val displayName: String) {
     ALWAYS_ON("Always On"),
     BUTTON_HOLD("Button Hold"),
     TOGGLE("Toggle On/Off")
+}
+
+/** Determines how physical phone movement translates to stick movement. */
+enum class InputMode(val displayName: String) {
+    VELOCITY("Velocity (Aiming / Mouse-like)"),
+    ABSOLUTE_TILT("Absolute Tilt (Steering Wheel)")
 }

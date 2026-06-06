@@ -46,6 +46,9 @@ class GyroProcessor {
         rawGyroX: Float,
         rawGyroY: Float,
         rawGyroZ: Float,
+        rawAccelX: Float = 0f,
+        rawAccelY: Float = 0f,
+        rawAccelZ: Float = 0f,
         settings: GyroSettings,
         isActivationButtonPressed: Boolean = true,
     ): ProcessedGyro {
@@ -60,6 +63,42 @@ class GyroProcessor {
             smoothedX = 0f
             smoothedY = 0f
             return ProcessedGyro(0f, 0f, 0f, 0f, 0f)
+        }
+
+        // ── 0.5. Absolute Tilt Mode (Steering Wheel) ─────
+        if (settings.inputMode == InputMode.ABSOLUTE_TILT) {
+            val maxAccel = 9.8f
+            // In NEXPAD main.kt, stick = (processed.yawDps / 200.0f)
+            val targetStickRange = 200.0f
+
+            // Calculate actual tilt angles in degrees using arcsin(g / 9.8)
+            val horizontalAngleDeg = asin((rawAccelX / maxAccel).coerceIn(-1.0f, 1.0f)) * 57.2957795f
+            val verticalAngleDeg = asin((rawAccelY / maxAccel).coerceIn(-1.0f, 1.0f)) * 57.2957795f
+
+            // Map the angle relative to the user's max tilt threshold (e.g. 45 degrees)
+            // This maps X and Y independently (Square boundary) so you can get full speed easily
+            val mappedH = (horizontalAngleDeg / settings.absoluteMaxTilt) * targetStickRange
+            val mappedV = (verticalAngleDeg / settings.absoluteMaxTilt) * targetStickRange
+
+            // Apply inversion
+            var hVal = if (settings.invertX) -mappedH else mappedH
+            var vVal = if (settings.invertY) -mappedV else mappedV
+
+            // Apply deadzone
+            hVal = applyDeadzone(hVal, settings.deadzoneThreshold)
+            vVal = applyDeadzone(vVal, settings.deadzoneThreshold)
+
+            // Apply simple sensitivities
+            hVal *= settings.sensitivityX
+            vVal *= settings.sensitivityY
+
+            return ProcessedGyro(
+                yawDps = hVal,
+                pitchDps = vVal,
+                rollDps = 0f,
+                rawYawDps = mappedH,
+                rawPitchDps = mappedV,
+            )
         }
 
         // ── 1. Convert rad/s → °/s ──────────────────────
