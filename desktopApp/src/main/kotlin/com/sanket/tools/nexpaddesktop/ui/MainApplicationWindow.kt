@@ -19,9 +19,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpaddesktop.driver.IGamepadDriver
 import com.sanket.tools.nexpaddesktop.model.GamepadInput
+import com.sanket.tools.nexpaddesktop.model.GyroSettings
 import com.sanket.tools.nexpaddesktop.utils.NetworkUtils
 
-enum class Screen { HOME, CONTROLLER_SETTINGS }
+enum class Screen { HOME, CONTROLLER_SETTINGS, GYRO_SETTINGS }
 enum class ControllerType(val displayName: String) { 
     XBOX_360("Microsoft Xbox 360"), 
     DUALSHOCK_4("Sony PlayStation 4 (DualShock 4)") 
@@ -42,22 +43,11 @@ fun MainApplicationWindow(
     onRsSensitivityXChange: (Float) -> Unit,
     onRsSensitivityYChange: (Float) -> Unit,
     
-    isAdvancedGyroEnabled: Boolean,
-    gyroTargetStick: String,
-    gyroBlendMode: String,
-    gyroSensX: Float,
-    gyroSensY: Float,
-    accelWeight: Float,
-    gyroWeight: Float,
-    gyroActivationButtons: Set<String>,
-    onAdvancedGyroEnabledChange: (Boolean) -> Unit,
-    onGyroTargetStickChange: (String) -> Unit,
-    onGyroBlendModeChange: (String) -> Unit,
-    onGyroSensXChange: (Float) -> Unit,
-    onGyroSensYChange: (Float) -> Unit,
-    onAccelWeightChange: (Float) -> Unit,
-    onGyroWeightChange: (Float) -> Unit,
-    onGyroActivationButtonsChange: (Set<String>) -> Unit,
+    gyroSettings: GyroSettings,
+    onGyroSettingsChange: (GyroSettings) -> Unit,
+    processedYaw: Float,
+    processedPitch: Float,
+    onRecalibrate: () -> Unit,
     
     onControllerChange: (ControllerType) -> Unit
 ) {
@@ -82,26 +72,20 @@ fun MainApplicationWindow(
             onLsSensitivityYChange = onLsSensitivityYChange,
             onRsSensitivityXChange = onRsSensitivityXChange,
             onRsSensitivityYChange = onRsSensitivityYChange,
-            
-            isAdvancedGyroEnabled = isAdvancedGyroEnabled,
-            gyroTargetStick = gyroTargetStick,
-            gyroBlendMode = gyroBlendMode,
-            gyroSensX = gyroSensX,
-            gyroSensY = gyroSensY,
-            accelWeight = accelWeight,
-            gyroWeight = gyroWeight,
-            gyroActivationButtons = gyroActivationButtons,
-            onAdvancedGyroEnabledChange = onAdvancedGyroEnabledChange,
-            onGyroTargetStickChange = onGyroTargetStickChange,
-            onGyroBlendModeChange = onGyroBlendModeChange,
-            onGyroSensXChange = onGyroSensXChange,
-            onGyroSensYChange = onGyroSensYChange,
-            onAccelWeightChange = onAccelWeightChange,
-            onGyroWeightChange = onGyroWeightChange,
-            onGyroActivationButtonsChange = onGyroActivationButtonsChange,
-            
             onNavigate = { currentScreen = it },
             onSaveController = onControllerChange
+        )
+        Screen.GYRO_SETTINGS -> GyroSettingsScreen(
+            settings = gyroSettings,
+            onSettingsChange = onGyroSettingsChange,
+            activeController = activeController,
+            rawGyroX = latestInput.gyroX,
+            rawGyroY = latestInput.gyroY,
+            rawGyroZ = latestInput.gyroZ,
+            processedYaw = processedYaw,
+            processedPitch = processedPitch,
+            onRecalibrate = onRecalibrate,
+            onNavigate = { currentScreen = it },
         )
     }
 }
@@ -121,7 +105,10 @@ fun HomeScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
+            Button(onClick = { onNavigate(Screen.GYRO_SETTINGS) }) {
+                Text("🎯 6-Axis Gyro Settings")
+            }
             Button(onClick = { onNavigate(Screen.CONTROLLER_SETTINGS) }) {
                 Text("⚙️ Controller Settings")
             }
@@ -216,24 +203,6 @@ fun ControllerSettingsScreen(
     onLsSensitivityYChange: (Float) -> Unit,
     onRsSensitivityXChange: (Float) -> Unit,
     onRsSensitivityYChange: (Float) -> Unit,
-    
-    isAdvancedGyroEnabled: Boolean,
-    gyroTargetStick: String,
-    gyroBlendMode: String,
-    gyroSensX: Float,
-    gyroSensY: Float,
-    accelWeight: Float,
-    gyroWeight: Float,
-    gyroActivationButtons: Set<String>,
-    onAdvancedGyroEnabledChange: (Boolean) -> Unit,
-    onGyroTargetStickChange: (String) -> Unit,
-    onGyroBlendModeChange: (String) -> Unit,
-    onGyroSensXChange: (Float) -> Unit,
-    onGyroSensYChange: (Float) -> Unit,
-    onAccelWeightChange: (Float) -> Unit,
-    onGyroWeightChange: (Float) -> Unit,
-    onGyroActivationButtonsChange: (Set<String>) -> Unit,
-    
     onNavigate: (Screen) -> Unit,
     onSaveController: (ControllerType) -> Unit
 ) {
@@ -298,9 +267,9 @@ fun ControllerSettingsScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Conditional UI Block
+        // Conditional UI Block — Stick sensitivity (Xbox only) and DS4 debugger
         if (selectedType == ControllerType.XBOX_360) {
-            Text("Xbox 360 Specific Settings", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = MaterialTheme.colorScheme.primary)
+            Text("Xbox 360 Stick Settings", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(16.dp))
             
             Text("Left Stick Horizontal Sensitivity: ${String.format("%.2f", lsSensitivityX)}")
@@ -316,114 +285,13 @@ fun ControllerSettingsScreen(
             
             Text("Right Stick Vertical Sensitivity: ${String.format("%.2f", rsSensitivityY)}")
             androidx.compose.material3.Slider(value = rsSensitivityY, onValueChange = onRsSensitivityYChange, valueRange = 0.1f..3.0f)
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            // --- Advanced Gyro Section ---
-            Text("Advanced Gyro Steering", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = MaterialTheme.colorScheme.tertiary)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Enable Advanced Gyro Steering")
-                Spacer(modifier = Modifier.width(16.dp))
-                androidx.compose.material3.Switch(checked = isAdvancedGyroEnabled, onCheckedChange = onAdvancedGyroEnabledChange)
-            }
-            
-            if (isAdvancedGyroEnabled) {
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                var activationExpanded by remember { mutableStateOf(false) }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Activation Button:", fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Box {
-                        Button(onClick = { activationExpanded = true }) {
-                            val displayName = if (gyroActivationButtons.isEmpty()) "Always On (None)" else "${gyroActivationButtons.size} Selected"
-                            Text("$displayName ▼")
-                        }
-                        androidx.compose.material3.DropdownMenu(
-                            expanded = activationExpanded,
-                            onDismissRequest = { activationExpanded = false }
-                        ) {
-                            androidx.compose.material3.DropdownMenuItem(
-                                text = { Text("Always On (Clear All)", fontWeight = if (gyroActivationButtons.isEmpty()) FontWeight.Bold else FontWeight.Normal) },
-                                onClick = { 
-                                    onGyroActivationButtonsChange(emptySet())
-                                }
-                            )
-                            
-                            val options = listOf("LT", "RT", "LB", "RB", "A", "B", "X", "Y", "DPAD_UP", "DPAD_DOWN", "DPAD_LEFT", "DPAD_RIGHT")
-                            val names = listOf("Left Trigger (LT)", "Right Trigger (RT)", "Left Bumper (LB)", "Right Bumper (RB)", "Button A", "Button B", "Button X", "Button Y", "D-Pad Up", "D-Pad Down", "D-Pad Left", "D-Pad Right")
-                            options.forEachIndexed { index, opt ->
-                                val isSelected = gyroActivationButtons.contains(opt)
-                                androidx.compose.material3.DropdownMenuItem(
-                                    text = { 
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            androidx.compose.material3.Checkbox(
-                                                checked = isSelected,
-                                                onCheckedChange = null
-                                            )
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text(names[index])
-                                        }
-                                    },
-                                    onClick = { 
-                                        if (isSelected) {
-                                            onGyroActivationButtonsChange(gyroActivationButtons - opt)
-                                        } else {
-                                            onGyroActivationButtonsChange(gyroActivationButtons + opt)
-                                        }
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Target Stick:", fontWeight = FontWeight.Bold)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    androidx.compose.material3.RadioButton(
-                        selected = gyroTargetStick == "LEFT_STICK",
-                        onClick = { onGyroTargetStickChange("LEFT_STICK") }
-                    )
-                    Text("Left Stick (LS)")
-                    Spacer(modifier = Modifier.width(16.dp))
-                    androidx.compose.material3.RadioButton(
-                        selected = gyroTargetStick == "RIGHT_STICK",
-                        onClick = { onGyroTargetStickChange("RIGHT_STICK") }
-                    )
-                    Text("Right Stick (RS)")
-                }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Blend Mode:", fontWeight = FontWeight.Bold)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    androidx.compose.material3.RadioButton(
-                        selected = gyroBlendMode == "OVERRIDE",
-                        onClick = { onGyroBlendModeChange("OVERRIDE") }
-                    )
-                    Text("Override (Replaces stick)")
-                    Spacer(modifier = Modifier.width(16.dp))
-                    androidx.compose.material3.RadioButton(
-                        selected = gyroBlendMode == "ADDITIVE",
-                        onClick = { onGyroBlendModeChange("ADDITIVE") }
-                    )
-                    Text("Additive (Merges with stick)")
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Gyro Horizontal Sensitivity: ${String.format("%.2f", gyroSensX)}")
-                androidx.compose.material3.Slider(value = gyroSensX, onValueChange = onGyroSensXChange, valueRange = 0.1f..3.0f)
-                
-                Text("Gyro Vertical Sensitivity: ${String.format("%.2f", gyroSensY)}")
-                androidx.compose.material3.Slider(value = gyroSensY, onValueChange = onGyroSensYChange, valueRange = 0.1f..3.0f)
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Accelerometer Weight (Tilt Bias): ${String.format("%.2f", accelWeight)}")
-                androidx.compose.material3.Slider(value = accelWeight, onValueChange = onAccelWeightChange, valueRange = 0.0f..2.0f)
-                
-                Text("Gyroscope Weight (Rotation Bias): ${String.format("%.2f", gyroWeight)}")
-                androidx.compose.material3.Slider(value = gyroWeight, onValueChange = onGyroWeightChange, valueRange = 0.0f..2.0f)
-            }
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Text(
+                "💡 For gyro/motion settings, use the dedicated 🎯 6-Axis Gyro Settings screen.",
+                fontSize = 14.sp, color = Color.Gray,
+            )
         } else if (selectedType == ControllerType.DUALSHOCK_4) {
             Text("DualShock 4 Specific Settings", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = MaterialTheme.colorScheme.secondary)
             Spacer(modifier = Modifier.height(16.dp))
@@ -451,6 +319,12 @@ fun ControllerSettingsScreen(
                     Text("Raw Y: ${String.format("%.2f", latestInput.rightStickY)} ➔ DS4 Byte: $ry", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                "💡 For gyro/motion settings, use the dedicated 🎯 6-Axis Gyro Settings screen.",
+                fontSize = 14.sp, color = Color.Gray,
+            )
         }
     }
 }
