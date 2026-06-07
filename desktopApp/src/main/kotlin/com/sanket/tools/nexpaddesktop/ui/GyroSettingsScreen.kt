@@ -13,12 +13,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpaddesktop.model.*
+import com.sanket.tools.nexpaddesktop.ui.visualizers.*
 
 /**
  * Dedicated 6-Axis Motion Settings screen.
- *
- * Organized into collapsible sections matching the processing pipeline:
- *   Sensitivity → Axis → Deadzone → Smoothing → Acceleration → Tightening → Activation → Presets
+ * Redesigned with a gamer-centric dashboard layout and rich visualizers.
  */
 @Composable
 fun GyroSettingsScreen(
@@ -44,33 +43,21 @@ fun GyroSettingsScreen(
         verticalArrangement = Arrangement.Top,
     ) {
         // ── Navigation ──
-        Button(onClick = { onNavigate(Screen.HOME) }) {
-            Text("< Back to Home")
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // ── Header ──
         Row(
-            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                "🎯 6-Axis Motion Settings",
-                fontWeight = FontWeight.Bold,
-                fontSize = 26.sp,
-                modifier = Modifier.weight(1f),
-            )
+            Button(onClick = { onNavigate(Screen.HOME) }) {
+                Text("< Back to Home")
+            }
             Switch(
                 checked = settings.enabled,
                 onCheckedChange = { onSettingsChange(settings.copy(enabled = it)) },
             )
         }
-        Text(
-            "Configure gyroscope behavior for precise motion-controlled aiming.",
-            color = Color.Gray,
-            fontSize = 14.sp,
-        )
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         if (!settings.enabled) {
             Spacer(modifier = Modifier.height(32.dp))
@@ -82,50 +69,27 @@ fun GyroSettingsScreen(
             return@Column
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
         // ════════════════════════════════════════════════════
-        //  LIVE PREVIEW
+        //  DASHBOARD HEADER (3D Phone & Impact Meter)
         // ════════════════════════════════════════════════════
-        SectionCard("📊 Live Preview") {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column {
-                    Text("Raw Gyro (°/s)", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.Gray)
-                    Text("X: ${String.format("%+7.1f", rawGyroX * 57.296f)}", fontSize = 13.sp)
-                    Text("Y: ${String.format("%+7.1f", rawGyroY * 57.296f)}", fontSize = 13.sp)
-                    Text("Z: ${String.format("%+7.1f", rawGyroZ * 57.296f)}", fontSize = 13.sp)
-                }
-                Column {
-                    Text("Processed (°/s)", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
-                    Text("Horizontal: ${String.format("%+7.1f", processedYaw)}", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
-                    Text("Vertical: ${String.format("%+7.1f", processedPitch)}", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
-                }
-            }
-        }
+        DashboardHeader(
+            settings = settings,
+            rawGyroX = rawGyroX,
+            rawGyroY = rawGyroY,
+            rawGyroZ = rawGyroZ,
+            processedYaw = processedYaw,
+            processedPitch = processedPitch
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // ════════════════════════════════════════════════════
-        //  PRESETS
+        //  PRESET CARDS
         // ════════════════════════════════════════════════════
-        SectionCard("⚡ Quick Presets") {
-            Text("Apply optimized settings for common game types.", fontSize = 13.sp, color = Color.Gray)
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { onSettingsChange(GyroSettings.FPS_PRESET) }) {
-                    Text("🎯 FPS")
-                }
-                Button(onClick = { onSettingsChange(GyroSettings.RACING_PRESET) }) {
-                    Text("🏎️ Racing")
-                }
-                Button(onClick = { onSettingsChange(GyroSettings.PRECISION_PRESET) }) {
-                    Text("🔬 Precision")
-                }
-                OutlinedButton(onClick = { onSettingsChange(GyroSettings.DEFAULT) }) {
-                    Text("↺ Reset")
-                }
-            }
-        }
+        PresetCards(
+            currentSettings = settings,
+            onSettingsChange = onSettingsChange
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -133,9 +97,6 @@ fun GyroSettingsScreen(
         //  INPUT MODE
         // ════════════════════════════════════════════════════
         SectionCard("🕹️ Input Mode (Xbox Only)") {
-            Text("Determines how physical phone movement translates to virtual stick movement.", fontSize = 13.sp, color = Color.Gray)
-            Spacer(modifier = Modifier.height(8.dp))
-
             Row(verticalAlignment = Alignment.CenterVertically) {
                 InputMode.entries.forEach { mode ->
                     RadioButton(
@@ -149,10 +110,8 @@ fun GyroSettingsScreen(
 
             if (settings.inputMode == InputMode.ABSOLUTE_TILT) {
                 Spacer(modifier = Modifier.height(12.dp))
-                
                 Text("Steering Wheel Settings", fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(8.dp))
-
                 LabeledSlider(
                     label = "Max Steering Angle",
                     value = settings.absoluteMaxTilt,
@@ -160,11 +119,6 @@ fun GyroSettingsScreen(
                     format = "%.0f°",
                     onValueChange = { onSettingsChange(settings.copy(absoluteMaxTilt = it)) },
                 )
-                Text(
-                    "The physical angle where the joystick reaches 100% deflection. Lower = more sensitive.",
-                    fontSize = 12.sp, color = Color.Gray,
-                )
-
                 Spacer(modifier = Modifier.height(8.dp))
                 LabeledSlider(
                     label = "Response Curve (Acceleration)",
@@ -173,16 +127,10 @@ fun GyroSettingsScreen(
                     format = "%.1f",
                     onValueChange = { onSettingsChange(settings.copy(absoluteCurve = it)) },
                 )
-                Text(
-                    "1.0 is Linear. Higher values make the center less sensitive for precise micro-steering, while the edges become very fast.",
-                    fontSize = 12.sp, color = Color.Gray,
-                )
             } else if (settings.inputMode == InputMode.LINEAR_ACCELERATION) {
                 Spacer(modifier = Modifier.height(12.dp))
-                
                 Text("Sliding (Linear Acceleration) Settings", fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(8.dp))
-
                 LabeledSlider(
                     label = "Sliding Deadzone",
                     value = settings.slidingDeadzone,
@@ -190,11 +138,6 @@ fun GyroSettingsScreen(
                     format = "%.1f m/s²",
                     onValueChange = { onSettingsChange(settings.copy(slidingDeadzone = it)) },
                 )
-                Text(
-                    "Minimum sliding acceleration required to trigger movement.",
-                    fontSize = 12.sp, color = Color.Gray,
-                )
-
                 Spacer(modifier = Modifier.height(8.dp))
                 LabeledSlider(
                     label = "Horizontal Sensitivity",
@@ -203,7 +146,6 @@ fun GyroSettingsScreen(
                     format = "%.1fx",
                     onValueChange = { onSettingsChange(settings.copy(slidingSensitivityX = it)) },
                 )
-
                 Spacer(modifier = Modifier.height(8.dp))
                 LabeledSlider(
                     label = "Vertical Sensitivity",
@@ -218,100 +160,88 @@ fun GyroSettingsScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         // ════════════════════════════════════════════════════
-        //  SENSITIVITY
+        //  SENSITIVITY (Speedometer)
         // ════════════════════════════════════════════════════
         SectionCard("🎚️ Sensitivity") {
-            Text(
-                "Controls how much camera movement results from physical rotation.",
-                fontSize = 13.sp, color = Color.Gray,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            LabeledSlider(
-                label = "Horizontal (Yaw)",
-                value = settings.sensitivityX,
-                valueRange = 0.1f..5.0f,
-                format = "%.2f",
-                onValueChange = { onSettingsChange(settings.copy(sensitivityX = it)) },
-            )
-            LabeledSlider(
-                label = "Vertical (Pitch)",
-                value = settings.sensitivityY,
-                valueRange = 0.1f..5.0f,
-                format = "%.2f",
-                onValueChange = { onSettingsChange(settings.copy(sensitivityY = it)) },
-            )
-            Text(
-                "💡 Tip: Vertical should be ~56% of Horizontal (16:9 ratio) for natural feel.",
-                fontSize = 12.sp, color = Color.Gray,
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // ════════════════════════════════════════════════════
-        //  AXIS CONTROL
-        // ════════════════════════════════════════════════════
-        SectionCard("🧭 Axis Control") {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Invert Horizontal (X)", modifier = Modifier.weight(1f))
-                Switch(
-                    checked = settings.invertX,
-                    onCheckedChange = { onSettingsChange(settings.copy(invertX = it)) },
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Invert Vertical (Y)", modifier = Modifier.weight(1f))
-                Switch(
-                    checked = settings.invertY,
-                    onCheckedChange = { onSettingsChange(settings.copy(invertY = it)) },
-                )
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            Text("Horizontal Axis Mapping:", fontWeight = FontWeight.Bold)
-            Text("How physical rotation maps to left/right camera movement.", fontSize = 12.sp, color = Color.Gray)
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                HorizontalAxis.entries.forEach { axis ->
-                    RadioButton(
-                        selected = settings.horizontalAxis == axis,
-                        onClick = { onSettingsChange(settings.copy(horizontalAxis = axis)) },
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    LabeledSlider(
+                        label = "Horizontal (Yaw)",
+                        value = settings.sensitivityX,
+                        valueRange = 0.1f..5.0f,
+                        format = "%.2f",
+                        onValueChange = { onSettingsChange(settings.copy(sensitivityX = it)) },
                     )
-                    Text(axis.displayName, fontSize = 14.sp)
-                    Spacer(modifier = Modifier.width(16.dp))
+                    LabeledSlider(
+                        label = "Vertical (Pitch)",
+                        value = settings.sensitivityY,
+                        valueRange = 0.1f..5.0f,
+                        format = "%.2f",
+                        onValueChange = { onSettingsChange(settings.copy(sensitivityY = it)) },
+                    )
                 }
+                SensitivitySpeedometer(sensitivity = settings.sensitivityX)
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // ════════════════════════════════════════════════════
-        //  DEADZONE
+        //  PRECISION & DEADZONE (Crosshair Visualizer)
         // ════════════════════════════════════════════════════
-        SectionCard("🎯 Deadzone") {
-            Text(
-                "Ignore micro-movements below this threshold to prevent drift/jitter.",
-                fontSize = 13.sp, color = Color.Gray,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            LabeledSlider(
-                label = "Threshold",
-                value = settings.deadzoneThreshold,
-                valueRange = 0.0f..20.0f,
-                format = "%.1f °/s",
-                onValueChange = { onSettingsChange(settings.copy(deadzoneThreshold = it)) },
-            )
-            Text(
-                "💡 0 = no deadzone (most responsive). 3-5 = good for reducing hand tremor.",
-                fontSize = 12.sp, color = Color.Gray,
-            )
+        SectionCard("🎯 Precision & Deadzone") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                    LabeledSlider(
+                        label = "Hard Deadzone",
+                        value = settings.deadzoneThreshold,
+                        valueRange = 0.0f..20.0f,
+                        format = "%.1f °/s",
+                        onValueChange = { onSettingsChange(settings.copy(deadzoneThreshold = it)) },
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Enable Tightening (Soft Deadzone)", modifier = Modifier.weight(1f))
+                        Switch(
+                            checked = settings.tighteningEnabled,
+                            onCheckedChange = { onSettingsChange(settings.copy(tighteningEnabled = it)) },
+                        )
+                    }
+                    if (settings.tighteningEnabled) {
+                        LabeledSlider(
+                            label = "Tightening Threshold",
+                            value = settings.tighteningThreshold,
+                            valueRange = 1.0f..30.0f,
+                            format = "%.1f °/s",
+                            onValueChange = { onSettingsChange(settings.copy(tighteningThreshold = it)) },
+                        )
+                    }
+                }
+                
+                DeadzoneCrosshair(
+                    deadzone = settings.deadzoneThreshold,
+                    tighteningEnabled = settings.tighteningEnabled,
+                    tighteningThreshold = settings.tighteningThreshold,
+                    rawYawDps = rawGyroZ * 57.296f, // Approx raw Z
+                    rawPitchDps = rawGyroX * 57.296f, // Approx raw X
+                    processedYawDps = processedYaw,
+                    processedPitchDps = processedPitch
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // ════════════════════════════════════════════════════
-        //  SMOOTHING
+        //  SMOOTHING (Waveform Visualizer)
         // ════════════════════════════════════════════════════
         SectionCard("🌊 Smoothing") {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -321,13 +251,13 @@ fun GyroSettingsScreen(
                     onCheckedChange = { onSettingsChange(settings.copy(smoothingEnabled = it)) },
                 )
             }
-            Text(
-                "Reduces jitter at the cost of slight input lag.",
-                fontSize = 13.sp, color = Color.Gray,
-            )
-
+            
             if (settings.smoothingEnabled) {
-                Spacer(modifier = Modifier.height(8.dp))
+                SmoothingWaveform(
+                    smoothingEnabled = settings.smoothingEnabled,
+                    smoothingAmount = settings.smoothingAmount
+                )
+                Spacer(modifier = Modifier.height(12.dp))
                 LabeledSlider(
                     label = "Smoothing Amount",
                     value = settings.smoothingAmount,
@@ -335,12 +265,7 @@ fun GyroSettingsScreen(
                     format = "%.2f",
                     onValueChange = { onSettingsChange(settings.copy(smoothingAmount = it)) },
                 )
-                Text(
-                    "Low = heavy smoothing (smooth but laggy). High = light smoothing (responsive).",
-                    fontSize = 12.sp, color = Color.Gray,
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Adaptive Smoothing", modifier = Modifier.weight(1f))
                     Switch(
@@ -348,11 +273,6 @@ fun GyroSettingsScreen(
                         onCheckedChange = { onSettingsChange(settings.copy(adaptiveSmoothing = it)) },
                     )
                 }
-                Text(
-                    "Only smooth slow movements. Fast movements pass through raw for responsiveness.",
-                    fontSize = 12.sp, color = Color.Gray,
-                )
-
                 if (settings.adaptiveSmoothing) {
                     LabeledSlider(
                         label = "Speed Threshold",
@@ -378,14 +298,17 @@ fun GyroSettingsScreen(
                     onCheckedChange = { onSettingsChange(settings.copy(accelerationEnabled = it)) },
                 )
             }
-            Text(
-                "Slow rotation = precise micro-aiming. Fast rotation = amplified quick turns.",
-                fontSize = 13.sp, color = Color.Gray,
-            )
-
+            
             if (settings.accelerationEnabled) {
+                AccelerationGraph(
+                    curveType = settings.accelerationType,
+                    minThreshold = settings.minThreshold,
+                    maxThreshold = settings.maxThreshold,
+                    minSens = settings.minSensitivity,
+                    maxSens = settings.maxSensitivity
+                )
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("Curve Type:", fontWeight = FontWeight.Bold)
+                
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AccelerationType.entries.forEach { type ->
                         RadioButton(
@@ -396,69 +319,34 @@ fun GyroSettingsScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                     }
                 }
-
                 Spacer(modifier = Modifier.height(8.dp))
                 LabeledSlider(
-                    label = "Min Sensitivity (slow rotation)",
+                    label = "Min Sensitivity",
                     value = settings.minSensitivity,
                     valueRange = 0.1f..3.0f,
                     format = "%.2f×",
                     onValueChange = { onSettingsChange(settings.copy(minSensitivity = it)) },
                 )
                 LabeledSlider(
-                    label = "Max Sensitivity (fast rotation)",
+                    label = "Max Sensitivity",
                     value = settings.maxSensitivity,
                     valueRange = 0.5f..5.0f,
                     format = "%.2f×",
                     onValueChange = { onSettingsChange(settings.copy(maxSensitivity = it)) },
                 )
                 LabeledSlider(
-                    label = "Min Speed Threshold",
+                    label = "Min Threshold",
                     value = settings.minThreshold,
                     valueRange = 0.0f..50.0f,
                     format = "%.0f °/s",
                     onValueChange = { onSettingsChange(settings.copy(minThreshold = it)) },
                 )
                 LabeledSlider(
-                    label = "Max Speed Threshold",
+                    label = "Max Threshold",
                     value = settings.maxThreshold,
                     valueRange = 20.0f..300.0f,
                     format = "%.0f °/s",
                     onValueChange = { onSettingsChange(settings.copy(maxThreshold = it)) },
-                )
-                Text(
-                    "Example: Slow tilt 45° → camera moves 25°. Fast flick 45° → camera moves 90°.",
-                    fontSize = 12.sp, color = Color.Gray,
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // ════════════════════════════════════════════════════
-        //  TIGHTENING
-        // ════════════════════════════════════════════════════
-        SectionCard("🔒 Tightening (Precision Zone)") {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Enable Tightening", modifier = Modifier.weight(1f))
-                Switch(
-                    checked = settings.tighteningEnabled,
-                    onCheckedChange = { onSettingsChange(settings.copy(tighteningEnabled = it)) },
-                )
-            }
-            Text(
-                "Soft deadzone that smoothly reduces very small inputs for ultra-precise aiming.",
-                fontSize = 13.sp, color = Color.Gray,
-            )
-
-            if (settings.tighteningEnabled) {
-                Spacer(modifier = Modifier.height(8.dp))
-                LabeledSlider(
-                    label = "Precision Threshold",
-                    value = settings.tighteningThreshold,
-                    valueRange = 1.0f..30.0f,
-                    format = "%.1f °/s",
-                    onValueChange = { onSettingsChange(settings.copy(tighteningThreshold = it)) },
                 )
             }
         }
@@ -468,173 +356,56 @@ fun GyroSettingsScreen(
         // ════════════════════════════════════════════════════
         //  LOW-SPEED AMPLIFIER
         // ════════════════════════════════════════════════════
-        SectionCard("⚡ Low-Speed Amplifier (Anti-Deadzone)") {
+        SectionCard("⚡ Anti-Deadzone (Low-Speed Amplifier)") {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Enable Low-Speed Amplifier", modifier = Modifier.weight(1f))
+                Text("Enable Anti-Deadzone", modifier = Modifier.weight(1f))
                 Switch(
                     checked = settings.lowSpeedAmplifierEnabled,
                     onCheckedChange = { onSettingsChange(settings.copy(lowSpeedAmplifierEnabled = it)) },
                 )
             }
-            Text(
-                "Helps overcome in-game deadzones by boosting very slow movements so the stick actually moves.",
-                fontSize = 13.sp, color = Color.Gray,
-            )
-
             if (settings.lowSpeedAmplifierEnabled) {
                 Spacer(modifier = Modifier.height(8.dp))
                 LabeledSlider(
-                    label = "Amplifier Multiplier (How much to boost)",
+                    label = "Multiplier",
                     value = settings.lowSpeedAmplifierAmount,
                     valueRange = 1.0f..10.0f,
                     format = "%.1fx",
                     onValueChange = { onSettingsChange(settings.copy(lowSpeedAmplifierAmount = it)) },
                 )
-                
-                Spacer(modifier = Modifier.height(8.dp))
                 LabeledSlider(
-                    label = "Speed Threshold (Max speed to boost)",
+                    label = "Max Speed",
                     value = settings.lowSpeedAmplifierThreshold,
                     valueRange = 1.0f..50.0f,
                     format = "%.1f °/s",
                     onValueChange = { onSettingsChange(settings.copy(lowSpeedAmplifierThreshold = it)) },
                 )
-
-                Spacer(modifier = Modifier.height(8.dp))
                 LabeledSlider(
-                    label = "Harshness (How quickly the boost drops off)",
+                    label = "Harshness",
                     value = settings.lowSpeedAmplifierHarshness,
                     valueRange = 0.5f..5.0f,
                     format = "%.1f",
                     onValueChange = { onSettingsChange(settings.copy(lowSpeedAmplifierHarshness = it)) },
                 )
-                Text(
-                    "Higher harshness means the amplifier drops off much quicker as you speed up. 1.0 is linear.",
-                    fontSize = 12.sp, color = Color.Gray,
-                )
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // ════════════════════════════════════════════════════
-        //  ACTIVATION
+        //  AXIS CONTROL & CALIBRATION
         // ════════════════════════════════════════════════════
-        SectionCard("🕹️ Activation") {
-            Text("How the gyro is activated during gameplay.", fontSize = 13.sp, color = Color.Gray)
-            Spacer(modifier = Modifier.height(8.dp))
-
+        SectionCard("🧭 Axis & Calibration") {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                ActivationMode.entries.forEach { mode ->
-                    RadioButton(
-                        selected = settings.activationMode == mode,
-                        onClick = { onSettingsChange(settings.copy(activationMode = mode)) },
-                    )
-                    Text(mode.displayName, fontSize = 14.sp)
-                    Spacer(modifier = Modifier.width(12.dp))
-                }
+                Text("Invert Horizontal", modifier = Modifier.weight(1f))
+                Switch(checked = settings.invertX, onCheckedChange = { onSettingsChange(settings.copy(invertX = it)) })
             }
-
-            if (settings.activationMode != ActivationMode.ALWAYS_ON) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Activation Buttons:", fontWeight = FontWeight.Bold)
-
-                var buttonMenuExpanded by remember { mutableStateOf(false) }
-                Box {
-                    Button(onClick = { buttonMenuExpanded = true }) {
-                        val label = if (settings.activationButtons.isEmpty()) "None selected" else "${settings.activationButtons.size} selected"
-                        Text("$label ▼")
-                    }
-                    DropdownMenu(
-                        expanded = buttonMenuExpanded,
-                        onDismissRequest = { buttonMenuExpanded = false },
-                    ) {
-                        val options = listOf("LT", "RT", "LB", "RB", "A", "B", "X", "Y")
-                        val names = listOf("Left Trigger", "Right Trigger", "Left Bumper", "Right Bumper", "Button A", "Button B", "Button X", "Button Y")
-                        options.forEachIndexed { index, opt ->
-                            val isSelected = settings.activationButtons.contains(opt)
-                            DropdownMenuItem(
-                                text = {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Checkbox(checked = isSelected, onCheckedChange = null)
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(names[index])
-                                    }
-                                },
-                                onClick = {
-                                    val updated = if (isSelected) settings.activationButtons - opt else settings.activationButtons + opt
-                                    onSettingsChange(settings.copy(activationButtons = updated))
-                                },
-                            )
-                        }
-                    }
-                }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Invert Vertical", modifier = Modifier.weight(1f))
+                Switch(checked = settings.invertY, onCheckedChange = { onSettingsChange(settings.copy(invertY = it)) })
             }
-        }
-
-        // ════════════════════════════════════════════════════
-        //  XBOX GYRO-TO-STICK (only shown for Xbox controller)
-        // ════════════════════════════════════════════════════
-        if (activeController == ControllerType.XBOX_360) {
-            Spacer(modifier = Modifier.height(16.dp))
-            SectionCard("🎮 Xbox Gyro → Stick Mapping") {
-                Text(
-                    "Xbox controllers don't have native gyro. Motion is mapped to analog stick movement.",
-                    fontSize = 13.sp, color = Color.Gray,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text("Target Stick:", fontWeight = FontWeight.Bold)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
-                        selected = settings.xboxTargetStick == "RIGHT_STICK",
-                        onClick = { onSettingsChange(settings.copy(xboxTargetStick = "RIGHT_STICK")) },
-                    )
-                    Text("Right Stick (Camera/Aim)")
-                    Spacer(modifier = Modifier.width(16.dp))
-                    RadioButton(
-                        selected = settings.xboxTargetStick == "LEFT_STICK",
-                        onClick = { onSettingsChange(settings.copy(xboxTargetStick = "LEFT_STICK")) },
-                    )
-                    Text("Left Stick (Movement)")
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Blend Mode:", fontWeight = FontWeight.Bold)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
-                        selected = settings.xboxBlendMode == "OVERRIDE",
-                        onClick = { onSettingsChange(settings.copy(xboxBlendMode = "OVERRIDE")) },
-                    )
-                    Text("Override", fontSize = 13.sp)
-                    Spacer(modifier = Modifier.width(12.dp))
-                    RadioButton(
-                        selected = settings.xboxBlendMode == "ADDITIVE",
-                        onClick = { onSettingsChange(settings.copy(xboxBlendMode = "ADDITIVE")) },
-                    )
-                    Text("Additive", fontSize = 13.sp)
-                    Spacer(modifier = Modifier.width(12.dp))
-                    RadioButton(
-                        selected = settings.xboxBlendMode == "MUTE_ON_STICK",
-                        onClick = { onSettingsChange(settings.copy(xboxBlendMode = "MUTE_ON_STICK")) },
-                    )
-                    Text("Mute on Stick (Flick Stick style)", fontSize = 13.sp)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // ════════════════════════════════════════════════════
-        //  CALIBRATION
-        // ════════════════════════════════════════════════════
-        SectionCard("🔧 Calibration") {
-            Text(
-                "Place your phone on a flat, stable surface and press Calibrate. Keep it still for ~2 seconds.",
-                fontSize = 13.sp, color = Color.Gray,
-            )
             Spacer(modifier = Modifier.height(8.dp))
-            Button(onClick = onRecalibrate) {
+            Button(onClick = onRecalibrate, modifier = Modifier.fillMaxWidth()) {
                 Text("🔄 Recalibrate Gyro")
             }
         }
@@ -643,12 +414,10 @@ fun GyroSettingsScreen(
     }
 }
 
-
 // ════════════════════════════════════════════════════════════
 //  REUSABLE UI COMPONENTS
 // ════════════════════════════════════════════════════════════
 
-/** Card wrapper for each settings section. */
 @Composable
 private fun SectionCard(
     title: String,
@@ -667,7 +436,6 @@ private fun SectionCard(
     }
 }
 
-/** Labeled slider with formatted value display. */
 @Composable
 private fun LabeledSlider(
     label: String,
@@ -680,7 +448,7 @@ private fun LabeledSlider(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Text("$label: ", modifier = Modifier.width(220.dp), fontSize = 14.sp)
+        Text("$label: ", modifier = Modifier.width(180.dp), fontSize = 14.sp)
         Slider(
             value = value,
             onValueChange = onValueChange,
