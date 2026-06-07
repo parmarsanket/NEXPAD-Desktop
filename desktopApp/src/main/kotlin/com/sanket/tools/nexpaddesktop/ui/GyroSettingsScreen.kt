@@ -167,19 +167,6 @@ fun GyroSettingsScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
                 LabeledSlider(
-                    label = "Steering Deadzone",
-                    value = settings.absoluteDeadzone,
-                    valueRange = 0.0f..10.0f,
-                    format = "%.1f°",
-                    onValueChange = { onSettingsChange(settings.copy(absoluteDeadzone = it)) },
-                )
-                Text(
-                    "Degrees of physical tilt to ignore near the center. Prevents drift when holding straight.",
-                    fontSize = 12.sp, color = Color.Gray,
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-                LabeledSlider(
                     label = "Response Curve (Acceleration)",
                     value = settings.absoluteCurve,
                     valueRange = 1.0f..4.0f,

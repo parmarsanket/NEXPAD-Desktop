@@ -14,8 +14,6 @@ data class GyroSettings(
     // ── Absolute Tilt (Steering Wheel) Settings ──────────
     /** In Absolute Tilt mode, the physical angle (in degrees) that results in 100% stick deflection. */
     val absoluteMaxTilt: Float = 45.0f,
-    /** Degrees of tilt to ignore near the center. */
-    val absoluteDeadzone: Float = 2.0f,
     /** Steering sensitivity multiplier. */
     val absoluteSensitivityX: Float = 1.0f,
     /** Vertical steering sensitivity multiplier. */

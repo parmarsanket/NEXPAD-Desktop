@@ -75,13 +75,9 @@ class GyroProcessor {
             val horizontalAngleDeg = asin((rawAccelX / maxAccel).coerceIn(-1.0f, 1.0f)) * 57.2957795f
             val verticalAngleDeg = asin((rawAccelY / maxAccel).coerceIn(-1.0f, 1.0f)) * 57.2957795f
 
-            // Apply deadzone in DEGREES
-            var hDeg = applyDeadzone(horizontalAngleDeg, settings.absoluteDeadzone)
-            var vDeg = applyDeadzone(verticalAngleDeg, settings.absoluteDeadzone)
-
             // Map the angle relative to the user's max tilt threshold (e.g. 45 degrees)
-            var mappedH = (hDeg / settings.absoluteMaxTilt)
-            var mappedV = (vDeg / settings.absoluteMaxTilt)
+            var mappedH = (horizontalAngleDeg / settings.absoluteMaxTilt)
+            var mappedV = (verticalAngleDeg / settings.absoluteMaxTilt)
 
             // Apply Response Curve ("Acceleration") for steering wheel
             // curve = 1.0 is linear. curve = 2.0 makes center less sensitive and edges faster.
