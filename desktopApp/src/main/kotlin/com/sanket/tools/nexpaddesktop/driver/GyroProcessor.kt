@@ -162,6 +162,10 @@ class GyroProcessor {
             vVal *= sensV
         }
 
+        // ── 7.5 Low-Speed Amplifier (Velocity Mode) ─────
+        hVal = applyLowSpeedAmplifier(hVal, settings)
+        vVal = applyLowSpeedAmplifier(vVal, settings)
+
         // ── 8. Final sensitivity multiplier ─────────────
         hVal *= settings.sensitivityX
         vVal *= settings.sensitivityY
@@ -215,6 +219,28 @@ class GyroProcessor {
         val t = absVal / threshold  // 0..1
         val reduced = t * t * threshold  // Quadratic: small values get much smaller
         return sign(value) * reduced
+    }
+
+    /**
+     * Low-Speed Amplifier: Boosts very small movements to help overcome in-game deadzones.
+     */
+    private fun applyLowSpeedAmplifier(value: Float, settings: GyroSettings): Float {
+        if (!settings.lowSpeedAmplifierEnabled) return value
+        val speed = abs(value)
+        if (speed >= settings.lowSpeedAmplifierThreshold || settings.lowSpeedAmplifierThreshold <= 0f) {
+            return value
+        }
+        
+        // Ratio of how close we are to 0 speed (1.0 = completely still, 0.0 = at threshold)
+        val slownessRatio = 1f - (speed / settings.lowSpeedAmplifierThreshold)
+        
+        // Apply harshness curve (e.g. if harshness is 2.0, it's a squared curve)
+        val curve = slownessRatio.pow(settings.lowSpeedAmplifierHarshness)
+        
+        // Multiplier smoothly goes from `Amount` (at 0 speed) down to 1.0 (at threshold)
+        val multiplier = 1.0f + (settings.lowSpeedAmplifierAmount - 1.0f) * curve
+        
+        return value * multiplier
     }
 
     /**

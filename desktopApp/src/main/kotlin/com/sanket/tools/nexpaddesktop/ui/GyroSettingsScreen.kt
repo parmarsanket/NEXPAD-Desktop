@@ -414,6 +414,58 @@ fun GyroSettingsScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         // ════════════════════════════════════════════════════
+        //  LOW-SPEED AMPLIFIER
+        // ════════════════════════════════════════════════════
+        SectionCard("⚡ Low-Speed Amplifier (Anti-Deadzone)") {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Enable Low-Speed Amplifier", modifier = Modifier.weight(1f))
+                Switch(
+                    checked = settings.lowSpeedAmplifierEnabled,
+                    onCheckedChange = { onSettingsChange(settings.copy(lowSpeedAmplifierEnabled = it)) },
+                )
+            }
+            Text(
+                "Helps overcome in-game deadzones by boosting very slow movements so the stick actually moves.",
+                fontSize = 13.sp, color = Color.Gray,
+            )
+
+            if (settings.lowSpeedAmplifierEnabled) {
+                Spacer(modifier = Modifier.height(8.dp))
+                LabeledSlider(
+                    label = "Amplifier Multiplier (How much to boost)",
+                    value = settings.lowSpeedAmplifierAmount,
+                    valueRange = 1.0f..10.0f,
+                    format = "%.1fx",
+                    onValueChange = { onSettingsChange(settings.copy(lowSpeedAmplifierAmount = it)) },
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                LabeledSlider(
+                    label = "Speed Threshold (Max speed to boost)",
+                    value = settings.lowSpeedAmplifierThreshold,
+                    valueRange = 1.0f..50.0f,
+                    format = "%.1f °/s",
+                    onValueChange = { onSettingsChange(settings.copy(lowSpeedAmplifierThreshold = it)) },
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+                LabeledSlider(
+                    label = "Harshness (How quickly the boost drops off)",
+                    value = settings.lowSpeedAmplifierHarshness,
+                    valueRange = 0.5f..5.0f,
+                    format = "%.1f",
+                    onValueChange = { onSettingsChange(settings.copy(lowSpeedAmplifierHarshness = it)) },
+                )
+                Text(
+                    "Higher harshness means the amplifier drops off much quicker as you speed up. 1.0 is linear.",
+                    fontSize = 12.sp, color = Color.Gray,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // ════════════════════════════════════════════════════
         //  ACTIVATION
         // ════════════════════════════════════════════════════
         SectionCard("🕹️ Activation") {

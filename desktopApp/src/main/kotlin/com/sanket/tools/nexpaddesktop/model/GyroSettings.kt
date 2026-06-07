@@ -59,6 +59,15 @@ data class GyroSettings(
     /** °/s below which inputs are smoothly reduced toward zero. */
     val tighteningThreshold: Float = 10.0f,
 
+    // ── Low-Speed Amplifier (Xbox / Velocity Mode Only) ──
+    val lowSpeedAmplifierEnabled: Boolean = false,
+    /** Multiplier applied when moving very slowly. E.g., 2.0 = double speed. */
+    val lowSpeedAmplifierAmount: Float = 2.0f,
+    /** °/s threshold below which the amplifier kicks in. */
+    val lowSpeedAmplifierThreshold: Float = 20.0f,
+    /** How "harsh" the transition is from amplified to normal. Higher = sharper drop-off. */
+    val lowSpeedAmplifierHarshness: Float = 2.0f,
+
     // ── Activation ───────────────────────────────────────
     val activationMode: ActivationMode = ActivationMode.ALWAYS_ON,
     val activationButtons: Set<String> = emptySet(),
