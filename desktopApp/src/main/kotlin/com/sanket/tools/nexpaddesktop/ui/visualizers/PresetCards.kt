@@ -43,6 +43,14 @@ fun PresetCards(
             description = "Slow & Accurate",
             onClick = { onSettingsChange(GyroSettings.PRECISION_PRESET) }
         )
+
+        PresetCard(
+            modifier = Modifier.weight(1f),
+            title = "Reset",
+            icon = "↺",
+            description = "Default Settings",
+            onClick = { onSettingsChange(GyroSettings.DEFAULT) }
+        )
     }
 }
 

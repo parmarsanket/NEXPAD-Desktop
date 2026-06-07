@@ -105,41 +105,7 @@ class GyroProcessor {
             )
         }
 
-        // ── 0.6. Linear Acceleration (Sliding) Mode ──────
-        if (settings.inputMode == InputMode.LINEAR_ACCELERATION) {
-            // rawAccel is in m/s². 
-            // The stick needs 200.0f for full deflection.
-            // Let's say 5 m/s² = 100% stick deflection.
-            val maxAccelScale = 5.0f 
-            val targetStickRange = 200.0f
-
-            // Map acceleration to stick range
-            var mappedH = (rawAccelX / maxAccelScale) * targetStickRange
-            var mappedV = (rawAccelY / maxAccelScale) * targetStickRange
-
-            // Invert if necessary
-            var hVal = if (settings.invertX) -mappedH else mappedH
-            var vVal = if (settings.invertY) -mappedV else mappedV
-
-            // Apply sliding deadzone (convert deadzone from m/s² to stick scale)
-            val deadzoneScaled = (settings.slidingDeadzone / maxAccelScale) * targetStickRange
-            hVal = applyDeadzone(hVal, deadzoneScaled)
-            vVal = applyDeadzone(vVal, deadzoneScaled)
-
-            // Apply sliding sensitivity
-            hVal *= settings.slidingSensitivityX
-            vVal *= settings.slidingSensitivityY
-
-            return ProcessedGyro(
-                yawDps = hVal,
-                pitchDps = vVal,
-                rollDps = 0f,
-                rawYawDps = mappedH,
-                rawPitchDps = mappedV,
-            )
-        }
-
-        // ── 1. Map physical axes to camera axes ──────────────────────
+        // ── 1. Convert rad/s → °/s ──────────────────────
         val RAD_TO_DEG = 57.2957795f
         val pitchDps = rawGyroX * RAD_TO_DEG   // Tilt forward/back
         val yawDps   = rawGyroZ * RAD_TO_DEG   // Turn left/right (flat rotation)

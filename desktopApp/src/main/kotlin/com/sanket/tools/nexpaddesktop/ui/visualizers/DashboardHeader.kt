@@ -88,7 +88,7 @@ fun DashboardHeader(
                 // The "3D" Phone
                 Canvas(
                     modifier = Modifier
-                        .size(60.dp, 120.dp)
+                        .size(120.dp, 60.dp)
                         .graphicsLayer {
                             // Convert angular velocity to an absolute rotation for visualization
                             // In a real scenario, you'd integrate velocity to get position, 
