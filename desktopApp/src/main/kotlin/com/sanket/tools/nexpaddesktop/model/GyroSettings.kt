@@ -21,6 +21,14 @@ data class GyroSettings(
     /** Non-linear response curve (1.0 = linear, 2.0 = quadratic, 3.0 = cubic). Higher = precise center, fast edges. */
     val absoluteCurve: Float = 1.0f,
 
+    // ── Linear Acceleration (Sliding) Settings ───────────
+    /** Minimum m/s² acceleration required to trigger movement. */
+    val slidingDeadzone: Float = 1.0f,
+    /** Sliding sensitivity multiplier. */
+    val slidingSensitivityX: Float = 1.0f,
+    /** Vertical sliding sensitivity multiplier. */
+    val slidingSensitivityY: Float = 1.0f,
+
     // ── Sensitivity ──────────────────────────────────────
     /** Horizontal sensitivity multiplier (0.1 – 5.0). Default 1.0 = 1:1 mapping. */
     val sensitivityX: Float = 1.0f,
@@ -157,6 +165,7 @@ enum class ActivationMode(val displayName: String) {
 
 /** Determines how physical phone movement translates to stick movement. */
 enum class InputMode(val displayName: String) {
-    VELOCITY("Velocity (Aiming / Mouse-like)"),
-    ABSOLUTE_TILT("Absolute Tilt (Steering Wheel)")
+    VELOCITY("Gyro Aiming (Standard)"),
+    ABSOLUTE_TILT("Absolute Tilt (Steering Wheel)"),
+    LINEAR_ACCELERATION("Sliding (Linear Acceleration)")
 }

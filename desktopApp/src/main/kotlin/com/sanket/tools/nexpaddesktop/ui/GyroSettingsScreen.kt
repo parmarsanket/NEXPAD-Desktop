@@ -177,6 +177,41 @@ fun GyroSettingsScreen(
                     "1.0 is Linear. Higher values make the center less sensitive for precise micro-steering, while the edges become very fast.",
                     fontSize = 12.sp, color = Color.Gray,
                 )
+            } else if (settings.inputMode == InputMode.LINEAR_ACCELERATION) {
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text("Sliding (Linear Acceleration) Settings", fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LabeledSlider(
+                    label = "Sliding Deadzone",
+                    value = settings.slidingDeadzone,
+                    valueRange = 0.0f..5.0f,
+                    format = "%.1f m/s²",
+                    onValueChange = { onSettingsChange(settings.copy(slidingDeadzone = it)) },
+                )
+                Text(
+                    "Minimum sliding acceleration required to trigger movement.",
+                    fontSize = 12.sp, color = Color.Gray,
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+                LabeledSlider(
+                    label = "Horizontal Sensitivity",
+                    value = settings.slidingSensitivityX,
+                    valueRange = 0.1f..5.0f,
+                    format = "%.1fx",
+                    onValueChange = { onSettingsChange(settings.copy(slidingSensitivityX = it)) },
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+                LabeledSlider(
+                    label = "Vertical Sensitivity",
+                    value = settings.slidingSensitivityY,
+                    valueRange = 0.1f..5.0f,
+                    format = "%.1fx",
+                    onValueChange = { onSettingsChange(settings.copy(slidingSensitivityY = it)) },
+                )
             }
         }
 
