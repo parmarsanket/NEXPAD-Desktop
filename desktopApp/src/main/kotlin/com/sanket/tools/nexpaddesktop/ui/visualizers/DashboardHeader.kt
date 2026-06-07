@@ -41,7 +41,7 @@ fun DashboardHeader(
     if (settings.inputMode == com.sanket.tools.nexpaddesktop.model.InputMode.ABSOLUTE_TILT) {
         pitchDeg = 0f 
         rollDeg = 0f
-        yawDeg = -(rawAccelX / 9.8f) * 90f // Steering wheel motion (rotationZ)
+        yawDeg = (rawAccelX / 9.8f) * 90f // Steering wheel motion (rotationZ)
     }
 
     // Settings Impact Meter logic
