@@ -554,13 +554,19 @@ fun GyroSettingsScreen(
                         selected = settings.xboxBlendMode == "OVERRIDE",
                         onClick = { onSettingsChange(settings.copy(xboxBlendMode = "OVERRIDE")) },
                     )
-                    Text("Override (Replaces stick)")
-                    Spacer(modifier = Modifier.width(16.dp))
+                    Text("Override", fontSize = 13.sp)
+                    Spacer(modifier = Modifier.width(12.dp))
                     RadioButton(
                         selected = settings.xboxBlendMode == "ADDITIVE",
                         onClick = { onSettingsChange(settings.copy(xboxBlendMode = "ADDITIVE")) },
                     )
-                    Text("Additive (Combines with stick)")
+                    Text("Additive", fontSize = 13.sp)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    RadioButton(
+                        selected = settings.xboxBlendMode == "MUTE_ON_STICK",
+                        onClick = { onSettingsChange(settings.copy(xboxBlendMode = "MUTE_ON_STICK")) },
+                    )
+                    Text("Mute on Stick (Flick Stick style)", fontSize = 13.sp)
                 }
             }
         }

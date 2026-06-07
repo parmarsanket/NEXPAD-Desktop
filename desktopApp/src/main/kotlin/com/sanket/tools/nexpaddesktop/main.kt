@@ -130,6 +130,15 @@ fun main() = application {
                     } else if (gyroSettings.xboxBlendMode == "ADDITIVE") {
                         finalLeftX += gyroStickX
                         finalLeftY += gyroStickY
+                    } else if (gyroSettings.xboxBlendMode == "MUTE_ON_STICK") {
+                        // If user is actively using the stick, ignore gyro. Otherwise use gyro.
+                        if (abs(input.leftStickX) > 0.05f || abs(input.leftStickY) > 0.05f) {
+                            finalLeftX = input.leftStickX
+                            finalLeftY = input.leftStickY
+                        } else {
+                            finalLeftX = gyroStickX
+                            finalLeftY = gyroStickY
+                        }
                     }
                 } else { // RIGHT_STICK
                     if (gyroSettings.xboxBlendMode == "OVERRIDE" && isMotionActive) {
@@ -138,6 +147,15 @@ fun main() = application {
                     } else if (gyroSettings.xboxBlendMode == "ADDITIVE") {
                         finalRightX += gyroStickX
                         finalRightY += gyroStickY
+                    } else if (gyroSettings.xboxBlendMode == "MUTE_ON_STICK") {
+                        // If user is actively using the stick, ignore gyro. Otherwise use gyro.
+                        if (abs(input.rightStickX) > 0.05f || abs(input.rightStickY) > 0.05f) {
+                            finalRightX = input.rightStickX
+                            finalRightY = input.rightStickY
+                        } else {
+                            finalRightX = gyroStickX
+                            finalRightY = gyroStickY
+                        }
                     }
                 }
             }
