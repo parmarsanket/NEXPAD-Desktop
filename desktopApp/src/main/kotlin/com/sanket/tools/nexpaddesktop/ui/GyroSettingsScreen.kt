@@ -103,16 +103,10 @@ fun GyroSettingsScreen(
         //  INPUT MODE
         // ════════════════════════════════════════════════════
         SectionCard("🕹️ Input Mode (Xbox Only)") {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                InputMode.entries.forEach { mode ->
-                    RadioButton(
-                        selected = settings.inputMode == mode,
-                        onClick = { onSettingsChange(settings.copy(inputMode = mode)) },
-                    )
-                    Text(mode.displayName, fontSize = 14.sp)
-                    Spacer(modifier = Modifier.width(16.dp))
-                }
-            }
+            InputModeCards(
+                currentSettings = settings,
+                onSettingsChange = onSettingsChange
+            )
 
             if (settings.inputMode == InputMode.ABSOLUTE_TILT) {
                 Spacer(modifier = Modifier.height(12.dp))
