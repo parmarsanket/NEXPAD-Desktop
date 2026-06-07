@@ -39,12 +39,9 @@ fun DashboardHeader(
     var yawDeg = rawGyroZ * RAD_TO_DEG
 
     if (settings.inputMode == com.sanket.tools.nexpaddesktop.model.InputMode.ABSOLUTE_TILT) {
-        // In absolute tilt (steering wheel mode), the phone acts like a wheel.
-        // We use the accelerometer data to estimate absolute angle instead of velocity.
-        // rawAccelX and rawAccelY indicate gravity direction.
-        pitchDeg = 0f // No forward/backward tilt visualized for simplicity
-        yawDeg = 0f
-        rollDeg = Math.toDegrees(kotlin.math.atan2(-rawAccelX.toDouble(), rawAccelY.toDouble())).toFloat()
+        pitchDeg = 0f 
+        rollDeg = 0f
+        yawDeg = -(rawAccelX / 9.8f) * 90f // Steering wheel motion (rotationZ)
     }
 
     // Settings Impact Meter logic
@@ -76,12 +73,23 @@ fun DashboardHeader(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                Text("Processed Speed", fontSize = 12.sp, color = Color.Gray)
-                Text(
-                    text = "${String.format("%.1f", abs(processedYaw))} °/s",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Light
-                )
+                val isAbsolute = settings.inputMode == com.sanket.tools.nexpaddesktop.model.InputMode.ABSOLUTE_TILT
+                Text(if (isAbsolute) "Steering Angle" else "Processed Speed", fontSize = 12.sp, color = Color.Gray)
+                
+                if (isAbsolute) {
+                    val steeringAngle = -(rawAccelX / 9.8f) * 90f
+                    Text(
+                        text = "${String.format("%.0f", steeringAngle)} °",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Light
+                    )
+                } else {
+                    Text(
+                        text = "${String.format("%.1f", abs(processedYaw))} °/s",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Light
+                    )
+                }
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
