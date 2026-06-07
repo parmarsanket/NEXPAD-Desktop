@@ -27,6 +27,9 @@ fun GyroSettingsScreen(
     rawGyroX: Float,
     rawGyroY: Float,
     rawGyroZ: Float,
+    rawAccelX: Float,
+    rawAccelY: Float,
+    rawAccelZ: Float,
     processedYaw: Float,
     processedPitch: Float,
     onRecalibrate: () -> Unit,
@@ -77,6 +80,9 @@ fun GyroSettingsScreen(
             rawGyroX = rawGyroX,
             rawGyroY = rawGyroY,
             rawGyroZ = rawGyroZ,
+            rawAccelX = rawAccelX,
+            rawAccelY = rawAccelY,
+            rawAccelZ = rawAccelZ,
             processedYaw = processedYaw,
             processedPitch = processedPitch
         )

@@ -27,17 +27,31 @@ fun DashboardHeader(
     rawGyroX: Float,
     rawGyroY: Float,
     rawGyroZ: Float,
+    rawAccelX: Float,
+    rawAccelY: Float,
+    rawAccelZ: Float,
     processedYaw: Float,
     processedPitch: Float
 ) {
     val RAD_TO_DEG = 57.2957795f
-    val pitchDeg = rawGyroX * RAD_TO_DEG
-    val rollDeg = rawGyroY * RAD_TO_DEG
-    val yawDeg = rawGyroZ * RAD_TO_DEG
+    var pitchDeg = rawGyroX * RAD_TO_DEG
+    var rollDeg = rawGyroY * RAD_TO_DEG
+    var yawDeg = rawGyroZ * RAD_TO_DEG
+
+    if (settings.inputMode == com.sanket.tools.nexpaddesktop.model.InputMode.ABSOLUTE_TILT) {
+        // In absolute tilt (steering wheel mode), the phone acts like a wheel.
+        // We use the accelerometer data to estimate absolute angle instead of velocity.
+        // rawAccelX and rawAccelY indicate gravity direction.
+        pitchDeg = 0f // No forward/backward tilt visualized for simplicity
+        yawDeg = 0f
+        rollDeg = Math.toDegrees(kotlin.math.atan2(-rawAccelX.toDouble(), rawAccelY.toDouble())).toFloat()
+    }
 
     // Settings Impact Meter logic
     val responsiveness = (settings.sensitivityX / 5.0f).coerceIn(0f, 1f)
-    val precision = if (settings.tighteningEnabled) (settings.tighteningThreshold / 30f).coerceIn(0f, 1f) else 0f
+    val deadzonePrecision = 1.0f - (settings.deadzoneThreshold / 20f).coerceIn(0f, 1f)
+    val tighteningPrecision = if (settings.tighteningEnabled) (settings.tighteningThreshold / 30f).coerceIn(0f, 1f) else 0f
+    val precision = maxOf(deadzonePrecision, tighteningPrecision)
     val stability = if (settings.smoothingEnabled) settings.smoothingAmount.coerceIn(0f, 1f) else 0f
 
     ElevatedCard(
