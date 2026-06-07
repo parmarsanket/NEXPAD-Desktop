@@ -149,6 +149,10 @@ fun GyroSettingsScreen(
 
             if (settings.inputMode == InputMode.ABSOLUTE_TILT) {
                 Spacer(modifier = Modifier.height(12.dp))
+                
+                Text("Steering Wheel Settings", fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+
                 LabeledSlider(
                     label = "Max Steering Angle",
                     value = settings.absoluteMaxTilt,
@@ -158,6 +162,32 @@ fun GyroSettingsScreen(
                 )
                 Text(
                     "The physical angle where the joystick reaches 100% deflection. Lower = more sensitive.",
+                    fontSize = 12.sp, color = Color.Gray,
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+                LabeledSlider(
+                    label = "Steering Deadzone",
+                    value = settings.absoluteDeadzone,
+                    valueRange = 0.0f..10.0f,
+                    format = "%.1f°",
+                    onValueChange = { onSettingsChange(settings.copy(absoluteDeadzone = it)) },
+                )
+                Text(
+                    "Degrees of physical tilt to ignore near the center. Prevents drift when holding straight.",
+                    fontSize = 12.sp, color = Color.Gray,
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+                LabeledSlider(
+                    label = "Response Curve (Acceleration)",
+                    value = settings.absoluteCurve,
+                    valueRange = 1.0f..4.0f,
+                    format = "%.1f",
+                    onValueChange = { onSettingsChange(settings.copy(absoluteCurve = it)) },
+                )
+                Text(
+                    "1.0 is Linear. Higher values make the center less sensitive for precise micro-steering, while the edges become very fast.",
                     fontSize = 12.sp, color = Color.Gray,
                 )
             }

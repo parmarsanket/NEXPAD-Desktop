@@ -75,22 +75,30 @@ class GyroProcessor {
             val horizontalAngleDeg = asin((rawAccelX / maxAccel).coerceIn(-1.0f, 1.0f)) * 57.2957795f
             val verticalAngleDeg = asin((rawAccelY / maxAccel).coerceIn(-1.0f, 1.0f)) * 57.2957795f
 
+            // Apply deadzone in DEGREES
+            var hDeg = applyDeadzone(horizontalAngleDeg, settings.absoluteDeadzone)
+            var vDeg = applyDeadzone(verticalAngleDeg, settings.absoluteDeadzone)
+
             // Map the angle relative to the user's max tilt threshold (e.g. 45 degrees)
-            // This maps X and Y independently (Square boundary) so you can get full speed easily
-            val mappedH = (horizontalAngleDeg / settings.absoluteMaxTilt) * targetStickRange
-            val mappedV = (verticalAngleDeg / settings.absoluteMaxTilt) * targetStickRange
+            var mappedH = (hDeg / settings.absoluteMaxTilt)
+            var mappedV = (vDeg / settings.absoluteMaxTilt)
+
+            // Apply Response Curve ("Acceleration") for steering wheel
+            // curve = 1.0 is linear. curve = 2.0 makes center less sensitive and edges faster.
+            val curveH = abs(mappedH).pow(settings.absoluteCurve) * sign(mappedH)
+            val curveV = abs(mappedV).pow(settings.absoluteCurve) * sign(mappedV)
+
+            // Scale to target stick range (200.0)
+            mappedH = curveH * targetStickRange
+            mappedV = curveV * targetStickRange
 
             // Apply inversion
             var hVal = if (settings.invertX) -mappedH else mappedH
             var vVal = if (settings.invertY) -mappedV else mappedV
 
-            // Apply deadzone
-            hVal = applyDeadzone(hVal, settings.deadzoneThreshold)
-            vVal = applyDeadzone(vVal, settings.deadzoneThreshold)
-
-            // Apply simple sensitivities
-            hVal *= settings.sensitivityX
-            vVal *= settings.sensitivityY
+            // Apply dedicated sensitivities
+            hVal *= settings.absoluteSensitivityX
+            vVal *= settings.absoluteSensitivityY
 
             return ProcessedGyro(
                 yawDps = hVal,

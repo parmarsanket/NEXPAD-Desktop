@@ -11,8 +11,17 @@ data class GyroSettings(
     val enabled: Boolean = true,
     /** Determines if gyro rotation speed (aiming) or absolute tilt angle (steering) drives the stick. */
     val inputMode: InputMode = InputMode.VELOCITY,
+    // ── Absolute Tilt (Steering Wheel) Settings ──────────
     /** In Absolute Tilt mode, the physical angle (in degrees) that results in 100% stick deflection. */
     val absoluteMaxTilt: Float = 45.0f,
+    /** Degrees of tilt to ignore near the center. */
+    val absoluteDeadzone: Float = 2.0f,
+    /** Steering sensitivity multiplier. */
+    val absoluteSensitivityX: Float = 1.0f,
+    /** Vertical steering sensitivity multiplier. */
+    val absoluteSensitivityY: Float = 1.0f,
+    /** Non-linear response curve (1.0 = linear, 2.0 = quadratic, 3.0 = cubic). Higher = precise center, fast edges. */
+    val absoluteCurve: Float = 1.0f,
 
     // ── Sensitivity ──────────────────────────────────────
     /** Horizontal sensitivity multiplier (0.1 – 5.0). Default 1.0 = 1:1 mapping. */
