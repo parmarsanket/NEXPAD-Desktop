@@ -247,7 +247,11 @@ fun GyroSettingsScreen(
         // ════════════════════════════════════════════════════
         //  SENSITIVITY (Speedometer)
         // ════════════════════════════════════════════════════
-        SectionCard("🎚️ Sensitivity") {
+        SectionCard("🎚️ Max Rotation Speed (Aiming Sensitivity)") {
+            Text(
+                "Lower values mean higher sensitivity (you don't have to rotate as fast to hit 100% stick speed).",
+                fontSize = 12.sp, color = Color.Gray, modifier = Modifier.padding(bottom = 8.dp)
+            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -255,21 +259,29 @@ fun GyroSettingsScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     LabeledSlider(
-                        label = "Horizontal (Yaw)",
-                        value = settings.sensitivityX,
-                        valueRange = 0.1f..5.0f,
-                        format = "%.2f",
-                        onValueChange = { onSettingsChange(settings.copy(sensitivityX = it)) },
+                        label = "Max Yaw Speed (Look Left/Right)",
+                        value = settings.maxDpsYaw,
+                        valueRange = 50.0f..1000.0f,
+                        format = "%.0f °/s",
+                        onValueChange = { onSettingsChange(settings.copy(maxDpsYaw = it)) },
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
                     LabeledSlider(
-                        label = "Vertical (Pitch)",
-                        value = settings.sensitivityY,
-                        valueRange = 0.1f..5.0f,
-                        format = "%.2f",
-                        onValueChange = { onSettingsChange(settings.copy(sensitivityY = it)) },
+                        label = "Max Pitch Speed (Look Up/Down)",
+                        value = settings.maxDpsPitch,
+                        valueRange = 50.0f..1000.0f,
+                        format = "%.0f °/s",
+                        onValueChange = { onSettingsChange(settings.copy(maxDpsPitch = it)) },
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    LabeledSlider(
+                        label = "Max Roll Speed (Twist Left/Right)",
+                        value = settings.maxDpsRoll,
+                        valueRange = 50.0f..1000.0f,
+                        format = "%.0f °/s",
+                        onValueChange = { onSettingsChange(settings.copy(maxDpsRoll = it)) },
                     )
                 }
-                SensitivitySpeedometer(sensitivity = settings.sensitivityX)
             }
         }
 

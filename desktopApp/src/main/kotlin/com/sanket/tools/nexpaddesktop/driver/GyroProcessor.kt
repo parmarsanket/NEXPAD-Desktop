@@ -105,20 +105,25 @@ class GyroProcessor {
             )
         }
 
-        // ── 1. Convert rad/s → °/s ──────────────────────
+        // ── 1. Convert rad/s → °/s and Normalize ─────────
         val RAD_TO_DEG = 57.2957795f
         val pitchDps = rawGyroX * RAD_TO_DEG   // Tilt forward/back
         val yawDps   = rawGyroZ * RAD_TO_DEG   // Turn left/right (flat rotation)
         val rollDps  = rawGyroY * RAD_TO_DEG   // Tilt sideways
 
+        // Scale to a normalized 200 DPS base (so main.kt's / 200.0f yields exactly 1.0 stick at the max rotation speed)
+        val scaledPitch = pitchDps * (200.0f / settings.maxDpsPitch)
+        val scaledYaw = yawDps * (200.0f / settings.maxDpsYaw)
+        val scaledRoll = rollDps * (200.0f / settings.maxDpsRoll)
+
         // ── 2. Axis remapping ───────────────────────────
         // Horizontal camera = Yaw (default) or Roll (user preference)
         val horizontalDps = when (settings.horizontalAxis) {
-            HorizontalAxis.YAW  -> -yawDps   // Negated: turning phone right → camera goes right
-            HorizontalAxis.ROLL -> rollDps
-            HorizontalAxis.MIX  -> -yawDps + rollDps // Both turning and tilting contribute
+            HorizontalAxis.YAW  -> -scaledYaw   // Negated: turning phone right → camera goes right
+            HorizontalAxis.ROLL -> scaledRoll
+            HorizontalAxis.MIX  -> -scaledYaw + scaledRoll // Both turning and tilting contribute
         }
-        val verticalDps = pitchDps   // Tilting phone forward → camera goes down
+        val verticalDps = scaledPitch   // Tilting phone forward → camera goes down
 
         // Save raw values for debug display (before further processing)
         val rawH = horizontalDps
@@ -170,9 +175,8 @@ class GyroProcessor {
         hVal = applyLowSpeedAmplifier(hVal, settings)
         vVal = applyLowSpeedAmplifier(vVal, settings)
 
-        // ── 8. Final sensitivity multiplier ─────────────
-        hVal *= settings.sensitivityX
-        vVal *= settings.sensitivityY
+        // ── 8. Removed legacy sensitivity multipliers ───
+        // (Sensitivity is now handled natively via maxDps normalization in step 1)
 
         return ProcessedGyro(
             yawDps = hVal,

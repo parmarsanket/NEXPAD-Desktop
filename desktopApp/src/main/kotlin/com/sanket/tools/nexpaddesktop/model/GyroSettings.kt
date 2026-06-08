@@ -24,10 +24,12 @@ data class GyroSettings(
     val absoluteCurve: Float = 1.0f,
 
     // ── Sensitivity ──────────────────────────────────────
-    /** Horizontal sensitivity multiplier (0.1 – 5.0). Default 1.0 = 1:1 mapping. */
-    val sensitivityX: Float = 1.0f,
-    /** Vertical sensitivity multiplier. Default 1.0. */
-    val sensitivityY: Float = 1.0f,
+    /** Max rotation speed (DPS) for 100% stick output on Yaw axis. Default 200. */
+    val maxDpsYaw: Float = 200.0f,
+    /** Max rotation speed (DPS) for 100% stick output on Roll axis. Default 200. */
+    val maxDpsRoll: Float = 200.0f,
+    /** Max rotation speed (DPS) for 100% stick output on Pitch axis. Default 200. */
+    val maxDpsPitch: Float = 200.0f,
 
     // ── Axis Control ─────────────────────────────────────
     val invertX: Boolean = false,
@@ -88,8 +90,9 @@ data class GyroSettings(
     companion object {
         /** Best defaults for FPS / aiming games. */
         val FPS_PRESET = GyroSettings(
-            sensitivityX = 1.5f,
-            sensitivityY = 0.84f,         // 56% of 1.5
+            maxDpsYaw = 133f,
+            maxDpsRoll = 133f,
+            maxDpsPitch = 238f,
             deadzoneThreshold = 3.0f,
             smoothingEnabled = true,
             smoothingAmount = 0.7f,
@@ -105,8 +108,9 @@ data class GyroSettings(
 
         /** Best defaults for racing / steering games. */
         val RACING_PRESET = GyroSettings(
-            sensitivityX = 2.0f,
-            sensitivityY = 1.0f,
+            maxDpsYaw = 100f,
+            maxDpsRoll = 100f,
+            maxDpsPitch = 200f,
             deadzoneThreshold = 5.0f,
             smoothingEnabled = true,
             smoothingAmount = 0.5f,
@@ -121,8 +125,9 @@ data class GyroSettings(
 
         /** High-precision preset for slow, accurate aiming. */
         val PRECISION_PRESET = GyroSettings(
-            sensitivityX = 0.8f,
-            sensitivityY = 0.45f,
+            maxDpsYaw = 250f,
+            maxDpsRoll = 250f,
+            maxDpsPitch = 444f,
             deadzoneThreshold = 2.0f,
             smoothingEnabled = true,
             smoothingAmount = 0.6f,

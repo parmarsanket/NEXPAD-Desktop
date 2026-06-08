@@ -54,7 +54,8 @@ fun DashboardHeader(
     }
 
     // Settings Impact Meter logic
-    val responsiveness = (settings.sensitivityX / 5.0f).coerceIn(0f, 1f)
+    val equivalentSensitivity = 200.0f / settings.maxDpsYaw
+    val responsiveness = (equivalentSensitivity / 5.0f).coerceIn(0f, 1f)
     val deadzonePrecision = 1.0f - (settings.deadzoneThreshold / 20f).coerceIn(0f, 1f)
     val tighteningPrecision = if (settings.tighteningEnabled) (settings.tighteningThreshold / 30f).coerceIn(0f, 1f) else 0f
     val precision = maxOf(deadzonePrecision, tighteningPrecision)
