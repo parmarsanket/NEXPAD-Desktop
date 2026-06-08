@@ -13,8 +13,6 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
     private var client: Pointer? = null
     private var target: Pointer? = null
     private var notificationCallback: ViGEmClientLibrary.PVIGEM_X360_NOTIFICATION? = null
-    private var lastL3 = false
-    private var lastR3 = false
 
     override fun connect() {
         try {
@@ -57,7 +55,7 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
                 lib.vigem_target_free(target)
                 lib.vigem_disconnect(client)
                 lib.vigem_free(client)
-            } catch (e: Exception) { }
+            } catch (e: Exception) { System.err.println("⚠️ Xbox disconnect error: ${e.message}") }
         }
         isConnected = false
         client = null
@@ -80,7 +78,7 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
 
         try {
             ViGEmClientLibrary.INSTANCE.vigem_target_x360_update(client, target, report)
-        } catch (e: Exception) { }
+        } catch (e: Exception) { System.err.println("⚠️ Xbox input update error: ${e.message}") }
     }
 
     // Simulate an off-road racing crash rumble from the Windows kernel

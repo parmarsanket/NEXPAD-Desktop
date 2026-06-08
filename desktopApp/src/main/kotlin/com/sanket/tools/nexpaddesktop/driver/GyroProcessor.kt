@@ -4,12 +4,62 @@ import com.sanket.tools.nexpaddesktop.model.*
 import kotlin.math.*
 
 /**
- * Processes raw gyroscope data through a multi-stage pipeline:
+ * Stateful processor for gyroscope and accelerometer data.
  *
- *   Raw (rad/s) → °/s → Axis Remap → Deadzone → Smoothing → Acceleration → Sensitivity → Output
+ * ## Data Flow & Pipeline Diagram
  *
- * This is a stateful class — it maintains smoothing history between frames.
- * Create ONE instance and call [process] every frame (~60 Hz).
+ * ```
+ *                  [ Raw Gyro (rad/s) ]
+ *                           |
+ *                           v
+ *                   [ Convert to °/s ]  <-- RAD_TO_DEG constant
+ *                           |
+ *                           v
+ *                   [ Axis Remapping ]  <-- Yaw/Roll/Mix mapping
+ *                           |
+ *                           v
+ *                  [ Inversion (invert) ]
+ *                           |
+ *                           v
+ *                   [ Hard Deadzone ]   <-- applyDeadzone()
+ *                           |
+ *                           v
+ *                  [ Soft Tightening ]  <-- applyTightening()
+ *                           |
+ *                           v
+ *                 [ Adaptive Smoothing ] <-- computeAdaptiveAlpha() & EMA
+ *                           |
+ *                           v
+ *                 [ Acceleration Curve ] <-- computeAccelerationSensitivity()
+ *                           |
+ *                           v
+ *                  [ Low-Speed Amp ]    <-- applyLowSpeedAmplifier()
+ *                           |
+ *                           v
+ *                 [ Sensitivity Scale ] <-- Normalized to 200°/s stick scale
+ *                           |
+ *                           v
+ *                  [ Processed Output ]
+ * ```
+ *
+ * ## Coordinate Systems
+ *
+ * - **Android Phone (Landscape, screen facing user):**
+ *   - Gyro X (Pitch): Tilting phone forward (top away from user) -> positive.
+ *   - Gyro Y (Roll): Tilting phone sideways (left side down) -> positive.
+ *   - Gyro Z (Yaw): Turning phone flat on table (counter-clockwise) -> positive.
+ *   - Accel X: Lateral acceleration (left/right).
+ *   - Accel Y: Vertical/longitudinal gravity vector component depending on angle.
+ *   - Accel Z: Normal/perpendicular gravity vector component.
+ *
+ * - **NEXPAD Internal / Game Camera:**
+ *   - Horizontal camera movement: Controlled by Yaw, Roll, or Mix.
+ *     Turning phone right must result in camera moving right.
+ *   - Vertical camera movement: Controlled by Pitch.
+ *     Tilting phone forward (looking down) must result in camera moving down.
+ *
+ * - **Virtual Controller Output:**
+ *   - Scaled such that ±200.0 °/s maps to ±1.0 (or ±32767 on physical stick).
  *
  * Based on best practices from GyroWiki / JibbSmart / Steam Input / JoyShockMapper.
  */
@@ -72,8 +122,8 @@ class GyroProcessor {
             val targetStickRange = 200.0f
 
             // Calculate actual tilt angles in degrees using arcsin(g / 9.8)
-            val horizontalAngleDeg = asin((rawAccelX / maxAccel).coerceIn(-1.0f, 1.0f)) * 57.2957795f
-            val verticalAngleDeg = asin((rawAccelY / maxAccel).coerceIn(-1.0f, 1.0f)) * 57.2957795f
+            val horizontalAngleDeg = asin((rawAccelX / maxAccel).coerceIn(-1.0f, 1.0f)) * RAD_TO_DEG
+            val verticalAngleDeg = asin((rawAccelY / maxAccel).coerceIn(-1.0f, 1.0f)) * RAD_TO_DEG
 
             // Map the angle relative to the user's max tilt threshold (e.g. 45 degrees)
             var mappedH = (horizontalAngleDeg / settings.absoluteMaxTilt)
@@ -106,7 +156,6 @@ class GyroProcessor {
         }
 
         // ── 1. Convert rad/s → °/s ──────────────────────
-        val RAD_TO_DEG = 57.2957795f
         val pitchDps = rawGyroX * RAD_TO_DEG   // Tilt forward/back
         val yawDps   = rawGyroZ * RAD_TO_DEG   // Turn left/right (flat rotation)
         val rollDps  = rawGyroY * RAD_TO_DEG   // Tilt sideways
@@ -118,7 +167,7 @@ class GyroProcessor {
             HorizontalAxis.ROLL -> rollDps
             HorizontalAxis.MIX  -> -yawDps + rollDps // Both turning and tilting contribute
         }
-        val verticalDps = pitchDps   // Tilting phone forward → camera goes down
+        val verticalDps = -pitchDps   // Tilting phone forward → camera goes down
 
         // Save raw values for debug display (before further processing)
         val rawH = horizontalDps
@@ -209,6 +258,7 @@ class GyroProcessor {
     /**
      * Apply deadzone with smooth linear ramp exit.
      * Values below threshold → 0. Values above → smoothly ramped from 0.
+     * Formula: remapped = sign(value) * (abs(value) - threshold)
      */
     private fun applyDeadzone(value: Float, threshold: Float): Float {
         if (threshold <= 0f) return value
@@ -220,7 +270,8 @@ class GyroProcessor {
 
     /**
      * Tightening: smoothly reduce very small inputs toward zero without a hard cutoff.
-     * Uses a power curve on the normalized value within the tightening range.
+     * Uses a quadratic power curve on the normalized value within the tightening range.
+     * Formula: t = abs(value) / threshold; remapped = sign(value) * t * t * threshold
      */
     private fun applyTightening(value: Float, threshold: Float): Float {
         if (threshold <= 0f) return value
@@ -320,5 +371,10 @@ class GyroProcessor {
                 toggleActive
             }
         }
+    }
+
+    companion object {
+        /** Conversion factor from Radians to Degrees. */
+        const val RAD_TO_DEG = 57.2957795f
     }
 }

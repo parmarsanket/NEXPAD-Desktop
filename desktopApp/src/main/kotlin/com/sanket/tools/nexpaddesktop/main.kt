@@ -4,34 +4,68 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.sanket.tools.nexpaddesktop.driver.GyroProcessor
+import com.sanket.tools.nexpaddesktop.driver.VirtualDualShock4Driver
 import com.sanket.tools.nexpaddesktop.driver.VirtualGamepadDriver
 import com.sanket.tools.nexpaddesktop.driver.IGamepadDriver
 import com.sanket.tools.nexpaddesktop.model.GamepadInput
 import com.sanket.tools.nexpaddesktop.model.GyroSettings
+import com.sanket.tools.nexpaddesktop.model.XboxTargetStick
+import com.sanket.tools.nexpaddesktop.model.XboxBlendMode
+import com.sanket.tools.nexpaddesktop.network.DsuServer
 import com.sanket.tools.nexpaddesktop.network.UdpServer
+import com.sanket.tools.nexpaddesktop.ui.ControllerType
 import com.sanket.tools.nexpaddesktop.ui.MainApplicationWindow
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
+/**
+ * NEXPAD Desktop — Application Entry Point
+ *
+ * ## Data Flow
+ *
+ * ```
+ * Phone Sensors (raw rad/s, m/s²)
+ *   → UDP Server (port 9999) → GamepadInput
+ *   → GyroProcessor.process() → ProcessedGyro (°/s)
+ *   ├── XBOX PATH: ProcessedGyro → stick values → VirtualGamepadDriver → ViGEm X360
+ *   ├── PS4 PATH:  Raw input → VirtualDualShock4Driver (own calibration) → ViGEm DS4
+ *   └── DSU PATH:  Raw input → DsuServer (CemuHook protocol) → Emulators
+ * ```
+ *
+ * ## Key Architecture Decisions
+ *
+ * - **Xbox mode**: NEXPAD does all gyro math (deadzone, smoothing, acceleration,
+ *   sensitivity) and converts the result to analog stick values because Xbox
+ *   controllers have no native gyro support.
+ *
+ * - **PS4 mode**: The DS4 driver sends raw sensor data with its own bias calibration.
+ *   The GyroProcessor still runs for the UI dashboard visualizer, but its output
+ *   is NOT sent to the PS4 driver. Games and emulators do their own math.
+ *
+ * - **DSU Server**: Always running on port 26760. Sends raw, unprocessed sensor data
+ *   to any connected CemuHook-compatible emulator (Cemu, Yuzu, Ryujinx, etc.).
+ *   The DSU protocol requires raw sensor data — the emulator does its own processing.
+ */
 fun main() = application {
     val scope = rememberCoroutineScope()
     var server by remember { mutableStateOf<UdpServer?>(null) }
     
-    var activeController by remember { mutableStateOf(com.sanket.tools.nexpaddesktop.ui.ControllerType.XBOX_360) }
+    var activeController by remember { mutableStateOf(ControllerType.XBOX_360) }
     
-    // We hold a reference to the active driver so the UDP server can always access the latest one
+    // The active ViGEm driver (Xbox 360 or DualShock 4). Updated when controller type changes.
     var activeDriver by remember { mutableStateOf<IGamepadDriver?>(null) }
 
-    val dsuServer = remember { com.sanket.tools.nexpaddesktop.network.DsuServer() }
+    // DSU (CemuHook) motion server — always active for emulator compatibility
+    val dsuServer = remember { DsuServer() }
     var latestInput by remember { mutableStateOf(GamepadInput()) }
 
-    // ── Stick sensitivity (Xbox only) ────────────────────
+    // ── Xbox Stick Sensitivity (multipliers applied to physical + gyro stick values) ──
     var lsSensitivityX by remember { mutableStateOf(1.0f) }
     var lsSensitivityY by remember { mutableStateOf(1.0f) }
     var rsSensitivityX by remember { mutableStateOf(1.0f) }
     var rsSensitivityY by remember { mutableStateOf(1.0f) }
 
-    // ── 6-Axis Gyro Settings (new unified system) ────────
+    // ── 6-Axis Gyro Settings (shared config read by GyroProcessor) ──
     var gyroSettings by remember { mutableStateOf(GyroSettings()) }
     val gyroProcessor = remember { GyroProcessor() }
     var processedYaw by remember { mutableStateOf(0f) }
@@ -39,9 +73,11 @@ fun main() = application {
 
     var appError by remember { mutableStateOf("") }
     
-    // Re-instantiate and connect the driver whenever activeController changes
+    // ══════════════════════════════════════════════════════════
+    //  DRIVER LIFECYCLE — Re-create driver when controller type changes
+    // ══════════════════════════════════════════════════════════
     DisposableEffect(activeController) {
-        val newDriver = if (activeController == com.sanket.tools.nexpaddesktop.ui.ControllerType.XBOX_360) {
+        val newDriver = if (activeController == ControllerType.XBOX_360) {
             VirtualGamepadDriver(onRumble = { feedback -> 
                 scope.launch { 
                     try { server?.sendFeedback(feedback) } 
@@ -49,7 +85,7 @@ fun main() = application {
                 }
             })
         } else {
-            com.sanket.tools.nexpaddesktop.driver.VirtualDualShock4Driver(onRumble = { feedback -> 
+            VirtualDualShock4Driver(onRumble = { feedback -> 
                 scope.launch { 
                     try { server?.sendFeedback(feedback) } 
                     catch (e: Throwable) { appError = "DS4 Rumble Error: ${e.message}" } 
@@ -59,7 +95,7 @@ fun main() = application {
         newDriver.connect()
         activeDriver = newDriver
 
-        // Reset gyro processor state when switching controllers
+        // Reset gyro processor smoothing state when switching controllers
         gyroProcessor.reset()
         
         onDispose {
@@ -67,11 +103,15 @@ fun main() = application {
         }
     }
 
+    // ══════════════════════════════════════════════════════════
+    //  UDP SERVER + DSU SERVER — Receive phone input, dispatch to drivers
+    // ══════════════════════════════════════════════════════════
     DisposableEffect(Unit) {
         dsuServer.start()
         
         server = UdpServer(9999) { input ->
-            // ── Check gyro activation buttons ────────────
+
+            // ── Check gyro activation buttons (Xbox only — PS4 games handle this) ──
             val isActivationButtonPressed = if (gyroSettings.activationButtons.isEmpty()) {
                 true
             } else {
@@ -90,7 +130,10 @@ fun main() = application {
                 }
             }
 
-            // ── Process gyro through the new pipeline ────
+            // ── Run gyro through the processing pipeline ──
+            // This runs for BOTH controller types:
+            //   - Xbox: output is mapped to stick values below
+            //   - PS4:  output is only used for the UI dashboard visualizer
             val processed = gyroProcessor.process(
                 rawGyroX = input.gyroX,
                 rawGyroY = input.gyroY,
@@ -102,7 +145,7 @@ fun main() = application {
                 isActivationButtonPressed = isActivationButtonPressed,
             )
 
-            // Update processed values for UI display
+            // Update processed values for UI display (both controller types)
             processedYaw = processed.yawDps
             processedPitch = processed.pitchDps
 
@@ -112,55 +155,66 @@ fun main() = application {
             var finalRightX = input.rightStickX
             var finalRightY = input.rightStickY
 
-            // For Xbox mode: map processed gyro → stick values
-            if (activeController == com.sanket.tools.nexpaddesktop.ui.ControllerType.XBOX_360 && gyroSettings.enabled) {
+            // ══════════════════════════════════════════════
+            //  XBOX PATH — Map processed gyro → analog stick
+            // ══════════════════════════════════════════════
+            if (activeController == ControllerType.XBOX_360 && gyroSettings.enabled) {
                 // Convert °/s to stick range (-1..1).
-                // At ~200°/s physical rotation we want full stick deflection.
+                // The GyroProcessor outputs values in a normalized range where
+                // ±200 °/s equals full stick deflection. This constant must match
+                // the maxDps normalization in GyroProcessor step 8.
                 val gyroToStickScale = 1.0f / 200.0f
                 val gyroStickX = (processed.yawDps * gyroToStickScale).coerceIn(-1f, 1f)
                 val gyroStickY = (processed.pitchDps * gyroToStickScale).coerceIn(-1f, 1f)
 
+                // Small threshold to determine if motion is "active" (not just noise)
                 val threshold = 0.02f
                 val isMotionActive = abs(gyroStickX) > threshold || abs(gyroStickY) > threshold
 
-                if (gyroSettings.xboxTargetStick == "LEFT_STICK") {
-                    if (gyroSettings.xboxBlendMode == "OVERRIDE" && isMotionActive) {
-                        finalLeftX = gyroStickX
-                        finalLeftY = gyroStickY
-                    } else if (gyroSettings.xboxBlendMode == "ADDITIVE") {
-                        finalLeftX += gyroStickX
-                        finalLeftY += gyroStickY
-                    } else if (gyroSettings.xboxBlendMode == "MUTE_ON_STICK") {
-                        // If user is actively using the stick, ignore gyro. Otherwise use gyro.
-                        if (abs(input.leftStickX) > 0.05f || abs(input.leftStickY) > 0.05f) {
-                            finalLeftX = input.leftStickX
-                            finalLeftY = input.leftStickY
-                        } else {
+                if (gyroSettings.xboxTargetStick == XboxTargetStick.LEFT_STICK) {
+                    when (gyroSettings.xboxBlendMode) {
+                        XboxBlendMode.OVERRIDE -> if (isMotionActive) {
                             finalLeftX = gyroStickX
                             finalLeftY = gyroStickY
                         }
+                        XboxBlendMode.ADDITIVE -> {
+                            finalLeftX += gyroStickX
+                            finalLeftY += gyroStickY
+                        }
+                        XboxBlendMode.MUTE_ON_STICK -> {
+                            if (abs(input.leftStickX) > 0.05f || abs(input.leftStickY) > 0.05f) {
+                                finalLeftX = input.leftStickX
+                                finalLeftY = input.leftStickY
+                            } else {
+                                finalLeftX = gyroStickX
+                                finalLeftY = gyroStickY
+                            }
+                        }
                     }
                 } else { // RIGHT_STICK
-                    if (gyroSettings.xboxBlendMode == "OVERRIDE" && isMotionActive) {
-                        finalRightX = gyroStickX
-                        finalRightY = gyroStickY
-                    } else if (gyroSettings.xboxBlendMode == "ADDITIVE") {
-                        finalRightX += gyroStickX
-                        finalRightY += gyroStickY
-                    } else if (gyroSettings.xboxBlendMode == "MUTE_ON_STICK") {
-                        // If user is actively using the stick, ignore gyro. Otherwise use gyro.
-                        if (abs(input.rightStickX) > 0.05f || abs(input.rightStickY) > 0.05f) {
-                            finalRightX = input.rightStickX
-                            finalRightY = input.rightStickY
-                        } else {
+                    when (gyroSettings.xboxBlendMode) {
+                        XboxBlendMode.OVERRIDE -> if (isMotionActive) {
                             finalRightX = gyroStickX
                             finalRightY = gyroStickY
+                        }
+                        XboxBlendMode.ADDITIVE -> {
+                            finalRightX += gyroStickX
+                            finalRightY += gyroStickY
+                        }
+                        XboxBlendMode.MUTE_ON_STICK -> {
+                            if (abs(input.rightStickX) > 0.05f || abs(input.rightStickY) > 0.05f) {
+                                finalRightX = input.rightStickX
+                                finalRightY = input.rightStickY
+                            } else {
+                                finalRightX = gyroStickX
+                                finalRightY = gyroStickY
+                            }
                         }
                     }
                 }
             }
             
-            // Apply stick sensitivity multipliers and clamp
+            // Apply stick sensitivity multipliers and clamp to valid range
             val processedInput = input.copy(
                 leftStickX = (finalLeftX * lsSensitivityX).coerceIn(-1.0f, 1.0f),
                 leftStickY = (finalLeftY * lsSensitivityY).coerceIn(-1.0f, 1.0f),
@@ -168,9 +222,19 @@ fun main() = application {
                 rightStickY = (finalRightY * rsSensitivityY).coerceIn(-1.0f, 1.0f)
             )
             latestInput = processedInput
+
+            // ══════════════════════════════════════════════
+            //  DRIVER OUTPUT — Send to ViGEm virtual controller
+            // ══════════════════════════════════════════════
             activeDriver?.updateInput(processedInput)
-            
-            dsuServer.updateInput(input) // send raw unaltered input to DSU
+
+            // ══════════════════════════════════════════════
+            //  DSU PATH — Send RAW unaltered input to DSU server
+            // ══════════════════════════════════════════════
+            // The CemuHook/DSU protocol requires raw sensor data. Emulators
+            // (Cemu, Yuzu, Ryujinx) perform their own gyro processing.
+            // We intentionally send `input` (not `processedInput`) here.
+            dsuServer.updateInput(input)
         }
         scope.launch {
             server?.start()
@@ -185,7 +249,7 @@ fun main() = application {
         title = "NEXPAD PC Companion",
     ) {
         MainApplicationWindow(
-            driver = activeDriver ?: VirtualGamepadDriver(), // fallback for initial render
+            driver = activeDriver ?: VirtualGamepadDriver(),
             latestInput = latestInput, 
             dsuClientCount = dsuServer.getClientCount(),
             activeController = activeController,

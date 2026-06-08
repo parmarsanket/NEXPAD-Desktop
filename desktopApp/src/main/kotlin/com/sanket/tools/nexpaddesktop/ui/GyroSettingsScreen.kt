@@ -17,7 +17,11 @@ import com.sanket.tools.nexpaddesktop.ui.visualizers.*
 
 /**
  * Dedicated 6-Axis Motion Settings screen.
- * Redesigned with a gamer-centric dashboard layout and rich visualizers.
+ *
+ * Settings are conditionally shown based on the active controller type:
+ * - **Xbox 360**: All sections visible (gyro → stick mapping, sensitivity, etc.)
+ * - **PS4 (DualShock 4)**: Only shared sections visible (deadzone, smoothing, etc.)
+ *   PS4 sensitivity is controlled by the PC game, not NEXPAD.
  */
 @Composable
 fun GyroSettingsScreen(
@@ -36,6 +40,7 @@ fun GyroSettingsScreen(
     onNavigate: (Screen) -> Unit,
 ) {
     val scrollState = rememberScrollState()
+    val isXbox = activeController == ControllerType.XBOX_360
 
     Column(
         modifier = Modifier
@@ -73,7 +78,25 @@ fun GyroSettingsScreen(
         }
 
         // ════════════════════════════════════════════════════
-        //  DASHBOARD HEADER (3D Phone & Impact Meter)
+        //  PS4 INFO BANNER (shown when PS4 controller is active)
+        // ════════════════════════════════════════════════════
+        if (!isXbox) {
+            SectionCard("ℹ️ PS4 Controller Mode") {
+                Text(
+                    "You are using the DualShock 4 (PS4) controller. " +
+                    "NEXPAD sends raw sensor data directly to the game — sensitivity " +
+                    "and aiming speed are controlled by the PC game itself, not NEXPAD.\n\n" +
+                    "The shared settings below (deadzone, smoothing, acceleration) " +
+                    "affect the dashboard visualizer and any future processing features.",
+                    fontSize = 13.sp,
+                    color = Color.Gray,
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // ════════════════════════════════════════════════════
+        //  DASHBOARD HEADER (3D Phone & Impact Meter) — SHARED
         // ════════════════════════════════════════════════════
         DashboardHeader(
             settings = settings,
@@ -90,7 +113,7 @@ fun GyroSettingsScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         // ════════════════════════════════════════════════════
-        //  PRESET CARDS
+        //  PRESET CARDS — SHARED
         // ════════════════════════════════════════════════════
         PresetCards(
             currentSettings = settings,
@@ -100,94 +123,97 @@ fun GyroSettingsScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         // ════════════════════════════════════════════════════
-        //  INPUT MODE
+        //  INPUT MODE — XBOX ONLY
+        //  (Xbox needs gyro→stick conversion; PS4 sends raw sensors)
         // ════════════════════════════════════════════════════
-        SectionCard("🕹️ Input Mode (Xbox Only)") {
-            InputModeCards(
-                currentSettings = settings,
-                onSettingsChange = onSettingsChange
-            )
+        if (isXbox) {
+            SectionCard("🕹️ Input Mode (Xbox Only)") {
+                InputModeCards(
+                    currentSettings = settings,
+                    onSettingsChange = onSettingsChange
+                )
 
-            if (settings.inputMode == InputMode.ABSOLUTE_TILT) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text("Steering Wheel Settings", fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Disconnect Raw Motion Outputs", modifier = Modifier.weight(1f))
-                    Switch(
-                        checked = settings.disconnectMotionInSteering,
-                        onCheckedChange = { onSettingsChange(settings.copy(disconnectMotionInSteering = it)) }
+                if (settings.inputMode == InputMode.ABSOLUTE_TILT) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("Steering Wheel Settings", fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    LabeledSlider(
+                        label = "Max Steering Angle",
+                        value = settings.absoluteMaxTilt,
+                        valueRange = 10.0f..90.0f,
+                        format = "%.0f°",
+                        onValueChange = { onSettingsChange(settings.copy(absoluteMaxTilt = it)) },
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LabeledSlider(
+                        label = "Steering Sensitivity H",
+                        value = settings.absoluteSensitivityX,
+                        valueRange = 0.1f..3.0f,
+                        format = "%.2f",
+                        onValueChange = { onSettingsChange(settings.copy(absoluteSensitivityX = it)) },
+                    )
+                    LabeledSlider(
+                        label = "Steering Sensitivity V",
+                        value = settings.absoluteSensitivityY,
+                        valueRange = 0.1f..3.0f,
+                        format = "%.2f",
+                        onValueChange = { onSettingsChange(settings.copy(absoluteSensitivityY = it)) },
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LabeledSlider(
+                        label = "Response Curve",
+                        value = settings.absoluteCurve,
+                        valueRange = 1.0f..4.0f,
+                        format = "%.1f",
+                        onValueChange = { onSettingsChange(settings.copy(absoluteCurve = it)) },
                     )
                 }
-                Text(
-                    "Prevents PC games from receiving double inputs by stopping raw accelerometer/gyro data from being sent to DSU or Virtual Controllers.",
-                    fontSize = 12.sp, color = Color.Gray
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                LabeledSlider(
-                    label = "Max Steering Angle",
-                    value = settings.absoluteMaxTilt,
-                    valueRange = 10.0f..90.0f,
-                    format = "%.0f°",
-                    onValueChange = { onSettingsChange(settings.copy(absoluteMaxTilt = it)) },
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                LabeledSlider(
-                    label = "Response Curve (Acceleration)",
-                    value = settings.absoluteCurve,
-                    valueRange = 1.0f..4.0f,
-                    format = "%.1f",
-                    onValueChange = { onSettingsChange(settings.copy(absoluteCurve = it)) },
-                )
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // ════════════════════════════════════════════════════
-        //  ACTIVATION BUTTONS
-        // ════════════════════════════════════════════════════
-        SectionCard("🔘 Activation") {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Require Button Hold to Activate", modifier = Modifier.weight(1f))
-                Switch(
-                    checked = settings.activationButtons.isNotEmpty(),
-                    onCheckedChange = { 
-                        if (it) onSettingsChange(settings.copy(activationButtons = setOf("LT")))
-                        else onSettingsChange(settings.copy(activationButtons = emptySet()))
-                    },
-                )
-            }
-            if (settings.activationButtons.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                val buttons = listOf("LT", "RT", "LB", "RB", "A", "B", "X", "Y")
-                @OptIn(ExperimentalLayoutApi::class)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    buttons.forEach { btn ->
-                        FilterChip(
-                            selected = settings.activationButtons.contains(btn),
-                            onClick = {
-                                val current = settings.activationButtons.toMutableSet()
-                                if (current.contains(btn)) current.remove(btn) else current.add(btn)
-                                // Require at least one button if enabled, or disable completely if empty
-                                if (current.isEmpty()) onSettingsChange(settings.copy(activationButtons = emptySet()))
-                                else onSettingsChange(settings.copy(activationButtons = current))
-                            },
-                            label = { Text(btn) }
-                        )
+            // ════════════════════════════════════════════════════
+            //  ACTIVATION BUTTONS — XBOX ONLY
+            //  (PS4 games handle gyro activation themselves)
+            // ════════════════════════════════════════════════════
+            SectionCard("🔘 Activation (Xbox Only)") {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Require Button Hold to Activate", modifier = Modifier.weight(1f))
+                    Switch(
+                        checked = settings.activationButtons.isNotEmpty(),
+                        onCheckedChange = { 
+                            if (it) onSettingsChange(settings.copy(activationButtons = setOf("LT")))
+                            else onSettingsChange(settings.copy(activationButtons = emptySet()))
+                        },
+                    )
+                }
+                if (settings.activationButtons.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    val buttons = listOf("LT", "RT", "LB", "RB", "A", "B", "X", "Y")
+                    @OptIn(ExperimentalLayoutApi::class)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        buttons.forEach { btn ->
+                            FilterChip(
+                                selected = settings.activationButtons.contains(btn),
+                                onClick = {
+                                    val current = settings.activationButtons.toMutableSet()
+                                    if (current.contains(btn)) current.remove(btn) else current.add(btn)
+                                    if (current.isEmpty()) onSettingsChange(settings.copy(activationButtons = emptySet()))
+                                    else onSettingsChange(settings.copy(activationButtons = current))
+                                },
+                                label = { Text(btn) }
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // ════════════════════════════════════════════════════
-        //  XBOX GYRO-TO-STICK (only shown for Xbox controller)
-        // ════════════════════════════════════════════════════
-        if (activeController == ControllerType.XBOX_360) {
+            // ════════════════════════════════════════════════════
+            //  XBOX GYRO-TO-STICK MAPPING — XBOX ONLY
+            // ════════════════════════════════════════════════════
             SectionCard("🎮 Xbox Gyro → Stick Mapping") {
                 Text(
                     "Xbox controllers don't have native gyro. Motion is mapped to analog stick movement.",
@@ -198,14 +224,14 @@ fun GyroSettingsScreen(
                 Text("Target Stick:", fontWeight = FontWeight.Bold)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(
-                        selected = settings.xboxTargetStick == "LEFT_STICK",
-                        onClick = { onSettingsChange(settings.copy(xboxTargetStick = "LEFT_STICK")) }
+                        selected = settings.xboxTargetStick == XboxTargetStick.LEFT_STICK,
+                        onClick = { onSettingsChange(settings.copy(xboxTargetStick = XboxTargetStick.LEFT_STICK)) }
                     )
                     Text("Left Stick", fontSize = 14.sp)
                     Spacer(modifier = Modifier.width(16.dp))
                     RadioButton(
-                        selected = settings.xboxTargetStick == "RIGHT_STICK",
-                        onClick = { onSettingsChange(settings.copy(xboxTargetStick = "RIGHT_STICK")) }
+                        selected = settings.xboxTargetStick == XboxTargetStick.RIGHT_STICK,
+                        onClick = { onSettingsChange(settings.copy(xboxTargetStick = XboxTargetStick.RIGHT_STICK)) }
                     )
                     Text("Right Stick", fontSize = 14.sp)
                 }
@@ -213,53 +239,38 @@ fun GyroSettingsScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 Text("Blend Mode:", fontWeight = FontWeight.Bold)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
-                        selected = settings.xboxBlendMode == "OVERRIDE",
-                        onClick = { onSettingsChange(settings.copy(xboxBlendMode = "OVERRIDE")) }
-                    )
-                    Text("Override", fontSize = 14.sp)
-                    Spacer(modifier = Modifier.width(16.dp))
-                    RadioButton(
-                        selected = settings.xboxBlendMode == "ADDITIVE",
-                        onClick = { onSettingsChange(settings.copy(xboxBlendMode = "ADDITIVE")) }
-                    )
-                    Text("Additive", fontSize = 14.sp)
-                    Spacer(modifier = Modifier.width(16.dp))
-                    RadioButton(
-                        selected = settings.xboxBlendMode == "MUTE_ON_STICK",
-                        onClick = { onSettingsChange(settings.copy(xboxBlendMode = "MUTE_ON_STICK")) }
-                    )
-                    Text("Mute on Stick", fontSize = 14.sp)
+                    XboxBlendMode.entries.forEach { mode ->
+                        RadioButton(
+                            selected = settings.xboxBlendMode == mode,
+                            onClick = { onSettingsChange(settings.copy(xboxBlendMode = mode)) }
+                        )
+                        Text(mode.displayName, fontSize = 14.sp)
+                        Spacer(modifier = Modifier.width(12.dp))
+                    }
                 }
                 Text(
                     text = when(settings.xboxBlendMode) {
-                        "OVERRIDE" -> "Gyro overrides physical stick input completely."
-                        "ADDITIVE" -> "Gyro movement is added on top of physical stick input."
-                        "MUTE_ON_STICK" -> "Gyro is disabled whenever you touch the physical stick."
-                        else -> ""
+                        XboxBlendMode.OVERRIDE -> "Gyro overrides physical stick input completely."
+                        XboxBlendMode.ADDITIVE -> "Gyro movement is added on top of physical stick input."
+                        XboxBlendMode.MUTE_ON_STICK -> "Gyro is disabled whenever you touch the physical stick."
                     },
                     fontSize = 12.sp, color = Color.Gray, modifier = Modifier.padding(top = 4.dp)
                 )
             }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
 
-        // ════════════════════════════════════════════════════
-        //  SENSITIVITY (Speedometer)
-        // ════════════════════════════════════════════════════
-        SectionCard("🎚️ Max Rotation Speed (Aiming Sensitivity)") {
-            Text(
-                "Lower values mean higher sensitivity (you don't have to rotate as fast to hit 100% stick speed).",
-                fontSize = 12.sp, color = Color.Gray, modifier = Modifier.padding(bottom = 8.dp)
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // ════════════════════════════════════════════════════
+            //  MAX ROTATION SPEED (Aiming Sensitivity) — XBOX ONLY
+            // ════════════════════════════════════════════════════
+            SectionCard("🎚️ Max Rotation Speed (Xbox Aiming)") {
+                Text(
+                    "Lower values mean higher sensitivity (you don't have to rotate as fast to hit 100% stick speed).",
+                    fontSize = 12.sp, color = Color.Gray, modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Column {
                     LabeledSlider(
-                        label = "Max Yaw Speed (Look Left/Right)",
+                        label = "Max Yaw Speed (Left/Right)",
                         value = settings.maxDpsYaw,
                         valueRange = 50.0f..1000.0f,
                         format = "%.0f °/s",
@@ -267,7 +278,7 @@ fun GyroSettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     LabeledSlider(
-                        label = "Max Pitch Speed (Look Up/Down)",
+                        label = "Max Pitch Speed (Up/Down)",
                         value = settings.maxDpsPitch,
                         valueRange = 50.0f..1000.0f,
                         format = "%.0f °/s",
@@ -275,7 +286,7 @@ fun GyroSettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     LabeledSlider(
-                        label = "Max Roll Speed (Twist Left/Right)",
+                        label = "Max Roll Speed (Twist)",
                         value = settings.maxDpsRoll,
                         valueRange = 50.0f..1000.0f,
                         format = "%.0f °/s",
@@ -283,12 +294,12 @@ fun GyroSettingsScreen(
                     )
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+        } // end Xbox-only sections
 
         // ════════════════════════════════════════════════════
-        //  PRECISION & DEADZONE (Crosshair Visualizer)
+        //  PRECISION & DEADZONE (Crosshair Visualizer) — SHARED
         // ════════════════════════════════════════════════════
         SectionCard("🎯 Precision & Deadzone") {
             Row(
@@ -327,8 +338,8 @@ fun GyroSettingsScreen(
                     deadzone = settings.deadzoneThreshold,
                     tighteningEnabled = settings.tighteningEnabled,
                     tighteningThreshold = settings.tighteningThreshold,
-                    rawYawDps = rawGyroZ * 57.296f, // Approx raw Z
-                    rawPitchDps = rawGyroX * 57.296f, // Approx raw X
+                    rawYawDps = rawGyroZ * 57.296f,
+                    rawPitchDps = rawGyroX * 57.296f,
                     processedYawDps = processedYaw,
                     processedPitchDps = processedPitch
                 )
@@ -338,7 +349,7 @@ fun GyroSettingsScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         // ════════════════════════════════════════════════════
-        //  SMOOTHING (Waveform Visualizer)
+        //  SMOOTHING (Waveform Visualizer) — SHARED
         // ════════════════════════════════════════════════════
         SectionCard("🌊 Smoothing") {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -385,7 +396,7 @@ fun GyroSettingsScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         // ════════════════════════════════════════════════════
-        //  ACCELERATION CURVE
+        //  ACCELERATION CURVE — SHARED
         // ════════════════════════════════════════════════════
         SectionCard("📈 Acceleration Curve") {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -451,48 +462,71 @@ fun GyroSettingsScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         // ════════════════════════════════════════════════════
-        //  LOW-SPEED AMPLIFIER
+        //  LOW-SPEED AMPLIFIER — XBOX ONLY
+        //  (PS4 games control their own deadzones)
         // ════════════════════════════════════════════════════
-        SectionCard("⚡ Anti-Deadzone (Low-Speed Amplifier)") {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Enable Anti-Deadzone", modifier = Modifier.weight(1f))
-                Switch(
-                    checked = settings.lowSpeedAmplifierEnabled,
-                    onCheckedChange = { onSettingsChange(settings.copy(lowSpeedAmplifierEnabled = it)) },
-                )
+        if (isXbox) {
+            SectionCard("⚡ Anti-Deadzone (Xbox Only)") {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Enable Anti-Deadzone", modifier = Modifier.weight(1f))
+                    Switch(
+                        checked = settings.lowSpeedAmplifierEnabled,
+                        onCheckedChange = { onSettingsChange(settings.copy(lowSpeedAmplifierEnabled = it)) },
+                    )
+                }
+                if (settings.lowSpeedAmplifierEnabled) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LabeledSlider(
+                        label = "Multiplier",
+                        value = settings.lowSpeedAmplifierAmount,
+                        valueRange = 1.0f..10.0f,
+                        format = "%.1fx",
+                        onValueChange = { onSettingsChange(settings.copy(lowSpeedAmplifierAmount = it)) },
+                    )
+                    LabeledSlider(
+                        label = "Max Speed",
+                        value = settings.lowSpeedAmplifierThreshold,
+                        valueRange = 1.0f..50.0f,
+                        format = "%.1f °/s",
+                        onValueChange = { onSettingsChange(settings.copy(lowSpeedAmplifierThreshold = it)) },
+                    )
+                    LabeledSlider(
+                        label = "Harshness",
+                        value = settings.lowSpeedAmplifierHarshness,
+                        valueRange = 0.5f..5.0f,
+                        format = "%.1f",
+                        onValueChange = { onSettingsChange(settings.copy(lowSpeedAmplifierHarshness = it)) },
+                    )
+                }
             }
-            if (settings.lowSpeedAmplifierEnabled) {
-                Spacer(modifier = Modifier.height(8.dp))
-                LabeledSlider(
-                    label = "Multiplier",
-                    value = settings.lowSpeedAmplifierAmount,
-                    valueRange = 1.0f..10.0f,
-                    format = "%.1fx",
-                    onValueChange = { onSettingsChange(settings.copy(lowSpeedAmplifierAmount = it)) },
-                )
-                LabeledSlider(
-                    label = "Max Speed",
-                    value = settings.lowSpeedAmplifierThreshold,
-                    valueRange = 1.0f..50.0f,
-                    format = "%.1f °/s",
-                    onValueChange = { onSettingsChange(settings.copy(lowSpeedAmplifierThreshold = it)) },
-                )
-                LabeledSlider(
-                    label = "Harshness",
-                    value = settings.lowSpeedAmplifierHarshness,
-                    valueRange = 0.5f..5.0f,
-                    format = "%.1f",
-                    onValueChange = { onSettingsChange(settings.copy(lowSpeedAmplifierHarshness = it)) },
-                )
-            }
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
         // ════════════════════════════════════════════════════
-        //  AXIS CONTROL & CALIBRATION
+        //  AXIS CONTROL & CALIBRATION — SHARED
         // ════════════════════════════════════════════════════
         SectionCard("🧭 Axis & Calibration") {
+            // ── Horizontal Axis Selector ──
+            Text("Horizontal Axis Mapping:", fontWeight = FontWeight.Bold)
+            Text(
+                "Which physical rotation drives left/right camera movement.",
+                fontSize = 12.sp, color = Color.Gray
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                HorizontalAxis.entries.forEach { axis ->
+                    RadioButton(
+                        selected = settings.horizontalAxis == axis,
+                        onClick = { onSettingsChange(settings.copy(horizontalAxis = axis)) },
+                    )
+                    Text(axis.displayName, fontSize = 13.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // ── Inversion Toggles ──
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Invert Horizontal", modifier = Modifier.weight(1f))
                 Switch(checked = settings.invertX, onCheckedChange = { onSettingsChange(settings.copy(invertX = it)) })

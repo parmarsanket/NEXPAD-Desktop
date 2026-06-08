@@ -3,9 +3,14 @@ package com.sanket.tools.nexpaddesktop.driver
 import com.sanket.tools.nexpaddesktop.model.GamepadInput
 import com.sanket.tools.nexpaddesktop.driver.jna.XUSBReport
 
+/**
+ * Stateless mapper that converts NEXPAD's [GamepadInput] into an Xbox 360
+ * [XUSBReport] suitable for ViGEm's XInput API.
+ *
+ * Stick values: ±32767 (INT16 range). Triggers: 0–255 (UINT8 range).
+ * Button flags: 16-bit bitmask following the XINPUT_GAMEPAD specification.
+ */
 object ViGEmInputMapper {
-    private var lastL3 = false
-    private var lastR3 = false
 
     fun map(input: GamepadInput): XUSBReport {
         val report = XUSBReport()
@@ -20,14 +25,6 @@ object ViGEmInputMapper {
         if (input.btnL3) buttons = (buttons.toInt() or XUSBReport.LEFT_THUMB.toInt()).toShort()
         if (input.btnR3) buttons = (buttons.toInt() or XUSBReport.RIGHT_THUMB.toInt()).toShort()
         
-        if (input.btnL3 != lastL3) {
-            println("NEXPAD_DEBUG Desktop: L3 changed to ${input.btnL3}")
-            lastL3 = input.btnL3
-        }
-        if (input.btnR3 != lastR3) {
-            println("NEXPAD_DEBUG Desktop: R3 changed to ${input.btnR3}")
-            lastR3 = input.btnR3
-        }
         if (input.btnL1) buttons = (buttons.toInt() or XUSBReport.LEFT_SHOULDER.toInt()).toShort()
         if (input.btnR1) buttons = (buttons.toInt() or XUSBReport.RIGHT_SHOULDER.toInt()).toShort()
         if (input.btnGuide) buttons = (buttons.toInt() or XUSBReport.GUIDE.toInt()).toShort()

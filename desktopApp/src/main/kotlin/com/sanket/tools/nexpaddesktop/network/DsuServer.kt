@@ -8,9 +8,27 @@ import java.net.SocketException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.zip.CRC32
 import kotlin.math.PI
 
+/**
+ * DsuServer implements the Cemuhook UDP Protocol (also known as DSU - DualShock UDP).
+ * This allows emulators like Cemu, Citra, Yuzu, Ryujinx, and Dolphin to receive
+ * high-frequency controller input (especially 6-axis motion data) directly over UDP.
+ *
+ * ## Protocol Details
+ * The protocol operates on UDP port 26760 by default. It consists of:
+ * 1. **Client Discovery**: Clients send status requests/ports.
+ * 2. **Controller Info Packets**: Server reports connected controllers.
+ * 3. **Input Data Packets**: Server streams 68-byte payloads containing:
+ *    - Buttons (DPad, face buttons, L1/R1/L2/R2, Share/Options/Guide)
+ *    - Sticks (Left/Right stick X/Y)
+ *    - Gyroscope (Pitch, Roll, Yaw in deg/s)
+ *    - Accelerometer (X, Y, Z in G-force units)
+ *
+ * All multi-byte values are transmitted in Little-Endian byte order.
+ */
 class DsuServer {
     private var socket: DatagramSocket? = null
     private var isRunning = false
@@ -21,7 +39,7 @@ class DsuServer {
     
     private data class ClientInfo(val ip: InetAddress, val port: Int, var lastSeen: Long)
 
-    private var packetCount = 0
+    private val packetCount = AtomicInteger(0)
 
     fun start(port: Int = 26760) {
         if (isRunning) return
@@ -107,8 +125,8 @@ class DsuServer {
 
         if (clients.isEmpty()) return
 
-        packetCount++
-        val payload = buildDataPayload(input, packetCount)
+        val currentCount = packetCount.getAndIncrement()
+        val payload = buildDataPayload(input, currentCount)
         val response = buildHeader(0x100002, payload)
 
         for (client in clients.values) {
@@ -210,21 +228,21 @@ class DsuServer {
         if (input.btnY) buttons2 = buttons2 or 0x10 // X in switch
         if (input.btnR1) buttons2 = buttons2 or 0x08
         if (input.btnL1) buttons2 = buttons2 or 0x04
-        if (input.triggerR2 > 0.5f) buttons2 = buttons2 or 0x02
-        if (input.triggerL2 > 0.5f) buttons2 = buttons2 or 0x01
+        if (input.triggerR2 > 0.1f) buttons2 = buttons2 or 0x02
+        if (input.triggerL2 > 0.1f) buttons2 = buttons2 or 0x01
 
         buffer.put(buttons1.toByte())
         buffer.put(buttons2.toByte())
-        buffer.put(0.toByte()) // PS
-        buffer.put(0.toByte()) // Touch
+        buffer.put(if (input.btnGuide) 1.toByte() else 0.toByte()) // PS button
+        buffer.put(if (input.btnScreenshot) 1.toByte() else 0.toByte()) // Touchpad click
         
         // Left stick X/Y (0-255, 128 center)
         buffer.put(((input.leftStickX + 1.0f) * 127.5f).toInt().toByte())
-        buffer.put(((input.leftStickY + 1.0f) * 127.5f).toInt().toByte())
+        buffer.put(((-input.leftStickY + 1.0f) * 127.5f).toInt().toByte())
         
         // Right stick X/Y
         buffer.put(((input.rightStickX + 1.0f) * 127.5f).toInt().toByte())
-        buffer.put(((input.rightStickY + 1.0f) * 127.5f).toInt().toByte())
+        buffer.put(((-input.rightStickY + 1.0f) * 127.5f).toInt().toByte())
         
         // Analog buttons (DPad, Face buttons, Bumpers, Triggers)
         // Skip setting exact analog values for all of them except triggers to save bytes

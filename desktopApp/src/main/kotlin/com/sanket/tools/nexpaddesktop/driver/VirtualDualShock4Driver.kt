@@ -70,7 +70,6 @@ class VirtualDualShock4Driver(
 
     // ── Timestamp base ─────────────────────────────────────
     private var startTimeNanos = System.nanoTime()
-    private var lastLogTime = 0L
     private var lastDs4DebugSignature = ""
 
     // ── Constants ──────────────────────────────────────────
@@ -85,8 +84,8 @@ class VirtualDualShock4Driver(
         const val ACCEL_SCALAR = 835.3f
 
         // Timestamp: real DS4 ticks at ~188 µs (5.33 kHz)
-        //   ticks = elapsed_µs / 1.3333
-        const val TIMESTAMP_DIVISOR = 1.3333
+        //   ticks = elapsed_µs / 188.0
+        const val TIMESTAMP_DIVISOR = 188.0
 
         // Neutral DS4 extended-report values used by ViGEm-compatible DS4 packets.
         const val BATTERY_FULL: Byte = 0xFF.toByte()
@@ -268,13 +267,18 @@ class VirtualDualShock4Driver(
 
         // If no accel data at all, fake 1 G downward so
         // Steam's sensor-fusion doesn't disable the gyro.
+        // After remapping, DS4 accelY = -az, so set az to make -az = -8192.
         if (ax == 0f && ay == 0f && az == 0f) {
-            ay = -8192f   // 1 g pointing down
+            az = -8192f   // 1 g pointing down (maps to DS4 Y via -az)
         }
 
+        // Android → DS4 axis mapping (must match gyro mapping above):
+        //   DS4 accelX = Android accelX  (Pitch/forward-back)
+        //   DS4 accelY = -Android accelZ (Yaw/gravity vertical)
+        //   DS4 accelZ = -Android accelY (Roll/left-right)
         report.wAccelX = toSafeShort(ax)
-        report.wAccelY = toSafeShort(ay)
-        report.wAccelZ = toSafeShort(az)
+        report.wAccelY = toSafeShort(-az)
+        report.wAccelZ = toSafeShort(-ay)
 
         // ── SUBMIT ─────────────────────────────────────────
         try {

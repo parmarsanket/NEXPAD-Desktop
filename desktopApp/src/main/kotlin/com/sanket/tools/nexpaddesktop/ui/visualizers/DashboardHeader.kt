@@ -87,7 +87,7 @@ fun DashboardHeader(
                 Text(if (isAbsolute) "Steering Angle" else "Processed Speed", fontSize = 12.sp, color = Color.Gray)
                 
                 if (isAbsolute) {
-                    val steeringAngle = if (settings.invertX) -yawDeg else yawDeg
+                    val steeringAngle = yawDeg
                     Text(
                         text = "${String.format("%.0f", steeringAngle)} °",
                         fontSize = 24.sp,
