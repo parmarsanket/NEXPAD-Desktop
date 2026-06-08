@@ -112,6 +112,20 @@ fun GyroSettingsScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 Text("Steering Wheel Settings", fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(8.dp))
+                
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Disconnect Raw Motion Outputs", modifier = Modifier.weight(1f))
+                    Switch(
+                        checked = settings.disconnectMotionInSteering,
+                        onCheckedChange = { onSettingsChange(settings.copy(disconnectMotionInSteering = it)) }
+                    )
+                }
+                Text(
+                    "Prevents PC games from receiving double inputs by stopping raw accelerometer/gyro data from being sent to DSU or Virtual Controllers.",
+                    fontSize = 12.sp, color = Color.Gray
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
                 LabeledSlider(
                     label = "Max Steering Angle",
                     value = settings.absoluteMaxTilt,
@@ -131,6 +145,104 @@ fun GyroSettingsScreen(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        // ════════════════════════════════════════════════════
+        //  ACTIVATION BUTTONS
+        // ════════════════════════════════════════════════════
+        SectionCard("🔘 Activation") {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Require Button Hold to Activate", modifier = Modifier.weight(1f))
+                Switch(
+                    checked = settings.activationButtons.isNotEmpty(),
+                    onCheckedChange = { 
+                        if (it) onSettingsChange(settings.copy(activationButtons = setOf("LT")))
+                        else onSettingsChange(settings.copy(activationButtons = emptySet()))
+                    },
+                )
+            }
+            if (settings.activationButtons.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                val buttons = listOf("LT", "RT", "LB", "RB", "A", "B", "X", "Y")
+                @OptIn(ExperimentalLayoutApi::class)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    buttons.forEach { btn ->
+                        FilterChip(
+                            selected = settings.activationButtons.contains(btn),
+                            onClick = {
+                                val current = settings.activationButtons.toMutableSet()
+                                if (current.contains(btn)) current.remove(btn) else current.add(btn)
+                                // Require at least one button if enabled, or disable completely if empty
+                                if (current.isEmpty()) onSettingsChange(settings.copy(activationButtons = emptySet()))
+                                else onSettingsChange(settings.copy(activationButtons = current))
+                            },
+                            label = { Text(btn) }
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // ════════════════════════════════════════════════════
+        //  XBOX GYRO-TO-STICK (only shown for Xbox controller)
+        // ════════════════════════════════════════════════════
+        if (activeController == ControllerType.XBOX_360) {
+            SectionCard("🎮 Xbox Gyro → Stick Mapping") {
+                Text(
+                    "Xbox controllers don't have native gyro. Motion is mapped to analog stick movement.",
+                    fontSize = 13.sp, color = Color.Gray,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text("Target Stick:", fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(
+                        selected = settings.xboxTargetStick == "LEFT_STICK",
+                        onClick = { onSettingsChange(settings.copy(xboxTargetStick = "LEFT_STICK")) }
+                    )
+                    Text("Left Stick", fontSize = 14.sp)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    RadioButton(
+                        selected = settings.xboxTargetStick == "RIGHT_STICK",
+                        onClick = { onSettingsChange(settings.copy(xboxTargetStick = "RIGHT_STICK")) }
+                    )
+                    Text("Right Stick", fontSize = 14.sp)
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Blend Mode:", fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(
+                        selected = settings.xboxBlendMode == "OVERRIDE",
+                        onClick = { onSettingsChange(settings.copy(xboxBlendMode = "OVERRIDE")) }
+                    )
+                    Text("Override", fontSize = 14.sp)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    RadioButton(
+                        selected = settings.xboxBlendMode == "ADDITIVE",
+                        onClick = { onSettingsChange(settings.copy(xboxBlendMode = "ADDITIVE")) }
+                    )
+                    Text("Additive", fontSize = 14.sp)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    RadioButton(
+                        selected = settings.xboxBlendMode == "MUTE_ON_STICK",
+                        onClick = { onSettingsChange(settings.copy(xboxBlendMode = "MUTE_ON_STICK")) }
+                    )
+                    Text("Mute on Stick", fontSize = 14.sp)
+                }
+                Text(
+                    text = when(settings.xboxBlendMode) {
+                        "OVERRIDE" -> "Gyro overrides physical stick input completely."
+                        "ADDITIVE" -> "Gyro movement is added on top of physical stick input."
+                        "MUTE_ON_STICK" -> "Gyro is disabled whenever you touch the physical stick."
+                        else -> ""
+                    },
+                    fontSize = 12.sp, color = Color.Gray, modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
         // ════════════════════════════════════════════════════
         //  SENSITIVITY (Speedometer)

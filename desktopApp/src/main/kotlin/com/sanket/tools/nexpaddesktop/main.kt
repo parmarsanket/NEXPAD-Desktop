@@ -167,9 +167,9 @@ fun main() = application {
                 rightStickX = (finalRightX * rsSensitivityX).coerceIn(-1.0f, 1.0f),
                 rightStickY = (finalRightY * rsSensitivityY).coerceIn(-1.0f, 1.0f)
             )
-            
             latestInput = processedInput
             activeDriver?.updateInput(processedInput)
+            
             dsuServer.updateInput(input) // send raw unaltered input to DSU
         }
         scope.launch {

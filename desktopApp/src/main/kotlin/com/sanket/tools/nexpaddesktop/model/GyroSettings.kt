@@ -12,6 +12,8 @@ data class GyroSettings(
     /** Determines if gyro rotation speed (aiming) or absolute tilt angle (steering) drives the stick. */
     val inputMode: InputMode = InputMode.VELOCITY,
     // ── Absolute Tilt (Steering Wheel) Settings ──────────
+    /** If true, zeros out raw gyro/accel data in Steering mode so games don't receive double inputs. */
+    val disconnectMotionInSteering: Boolean = true,
     /** In Absolute Tilt mode, the physical angle (in degrees) that results in 100% stick deflection. */
     val absoluteMaxTilt: Float = 45.0f,
     /** Steering sensitivity multiplier. */

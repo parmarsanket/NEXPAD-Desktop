@@ -44,6 +44,15 @@ fun DashboardHeader(
         yawDeg = (rawAccelX / 9.8f) * 90f // Steering wheel motion (rotationZ)
     }
 
+    // Apply Axis Inversion to Visualizer
+    if (settings.invertX) {
+        yawDeg = -yawDeg
+        rollDeg = -rollDeg // Roll is often part of horizontal depending on HorizontalAxis setting
+    }
+    if (settings.invertY) {
+        pitchDeg = -pitchDeg
+    }
+
     // Settings Impact Meter logic
     val responsiveness = (settings.sensitivityX / 5.0f).coerceIn(0f, 1f)
     val deadzonePrecision = 1.0f - (settings.deadzoneThreshold / 20f).coerceIn(0f, 1f)
@@ -77,7 +86,7 @@ fun DashboardHeader(
                 Text(if (isAbsolute) "Steering Angle" else "Processed Speed", fontSize = 12.sp, color = Color.Gray)
                 
                 if (isAbsolute) {
-                    val steeringAngle = -(rawAccelX / 9.8f) * 90f
+                    val steeringAngle = if (settings.invertX) -yawDeg else yawDeg
                     Text(
                         text = "${String.format("%.0f", steeringAngle)} °",
                         fontSize = 24.sp,
