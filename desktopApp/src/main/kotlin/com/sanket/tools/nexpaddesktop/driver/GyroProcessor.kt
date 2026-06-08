@@ -118,7 +118,7 @@ class GyroProcessor {
             HorizontalAxis.ROLL -> rollDps
             HorizontalAxis.MIX  -> -yawDps + rollDps // Both turning and tilting contribute
         }
-        val verticalDps = -pitchDps   // Negated: tilting phone forward → camera goes down
+        val verticalDps = pitchDps   // Tilting phone forward → camera goes down
 
         // Save raw values for debug display (before further processing)
         val rawH = horizontalDps
