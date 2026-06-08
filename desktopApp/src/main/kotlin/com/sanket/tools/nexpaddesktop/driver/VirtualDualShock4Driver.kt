@@ -5,6 +5,7 @@ import com.sanket.tools.nexpaddesktop.model.GamepadFeedback
 import com.sun.jna.Pointer
 import com.sanket.tools.nexpaddesktop.driver.jna.ViGEmClientLibrary
 import kotlin.math.roundToInt
+import kotlin.math.abs
 
 /**
  * Virtual DualShock 4 controller driver using ViGEm Bus.
@@ -66,6 +67,7 @@ class VirtualDualShock4Driver(
     private var gyroBiasY = 0f
     private var gyroBiasZ = 0f
     private var calibrationSamples = 0
+    private var stillnessFrames = 0
     private val CALIBRATION_COUNT = 100   // ~1.7 s at 60 Hz
 
     // ── Timestamp base ─────────────────────────────────────
@@ -82,6 +84,10 @@ class VirtualDualShock4Driver(
         // DS4 accel: 1 g ≈ 8192 raw
         //   Android sends m/s² → 8192 / 9.80665 ≈ 835.3
         const val ACCEL_SCALAR = 835.3f
+
+        // Gyro stillness auto-calibration thresholds
+        const val STILLNESS_THRESHOLD = 0.015f // rad/s (approx 0.86 deg/s)
+        const val CALIBRATION_ADJUST_RATE = 0.02f // blend rate per frame
 
         // Timestamp: real DS4 ticks at ~188 µs (5.33 kHz)
         //   ticks = elapsed_µs / 188.0
@@ -150,6 +156,7 @@ class VirtualDualShock4Driver(
             gyroBiasY = 0f
             gyroBiasZ = 0f
             calibrationSamples = 0
+            stillnessFrames = 0
             startTimeNanos = System.nanoTime()
 
             isConnected = true
@@ -389,31 +396,54 @@ class VirtualDualShock4Driver(
      * While calibrating, returns (0, 0, 0) to prevent initial drift.
      * After calibration, subtracts the measured resting bias.
      */
+    /**
+     * Calibrate the gyro bias. First, does an initial calibration using the first
+     * [CALIBRATION_COUNT] non-zero samples. Then, dynamically runs a stillness-detection
+     * filter: if the calibrated rotation speed is very low on all axes for 2 seconds,
+     * it slowly adjusts the bias to eliminate thermal and sensor drift.
+     */
     private fun calibrateGyro(
         rawX: Float, rawY: Float, rawZ: Float
     ): Triple<Float, Float, Float> {
 
+        // 1. Initial Calibration (runs once on the first CALIBRATION_COUNT non-zero samples)
         if (calibrationSamples < CALIBRATION_COUNT) {
-            gyroBiasX += rawX
-            gyroBiasY += rawY
-            gyroBiasZ += rawZ
-            calibrationSamples++
+            if (rawX != 0f || rawY != 0f || rawZ != 0f) {
+                gyroBiasX += rawX
+                gyroBiasY += rawY
+                gyroBiasZ += rawZ
+                calibrationSamples++
 
-            if (calibrationSamples == CALIBRATION_COUNT) {
-                gyroBiasX /= CALIBRATION_COUNT
-                gyroBiasY /= CALIBRATION_COUNT
-                gyroBiasZ /= CALIBRATION_COUNT
-                println("✅ Gyro calibration complete — bias removed: " +
-                        "X=%.4f  Y=%.4f  Z=%.4f".format(gyroBiasX, gyroBiasY, gyroBiasZ))
+                if (calibrationSamples == CALIBRATION_COUNT) {
+                    gyroBiasX /= CALIBRATION_COUNT
+                    gyroBiasY /= CALIBRATION_COUNT
+                    gyroBiasZ /= CALIBRATION_COUNT
+                    println("✅ Gyro initial calibration complete — bias removed: " +
+                            "X=%.4f  Y=%.4f  Z=%.4f".format(gyroBiasX, gyroBiasY, gyroBiasZ))
+                }
             }
-
-            return Triple(0f, 0f, 0f)   // dead-still during calibration
+            return Triple(0f, 0f, 0f)   // dead-still during initial calibration
         }
 
-        return Triple(
-            rawX - gyroBiasX,
-            rawY - gyroBiasY,
-            rawZ - gyroBiasZ
-        )
+        // 2. Calibrated values
+        val calX = rawX - gyroBiasX
+        val calY = rawY - gyroBiasY
+        val calZ = rawZ - gyroBiasZ
+
+        // 3. Continuous Stillness Auto-Calibration (runs on calibrated values)
+        // If the calibrated rotation speed is very low on all axes, the phone is still.
+        if (abs(calX) < STILLNESS_THRESHOLD && abs(calY) < STILLNESS_THRESHOLD && abs(calZ) < STILLNESS_THRESHOLD) {
+            stillnessFrames++
+            if (stillnessFrames > 120) { // ~2 seconds of stillness
+                // Slowly adjust bias to eliminate any remaining drift
+                gyroBiasX += calX * CALIBRATION_ADJUST_RATE
+                gyroBiasY += calY * CALIBRATION_ADJUST_RATE
+                gyroBiasZ += calZ * CALIBRATION_ADJUST_RATE
+            }
+        } else {
+            stillnessFrames = 0
+        }
+
+        return Triple(calX, calY, calZ)
     }
 }
