@@ -86,4 +86,8 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
         println("💥 Simulating CRASH! Sending heavy rumble feedback...")
         onRumble(GamepadFeedback(leftMotorSpeed = 255, rightMotorSpeed = 200))
     }
+
+    override fun isDriverConnected(): Boolean {
+        return isConnected
+    }
 }

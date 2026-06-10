@@ -11,4 +11,5 @@ interface IGamepadDriver {
     fun disconnect()
     fun updateInput(input: GamepadInput)
     fun simulateCrash()
+    fun isDriverConnected(): Boolean
 }

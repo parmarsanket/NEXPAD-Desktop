@@ -118,6 +118,31 @@ fun HomeScreen(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        if (!driver.isDriverConnected()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFFD32F2F), shape = RoundedCornerShape(12.dp))
+                    .padding(16.dp)
+            ) {
+                Column {
+                    Text(
+                        text = "⚠️ Virtual Controller Driver (ViGEmBus) Missing!",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "NEXPAD cannot emulate physical game controllers without the ViGEmBus kernel driver. Please run the installer or install ViGEmBusSetup.exe from the redist folder.",
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontSize = 14.sp
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
         
         val localIp = remember { NetworkUtils.getLocalIpAddress() }
         Text("Your PC IP Address:", fontSize = 18.sp)

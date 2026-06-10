@@ -446,4 +446,8 @@ class VirtualDualShock4Driver(
 
         return Triple(calX, calY, calZ)
     }
+
+    override fun isDriverConnected(): Boolean {
+        return isConnected
+    }
 }
