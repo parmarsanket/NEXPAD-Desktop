@@ -6,91 +6,45 @@ import kotlin.math.*
 /**
  * Stateful processor for gyroscope and accelerometer data.
  *
- * ## Data Flow & Pipeline Diagram
- *
- * ```
- *                  [ Raw Gyro (rad/s) ]
- *                           |
- *                           v
- *                   [ Convert to °/s ]  <-- RAD_TO_DEG constant
- *                           |
- *                           v
- *                   [ Axis Remapping ]  <-- Yaw/Roll/Mix mapping
- *                           |
- *                           v
- *                  [ Inversion (invert) ]
- *                           |
- *                           v
- *                   [ Hard Deadzone ]   <-- applyDeadzone()
- *                           |
- *                           v
- *                  [ Soft Tightening ]  <-- applyTightening()
- *                           |
- *                           v
- *                 [ Adaptive Smoothing ] <-- computeAdaptiveAlpha() & EMA
- *                           |
- *                           v
- *                 [ Acceleration Curve ] <-- computeAccelerationSensitivity()
- *                           |
- *                           v
- *                  [ Low-Speed Amp ]    <-- applyLowSpeedAmplifier()
- *                           |
- *                           v
- *                 [ Sensitivity Scale ] <-- Normalized to 200°/s stick scale
- *                           |
- *                           v
- *                  [ Processed Output ]
- * ```
+ * This class acts as the mathematical **State Layer**. It intercepts raw rad/s 
+ * gyro data and applies a full deadzone, tightening, and exponential moving average 
+ * (EMA) smoothing pipeline before passing the filtered data on to the driver.
  *
  * ## Coordinate Systems
- *
- * - **Android Phone (Landscape, screen facing user):**
- *   - Gyro X (Pitch): Tilting phone forward (top away from user) -> positive.
- *   - Gyro Y (Roll): Tilting phone sideways (left side down) -> positive.
- *   - Gyro Z (Yaw): Turning phone flat on table (counter-clockwise) -> positive.
- *   - Accel X: Lateral acceleration (left/right).
- *   - Accel Y: Vertical/longitudinal gravity vector component depending on angle.
- *   - Accel Z: Normal/perpendicular gravity vector component.
- *
- * - **NEXPAD Internal / Game Camera:**
- *   - Horizontal camera movement: Controlled by Yaw, Roll, or Mix.
- *     Turning phone right must result in camera moving right.
- *   - Vertical camera movement: Controlled by Pitch.
- *     Tilting phone forward (looking down) must result in camera moving down.
- *
- * - **Virtual Controller Output:**
- *   - Scaled such that ±200.0 °/s maps to ±1.0 (or ±32767 on physical stick).
- *
- * Based on best practices from GyroWiki / JibbSmart / Steam Input / JoyShockMapper.
+ * - **Android Phone (Landscape):**
+ *   - Gyro X (Pitch): Tilting phone forward
+ *   - Gyro Y (Roll): Tilting phone sideways
+ *   - Gyro Z (Yaw): Turning phone flat on a table
  */
 class GyroProcessor {
 
-    // ── Smoothing state (EMA previous values) ────────────
+    // =========================================================================
+    // STATE VARIABLES
+    // =========================================================================
+    
+    /** EMA History for X-axis */
     private var smoothedX = 0f
+    
+    /** EMA History for Y-axis */
     private var smoothedY = 0f
 
-    // ── Toggle state for TOGGLE activation mode ──────────
     private var toggleActive = false
     private var toggleButtonWasPressed = false
 
-    /** Result of processing one frame of gyro data. Values are in °/s after full pipeline. */
+    /**
+     * DTO representing the fully processed gyroscope data.
+     * All output values are in degrees per second (°/s).
+     */
     data class ProcessedGyro(
-        val yawDps: Float,    // Horizontal camera movement (°/s)
-        val pitchDps: Float,  // Vertical camera movement (°/s)
-        val rollDps: Float,   // Roll (rarely used for camera, but available)
-        val rawYawDps: Float,   // Pre-pipeline values for debug display
+        val yawDps: Float,    
+        val pitchDps: Float,  
+        val rollDps: Float,   
+        val rawYawDps: Float, 
         val rawPitchDps: Float,
     )
 
     /**
-     * Process one frame of raw gyroscope data through the full pipeline.
-     *
-     * @param rawGyroX  Android gyroX in rad/s (pitch — tilting phone forward/back)
-     * @param rawGyroY  Android gyroY in rad/s (roll — tilting phone sideways)
-     * @param rawGyroZ  Android gyroZ in rad/s (yaw — rotating phone flat on table)
-     * @param settings  Current user settings
-     * @param isActivationButtonPressed  Whether the activation button(s) are currently held
-     * @return Processed gyro values in °/s ready for controller mapping
+     * Processes one frame of raw gyroscope data through the mathematical pipeline.
      */
     fun process(
         rawGyroX: Float,
@@ -103,91 +57,69 @@ class GyroProcessor {
         isActivationButtonPressed: Boolean = true,
     ): ProcessedGyro {
 
-        // ── 0. Check if gyro is enabled and activated ────
-        if (!settings.enabled) {
-            return ProcessedGyro(0f, 0f, 0f, 0f, 0f)
-        }
-
-        if (!isGyroActive(settings, isActivationButtonPressed)) {
-            // Reset smoothing state when gyro is deactivated to prevent stale data
+        if (!settings.enabled || !isGyroActive(settings, isActivationButtonPressed)) {
             smoothedX = 0f
             smoothedY = 0f
             return ProcessedGyro(0f, 0f, 0f, 0f, 0f)
         }
 
-        // ── 0.5. Absolute Tilt Mode (Steering Wheel) ─────
+        // ---------------------------------------------------------------------
+        // Absolute Tilt Mode (e.g., Steering Wheel emulation)
+        // ---------------------------------------------------------------------
         if (settings.inputMode == InputMode.ABSOLUTE_TILT) {
             val maxAccel = 9.8f
-            // In NEXPAD main.kt, stick = (processed.yawDps / 200.0f)
             val targetStickRange = 200.0f
 
-            // Calculate actual tilt angles in degrees using arcsin(g / 9.8)
             val horizontalAngleDeg = asin((rawAccelX / maxAccel).coerceIn(-1.0f, 1.0f)) * RAD_TO_DEG
             val verticalAngleDeg = asin((rawAccelY / maxAccel).coerceIn(-1.0f, 1.0f)) * RAD_TO_DEG
 
-            // Map the angle relative to the user's max tilt threshold (e.g. 45 degrees)
             var mappedH = (horizontalAngleDeg / settings.absoluteMaxTilt)
             var mappedV = (verticalAngleDeg / settings.absoluteMaxTilt)
 
-            // Apply Response Curve ("Acceleration") for steering wheel
-            // curve = 1.0 is linear. curve = 2.0 makes center less sensitive and edges faster.
             val curveH = abs(mappedH).pow(settings.absoluteCurve) * sign(mappedH)
             val curveV = abs(mappedV).pow(settings.absoluteCurve) * sign(mappedV)
 
-            // Scale to target stick range (200.0)
             mappedH = curveH * targetStickRange
             mappedV = curveV * targetStickRange
 
-            // Apply inversion
             var hVal = if (settings.invertX) -mappedH else mappedH
             var vVal = if (settings.invertY) -mappedV else mappedV
 
-            // Apply dedicated sensitivities
             hVal *= settings.absoluteSensitivityX
             vVal *= settings.absoluteSensitivityY
 
-            return ProcessedGyro(
-                yawDps = hVal,
-                pitchDps = vVal,
-                rollDps = 0f,
-                rawYawDps = mappedH,
-                rawPitchDps = mappedV,
-            )
+            return ProcessedGyro(hVal, vVal, 0f, mappedH, mappedV)
         }
 
-        // ── 1. Convert rad/s → °/s ──────────────────────
-        val pitchDps = rawGyroX * RAD_TO_DEG   // Tilt forward/back
-        val yawDps   = rawGyroZ * RAD_TO_DEG   // Turn left/right (flat rotation)
-        val rollDps  = rawGyroY * RAD_TO_DEG   // Tilt sideways
+        // ---------------------------------------------------------------------
+        // Gyroscope Mode (Standard View Controller)
+        // ---------------------------------------------------------------------
+        val pitchDps = rawGyroX * RAD_TO_DEG   
+        val yawDps   = rawGyroZ * RAD_TO_DEG   
+        val rollDps  = rawGyroY * RAD_TO_DEG   
 
-        // ── 2. Axis remapping ───────────────────────────
-        // Horizontal camera = Yaw (default) or Roll (user preference)
         val horizontalDps = when (settings.horizontalAxis) {
-            HorizontalAxis.YAW  -> -yawDps   // Negated: turning phone right → camera goes right
+            HorizontalAxis.YAW  -> -yawDps
             HorizontalAxis.ROLL -> rollDps
-            HorizontalAxis.MIX  -> -yawDps + rollDps // Both turning and tilting contribute
+            HorizontalAxis.MIX  -> -yawDps + rollDps 
         }
-        val verticalDps = -pitchDps   // Tilting phone forward → camera goes down
+        val verticalDps = -pitchDps   
 
-        // Save raw values for debug display (before further processing)
         val rawH = horizontalDps
         val rawV = verticalDps
 
-        // ── 3. Apply inversion ──────────────────────────
         var hVal = if (settings.invertX) -horizontalDps else horizontalDps
         var vVal = if (settings.invertY) -verticalDps else verticalDps
 
-        // ── 4. Deadzone with smooth ramp ────────────────
+        // Applying mathematical filters...
         hVal = applyDeadzone(hVal, settings.deadzoneThreshold)
         vVal = applyDeadzone(vVal, settings.deadzoneThreshold)
 
-        // ── 5. Tightening (soft deadzone for micro-precision) ──
         if (settings.tighteningEnabled) {
             hVal = applyTightening(hVal, settings.tighteningThreshold)
             vVal = applyTightening(vVal, settings.tighteningThreshold)
         }
 
-        // ── 6. Smoothing (EMA filter) ───────────────────
         if (settings.smoothingEnabled) {
             val speedH = abs(hVal)
             val speedV = abs(vVal)
@@ -205,44 +137,26 @@ class GyroProcessor {
             vVal = smoothedY
         }
 
-        // ── 7. Acceleration curve ───────────────────────
         if (settings.accelerationEnabled) {
-            val speedH = abs(hVal)
-            val speedV = abs(vVal)
-            val sensH = computeAccelerationSensitivity(speedH, settings)
-            val sensV = computeAccelerationSensitivity(speedV, settings)
-            hVal *= sensH
-            vVal *= sensV
+            hVal *= computeAccelerationSensitivity(abs(hVal), settings)
+            vVal *= computeAccelerationSensitivity(abs(vVal), settings)
         }
 
-        // ── 7.5 Low-Speed Amplifier (Velocity Mode) ─────
         hVal = applyLowSpeedAmplifier(hVal, settings)
         vVal = applyLowSpeedAmplifier(vVal, settings)
 
-        // ── 8. Final sensitivity multiplier ─────────────
         val effectiveSensX = when (settings.horizontalAxis) {
             HorizontalAxis.YAW -> 200.0f / settings.maxDpsYaw
             HorizontalAxis.ROLL -> 200.0f / settings.maxDpsRoll
             HorizontalAxis.MIX -> 200.0f / settings.maxDpsYaw
         }
-        val effectiveSensY = 200.0f / settings.maxDpsPitch
         
         hVal *= effectiveSensX
-        vVal *= effectiveSensY
+        vVal *= (200.0f / settings.maxDpsPitch)
 
-        return ProcessedGyro(
-            yawDps = hVal,
-            pitchDps = vVal,
-            rollDps = rollDps,
-            rawYawDps = rawH,
-            rawPitchDps = rawV,
-        )
+        return ProcessedGyro(hVal, vVal, rollDps, rawH, rawV)
     }
 
-    /**
-     * Reset all internal state (smoothing history, toggle state).
-     * Call when reconnecting or recalibrating.
-     */
     fun reset() {
         smoothedX = 0f
         smoothedY = 0f
@@ -250,75 +164,41 @@ class GyroProcessor {
         toggleButtonWasPressed = false
     }
 
+    // =========================================================================
+    // PRIVATE MATHEMATICAL UTILITIES
+    // =========================================================================
 
-    // ════════════════════════════════════════════════════════
-    //  PRIVATE HELPERS
-    // ════════════════════════════════════════════════════════
-
-    /**
-     * Apply deadzone with smooth linear ramp exit.
-     * Values below threshold → 0. Values above → smoothly ramped from 0.
-     * Formula: remapped = sign(value) * (abs(value) - threshold)
-     */
     private fun applyDeadzone(value: Float, threshold: Float): Float {
         if (threshold <= 0f) return value
         val absVal = abs(value)
         if (absVal < threshold) return 0f
-        // Smooth ramp: remap [threshold, ∞) → [0, ∞)
         return sign(value) * (absVal - threshold)
     }
 
-    /**
-     * Tightening: smoothly reduce very small inputs toward zero without a hard cutoff.
-     * Uses a quadratic power curve on the normalized value within the tightening range.
-     * Formula: t = abs(value) / threshold; remapped = sign(value) * t * t * threshold
-     */
     private fun applyTightening(value: Float, threshold: Float): Float {
         if (threshold <= 0f) return value
         val absVal = abs(value)
         if (absVal >= threshold) return value
-        // Quadratic reduction within the tightening range
-        val t = absVal / threshold  // 0..1
-        val reduced = t * t * threshold  // Quadratic: small values get much smaller
-        return sign(value) * reduced
+        val t = absVal / threshold 
+        return sign(value) * (t * t * threshold)
     }
 
-    /**
-     * Low-Speed Amplifier: Boosts very small movements to help overcome in-game deadzones.
-     */
     private fun applyLowSpeedAmplifier(value: Float, settings: GyroSettings): Float {
         if (!settings.lowSpeedAmplifierEnabled) return value
         val speed = abs(value)
         if (speed >= settings.lowSpeedAmplifierThreshold || settings.lowSpeedAmplifierThreshold <= 0f) {
             return value
         }
-        
-        // Ratio of how close we are to 0 speed (1.0 = completely still, 0.0 = at threshold)
         val slownessRatio = 1f - (speed / settings.lowSpeedAmplifierThreshold)
-        
-        // Apply harshness curve (e.g. if harshness is 2.0, it's a squared curve)
         val curve = slownessRatio.pow(settings.lowSpeedAmplifierHarshness)
-        
-        // Multiplier smoothly goes from `Amount` (at 0 speed) down to 1.0 (at threshold)
         val multiplier = 1.0f + (settings.lowSpeedAmplifierAmount - 1.0f) * curve
-        
         return value * multiplier
     }
 
-    /**
-     * Adaptive smoothing: heavy smoothing for slow movements (where jitter is visible),
-     * no smoothing for fast movements (where responsiveness matters).
-     *
-     * @param speed     Current rotation speed in °/s
-     * @param threshold Speed below which full smoothing kicks in
-     * @param baseAlpha The user's configured smoothing amount
-     * @return Alpha value for EMA (closer to 1.0 = less smoothing)
-     */
     private fun computeAdaptiveAlpha(speed: Float, threshold: Float, baseAlpha: Float): Float {
         if (threshold <= 0f) return baseAlpha
-        val alphaMin = baseAlpha * 0.5f  // Maximum smoothing
-        val alphaMax = 1.0f              // No smoothing
-
+        val alphaMin = baseAlpha * 0.5f 
+        val alphaMax = 1.0f              
         return when {
             speed >= threshold -> alphaMax
             speed <= threshold / 2f -> alphaMin
@@ -329,36 +209,25 @@ class GyroProcessor {
         }
     }
 
-    /**
-     * Compute acceleration sensitivity based on current rotation speed.
-     * Interpolates between [minSensitivity] at [minThreshold] and [maxSensitivity] at [maxThreshold].
-     */
     private fun computeAccelerationSensitivity(speed: Float, settings: GyroSettings): Float {
         val minT = settings.minThreshold
         val maxT = settings.maxThreshold
-        val minS = settings.minSensitivity
-        val maxS = settings.maxSensitivity
-
-        if (maxT <= minT) return minS
-
+        if (maxT <= minT) return settings.minSensitivity
         return when {
-            speed <= minT -> minS
-            speed >= maxT -> maxS
+            speed <= minT -> settings.minSensitivity
+            speed >= maxT -> settings.maxSensitivity
             else -> {
-                val t = (speed - minT) / (maxT - minT)  // 0..1
+                val t = (speed - minT) / (maxT - minT) 
                 val curved = when (settings.accelerationType) {
                     AccelerationType.LINEAR -> t
                     AccelerationType.POWER -> t.pow(2.0f)
-                    AccelerationType.SMOOTH_STEP -> t * t * (3f - 2f * t)  // Hermite smoothstep
+                    AccelerationType.SMOOTH_STEP -> t * t * (3f - 2f * t)
                 }
-                minS + curved * (maxS - minS)
+                settings.minSensitivity + curved * (settings.maxSensitivity - settings.minSensitivity)
             }
         }
     }
 
-    /**
-     * Check whether gyro should be active based on activation mode.
-     */
     private fun isGyroActive(settings: GyroSettings, isButtonPressed: Boolean): Boolean {
         return when (settings.activationMode) {
             ActivationMode.ALWAYS_ON -> true
@@ -374,7 +243,6 @@ class GyroProcessor {
     }
 
     companion object {
-        /** Conversion factor from Radians to Degrees. */
         const val RAD_TO_DEG = 57.2957795f
     }
 }
