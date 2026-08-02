@@ -13,6 +13,15 @@ dependencies {
     implementation(libs.kotlinx.coroutinesSwing)
 
     implementation(libs.compose.uiToolingPreview)
+    implementation(libs.compose.material3)
+
+    // Networking & Serialization
+    implementation(libs.ktor.network)
+    implementation(libs.kotlinx.serialization.json)
+
+    // Driver Integration
+    implementation(libs.jna)
+    implementation(libs.jna.platform)
 }
 
 compose.desktop {
@@ -20,7 +29,7 @@ compose.desktop {
         mainClass = "com.sanket.tools.nexpaddesktop.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            targetFormats(TargetFormat.Msi)
             packageName = "com.sanket.tools.nexpaddesktop"
             packageVersion = "1.0.0"
         }
