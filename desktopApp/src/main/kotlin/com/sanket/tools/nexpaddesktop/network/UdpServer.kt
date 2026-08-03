@@ -11,6 +11,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
 import com.sanket.tools.nexpaddesktop.model.GamepadFeedback
+import com.sanket.tools.nexpaddesktop.protocol.NexpadProtocol
 import io.ktor.network.sockets.BoundDatagramSocket
 import io.ktor.network.sockets.Datagram
 import io.ktor.network.sockets.SocketAddress
@@ -33,9 +34,19 @@ class UdpServer(
             try {
                 val datagram = serverSocket!!.receive()
                 clientAddress = datagram.address
-                val jsonString = String(datagram.packet.readBytes())
-                val input = Json.decodeFromString<GamepadInput>(jsonString)
-                onInputReceived(input)
+                val data = datagram.packet.readBytes()
+                
+                // Check if it's a binary packet. Fallback to JSON otherwise.
+                val input = if (data.size == NexpadProtocol.INPUT_PACKET_SIZE && data.isNotEmpty() && data[0] == NexpadProtocol.PROTOCOL_VERSION) {
+                    NexpadProtocol.decodeInput(data)
+                } else {
+                    val jsonString = String(data)
+                    Json.decodeFromString<GamepadInput>(jsonString)
+                }
+                
+                if (input != null) {
+                    onInputReceived(input)
+                }
             } catch (e: Exception) {
                 // Ignore silent drops for high-speed UDP
             }
@@ -46,8 +57,8 @@ class UdpServer(
         val target = clientAddress ?: return@withContext
         val socket = serverSocket ?: return@withContext
         try {
-            val jsonString = Json.encodeToString(feedback)
-            val packet = Datagram(ByteReadPacket(jsonString.toByteArray()), target)
+            val bytes = NexpadProtocol.encodeFeedback(feedback)
+            val packet = Datagram(ByteReadPacket(bytes), target)
             socket.send(packet)
         } catch (e: Exception) {
             e.printStackTrace()
