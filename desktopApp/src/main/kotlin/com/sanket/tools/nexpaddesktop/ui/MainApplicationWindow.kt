@@ -201,7 +201,7 @@ fun HomeScreen(
                 .size(150.dp, 80.dp)
                 .graphicsLayer {
                     rotationZ = -(latestInput.accelX / 9.8f) * 90f
-                    rotationX = (latestInput.accelY / 9.8f) * 90f
+                    rotationX = (latestInput.accelZ / 9.8f) * 90f
                 }
                 .background(MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center

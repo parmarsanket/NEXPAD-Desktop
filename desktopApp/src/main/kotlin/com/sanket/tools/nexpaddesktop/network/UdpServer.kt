@@ -24,6 +24,7 @@ class UdpServer(
 ) {
     private var clientAddress: SocketAddress? = null
     private var serverSocket: BoundDatagramSocket? = null
+    private var packetCount = 0
     suspend fun start() = withContext(Dispatchers.IO) {
         val selectorManager = SelectorManager(Dispatchers.IO)
         serverSocket = aSocket(selectorManager).udp().bind(InetSocketAddress("0.0.0.0", port))
@@ -36,10 +37,19 @@ class UdpServer(
                 clientAddress = datagram.address
                 val data = datagram.packet.readBytes()
                 
+                packetCount++
+                if (packetCount == 1 || packetCount % 60 == 0) {
+                    val firstByte = if (data.isNotEmpty()) data[0] else -1
+                    println("📡 [UDP DEBUG] Received packet #$packetCount. Size: ${data.size} bytes | First byte: $firstByte | From: $clientAddress")
+                }
+                
                 // Check if it's a binary packet. Fallback to JSON otherwise.
                 val input = if (data.size == NexpadProtocol.INPUT_PACKET_SIZE && data.isNotEmpty() && data[0] == NexpadProtocol.PROTOCOL_VERSION) {
                     NexpadProtocol.decodeInput(data)
                 } else {
+                    if (packetCount % 60 == 0) {
+                        println("⚠️ [UDP DEBUG] Packet size ${data.size} did not match Binary Protocol. Trying JSON...")
+                    }
                     val jsonString = String(data)
                     Json.decodeFromString<GamepadInput>(jsonString)
                 }
