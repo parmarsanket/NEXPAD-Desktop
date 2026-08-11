@@ -57,5 +57,8 @@ data class GamepadInput(
     // Accelerometer data (G-Force)
     var accelX: Float = 0f,
     var accelY: Float = 0f,
-    var accelZ: Float = 0f
+    var accelZ: Float = 0f,
+
+    // Sequence Number for network ordering
+    var sequenceNumber: Int = 0
 )

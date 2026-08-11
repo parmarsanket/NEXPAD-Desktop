@@ -15,8 +15,12 @@ import com.sanket.tools.nexpaddesktop.network.DsuServer
 import com.sanket.tools.nexpaddesktop.network.UdpServer
 import com.sanket.tools.nexpaddesktop.ui.ControllerType
 import com.sanket.tools.nexpaddesktop.ui.MainApplicationWindow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+
+import com.sun.jna.platform.win32.Kernel32
+import com.sun.jna.platform.win32.WinBase
 
 /**
  * NEXPAD Desktop — Application Entry Point
@@ -47,6 +51,18 @@ import kotlin.math.abs
  *   The DSU protocol requires raw sensor data — the emulator does its own processing.
  */
 fun main() = application {
+    // Optimize Windows Process Priority for minimal jitter
+    if (System.getProperty("os.name").lowercase().contains("win")) {
+        try {
+            val currentProcess = Kernel32.INSTANCE.GetCurrentProcess()
+            // WinBase.HIGH_PRIORITY_CLASS = 0x00000080 (128)
+            Kernel32.INSTANCE.SetPriorityClass(currentProcess, com.sun.jna.platform.win32.WinDef.DWORD(128))
+            println("⚡ [QoS] Windows Process Priority set to HIGH_PRIORITY_CLASS.")
+        } catch (e: Exception) {
+            println("⚠️ [QoS] Failed to set process priority: ${e.message}")
+        }
+    }
+
     val scope = rememberCoroutineScope()
     var server by remember { mutableStateOf<UdpServer?>(null) }
     
@@ -57,6 +73,7 @@ fun main() = application {
 
     // DSU (CemuHook) motion server — always active for emulator compatibility
     val dsuServer = remember { DsuServer() }
+    val discoveryServer = remember { com.sanket.tools.nexpaddesktop.network.DiscoveryServer() }
     var latestInput by remember { mutableStateOf(GamepadInput()) }
 
     // ── Xbox Stick Sensitivity (multipliers applied to physical + gyro stick values) ──
@@ -72,6 +89,9 @@ fun main() = application {
     var processedPitch by remember { mutableStateOf(0f) }
 
     var appError by remember { mutableStateOf("") }
+    
+    // ── Driver Connection State ──
+    var isDriverConnected by remember { mutableStateOf(false) }
     
     // ══════════════════════════════════════════════════════════
     //  DRIVER LIFECYCLE — Re-create driver when controller type changes
@@ -94,11 +114,26 @@ fun main() = application {
         }
         newDriver.connect()
         activeDriver = newDriver
+        isDriverConnected = newDriver.isDriverConnected()
+
+        // If the driver isn't installed yet, launch a coroutine to keep trying in the background
+        val connectionJob = scope.launch(Dispatchers.IO) {
+            while (!newDriver.isDriverConnected()) {
+                kotlinx.coroutines.delay(2000) // check every 2 seconds
+                try {
+                    newDriver.connect()
+                } catch (e: Exception) {
+                    // Ignore errors during polling
+                }
+                isDriverConnected = newDriver.isDriverConnected()
+            }
+        }
 
         // Reset gyro processor smoothing state when switching controllers
         gyroProcessor.reset()
         
         onDispose {
+            connectionJob.cancel()
             newDriver.disconnect()
         }
     }
@@ -106,6 +141,7 @@ fun main() = application {
     // ══════════════════════════════════════════════════════════
     //  UDP SERVER + DSU SERVER — Receive phone input, dispatch to drivers
     // ══════════════════════════════════════════════════════════
+    var lastUiUpdateTime = 0L
     DisposableEffect(Unit) {
         dsuServer.start()
         
@@ -145,9 +181,14 @@ fun main() = application {
                 isActivationButtonPressed = isActivationButtonPressed,
             )
 
-            // Update processed values for UI display (both controller types)
-            processedYaw = processed.yawDps
-            processedPitch = processed.pitchDps
+            val now = System.currentTimeMillis()
+            val shouldUpdateUi = (now - lastUiUpdateTime) > 33L
+            if (shouldUpdateUi) {
+                lastUiUpdateTime = now
+                // Update processed values for UI display (both controller types)
+                processedYaw = processed.yawDps
+                processedPitch = processed.pitchDps
+            }
 
             // ── Build final stick values ─────────────────
             var finalLeftX = input.leftStickX
@@ -221,7 +262,9 @@ fun main() = application {
                 rightStickX = (finalRightX * rsSensitivityX).coerceIn(-1.0f, 1.0f),
                 rightStickY = (finalRightY * rsSensitivityY).coerceIn(-1.0f, 1.0f)
             )
-            latestInput = processedInput
+            if (shouldUpdateUi) {
+                latestInput = processedInput
+            }
 
             // ══════════════════════════════════════════════
             //  DRIVER OUTPUT — Send to ViGEm virtual controller
@@ -239,7 +282,12 @@ fun main() = application {
         scope.launch {
             server?.start()
         }
+        scope.launch {
+            discoveryServer.start()
+        }
         onDispose {
+            server?.stop()
+            discoveryServer.stop()
             dsuServer.stop()
         }
     }
@@ -262,6 +310,8 @@ fun main() = application {
             onRsSensitivityXChange = { rsSensitivityX = it },
             onRsSensitivityYChange = { rsSensitivityY = it },
             
+            isDriverConnected = isDriverConnected,
+
             gyroSettings = gyroSettings,
             onGyroSettingsChange = { gyroSettings = it },
             processedYaw = processedYaw,

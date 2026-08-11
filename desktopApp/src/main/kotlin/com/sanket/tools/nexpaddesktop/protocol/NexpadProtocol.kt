@@ -32,8 +32,17 @@ import java.nio.ByteOrder
  */
 object NexpadProtocol {
     const val PROTOCOL_VERSION: Byte = 1
-    const val INPUT_PACKET_SIZE = 40
-    const val FEEDBACK_PACKET_SIZE = 6
+    
+    // Packet Types
+    const val PACKET_TYPE_INPUT: Byte = 0x01
+    const val PACKET_TYPE_DISCOVER: Byte = 0x02
+    const val PACKET_TYPE_SERVER_INFO: Byte = 0x03
+    const val PACKET_TYPE_CONNECT: Byte = 0x04
+    const val PACKET_TYPE_CONNECTED: Byte = 0x05
+    const val PACKET_TYPE_DISCONNECT: Byte = 0x06
+    
+    const val INPUT_PACKET_SIZE = 44
+    const val FEEDBACK_PACKET_SIZE = 10
 
     // Button bitmasks
     const val MASK_BTN_A = 1 shl 0
@@ -129,7 +138,9 @@ object NexpadProtocol {
         val accelZ = buffer.getFloat()
         
         // Skip reserved byte
-        // buffer.get()
+        buffer.get()
+
+        val sequenceNumber = buffer.getInt()
 
         return GamepadInput(
             btnA = (buttons and MASK_BTN_A) != 0,
@@ -166,14 +177,16 @@ object NexpadProtocol {
             gyroZ = gyroZ,
             accelX = accelX,
             accelY = accelY,
-            accelZ = accelZ
+            accelZ = accelZ,
+            sequenceNumber = sequenceNumber
         )
     }
 
     /**
-     * Encodes a GamepadFeedback object into a 6-byte array using the binary protocol.
+     * Encodes a GamepadFeedback object into a 10-byte array using the binary protocol.
+     * Echoes back the latest sequence number received for Ping/RTT calculation.
      */
-    fun encodeFeedback(feedback: GamepadFeedback): ByteArray {
+    fun encodeFeedback(feedback: GamepadFeedback, echoSequenceNumber: Int): ByteArray {
         val buffer = ByteBuffer.allocate(FEEDBACK_PACKET_SIZE).order(ByteOrder.BIG_ENDIAN)
         buffer.put(PROTOCOL_VERSION)
         buffer.put(feedback.leftMotorSpeed.coerceIn(0, 255).toByte())
@@ -182,6 +195,10 @@ object NexpadProtocol {
         buffer.put(0) // R
         buffer.put(0) // G
         buffer.put(0) // B
+        
+        // Sequence Number Echo (4 bytes)
+        buffer.putInt(echoSequenceNumber)
+        
         return buffer.array()
     }
 
