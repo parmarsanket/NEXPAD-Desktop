@@ -12,10 +12,12 @@ import kotlinx.serialization.json.Json
 
 import com.sanket.tools.nexpaddesktop.model.GamepadFeedback
 import com.sanket.tools.nexpaddesktop.protocol.NexpadProtocol
+import java.nio.ByteBuffer
 import io.ktor.network.sockets.BoundDatagramSocket
 import io.ktor.network.sockets.Datagram
 import io.ktor.network.sockets.SocketAddress
 import io.ktor.utils.io.core.ByteReadPacket
+import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 
 class UdpServer(
@@ -49,12 +51,28 @@ class UdpServer(
                 
                 packetCount++
                 if (packetCount == 1 || packetCount % 60 == 0) {
-                    val firstByte = if (data.isNotEmpty()) data[0] else -1
-                    println("📡 [UDP DEBUG] Received packet #$packetCount. Size: ${data.size} bytes | First byte: $firstByte | From: $clientAddress")
+                    val debugFirstByte = if (data.isNotEmpty()) data[0] else -1
+                    println("📡 [UDP DEBUG] Received packet #$packetCount. Size: ${data.size} bytes | First byte: $debugFirstByte | From: $clientAddress")
+                }
+                
+                val firstByte: Byte = if (data.isNotEmpty()) data[0] else (-1).toByte()
+                
+                // Formal Handshake Protocol
+                if (firstByte == NexpadProtocol.PACKET_TYPE_CONNECT) {
+                    println("🤝 [UDP DEBUG] Received CONNECT handshake from $clientAddress")
+                    val buffer = ByteBuffer.allocate(1)
+                    buffer.put(NexpadProtocol.PACKET_TYPE_CONNECTED)
+                    val responsePacket = Datagram(ByteReadPacket(buffer.array()), datagram.address)
+                    serverSocket!!.send(responsePacket)
+                    continue
+                } else if (firstByte == NexpadProtocol.PACKET_TYPE_DISCONNECT) {
+                    println("👋 [UDP DEBUG] Received DISCONNECT from $clientAddress")
+                    clientAddress = null
+                    continue
                 }
                 
                 // Check if it's a binary packet. Fallback to JSON otherwise.
-                val input = if (data.size == NexpadProtocol.INPUT_PACKET_SIZE && data.isNotEmpty() && data[0] == NexpadProtocol.PROTOCOL_VERSION) {
+                val input = if (data.size == NexpadProtocol.INPUT_PACKET_SIZE && data.isNotEmpty() && firstByte == NexpadProtocol.PACKET_TYPE_INPUT) {
                     NexpadProtocol.decodeInput(data)
                 } else {
                     if (packetCount % 60 == 0) {

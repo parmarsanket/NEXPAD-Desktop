@@ -58,6 +58,7 @@ fun main() = application {
 
     // DSU (CemuHook) motion server — always active for emulator compatibility
     val dsuServer = remember { DsuServer() }
+    val discoveryServer = remember { com.sanket.tools.nexpaddesktop.network.DiscoveryServer() }
     var latestInput by remember { mutableStateOf(GamepadInput()) }
 
     // ── Xbox Stick Sensitivity (multipliers applied to physical + gyro stick values) ──
@@ -257,6 +258,9 @@ fun main() = application {
         }
         scope.launch {
             server?.start()
+        }
+        scope.launch {
+            discoveryServer.start()
         }
         onDispose {
             dsuServer.stop()

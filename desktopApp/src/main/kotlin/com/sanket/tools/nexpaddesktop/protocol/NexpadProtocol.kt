@@ -32,6 +32,15 @@ import java.nio.ByteOrder
  */
 object NexpadProtocol {
     const val PROTOCOL_VERSION: Byte = 1
+    
+    // Packet Types
+    const val PACKET_TYPE_INPUT: Byte = 0x01
+    const val PACKET_TYPE_DISCOVER: Byte = 0x02
+    const val PACKET_TYPE_SERVER_INFO: Byte = 0x03
+    const val PACKET_TYPE_CONNECT: Byte = 0x04
+    const val PACKET_TYPE_CONNECTED: Byte = 0x05
+    const val PACKET_TYPE_DISCONNECT: Byte = 0x06
+    
     const val INPUT_PACKET_SIZE = 44
     const val FEEDBACK_PACKET_SIZE = 10
 
