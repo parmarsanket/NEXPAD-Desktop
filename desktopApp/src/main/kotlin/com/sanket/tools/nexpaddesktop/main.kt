@@ -15,6 +15,7 @@ import com.sanket.tools.nexpaddesktop.network.DsuServer
 import com.sanket.tools.nexpaddesktop.network.UdpServer
 import com.sanket.tools.nexpaddesktop.ui.ControllerType
 import com.sanket.tools.nexpaddesktop.ui.MainApplicationWindow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -73,6 +74,9 @@ fun main() = application {
 
     var appError by remember { mutableStateOf("") }
     
+    // ── Driver Connection State ──
+    var isDriverConnected by remember { mutableStateOf(false) }
+    
     // ══════════════════════════════════════════════════════════
     //  DRIVER LIFECYCLE — Re-create driver when controller type changes
     // ══════════════════════════════════════════════════════════
@@ -94,11 +98,26 @@ fun main() = application {
         }
         newDriver.connect()
         activeDriver = newDriver
+        isDriverConnected = newDriver.isDriverConnected()
+
+        // If the driver isn't installed yet, launch a coroutine to keep trying in the background
+        val connectionJob = scope.launch(Dispatchers.IO) {
+            while (!newDriver.isDriverConnected()) {
+                kotlinx.coroutines.delay(2000) // check every 2 seconds
+                try {
+                    newDriver.connect()
+                } catch (e: Exception) {
+                    // Ignore errors during polling
+                }
+                isDriverConnected = newDriver.isDriverConnected()
+            }
+        }
 
         // Reset gyro processor smoothing state when switching controllers
         gyroProcessor.reset()
         
         onDispose {
+            connectionJob.cancel()
             newDriver.disconnect()
         }
     }
@@ -262,6 +281,8 @@ fun main() = application {
             onRsSensitivityXChange = { rsSensitivityX = it },
             onRsSensitivityYChange = { rsSensitivityY = it },
             
+            isDriverConnected = isDriverConnected,
+
             gyroSettings = gyroSettings,
             onGyroSettingsChange = { gyroSettings = it },
             processedYaw = processedYaw,

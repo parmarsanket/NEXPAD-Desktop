@@ -33,6 +33,9 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
     private var notificationCallback: ViGEmClientLibrary.PVIGEM_X360_NOTIFICATION? = null
 
     override fun connect() {
+        // Prevent memory leaks during retry loops: completely clear old state before attempting
+        disconnect()
+
         try {
             val lib = ViGEmClientLibrary.INSTANCE
             
@@ -97,9 +100,11 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
                 lib.vigem_target_remove(client, target)
                 
                 // Free Native Memory Pointers
-                lib.vigem_target_free(target)
-                lib.vigem_disconnect(client)
-                lib.vigem_free(client)
+                if (target != null) lib.vigem_target_free(target)
+                if (client != null) {
+                    lib.vigem_disconnect(client)
+                    lib.vigem_free(client)
+                }
             } catch (e: Exception) { 
                 System.err.println("⚠️ Xbox disconnect error: ${e.message}") 
             }

@@ -37,6 +37,9 @@ class VirtualDualShock4Driver(
     }
 
     override fun connect() {
+        // Prevent memory leaks during retry loops
+        disconnect()
+
         try {
             val lib = ViGEmClientLibrary.INSTANCE
 
@@ -99,11 +102,14 @@ class VirtualDualShock4Driver(
             if (target != null) lib.vigem_target_ds4_unregister_notification(target)
             if (client != null && target != null) {
                 lib.vigem_target_remove(client, target)
-                lib.vigem_target_free(target)
+            }
+            // Free Native Memory Pointers
+            if (target != null) lib.vigem_target_free(target)
+            if (client != null) {
                 lib.vigem_disconnect(client)
                 lib.vigem_free(client)
             }
-        } catch (_: Exception) { }
+        } catch (e: Exception) { }
 
         isConnected = false
         client = null
