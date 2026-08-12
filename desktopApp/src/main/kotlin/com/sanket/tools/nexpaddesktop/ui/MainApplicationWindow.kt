@@ -43,6 +43,8 @@ fun MainApplicationWindow(
     onRsSensitivityXChange: (Float) -> Unit,
     onRsSensitivityYChange: (Float) -> Unit,
     
+    isDriverConnected: Boolean,
+    
     gyroSettings: GyroSettings,
     onGyroSettingsChange: (GyroSettings) -> Unit,
     processedYaw: Float,
@@ -59,6 +61,7 @@ fun MainApplicationWindow(
             latestInput = latestInput,
             dsuClientCount = dsuClientCount,
             activeController = activeController,
+            isDriverConnected = isDriverConnected,
             onNavigate = { currentScreen = it }
         )
         Screen.CONTROLLER_SETTINGS -> ControllerSettingsScreen(
@@ -99,6 +102,7 @@ fun HomeScreen(
     latestInput: GamepadInput,
     dsuClientCount: Int,
     activeController: ControllerType,
+    isDriverConnected: Boolean,
     onNavigate: (Screen) -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -119,7 +123,7 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (!driver.isDriverConnected()) {
+        if (!isDriverConnected) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -201,7 +205,7 @@ fun HomeScreen(
                 .size(150.dp, 80.dp)
                 .graphicsLayer {
                     rotationZ = -(latestInput.accelX / 9.8f) * 90f
-                    rotationX = (latestInput.accelY / 9.8f) * 90f
+                    rotationX = (latestInput.accelZ / 9.8f) * 90f
                 }
                 .background(MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center
