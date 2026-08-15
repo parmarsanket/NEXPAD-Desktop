@@ -1,23 +1,41 @@
-*.iml
-.kotlin
-.gradle
+# Gradle
+.gradle/
+build/
+*/build/
 **/build/
-xcuserdata
 !src/**/build/
+
+# Kotlin
+.kotlin/
+
+# IDEs
+*.iml
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/dictionaries
+.idea/libraries/
+.idea/caches/
+.idea/modules.xml
+
+# Local configuration
 local.properties
-.idea
+
+# OS specific
 .DS_Store
-captures
-.externalNativeBuild
-.cxx
-*.xcodeproj/*
-!*.xcodeproj/project.pbxproj
-!*.xcodeproj/xcshareddata/
-!*.xcodeproj/project.xcworkspace/
-!*.xcworkspace/contents.xcworkspacedata
-**/xcshareddata/WorkspaceSettings.xcsettings
+Thumbs.db
+
+# Native builds
+.externalNativeBuild/
+.cxx/
+captures/
+
+# JS/Node (if used in Desktop)
 node_modules/
 
+# Executables and installers
+*.exe
 installer_build/
 redist/ViGEmBusSetup.exe
-*.exe
+*.msi
+*.appimage
