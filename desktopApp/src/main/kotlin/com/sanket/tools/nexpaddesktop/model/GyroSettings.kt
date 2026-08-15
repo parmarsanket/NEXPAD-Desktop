@@ -1,4 +1,4 @@
-package com.sanket.tools.nexpaddesktop.model
+﻿package com.sanket.tools.nexpaddesktop.model
 
 /**
  * Complete configuration for NEXPAD's motion control system.

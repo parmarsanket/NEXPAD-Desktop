@@ -1,4 +1,4 @@
-package com.sanket.tools.nexpaddesktop
+﻿package com.sanket.tools.nexpaddesktop
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.window.Window
@@ -7,7 +7,7 @@ import com.sanket.tools.nexpaddesktop.driver.GyroProcessor
 import com.sanket.tools.nexpaddesktop.driver.VirtualDualShock4Driver
 import com.sanket.tools.nexpaddesktop.driver.VirtualGamepadDriver
 import com.sanket.tools.nexpaddesktop.driver.IGamepadDriver
-import com.sanket.tools.nexpaddesktop.model.GamepadInput
+import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpaddesktop.model.GyroSettings
 import com.sanket.tools.nexpaddesktop.model.XboxTargetStick
 import com.sanket.tools.nexpaddesktop.model.XboxBlendMode
@@ -15,6 +15,7 @@ import com.sanket.tools.nexpaddesktop.network.DsuServer
 import com.sanket.tools.nexpaddesktop.network.UdpServer
 import com.sanket.tools.nexpaddesktop.ui.ControllerType
 import com.sanket.tools.nexpaddesktop.ui.MainApplicationWindow
+import com.sanket.tools.nexpaddesktop.ui.theme.NexpadDesktopTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -93,6 +94,10 @@ fun main() = application {
     // ── Driver Connection State ──
     var isDriverConnected by remember { mutableStateOf(false) }
     
+    // ── Network Client State ──
+    var connectedDeviceName by remember { mutableStateOf<String?>(null) }
+    var connectionType by remember { mutableStateOf<Int?>(null) }
+    
     // ══════════════════════════════════════════════════════════
     //  DRIVER LIFECYCLE — Re-create driver when controller type changes
     // ══════════════════════════════════════════════════════════
@@ -145,7 +150,17 @@ fun main() = application {
     DisposableEffect(Unit) {
         dsuServer.start()
         
-        server = UdpServer(9999) { input ->
+        server = UdpServer(
+            port = 9999,
+            onClientConnected = { name, type ->
+                connectedDeviceName = name
+                connectionType = type
+            },
+            onClientDisconnected = {
+                connectedDeviceName = null
+                connectionType = null
+            },
+            onInputReceived = { input ->
 
             // ── Check gyro activation buttons (Xbox only — PS4 games handle this) ──
             val isActivationButtonPressed = if (gyroSettings.activationButtons.isEmpty()) {
@@ -278,7 +293,7 @@ fun main() = application {
             // (Cemu, Yuzu, Ryujinx) perform their own gyro processing.
             // We intentionally send `input` (not `processedInput`) here.
             dsuServer.updateInput(input)
-        }
+        })
         scope.launch {
             server?.start()
         }
@@ -294,36 +309,40 @@ fun main() = application {
 
     Window(
         onCloseRequest = ::exitApplication,
-        title = "NEXPAD PC Companion",
+        title = "NEXPAD Desktop Server"
     ) {
-        MainApplicationWindow(
-            driver = activeDriver ?: VirtualGamepadDriver(),
-            latestInput = latestInput, 
-            dsuClientCount = dsuServer.getClientCount(),
-            activeController = activeController,
-            lsSensitivityX = lsSensitivityX,
-            lsSensitivityY = lsSensitivityY,
-            rsSensitivityX = rsSensitivityX,
-            rsSensitivityY = rsSensitivityY,
-            onLsSensitivityXChange = { lsSensitivityX = it },
-            onLsSensitivityYChange = { lsSensitivityY = it },
-            onRsSensitivityXChange = { rsSensitivityX = it },
-            onRsSensitivityYChange = { rsSensitivityY = it },
-            
-            isDriverConnected = isDriverConnected,
+        NexpadDesktopTheme {
+            MainApplicationWindow(
+                driver = activeDriver ?: VirtualGamepadDriver(),
+                latestInput = latestInput, 
+                dsuClientCount = dsuServer.getClientCount(),
+                activeController = activeController,
+                lsSensitivityX = lsSensitivityX,
+                lsSensitivityY = lsSensitivityY,
+                rsSensitivityX = rsSensitivityX,
+                rsSensitivityY = rsSensitivityY,
+                onLsSensitivityXChange = { lsSensitivityX = it },
+                onLsSensitivityYChange = { lsSensitivityY = it },
+                onRsSensitivityXChange = { rsSensitivityX = it },
+                onRsSensitivityYChange = { rsSensitivityY = it },
+                
+                isDriverConnected = isDriverConnected,
+                connectedDeviceName = connectedDeviceName,
+                connectionType = connectionType,
 
-            gyroSettings = gyroSettings,
-            onGyroSettingsChange = { gyroSettings = it },
-            processedYaw = processedYaw,
-            processedPitch = processedPitch,
-            onRecalibrate = {
-                // Reset the DS4 driver's internal calibration
-                activeDriver?.disconnect()
-                activeDriver?.connect()
-                gyroProcessor.reset()
-            },
-            
-            onControllerChange = { activeController = it }
-        )
+                gyroSettings = gyroSettings,
+                onGyroSettingsChange = { gyroSettings = it },
+                processedYaw = processedYaw,
+                processedPitch = processedPitch,
+                onRecalibrate = {
+                    // Reset the DS4 driver's internal calibration
+                    activeDriver?.disconnect()
+                    activeDriver?.connect()
+                    gyroProcessor.reset()
+                },
+                
+                onControllerChange = { activeController = it }
+            )
+        }
     }
 }

@@ -1,6 +1,6 @@
-package com.sanket.tools.nexpaddesktop.network
+﻿package com.sanket.tools.nexpaddesktop.network
 
-import com.sanket.tools.nexpaddesktop.model.GamepadInput
+import com.sanket.tools.nexpad.model.GamepadInput
 import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.InetSocketAddress
 import io.ktor.network.sockets.aSocket
@@ -8,10 +8,8 @@ import io.ktor.utils.io.core.readBytes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
-
-import com.sanket.tools.nexpaddesktop.model.GamepadFeedback
-import com.sanket.tools.nexpaddesktop.protocol.NexpadProtocol
+import com.sanket.tools.nexpad.model.GamepadFeedback
+import com.sanket.tools.nexpad.protocol.NexpadProtocol
 import java.nio.ByteBuffer
 import io.ktor.network.sockets.BoundDatagramSocket
 import io.ktor.network.sockets.Datagram
@@ -37,6 +35,8 @@ interface WinMM : StdCallLibrary {
 
 class UdpServer(
     private val port: Int = 9999,
+    private val onClientConnected: ((deviceName: String, connectionType: Int) -> Unit)? = null,
+    private val onClientDisconnected: (() -> Unit)? = null,
     private val onInputReceived: (GamepadInput) -> Unit
 ) {
     @Volatile private var clientAddress: SocketAddress? = null
@@ -44,7 +44,9 @@ class UdpServer(
     private var lastSequenceNumber = Int.MIN_VALUE
     private var serverSocket: BoundDatagramSocket? = null
     private var packetCount = 0
-    @Volatile private var lastFeedback = GamepadFeedback(0, 0) // Cache last rumble state for Ping Echoes
+    @Volatile private var lastFeedback = GamepadFeedback(0, 0, 0) // Cache last rumble state for Ping Echoes
+    private var lostInWindow = 0
+    private var receivedInWindow = 0
 
     suspend fun start() = withContext(Dispatchers.IO) {
         // Optimize Windows Thread Priority and Timer Resolution for minimal jitter
@@ -90,6 +92,20 @@ class UdpServer(
                 // Formal Handshake Protocol
                 if (firstByte == NexpadProtocol.PACKET_TYPE_CONNECT) {
                     println("🤝 [UDP DEBUG] Received CONNECT handshake from $clientAddress")
+                    
+                    var deviceName = "Unknown Device"
+                    var connType = 1
+                    
+                    if (data.size >= 3) {
+                        connType = data[1].toInt()
+                        val nameLen = data[2].toInt() and 0xFF
+                        if (data.size >= 3 + nameLen) {
+                            deviceName = String(data, 3, nameLen, Charsets.UTF_8)
+                        }
+                    }
+                    
+                    onClientConnected?.invoke(deviceName, connType)
+
                     val buffer = ByteBuffer.allocate(1)
                     buffer.put(NexpadProtocol.PACKET_TYPE_CONNECTED)
                     val responsePacket = Datagram(ByteReadPacket(buffer.array()), datagram.address)
@@ -98,30 +114,37 @@ class UdpServer(
                 } else if (firstByte == NexpadProtocol.PACKET_TYPE_DISCONNECT) {
                     println("👋 [UDP DEBUG] Received DISCONNECT from $clientAddress")
                     clientAddress = null
+                    onClientDisconnected?.invoke()
                     continue
                 }
                 
-                // Check if it's a binary packet. Fallback to JSON otherwise.
+                // Check if it's a binary packet. No JSON fallback.
                 val input = if (data.size == NexpadProtocol.INPUT_PACKET_SIZE && data.isNotEmpty() && firstByte == NexpadProtocol.PACKET_TYPE_INPUT) {
                     NexpadProtocol.decodeInput(data)
                 } else {
-                    if (packetCount % 60 == 0) {
-                        println("⚠️ [UDP DEBUG] Packet size ${data.size} did not match Binary Protocol. Trying JSON...")
-                    }
-                    val jsonString = String(data)
-                    Json.decodeFromString<GamepadInput>(jsonString)
+                    null
                 }
                 
                 if (input != null) {
                     // Sequence Validation (Wraparound-Safe Modular Math)
                     val delta = input.sequenceNumber - lastSequenceNumber
                     if (delta > 0 || lastSequenceNumber == Int.MIN_VALUE) {
+                        
+                        if (lastSequenceNumber != Int.MIN_VALUE && delta > 1) {
+                            lostInWindow += (delta - 1).coerceAtMost(255)
+                        }
+                        receivedInWindow++
+                        
                         lastSequenceNumber = input.sequenceNumber
                         onInputReceived(input)
                         
-                        // RTT Jitter Measurement: Echo every 5th packet back to Android
+                        // RTT Jitter Measurement & Packet Loss
                         if (packetCount % 5 == 0) {
-                            sendFeedback(lastFeedback, echoSequenceNumber = input.sequenceNumber)
+                            val total = lostInWindow + receivedInWindow
+                            val lossPct = if (total > 0) (255 * lostInWindow / total).coerceIn(0, 255) else 0
+                            sendFeedback(lastFeedback, echoSequenceNumber = input.sequenceNumber, packetLossByte = lossPct.toByte())
+                            lostInWindow = 0
+                            receivedInWindow = 0
                         }
                     } else {
                         if (packetCount % 10 == 0) {
@@ -137,12 +160,12 @@ class UdpServer(
         }
     }
 
-    suspend fun sendFeedback(feedback: GamepadFeedback, echoSequenceNumber: Int = 0) = withContext(Dispatchers.IO) {
+    suspend fun sendFeedback(feedback: GamepadFeedback, echoSequenceNumber: Int = 0, packetLossByte: Byte = 0) = withContext(Dispatchers.IO) {
         val target = clientAddress ?: return@withContext
         val socket = serverSocket ?: return@withContext
         lastFeedback = feedback
         try {
-            val bytes = NexpadProtocol.encodeFeedback(feedback, echoSequenceNumber)
+            val bytes = NexpadProtocol.encodeFeedback(feedback, echoSequenceNumber, packetLossByte)
             val packet = Datagram(ByteReadPacket(bytes), target)
             socket.send(packet)
         } catch (e: Exception) {

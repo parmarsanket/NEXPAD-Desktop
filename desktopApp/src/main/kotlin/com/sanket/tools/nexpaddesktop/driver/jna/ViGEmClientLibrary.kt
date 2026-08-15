@@ -1,4 +1,4 @@
-package com.sanket.tools.nexpaddesktop.driver.jna
+﻿package com.sanket.tools.nexpaddesktop.driver.jna
 
 import com.sun.jna.Callback
 import com.sun.jna.Library

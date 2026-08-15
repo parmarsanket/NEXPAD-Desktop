@@ -1,6 +1,6 @@
-package com.sanket.tools.nexpaddesktop.network
+﻿package com.sanket.tools.nexpaddesktop.network
 
-import com.sanket.tools.nexpaddesktop.model.GamepadInput
+import com.sanket.tools.nexpad.model.GamepadInput
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress

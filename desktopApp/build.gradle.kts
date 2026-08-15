@@ -14,10 +14,12 @@ dependencies {
 
     implementation(libs.compose.uiToolingPreview)
     implementation(libs.compose.material3)
+    implementation(compose.materialIconsExtended)
 
     // Networking & Serialization
     implementation(libs.ktor.network)
     implementation(libs.kotlinx.serialization.json)
+    implementation("com.sanket.tools.nexpad:protocol:1.0.0")
 
     // Driver Integration
     implementation(libs.jna)

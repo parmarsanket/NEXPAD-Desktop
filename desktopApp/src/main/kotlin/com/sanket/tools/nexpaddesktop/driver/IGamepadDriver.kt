@@ -1,6 +1,6 @@
-package com.sanket.tools.nexpaddesktop.driver
+﻿package com.sanket.tools.nexpaddesktop.driver
 
-import com.sanket.tools.nexpaddesktop.model.GamepadInput
+import com.sanket.tools.nexpad.model.GamepadInput
 
 /**
  * Scalable contract interface for virtual gamepad drivers.
