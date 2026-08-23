@@ -44,7 +44,8 @@ class UdpServer(
     private var lastSequenceNumber = Int.MIN_VALUE
     private var serverSocket: BoundDatagramSocket? = null
     private var packetCount = 0
-    @Volatile private var lastFeedback = GamepadFeedback(0, 0, 0) // Cache last rumble state for Ping Echoes
+    @Volatile private var lastFeedback = GamepadFeedback(0, 0)
+    @Volatile private var cachedLossPctByte: Byte = 0 // Cache last rumble state for Ping Echoes
     private var lostInWindow = 0
     private var receivedInWindow = 0
 
@@ -141,13 +142,18 @@ class UdpServer(
                         lastSequenceNumber = input.sequenceNumber
                         onInputReceived(input)
                         
-                        // RTT Jitter Measurement & Packet Loss
-                        if (packetCount % 2 == 0) {
+                        // Calculate packet loss over a 1-second window (approx 60 packets)
+                        if (packetCount % 60 == 0) {
                             val total = lostInWindow + receivedInWindow
-                            val lossPct = if (total > 0) (255 * lostInWindow / total).coerceIn(0, 255) else 0
-                            sendFeedback(lastFeedback, echoSequenceNumber = input.sequenceNumber, packetLossByte = lossPct.toByte())
+                            val currentLossPct = if (total > 0) (255 * lostInWindow / total).coerceIn(0, 255) else 0
+                            cachedLossPctByte = currentLossPct.toByte()
                             lostInWindow = 0
                             receivedInWindow = 0
+                        }
+                        
+                        // RTT Jitter Measurement & Feedback Heartbeat (Every 2 packets / 33ms)
+                        if (packetCount % 2 == 0) {
+                            sendFeedback(lastFeedback, echoSequenceNumber = input.sequenceNumber, packetLossByte = cachedLossPctByte)
                         }
                     } else {
                         if (packetCount % 10 == 0) {
