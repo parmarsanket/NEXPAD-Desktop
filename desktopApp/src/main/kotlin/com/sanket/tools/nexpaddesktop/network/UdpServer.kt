@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.network
+package com.sanket.tools.nexpaddesktop.network
 
 import com.sanket.tools.nexpad.model.GamepadInput
 import io.ktor.network.selector.SelectorManager
@@ -48,7 +48,10 @@ class UdpServer(
     private var lostInWindow = 0
     private var receivedInWindow = 0
 
-    suspend fun start() = withContext(Dispatchers.IO) {
+    @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private val dedicatedDispatcher = kotlinx.coroutines.newSingleThreadContext("UdpServerThread")
+
+    suspend fun start() = kotlinx.coroutines.withContext(dedicatedDispatcher) {
         // Optimize Windows Thread Priority and Timer Resolution for minimal jitter
         if (System.getProperty("os.name").lowercase().contains("win")) {
             try {
@@ -139,7 +142,7 @@ class UdpServer(
                         onInputReceived(input)
                         
                         // RTT Jitter Measurement & Packet Loss
-                        if (packetCount % 5 == 0) {
+                        if (packetCount % 2 == 0) {
                             val total = lostInWindow + receivedInWindow
                             val lossPct = if (total > 0) (255 * lostInWindow / total).coerceIn(0, 255) else 0
                             sendFeedback(lastFeedback, echoSequenceNumber = input.sequenceNumber, packetLossByte = lossPct.toByte())
@@ -160,9 +163,9 @@ class UdpServer(
         }
     }
 
-    suspend fun sendFeedback(feedback: GamepadFeedback, echoSequenceNumber: Int = 0, packetLossByte: Byte = 0) = withContext(Dispatchers.IO) {
-        val target = clientAddress ?: return@withContext
-        val socket = serverSocket ?: return@withContext
+    suspend fun sendFeedback(feedback: GamepadFeedback, echoSequenceNumber: Int = 0, packetLossByte: Byte = 0) {
+        val target = clientAddress ?: return
+        val socket = serverSocket ?: return
         lastFeedback = feedback
         try {
             val bytes = NexpadProtocol.encodeFeedback(feedback, echoSequenceNumber, packetLossByte)
@@ -183,6 +186,7 @@ class UdpServer(
         }
         serverSocket?.close()
         selectorManager?.close()
+        dedicatedDispatcher.close()
         println("UDP Server stopped.")
     }
 }
