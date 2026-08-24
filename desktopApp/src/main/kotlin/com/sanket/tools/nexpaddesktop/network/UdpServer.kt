@@ -22,6 +22,7 @@ import com.sun.jna.Native
 import com.sun.jna.platform.win32.Kernel32
 import com.sun.jna.platform.win32.WinBase
 import com.sun.jna.win32.StdCallLibrary
+import kotlin.time.Duration.Companion.milliseconds
 
 interface WinMM : StdCallLibrary {
     fun timeBeginPeriod(uPeriod: Int): Int
@@ -78,7 +79,7 @@ class UdpServer(
                 val socket = serverSocket ?: break
                 
                 // Wait for a packet, timeout after 2 seconds to detect sudden disconnects
-                val datagram = kotlinx.coroutines.withTimeoutOrNull(2000L) {
+                val datagram = kotlinx.coroutines.withTimeoutOrNull(2000L.milliseconds) {
                     socket.receive()
                 }
 
@@ -91,14 +92,18 @@ class UdpServer(
                     continue
                 }
                 
-                // Reset sequence tracker on a new client connection (IP+Port match)
+                val data = datagram.packet.readBytes()
+                val firstByte: Byte = if (data.isNotEmpty()) data[0] else (-1).toByte()
+                
+                // Security & Robustness: Only adopt a new address if it sends a formal CONNECT handshake.
                 if (clientAddress != datagram.address) {
+                    if (firstByte != NexpadProtocol.PACKET_TYPE_CONNECT) {
+                        continue // Ignore unsolicited packets from anyone who hasn't handshaked
+                    }
                     println("📡 [UDP DEBUG] New client session detected! Resetting sequence tracker.")
                     clientAddress = datagram.address
                     lastSequenceNumber = Int.MIN_VALUE
                 }
-                
-                val data = datagram.packet.readBytes()
                 
                 totalPackets++
                 packetCount = (packetCount % 60) + 1  // Wraps 1→60, never grows unbounded
@@ -110,7 +115,6 @@ class UdpServer(
                     println("📡 [UDP DEBUG] Packets received: $totalPackets | From: $clientAddress")
                 }
                 
-                val firstByte: Byte = if (data.isNotEmpty()) data[0] else (-1).toByte()
                 
                 // Formal Handshake Protocol
                 if (firstByte == NexpadProtocol.PACKET_TYPE_CONNECT) {
@@ -183,7 +187,10 @@ class UdpServer(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e // Preserve structured concurrency
             } catch (e: Exception) {
-                // Ignore silent drops for high-speed UDP
+                if (packetCount % 10 == 0) {
+                    println("⚠️ [UDP ERROR] Exception in receive loop: ${e.message}")
+                    e.printStackTrace()
+                }
             }
         }
     }
