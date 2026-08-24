@@ -44,6 +44,8 @@ class UdpServer(
     private var lastSequenceNumber = Int.MIN_VALUE
     private var serverSocket: BoundDatagramSocket? = null
     private var packetCount = 0
+    private var hasLoggedFirstPacket = false
+    private var totalPackets = 0L
     @Volatile private var lastFeedback = GamepadFeedback(0, 0)
     @Volatile private var cachedLossPctByte: Byte = 0 // Cache last rumble state for Ping Echoes
     private var lostInWindow = 0
@@ -74,7 +76,20 @@ class UdpServer(
         while (isActive) {
             try {
                 val socket = serverSocket ?: break
-                val datagram = socket.receive()
+                
+                // Wait for a packet, timeout after 2 seconds to detect sudden disconnects
+                val datagram = kotlinx.coroutines.withTimeoutOrNull(2000L) {
+                    socket.receive()
+                }
+
+                if (datagram == null) {
+                    if (clientAddress != null) {
+                        println("⚠️ [UDP DEBUG] Connection timed out (no packets for 2 seconds). Disconnecting...")
+                        clientAddress = null
+                        onClientDisconnected?.invoke()
+                    }
+                    continue
+                }
                 
                 // Reset sequence tracker on a new client connection (IP+Port match)
                 if (clientAddress != datagram.address) {
@@ -85,10 +100,14 @@ class UdpServer(
                 
                 val data = datagram.packet.readBytes()
                 
-                packetCount++
-                if (packetCount == 1 || packetCount % 60 == 0) {
+                totalPackets++
+                packetCount = (packetCount % 60) + 1  // Wraps 1→60, never grows unbounded
+                if (!hasLoggedFirstPacket) {
+                    hasLoggedFirstPacket = true
                     val debugFirstByte = if (data.isNotEmpty()) data[0] else -1
-                    println("📡 [UDP DEBUG] Received packet #$packetCount. Size: ${data.size} bytes | First byte: $debugFirstByte | From: $clientAddress")
+                    println("📡 [UDP DEBUG] Received first packet. Size: ${data.size} bytes | First byte: $debugFirstByte | From: $clientAddress")
+                } else if (packetCount == 60) {
+                    println("📡 [UDP DEBUG] Packets received: $totalPackets | From: $clientAddress")
                 }
                 
                 val firstByte: Byte = if (data.isNotEmpty()) data[0] else (-1).toByte()
