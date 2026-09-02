@@ -22,6 +22,8 @@ import com.sun.jna.Native
 import com.sun.jna.platform.win32.Kernel32
 import com.sun.jna.platform.win32.WinBase
 import com.sun.jna.win32.StdCallLibrary
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.io.readByteArray
 import kotlin.time.Duration.Companion.milliseconds
 
 interface WinMM : StdCallLibrary {
@@ -55,6 +57,7 @@ class UdpServer(
     @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     private val dedicatedDispatcher = kotlinx.coroutines.newSingleThreadContext("UdpServerThread")
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun start() = kotlinx.coroutines.withContext(dedicatedDispatcher) {
         // Optimize Windows Thread Priority and Timer Resolution for minimal jitter
         if (System.getProperty("os.name").lowercase().contains("win")) {
@@ -92,7 +95,7 @@ class UdpServer(
                     continue
                 }
                 
-                val data = datagram.packet.readBytes()
+                val data = datagram.packet.readByteArray()
                 val firstByte: Byte = if (data.isNotEmpty()) data[0] else (-1).toByte()
                 
                 // Security & Robustness: Only adopt a new address if it sends a formal CONNECT handshake.
@@ -208,6 +211,7 @@ class UdpServer(
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     fun stop() {
         if (System.getProperty("os.name").lowercase().contains("win")) {
             try {

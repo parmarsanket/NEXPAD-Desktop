@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.ui
+package com.sanket.tools.nexpaddesktop.ui
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
@@ -245,7 +245,7 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(10.dp))
 
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                ConnectionToggle(label = "WiFi", icon = Icons.Default.Wifi, isActive = connectionType == 1 || connectionType == null)
+                ConnectionToggle(label = "WiFi", icon = Icons.Default.Wifi, isActive = connectionType == 1)
                 ConnectionToggle(label = "USB", icon = Icons.Default.Usb, isActive = connectionType == 2)
                 ConnectionToggle(label = "Bluetooth", icon = Icons.Default.Bluetooth, isActive = connectionType == 3)
             }
