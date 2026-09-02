@@ -24,6 +24,9 @@ dependencies {
     // Driver Integration
     implementation(libs.jna)
     implementation(libs.jna.platform)
+
+    // AOA Proof-of-Concept Test — libusb JVM bindings
+    implementation("org.usb4java:usb4java:1.3.0")
 }
 
 compose.desktop {
