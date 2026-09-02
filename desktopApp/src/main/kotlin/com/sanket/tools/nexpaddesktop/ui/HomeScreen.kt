@@ -56,6 +56,15 @@ fun HomeScreen(
         label = "pulse"
     )
 
+    // Poll available hardware connections (Wi-Fi, USB, Bluetooth)
+    var availableConnections by remember { mutableStateOf(listOf(1)) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            availableConnections = com.sanket.tools.nexpaddesktop.network.NetworkUtils.getAvailableConnectionTypes()
+            kotlinx.coroutines.delay(3000)
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -244,17 +253,19 @@ fun HomeScreen(
             Text("Connection", color = NeonPalette.CardIdleText, fontSize = 14.sp, fontWeight = FontWeight.Medium)
             Spacer(modifier = Modifier.height(10.dp))
 
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                ConnectionToggle(label = "WiFi", icon = Icons.Default.Wifi, isActive = connectionType == 1)
-                ConnectionToggle(label = "USB", icon = Icons.Default.Usb, isActive = connectionType == 2)
-                ConnectionToggle(label = "Bluetooth", icon = Icons.Default.Bluetooth, isActive = connectionType == 3)
+            val isDeviceConnected = connectedDeviceName != null
+
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                ConnectionToggle(label = "WiFi", icon = Icons.Default.Wifi, isAvailable = isDeviceConnected && availableConnections.contains(1), isActive = connectionType == 1)
+                ConnectionToggle(label = "USB", icon = Icons.Default.Usb, isAvailable = isDeviceConnected && availableConnections.contains(2), isActive = connectionType == 2)
+                ConnectionToggle(label = "Bluetooth", icon = Icons.Default.Bluetooth, isAvailable = isDeviceConnected && availableConnections.contains(3), isActive = connectionType == 3)
             }
         }
     }
 }
 
 @Composable
-private fun ConnectionToggle(label: String, icon: ImageVector, isActive: Boolean) {
+private fun ConnectionToggle(label: String, icon: ImageVector, isAvailable: Boolean, isActive: Boolean) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
 
@@ -266,7 +277,7 @@ private fun ConnectionToggle(label: String, icon: ImageVector, isActive: Boolean
 
     // Base box with conditional modifiers based on state (#2 & #8 consistency)
     var baseModifier = Modifier
-        .fillMaxWidth()
+        .fillMaxWidth(2/3f)
         .height(52.dp) // Fixed height for smooth transitions
         .hoverable(interactionSource)
         .clickable(interactionSource, indication = null) { /* toggle */ }
@@ -293,26 +304,33 @@ private fun ConnectionToggle(label: String, icon: ImageVector, isActive: Boolean
             )
         }
     }
-
-    Box(
-        modifier = baseModifier.padding(horizontal = 16.dp),
-        contentAlignment = Alignment.CenterStart
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ){
+        Box(
+            modifier = baseModifier.padding(horizontal = 16.dp),
+            contentAlignment = Alignment.Center
         ) {
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Icon(icon, contentDescription = null, tint = textColor, modifier = Modifier.size(20.dp))
-                Text(label, color = textColor, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(icon, contentDescription = null, tint = textColor, modifier = Modifier.size(20.dp))
+                    Text(label, color = textColor, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                }
+
             }
-            if (isActive) {
-                Icon(Icons.Default.CheckCircle, contentDescription = "Active", tint = NeonPalette.Cyan, modifier = Modifier.size(22.dp))
-            }
+        }
+        if (isAvailable) {
+            Icon(Icons.Default.CheckCircle, contentDescription = "Available", tint = NeonPalette.Cyan, modifier = Modifier.size(22.dp))
+        } else {
+            Spacer(modifier = Modifier.size(22.dp))
         }
     }
 }
