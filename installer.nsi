@@ -48,9 +48,10 @@ Section "Install"
   ; Bundle all pre-compiled files from the packageApp task
   File /r "desktopApp\build\compose\binaries\main\app\com.sanket.tools.nexpaddesktop\*"
         
-  ; Bundle the driver installer inside the installation directory so the uninstaller can use it later
-  ; NOTE: SetOutPath is already "$INSTDIR" above, so /oname just needs the filename
+  ; Bundle the driver installers and service wrapper
   File /oname=ViGEmBusSetup.exe "redist\ViGEmBusSetup.exe"
+  File /oname=nexpad-service.exe "redist\nexpad-service.exe"
+  File /oname=nexpad-service.xml "redist\nexpad-service.xml"
 
   ; Write Uninstaller
   WriteUninstaller "$INSTDIR\uninstall.exe"
@@ -83,6 +84,11 @@ Section "Install"
   ; Always run the ViGEmBus silent installer (it will safely install or repair automatically)
   DetailPrint "Ensuring ViGEmBus Driver is installed..."
   ExecWait '"$INSTDIR\ViGEmBusSetup.exe" /quiet /norestart'
+
+  ; Install and start the Background Service
+  DetailPrint "Installing NEXPAD Background Driver Service..."
+  nsExec::ExecToLog '"$INSTDIR\nexpad-service.exe" install'
+  nsExec::ExecToLog '"$INSTDIR\nexpad-service.exe" start'
 SectionEnd
 
 Section /o "un.Virtual Controller Driver (ViGEmBus)" SEC_UN_DRIVER
@@ -115,6 +121,11 @@ Section "un.NEXPAD Desktop" SEC_UN_APP
   nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="NEXPAD Desktop"'
   nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="NEXPAD Desktop EXE"'
   nsExec::ExecToLog 'powershell.exe -ExecutionPolicy Bypass -Command "Remove-NetQosPolicy -Name $\"NEXPAD_Gamepad_QoS$\" -Confirm:$$false"'
+
+  ; Stop and remove Background Service
+  DetailPrint "Stopping Background Service..."
+  nsExec::ExecToLog '"$INSTDIR\nexpad-service.exe" stop'
+  nsExec::ExecToLog '"$INSTDIR\nexpad-service.exe" uninstall'
 
   ; Recursively remove all files in installation directory (including ViGEmBusSetup.exe)
   RMDir /r "$INSTDIR"
