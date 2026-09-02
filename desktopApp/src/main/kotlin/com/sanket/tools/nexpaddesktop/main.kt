@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop
+package com.sanket.tools.nexpaddesktop
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.window.Window
@@ -18,6 +18,7 @@ import com.sanket.tools.nexpaddesktop.ui.MainApplicationWindow
 import com.sanket.tools.nexpaddesktop.ui.theme.NexpadDesktopTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 import kotlin.math.abs
 
 import com.sun.jna.platform.win32.Kernel32
@@ -76,20 +77,6 @@ fun main() = application {
     val dsuServer = remember { DsuServer() }
     val discoveryServer = remember { com.sanket.tools.nexpaddesktop.network.DiscoveryServer() }
     var latestInput by remember { mutableStateOf(GamepadInput()) }
-
-    // ── Xbox Stick Sensitivity (multipliers applied to physical + gyro stick values) ──
-    var lsSensitivityX by remember { mutableStateOf(1.0f) }
-    var lsSensitivityY by remember { mutableStateOf(1.0f) }
-    var rsSensitivityX by remember { mutableStateOf(1.0f) }
-    var rsSensitivityY by remember { mutableStateOf(1.0f) }
-
-    // ── 6-Axis Gyro Settings (shared config read by GyroProcessor) ──
-    var gyroSettings by remember { mutableStateOf(GyroSettings()) }
-    val gyroProcessor = remember { GyroProcessor() }
-    var processedYaw by remember { mutableStateOf(0f) }
-    var processedPitch by remember { mutableStateOf(0f) }
-
-    var appError by remember { mutableStateOf("") }
     
     // ── Driver Connection State ──
     var isDriverConnected by remember { mutableStateOf(false) }
@@ -97,6 +84,22 @@ fun main() = application {
     // ── Network Client State ──
     var connectedDeviceName by remember { mutableStateOf<String?>(null) }
     var connectionType by remember { mutableStateOf<Int?>(null) }
+
+    var lastUiUpdateTime = 0L
+    var processedYaw by remember { mutableStateOf(0f) }
+    var processedPitch by remember { mutableStateOf(0f) }
+    val gyroProcessor = remember { GyroProcessor() }
+    var gyroSettings by remember { mutableStateOf(GyroSettings()) }
+    var lsSensitivityX by remember { mutableStateOf(1f) }
+    var lsSensitivityY by remember { mutableStateOf(1f) }
+    var rsSensitivityX by remember { mutableStateOf(1f) }
+    var rsSensitivityY by remember { mutableStateOf(1f) }
+    
+    var appError by remember { mutableStateOf("") }
+    
+    // AOA Elevation State
+    var aoaRequiresElevation by remember { mutableStateOf(false) }
+    var onRequestAoaElevation: (() -> Unit)? = null
     
     // ══════════════════════════════════════════════════════════
     //  DRIVER LIFECYCLE — Re-create driver when controller type changes
@@ -143,25 +146,11 @@ fun main() = application {
         }
     }
 
-    // ══════════════════════════════════════════════════════════
-    //  UDP SERVER + DSU SERVER — Receive phone input, dispatch to drivers
-    // ══════════════════════════════════════════════════════════
-    var lastUiUpdateTime = 0L
     DisposableEffect(Unit) {
+
         dsuServer.start()
         
-        server = UdpServer(
-            port = 9999,
-            onClientConnected = { name, type ->
-                connectedDeviceName = name
-                connectionType = type
-            },
-            onClientDisconnected = {
-                connectedDeviceName = null
-                connectionType = null
-            },
-            onInputReceived = { input ->
-
+        val inputHandler: (GamepadInput) -> Unit = { input ->
             // ── Check gyro activation buttons (Xbox only — PS4 games handle this) ──
             val isActivationButtonPressed = if (gyroSettings.activationButtons.isEmpty()) {
                 true
@@ -182,9 +171,6 @@ fun main() = application {
             }
 
             // ── Run gyro through the processing pipeline ──
-            // This runs for BOTH controller types:
-            //   - Xbox: output is mapped to stick values below
-            //   - PS4:  output is only used for the UI dashboard visualizer
             val processed = gyroProcessor.process(
                 rawGyroX = input.gyroX,
                 rawGyroY = input.gyroY,
@@ -200,7 +186,6 @@ fun main() = application {
             val shouldUpdateUi = (now - lastUiUpdateTime) > 33L
             if (shouldUpdateUi) {
                 lastUiUpdateTime = now
-                // Update processed values for UI display (both controller types)
                 processedYaw = processed.yawDps
                 processedPitch = processed.pitchDps
             }
@@ -211,66 +196,34 @@ fun main() = application {
             var finalRightX = input.rightStickX
             var finalRightY = input.rightStickY
 
-            // ══════════════════════════════════════════════
-            //  XBOX PATH — Map processed gyro → analog stick
-            // ══════════════════════════════════════════════
             if (activeController == ControllerType.XBOX_360 && gyroSettings.enabled) {
-                // Convert °/s to stick range (-1..1).
-                // The GyroProcessor outputs values in a normalized range where
-                // ±200 °/s equals full stick deflection. This constant must match
-                // the maxDps normalization in GyroProcessor step 8.
                 val gyroToStickScale = 1.0f / 200.0f
                 val gyroStickX = (processed.yawDps * gyroToStickScale).coerceIn(-1f, 1f)
                 val gyroStickY = (processed.pitchDps * gyroToStickScale).coerceIn(-1f, 1f)
-
-                // Small threshold to determine if motion is "active" (not just noise)
                 val threshold = 0.02f
                 val isMotionActive = abs(gyroStickX) > threshold || abs(gyroStickY) > threshold
 
                 if (gyroSettings.xboxTargetStick == XboxTargetStick.LEFT_STICK) {
                     when (gyroSettings.xboxBlendMode) {
-                        XboxBlendMode.OVERRIDE -> if (isMotionActive) {
-                            finalLeftX = gyroStickX
-                            finalLeftY = gyroStickY
-                        }
-                        XboxBlendMode.ADDITIVE -> {
-                            finalLeftX += gyroStickX
-                            finalLeftY += gyroStickY
-                        }
+                        XboxBlendMode.OVERRIDE -> if (isMotionActive) { finalLeftX = gyroStickX; finalLeftY = gyroStickY }
+                        XboxBlendMode.ADDITIVE -> { finalLeftX += gyroStickX; finalLeftY += gyroStickY }
                         XboxBlendMode.MUTE_ON_STICK -> {
-                            if (abs(input.leftStickX) > 0.05f || abs(input.leftStickY) > 0.05f) {
-                                finalLeftX = input.leftStickX
-                                finalLeftY = input.leftStickY
-                            } else {
-                                finalLeftX = gyroStickX
-                                finalLeftY = gyroStickY
-                            }
+                            if (abs(input.leftStickX) > 0.05f || abs(input.leftStickY) > 0.05f) { finalLeftX = input.leftStickX; finalLeftY = input.leftStickY }
+                            else { finalLeftX = gyroStickX; finalLeftY = gyroStickY }
                         }
                     }
-                } else { // RIGHT_STICK
+                } else {
                     when (gyroSettings.xboxBlendMode) {
-                        XboxBlendMode.OVERRIDE -> if (isMotionActive) {
-                            finalRightX = gyroStickX
-                            finalRightY = gyroStickY
-                        }
-                        XboxBlendMode.ADDITIVE -> {
-                            finalRightX += gyroStickX
-                            finalRightY += gyroStickY
-                        }
+                        XboxBlendMode.OVERRIDE -> if (isMotionActive) { finalRightX = gyroStickX; finalRightY = gyroStickY }
+                        XboxBlendMode.ADDITIVE -> { finalRightX += gyroStickX; finalRightY += gyroStickY }
                         XboxBlendMode.MUTE_ON_STICK -> {
-                            if (abs(input.rightStickX) > 0.05f || abs(input.rightStickY) > 0.05f) {
-                                finalRightX = input.rightStickX
-                                finalRightY = input.rightStickY
-                            } else {
-                                finalRightX = gyroStickX
-                                finalRightY = gyroStickY
-                            }
+                            if (abs(input.rightStickX) > 0.05f || abs(input.rightStickY) > 0.05f) { finalRightX = input.rightStickX; finalRightY = input.rightStickY }
+                            else { finalRightX = gyroStickX; finalRightY = gyroStickY }
                         }
                     }
                 }
             }
             
-            // Apply stick sensitivity multipliers and clamp to valid range
             val processedInput = input.copy(
                 leftStickX = (finalLeftX * lsSensitivityX).coerceIn(-1.0f, 1.0f),
                 leftStickY = (finalLeftY * lsSensitivityY).coerceIn(-1.0f, 1.0f),
@@ -281,25 +234,20 @@ fun main() = application {
                 latestInput = processedInput
             }
 
-            // ══════════════════════════════════════════════
-            //  DRIVER OUTPUT — Send to ViGEm virtual controller
-            // ══════════════════════════════════════════════
             activeDriver?.updateInput(processedInput)
-
-            // ══════════════════════════════════════════════
-            //  DSU PATH — Send RAW unaltered input to DSU server
-            // ══════════════════════════════════════════════
-            // The CemuHook/DSU protocol requires raw sensor data. Emulators
-            // (Cemu, Yuzu, Ryujinx) perform their own gyro processing.
-            // We intentionally send `input` (not `processedInput`) here.
             dsuServer.updateInput(input)
-        })
-        scope.launch {
-            server?.start()
         }
-        scope.launch {
-            discoveryServer.start()
-        }
+
+        server = UdpServer(
+            port = 9999,
+            onClientConnected = { name, type -> connectedDeviceName = name; connectionType = type },
+            onClientDisconnected = { connectedDeviceName = null; connectionType = null },
+            onInputReceived = inputHandler
+        )
+
+        scope.launch { server?.start() }
+        
+        scope.launch { discoveryServer.start() }
         onDispose {
             server?.stop()
             discoveryServer.stop()
@@ -329,6 +277,9 @@ fun main() = application {
                 isDriverConnected = isDriverConnected,
                 connectedDeviceName = connectedDeviceName,
                 connectionType = connectionType,
+                
+                aoaRequiresElevation = aoaRequiresElevation,
+                onRequestAoaElevation = onRequestAoaElevation ?: {},
 
                 gyroSettings = gyroSettings,
                 onGyroSettingsChange = { gyroSettings = it },

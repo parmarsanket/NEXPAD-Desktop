@@ -45,7 +45,9 @@ import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 fun HomeScreen(
     isDriverConnected: Boolean,
     connectedDeviceName: String? = null,
-    connectionType: Int? = null
+    connectionType: Int? = null,
+    aoaRequiresElevation: Boolean = false,
+    onRequestAoaElevation: () -> Unit = {}
 ) {
     // Server pulse
     val infinite = rememberInfiniteTransition(label = "pulse")
@@ -265,7 +267,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun ConnectionToggle(label: String, icon: ImageVector, isAvailable: Boolean, isActive: Boolean) {
+private fun ConnectionToggle(label: String, icon: ImageVector, isAvailable: Boolean, isActive: Boolean, extraContent: @Composable () -> Unit = {}) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
 
@@ -307,9 +309,9 @@ private fun ConnectionToggle(label: String, icon: ImageVector, isAvailable: Bool
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ){
+    ) {
         Box(
-            modifier = baseModifier.padding(horizontal = 16.dp),
+            modifier = baseModifier,
             contentAlignment = Alignment.Center
         ) {
             Row(
@@ -317,20 +319,41 @@ private fun ConnectionToggle(label: String, icon: ImageVector, isAvailable: Bool
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                // ── Main Content ──
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.padding(start = 18.dp)
                 ) {
-                    Icon(icon, contentDescription = null, tint = textColor, modifier = Modifier.size(20.dp))
-                    Text(label, color = textColor, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                    // Circular icon holder
+                    val iconBg = if (isActive || isHovered) Color.White.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f)
+                    Box(
+                        modifier = Modifier.size(34.dp).clip(CircleShape).background(iconBg),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(icon, contentDescription = null, tint = textColor, modifier = Modifier.size(16.dp))
+                    }
+    
+                    Text(label, color = textColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 }
-
+                
+                // ── Extra Content / Status ──
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(end = 18.dp)
+                ) {
+                    extraContent()
+                    
+                    // Spacer between extra content and status dot
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    if (isAvailable && !isActive) {
+                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(NeonPalette.Green))
+                    } else if (isActive) {
+                        Text("Active", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
             }
-        }
-        if (isAvailable) {
-            Icon(Icons.Default.CheckCircle, contentDescription = "Available", tint = NeonPalette.Cyan, modifier = Modifier.size(22.dp))
-        } else {
-            Spacer(modifier = Modifier.size(22.dp))
         }
     }
 }

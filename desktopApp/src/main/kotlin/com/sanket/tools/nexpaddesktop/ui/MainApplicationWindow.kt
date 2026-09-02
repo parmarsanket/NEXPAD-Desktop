@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.ui
+package com.sanket.tools.nexpaddesktop.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -38,6 +38,8 @@ fun MainApplicationWindow(
     isDriverConnected: Boolean,
     connectedDeviceName: String?,
     connectionType: Int?,
+    aoaRequiresElevation: Boolean = false,
+    onRequestAoaElevation: () -> Unit = {},
     gyroSettings: GyroSettings,
     onGyroSettingsChange: (GyroSettings) -> Unit,
     processedYaw: Float,
@@ -68,7 +70,9 @@ fun MainApplicationWindow(
                 Screen.HOME -> HomeScreen(
                     isDriverConnected = isDriverConnected,
                     connectedDeviceName = connectedDeviceName,
-                    connectionType = connectionType
+                    connectionType = connectionType,
+                    aoaRequiresElevation = aoaRequiresElevation,
+                    onRequestAoaElevation = onRequestAoaElevation
                 )
                 Screen.CONTROLLER -> ControllerScreen(
                     latestInput = latestInput,
