@@ -1,9 +1,11 @@
 package com.sanket.tools.nexpaddesktop.ui
 
+import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -39,7 +41,6 @@ import com.sanket.tools.nexpaddesktop.ui.components.drawCyberGrid
 import com.sanket.tools.nexpaddesktop.ui.components.glassCard
 import com.sanket.tools.nexpaddesktop.ui.components.selectedGlow
 import com.sanket.tools.nexpaddesktop.ui.components.statusPillGlow
-import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 
 @Composable
 fun HomeScreen(
@@ -71,6 +72,10 @@ fun HomeScreen(
         modifier = Modifier
             .fillMaxSize()
     ) {
+        if (aoaRequiresElevation) {
+            AoaElevationDialog(onRequestAoaElevation)
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -432,3 +437,29 @@ private fun RadarAnimation() {
         )
     }
 }
+
+@Composable
+fun AoaElevationDialog(onConfirm: () -> Unit) {
+    androidx.compose.ui.window.Dialog(onCloseRequest = {}) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(NeonPalette.CardIdleBg)
+                .border(1.dp, NeonPalette.Purple, RoundedCornerShape(12.dp))
+                .padding(24.dp)
+        ) {
+            Column {
+                Text("USB Driver Swap Required", color = NeonPalette.Cyan, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("NEXPAD needs to swap your phone's USB driver to WinUSB to enable low-latency direct connection. This requires Administrator permissions.", color = Color.White)
+                Spacer(modifier = Modifier.height(24.dp))
+                androidx.compose.material3.Button(onClick = onConfirm, modifier = Modifier.fillMaxWidth(), colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = NeonPalette.Purple)) {
+                    Text("Grant Permission", color = Color.White)
+                }
+            }
+        }
+    }
+}
+
+

@@ -50,8 +50,6 @@ Section "Install"
         
   ; Bundle the driver installers, service wrapper, and libwdi library
   File /oname=ViGEmBusSetup.exe "redist\ViGEmBusSetup.exe"
-  File /oname=nexpad-service.exe "redist\nexpad-service.exe"
-  File /oname=nexpad-service.xml "redist\nexpad-service.xml"
   File /oname=libwdi.dll "redist\libwdi.dll"
 
   ; Write Uninstaller
@@ -86,10 +84,11 @@ Section "Install"
   DetailPrint "Ensuring ViGEmBus Driver is installed..."
   ExecWait '"$INSTDIR\ViGEmBusSetup.exe" /quiet /norestart'
 
-  ; Install and start the Background Service
-  DetailPrint "Installing NEXPAD Background Driver Service..."
-  nsExec::ExecToLog '"$INSTDIR\nexpad-service.exe" install'
-  nsExec::ExecToLog '"$INSTDIR\nexpad-service.exe" start'
+  ; Stop and delete the old Background Service if the user is upgrading from the buggy version
+  DetailPrint "Cleaning up legacy background service..."
+  nsExec::ExecToLog 'cmd.exe /c "net stop nexpad-service & sc delete nexpad-service"'
+  Delete "$INSTDIR\nexpad-service.exe"
+  Delete "$INSTDIR\nexpad-service.xml"
 SectionEnd
 
 Section /o "un.Virtual Controller Driver (ViGEmBus)" SEC_UN_DRIVER
@@ -123,10 +122,6 @@ Section "un.NEXPAD Desktop" SEC_UN_APP
   nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="NEXPAD Desktop EXE"'
   nsExec::ExecToLog 'powershell.exe -ExecutionPolicy Bypass -Command "Remove-NetQosPolicy -Name $\"NEXPAD_Gamepad_QoS$\" -Confirm:$$false"'
 
-  ; Stop and remove Background Service
-  DetailPrint "Stopping Background Service..."
-  nsExec::ExecToLog '"$INSTDIR\nexpad-service.exe" stop'
-  nsExec::ExecToLog '"$INSTDIR\nexpad-service.exe" uninstall'
 
   ; Recursively remove all files in installation directory (including ViGEmBusSetup.exe)
   RMDir /r "$INSTDIR"

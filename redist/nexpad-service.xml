@@ -1,19 +1,15 @@
 <service>
   <id>NexpadDriverBroker</id>
   <name>NEXPAD Driver Service</name>
-  <description>Manages high-speed USB driver switching for NEXPAD AOA (Android Open Accessory) connections silently in the background.</description>
+  <description>Manages USB driver switching for NEXPAD AOA connections silently in the background.</description>
   
-  <!-- The Java runtime bundled with the Compose Desktop app -->
-  <executable>%BASE%\runtime\bin\java.exe</executable>
-  
-  <!-- Run the specific Service Main class using the app's bundled libraries -->
-  <arguments>-cp "%BASE%\app\*" com.sanket.tools.nexpaddesktop.service.DriverBrokerServiceKt</arguments>
+  <executable>%BASE%\com.sanket.tools.nexpaddesktop.exe</executable>
+  <arguments>--service</arguments>
   
   <log mode="roll-by-size">
     <sizeThreshold>10240</sizeThreshold>
     <keepFiles>3</keepFiles>
   </log>
   
-  <!-- Automatically restart if it crashes -->
   <onfailure action="restart" delay="5 sec"/>
 </service>

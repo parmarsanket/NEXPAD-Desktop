@@ -52,9 +52,22 @@ import com.sun.jna.platform.win32.WinBase
  *   to any connected CemuHook-compatible emulator (Cemu, Yuzu, Ryujinx, etc.).
  *   The DSU protocol requires raw sensor data — the emulator does its own processing.
  */
-fun main() = application {
-    // Optimize Windows Process Priority for minimal jitter
-    if (System.getProperty("os.name").lowercase().contains("win")) {
+fun main(args: Array<String>) {
+    val installDriverIndex = args.indexOf("--install-driver")
+    if (installDriverIndex != -1) {
+        val vidHex = if (installDriverIndex + 1 < args.size) args[installDriverIndex + 1] else "22B8"
+        val pidHex = if (installDriverIndex + 2 < args.size) args[installDriverIndex + 2] else "2E82"
+        com.sanket.tools.nexpaddesktop.network.DriverInstaller.installWinUsb(vidHex, pidHex)
+        return
+    }
+    if (args.contains("--restore-driver")) {
+        com.sanket.tools.nexpaddesktop.network.DriverInstaller.restoreMtp()
+        return
+    }
+
+    application {
+        // Optimize Windows Process Priority for minimal jitter
+        if (System.getProperty("os.name").lowercase().contains("win")) {
         try {
             val currentProcess = Kernel32.INSTANCE.GetCurrentProcess()
             // WinBase.HIGH_PRIORITY_CLASS = 0x00000080 (128)
@@ -246,9 +259,44 @@ fun main() = application {
         )
 
         val aoaManager = com.sanket.tools.nexpaddesktop.network.AoaManager()
-        aoaManager.onAoaConnected = { name -> connectedDeviceName = name; connectionType = 1 } // 1 is USB in this app
+        aoaManager.onAoaConnected = { name -> connectedDeviceName = name; connectionType = 1; aoaRequiresElevation = false } // 1 is USB in this app
         aoaManager.onAoaDisconnected = { connectedDeviceName = null; connectionType = null }
         aoaManager.onInputReceived = inputHandler
+        var requiredVidHex = "22B8"
+        var requiredPidHex = "2E82"
+        aoaManager.onRequestElevation = { vid, pid -> 
+            requiredVidHex = String.format("%04X", vid)
+            requiredPidHex = String.format("%04X", pid)
+            aoaRequiresElevation = true 
+        }
+        
+        onRequestAoaElevation = {
+            aoaRequiresElevation = false
+            scope.launch(Dispatchers.IO) {
+                try {
+                    val exePath = System.getProperty("jpackage.app-path")
+                    val batFile = java.io.File(System.getProperty("java.io.tmpdir"), "nexpad_elevate.bat")
+                    
+                    if (exePath != null) {
+                        // Running as packaged .exe
+                        batFile.writeText("\"$exePath\" --install-driver $requiredVidHex $requiredPidHex\r\npause")
+                    } else {
+                        // Running via gradlew run
+                        val appPath = System.getProperty("java.class.path")
+                        val javaHome = System.getProperty("java.home")
+                        batFile.writeText("\"$javaHome\\bin\\java.exe\" -cp \"$appPath\" com.sanket.tools.nexpaddesktop.MainKt --install-driver $requiredVidHex $requiredPidHex\r\npause")
+                    }
+                    
+                    val pb = ProcessBuilder(
+                        "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command",
+                        "Start-Process -FilePath '${batFile.absolutePath}' -Verb RunAs"
+                    )
+                    pb.start().waitFor()
+                } catch (e: Exception) {
+                    println("Failed to launch elevated process: ${e.message}")
+                }
+            }
+        }
         
         // Temporarily, we start scanning on load for this branch
         scope.launch(Dispatchers.IO) { aoaManager.scanAndConnect() }
@@ -304,4 +352,6 @@ fun main() = application {
             )
         }
     }
+}
+
 }
