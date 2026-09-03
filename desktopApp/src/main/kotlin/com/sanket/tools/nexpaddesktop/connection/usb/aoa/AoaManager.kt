@@ -44,7 +44,7 @@ class AoaManager {
                     onAoaConnected?.invoke("Android Phone (USB Direct)")
                     
                     runBlocking {
-                        AoaStreamer.startBulkStreaming(aoaHandle) { input ->
+                        AoaTransport.startBulkStreaming(aoaHandle) { input ->
                             onInputReceived?.invoke(input)
                         }
                     }
