@@ -1,71 +1,46 @@
-package com.sanket.tools.nexpaddesktop
+﻿package com.sanket.tools.nexpaddesktop
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
-import com.sanket.tools.nexpaddesktop.driver.GyroProcessor
-import com.sanket.tools.nexpaddesktop.driver.VirtualDualShock4Driver
-import com.sanket.tools.nexpaddesktop.driver.VirtualGamepadDriver
-import com.sanket.tools.nexpaddesktop.driver.IGamepadDriver
-import com.sanket.tools.nexpad.model.GamepadInput
-import com.sanket.tools.nexpaddesktop.model.GyroSettings
-import com.sanket.tools.nexpaddesktop.model.XboxTargetStick
-import com.sanket.tools.nexpaddesktop.model.XboxBlendMode
 import com.sanket.tools.nexpaddesktop.connection.wifi.DsuServer
 import com.sanket.tools.nexpaddesktop.connection.wifi.UdpServer
-import com.sanket.tools.nexpaddesktop.ui.ControllerType
+import com.sanket.tools.nexpaddesktop.driver.IGamepadDriver
+import com.sanket.tools.nexpaddesktop.driver.VirtualGamepadDriver
+import com.sanket.tools.nexpaddesktop.driver.VirtualDualShock4Driver
+import com.sanket.tools.nexpaddesktop.model.GyroSettings
+import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpaddesktop.ui.MainApplicationWindow
 import com.sanket.tools.nexpaddesktop.ui.theme.NexpadDesktopTheme
+import com.sanket.tools.nexpaddesktop.ui.ControllerType
+import com.sun.jna.platform.win32.Kernel32
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.isActive
-import kotlin.math.abs
-
-import com.sun.jna.platform.win32.Kernel32
-import com.sun.jna.platform.win32.WinBase
 
 /**
- * NEXPAD Desktop — Application Entry Point
- *
- * ## Data Flow
- *
- * ```
- * Phone Sensors (raw rad/s, m/s²)
- *   → UDP Server (port 9999) → GamepadInput
- *   → GyroProcessor.process() → ProcessedGyro (°/s)
- *   ├── XBOX PATH: ProcessedGyro → stick values → VirtualGamepadDriver → ViGEm X360
- *   ├── PS4 PATH:  Raw input → VirtualDualShock4Driver (own calibration) → ViGEm DS4
- *   └── DSU PATH:  Raw input → DsuServer (CemuHook protocol) → Emulators
- * ```
- *
- * ## Key Architecture Decisions
- *
- * - **Xbox mode**: NEXPAD does all gyro math (deadzone, smoothing, acceleration,
- *   sensitivity) and converts the result to analog stick values because Xbox
- *   controllers have no native gyro support.
- *
- * - **PS4 mode**: The DS4 driver sends raw sensor data with its own bias calibration.
- *   The GyroProcessor still runs for the UI dashboard visualizer, but its output
- *   is NOT sent to the PS4 driver. Games and emulators do their own math.
- *
- * - **DSU Server**: Always running on port 26760. Sends raw, unprocessed sensor data
- *   to any connected CemuHook-compatible emulator (Cemu, Yuzu, Ryujinx, etc.).
- *   The DSU protocol requires raw sensor data — the emulator does its own processing.
+ * Main Entry Point for Desktop App
+ * - Launches a UDP server on 9999 for gamepad data
+ * - Launches a UDP broadcast server on 9998 for auto-discovery
+ * - Launches DSU server on 26760 for motion controls
+ * - Processes inputs and delegates to ViGEm (Xbox360 or DS4 emulation)
  */
 fun main(args: Array<String>) {
+    com.sanket.tools.nexpaddesktop.utils.AppLogger.initGlobalRedirect()
+    
+    // 1. Check for headless driver installation mode
     val installDriverIndex = args.indexOf("--install-driver")
     if (installDriverIndex != -1) {
         val vidHex = if (installDriverIndex + 1 < args.size) args[installDriverIndex + 1] else ""
         val pidHex = if (installDriverIndex + 2 < args.size) args[installDriverIndex + 2] else ""
-        val miHex = if (installDriverIndex + 3 < args.size) args[installDriverIndex + 3] else "none"
+        val miParam = if (installDriverIndex + 3 < args.size) args[installDriverIndex + 3] else "none"
         
-        val exitCode = com.sanket.tools.nexpaddesktop.connection.usb.winusb.WinUsbDriverManager.installWinUsb(vidHex, pidHex, miHex)
+        println("Main: Running in headless driver installation mode for VID: $vidHex PID: $pidHex MI: $miParam")
+        val exitCode = com.sanket.tools.nexpaddesktop.connection.usb.winusb.WinUsbDriverManager.installWinUsb(vidHex, pidHex, miParam)
         kotlin.system.exitProcess(exitCode)
     }
 
-    application {
-        // Optimize Windows Process Priority for minimal jitter
-        if (System.getProperty("os.name").lowercase().contains("win")) {
+    // Optimize Windows Process Priority for minimal jitter
+    if (System.getProperty("os.name").lowercase().contains("win")) {
         try {
             val currentProcess = Kernel32.INSTANCE.GetCurrentProcess()
             // WinBase.HIGH_PRIORITY_CLASS = 0x00000080 (128)
@@ -76,8 +51,11 @@ fun main(args: Array<String>) {
         }
     }
 
+    application {
+
     val scope = rememberCoroutineScope()
     var server by remember { mutableStateOf<UdpServer?>(null) }
+    val aoaManager = remember { com.sanket.tools.nexpaddesktop.connection.usb.aoa.AoaManager() }
     
     var activeController by remember { mutableStateOf(ControllerType.XBOX_360) }
     
@@ -89,28 +67,65 @@ fun main(args: Array<String>) {
     val discoveryServer = remember { com.sanket.tools.nexpaddesktop.connection.wifi.DiscoveryServer() }
     var latestInput by remember { mutableStateOf(GamepadInput()) }
     
-    // ── Driver Connection State ──
+    // Track connection state
     var isDriverConnected by remember { mutableStateOf(false) }
-    
-    // ── Network Client State ──
     var connectedDeviceName by remember { mutableStateOf<String?>(null) }
-    var connectionType by remember { mutableStateOf<Int?>(null) }
-
-    var lastUiUpdateTime = 0L
+    var connectionType by remember { mutableStateOf<Int?>(null) } // 1 = USB, 2 = WiFi
+    
+    // Motion Smoothing State
+    var gyroSettings by remember { mutableStateOf(GyroSettings()) }
+    val gyroProcessor = remember { com.sanket.tools.nexpaddesktop.driver.GyroProcessor() }
     var processedYaw by remember { mutableStateOf(0f) }
     var processedPitch by remember { mutableStateOf(0f) }
-    val gyroProcessor = remember { GyroProcessor() }
-    var gyroSettings by remember { mutableStateOf(GyroSettings()) }
-    var lsSensitivityX by remember { mutableStateOf(1f) }
-    var lsSensitivityY by remember { mutableStateOf(1f) }
-    var rsSensitivityX by remember { mutableStateOf(1f) }
-    var rsSensitivityY by remember { mutableStateOf(1f) }
+
+    // UI State for Sensitivity
+    var lsSensitivityX by remember { mutableStateOf(1.0f) }
+    var lsSensitivityY by remember { mutableStateOf(1.0f) }
+    var rsSensitivityX by remember { mutableStateOf(1.0f) }
+    var rsSensitivityY by remember { mutableStateOf(1.0f) }
+    
+    // Throttle UI updates to 30 FPS
+    var lastUiUpdateTime by remember { mutableStateOf(0L) }
     
     var appError by remember { mutableStateOf("") }
     
     // AOA Elevation State
     var aoaRequiresElevation by remember { mutableStateOf(false) }
-    var onRequestAoaElevation: (() -> Unit)? = null
+    var requiredVidHex by remember { mutableStateOf("") }
+    var requiredPidHex by remember { mutableStateOf("") }
+    var requiredMi by remember { mutableStateOf("") }
+    
+    val onRequestAoaElevation: () -> Unit = {
+        aoaRequiresElevation = false
+        scope.launch {
+            println("Main: Requesting UAC elevation via native ShellExecuteEx...")
+            
+            val args = if (requiredMi != "none") {
+                "--install-driver $requiredVidHex $requiredPidHex $requiredMi"
+            } else {
+                "--install-driver $requiredVidHex $requiredPidHex"
+            }
+            
+            val target = com.sanket.tools.nexpaddesktop.utils.ElevationTargetResolver.resolveHelper(args)
+            
+            when (val result = com.sanket.tools.nexpaddesktop.utils.WindowsElevation.runElevated(target)) {
+                is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.Success -> {
+                    println("Main: Background driver install finished with exit code ${result.exitCode}")
+                    if (result.exitCode == 0) {
+                        println("Main: WinUSB driver installed successfully. Scanner loop will retry handshake.")
+                    } else {
+                        println("Main: Driver installation failed (Code ${result.exitCode}). AOA connection will likely fail.")
+                    }
+                }
+                is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.UserCancelled -> {
+                    println("Main: User cancelled UAC prompt. Driver not installed.")
+                }
+                is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.Error -> {
+                    println("Main: Failed to launch elevated process. Win32 Error: ${result.errorCode} - ${result.message}")
+                }
+            }
+        }
+    }
     
     // ══════════════════════════════════════════════════════════
     //  DRIVER LIFECYCLE — Re-create driver when controller type changes
@@ -119,16 +134,20 @@ fun main(args: Array<String>) {
         val newDriver = if (activeController == ControllerType.XBOX_360) {
             VirtualGamepadDriver(onRumble = { feedback -> 
                 scope.launch { 
-                    try { server?.sendFeedback(feedback) } 
-                    catch (e: Throwable) { appError = "Xbox Rumble Error: ${e.message}" }
+                    try { 
+                        server?.sendFeedback(feedback)
+                        aoaManager.sendFeedback(feedback)
+                    } catch (e: Throwable) { appError = "Xbox Rumble Error: ${e.message}" }
                 }
             })
         } else {
             VirtualDualShock4Driver(onRumble = { feedback -> 
                 scope.launch { 
-                    try { server?.sendFeedback(feedback) } 
-                    catch (e: Throwable) { appError = "DS4 Rumble Error: ${e.message}" } 
-                } 
+                    try { 
+                        server?.sendFeedback(feedback)
+                        aoaManager.sendFeedback(feedback)
+                    } catch (e: Throwable) { appError = "DS4 Rumble Error: ${e.message}" }
+                }
             })
         }
         newDriver.connect()
@@ -193,13 +212,9 @@ fun main(args: Array<String>) {
             onInputReceived = inputHandler
         )
 
-        val aoaManager = com.sanket.tools.nexpaddesktop.connection.usb.aoa.AoaManager()
         aoaManager.onAoaConnected = { name -> connectedDeviceName = name; connectionType = 1; aoaRequiresElevation = false } // 1 is USB in this app
         aoaManager.onAoaDisconnected = { connectedDeviceName = null; connectionType = null }
         aoaManager.onInputReceived = inputHandler
-        var requiredVidHex = ""
-        var requiredPidHex = ""
-        var requiredMi = ""
 
         aoaManager.onRequestElevation = { vid, pid, mi -> 
             requiredVidHex = String.format("%04X", vid)
@@ -208,42 +223,6 @@ fun main(args: Array<String>) {
             aoaRequiresElevation = true 
         }
         
-        onRequestAoaElevation = {
-            aoaRequiresElevation = false
-            aoaManager.notifyDriverInstallStarted()
-            
-            scope.launch {
-                println("Main: Requesting UAC elevation via native ShellExecuteEx...")
-                
-                val args = if (requiredMi != "none") {
-                    "--install-driver $requiredVidHex $requiredPidHex $requiredMi"
-                } else {
-                    "--install-driver $requiredVidHex $requiredPidHex"
-                }
-                
-                val target = com.sanket.tools.nexpaddesktop.utils.ElevationTargetResolver.resolveHelper(args)
-                
-                when (val result = com.sanket.tools.nexpaddesktop.utils.WindowsElevation.runElevated(target)) {
-                    is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.Success -> {
-                        println("Main: Background driver install finished with exit code ${result.exitCode}")
-                        if (result.exitCode == 0) {
-                            println("Main: WinUSB driver installed successfully. Scanner loop will retry handshake.")
-                        } else {
-                            println("Main: Driver installation failed (Code ${result.exitCode}). AOA connection will likely fail.")
-                        }
-                    }
-                    is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.UserCancelled -> {
-                        println("Main: User cancelled UAC prompt. Driver not installed.")
-                    }
-                    is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.Error -> {
-                        println("Main: Failed to launch elevated process. Win32 Error: ${result.errorCode} - ${result.message}")
-                    }
-                }
-                aoaManager.notifyDriverInstallFinished()
-            }
-        }
-        
-        // Temporarily, we start scanning on load for this branch
         scope.launch(Dispatchers.IO) { aoaManager.scanAndConnect() }
 
         scope.launch { server?.start() }
@@ -280,7 +259,7 @@ fun main(args: Array<String>) {
                 connectionType = connectionType,
                 
                 aoaRequiresElevation = aoaRequiresElevation,
-                onRequestAoaElevation = onRequestAoaElevation ?: {},
+                onRequestAoaElevation = onRequestAoaElevation,
 
                 gyroSettings = gyroSettings,
                 onGyroSettingsChange = { gyroSettings = it },
@@ -297,6 +276,5 @@ fun main(args: Array<String>) {
             )
         }
     }
-}
-
+    }
 }

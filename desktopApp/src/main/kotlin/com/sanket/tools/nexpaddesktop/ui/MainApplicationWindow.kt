@@ -92,8 +92,9 @@ fun MainApplicationWindow(
                     processedPitch = processedPitch,
                     onRecalibrate = onRecalibrate
                 )
+                Screen.OUTPUT -> OutputScreen()
                 else -> {
-                    // Placeholder for NODE, CONVERTER, OUTPUT, KBM
+                    // Placeholder for NODE, CONVERTER, KBM
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text("${currentScreen.name} SCREEN - Coming Soon", color = NeonPalette.CardIdleText)
                     }
