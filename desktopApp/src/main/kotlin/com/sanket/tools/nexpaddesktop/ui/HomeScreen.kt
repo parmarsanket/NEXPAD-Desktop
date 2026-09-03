@@ -63,7 +63,7 @@ fun HomeScreen(
     var availableConnections by remember { mutableStateOf(listOf(1)) }
     LaunchedEffect(Unit) {
         while (true) {
-            availableConnections = com.sanket.tools.nexpaddesktop.network.NetworkUtils.getAvailableConnectionTypes()
+            availableConnections = com.sanket.tools.nexpaddesktop.connection.wifi.NetworkUtils.getAvailableConnectionTypes()
             kotlinx.coroutines.delay(3000)
         }
     }

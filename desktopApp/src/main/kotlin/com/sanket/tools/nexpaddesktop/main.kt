@@ -11,8 +11,8 @@ import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpaddesktop.model.GyroSettings
 import com.sanket.tools.nexpaddesktop.model.XboxTargetStick
 import com.sanket.tools.nexpaddesktop.model.XboxBlendMode
-import com.sanket.tools.nexpaddesktop.network.DsuServer
-import com.sanket.tools.nexpaddesktop.network.UdpServer
+import com.sanket.tools.nexpaddesktop.connection.wifi.DsuServer
+import com.sanket.tools.nexpaddesktop.connection.wifi.UdpServer
 import com.sanket.tools.nexpaddesktop.ui.ControllerType
 import com.sanket.tools.nexpaddesktop.ui.MainApplicationWindow
 import com.sanket.tools.nexpaddesktop.ui.theme.NexpadDesktopTheme
@@ -55,13 +55,13 @@ import com.sun.jna.platform.win32.WinBase
 fun main(args: Array<String>) {
     val installDriverIndex = args.indexOf("--install-driver")
     if (installDriverIndex != -1) {
-        val vidHex = if (installDriverIndex + 1 < args.size) args[installDriverIndex + 1] else "22B8"
-        val pidHex = if (installDriverIndex + 2 < args.size) args[installDriverIndex + 2] else "2E82"
-        com.sanket.tools.nexpaddesktop.network.DriverInstaller.installWinUsb(vidHex, pidHex)
+        val vidHex = if (installDriverIndex + 1 < args.size) args[installDriverIndex + 1] else ""
+        val pidHex = if (installDriverIndex + 2 < args.size) args[installDriverIndex + 2] else ""
+        com.sanket.tools.nexpaddesktop.connection.usb.winusb.DriverInstaller.installWinUsb(vidHex, pidHex)
         return
     }
     if (args.contains("--restore-driver")) {
-        com.sanket.tools.nexpaddesktop.network.DriverInstaller.restoreMtp()
+        com.sanket.tools.nexpaddesktop.connection.usb.winusb.DriverInstaller.restoreMtp()
         return
     }
 
@@ -88,7 +88,7 @@ fun main(args: Array<String>) {
 
     // DSU (CemuHook) motion server — always active for emulator compatibility
     val dsuServer = remember { DsuServer() }
-    val discoveryServer = remember { com.sanket.tools.nexpaddesktop.network.DiscoveryServer() }
+    val discoveryServer = remember { com.sanket.tools.nexpaddesktop.connection.wifi.DiscoveryServer() }
     var latestInput by remember { mutableStateOf(GamepadInput()) }
     
     // ── Driver Connection State ──
@@ -164,88 +164,25 @@ fun main(args: Array<String>) {
         dsuServer.start()
         
         val inputHandler: (GamepadInput) -> Unit = { input ->
-            // ── Check gyro activation buttons (Xbox only — PS4 games handle this) ──
-            val isActivationButtonPressed = if (gyroSettings.activationButtons.isEmpty()) {
-                true
-            } else {
-                gyroSettings.activationButtons.any { btn ->
-                    when (btn) {
-                        "LT" -> input.triggerL2 > 0.1f
-                        "RT" -> input.triggerR2 > 0.1f
-                        "LB" -> input.btnL1
-                        "RB" -> input.btnR1
-                        "A" -> input.btnA
-                        "B" -> input.btnB
-                        "X" -> input.btnX
-                        "Y" -> input.btnY
-                        else -> false
+            val processedInput = com.sanket.tools.nexpaddesktop.driver.InputPipeline.processInput(
+                input = input,
+                activeController = activeController,
+                gyroProcessor = gyroProcessor,
+                gyroSettings = gyroSettings,
+                lsSensitivityX = lsSensitivityX,
+                lsSensitivityY = lsSensitivityY,
+                rsSensitivityX = rsSensitivityX,
+                rsSensitivityY = rsSensitivityY,
+                onProcessedAngles = { yaw, pitch ->
+                    val now = System.currentTimeMillis()
+                    if ((now - lastUiUpdateTime) > 33L) {
+                        lastUiUpdateTime = now
+                        processedYaw = yaw
+                        processedPitch = pitch
+                        latestInput = input // We update latestInput here for the UI to prevent excessive recomposition
                     }
                 }
-            }
-
-            // ── Run gyro through the processing pipeline ──
-            val processed = gyroProcessor.process(
-                rawGyroX = input.gyroX,
-                rawGyroY = input.gyroY,
-                rawGyroZ = input.gyroZ,
-                rawAccelX = input.accelX,
-                rawAccelY = input.accelY,
-                rawAccelZ = input.accelZ,
-                settings = gyroSettings,
-                isActivationButtonPressed = isActivationButtonPressed,
             )
-
-            val now = System.currentTimeMillis()
-            val shouldUpdateUi = (now - lastUiUpdateTime) > 33L
-            if (shouldUpdateUi) {
-                lastUiUpdateTime = now
-                processedYaw = processed.yawDps
-                processedPitch = processed.pitchDps
-            }
-
-            // ── Build final stick values ─────────────────
-            var finalLeftX = input.leftStickX
-            var finalLeftY = input.leftStickY
-            var finalRightX = input.rightStickX
-            var finalRightY = input.rightStickY
-
-            if (activeController == ControllerType.XBOX_360 && gyroSettings.enabled) {
-                val gyroToStickScale = 1.0f / 200.0f
-                val gyroStickX = (processed.yawDps * gyroToStickScale).coerceIn(-1f, 1f)
-                val gyroStickY = (processed.pitchDps * gyroToStickScale).coerceIn(-1f, 1f)
-                val threshold = 0.02f
-                val isMotionActive = abs(gyroStickX) > threshold || abs(gyroStickY) > threshold
-
-                if (gyroSettings.xboxTargetStick == XboxTargetStick.LEFT_STICK) {
-                    when (gyroSettings.xboxBlendMode) {
-                        XboxBlendMode.OVERRIDE -> if (isMotionActive) { finalLeftX = gyroStickX; finalLeftY = gyroStickY }
-                        XboxBlendMode.ADDITIVE -> { finalLeftX += gyroStickX; finalLeftY += gyroStickY }
-                        XboxBlendMode.MUTE_ON_STICK -> {
-                            if (abs(input.leftStickX) > 0.05f || abs(input.leftStickY) > 0.05f) { finalLeftX = input.leftStickX; finalLeftY = input.leftStickY }
-                            else { finalLeftX = gyroStickX; finalLeftY = gyroStickY }
-                        }
-                    }
-                } else {
-                    when (gyroSettings.xboxBlendMode) {
-                        XboxBlendMode.OVERRIDE -> if (isMotionActive) { finalRightX = gyroStickX; finalRightY = gyroStickY }
-                        XboxBlendMode.ADDITIVE -> { finalRightX += gyroStickX; finalRightY += gyroStickY }
-                        XboxBlendMode.MUTE_ON_STICK -> {
-                            if (abs(input.rightStickX) > 0.05f || abs(input.rightStickY) > 0.05f) { finalRightX = input.rightStickX; finalRightY = input.rightStickY }
-                            else { finalRightX = gyroStickX; finalRightY = gyroStickY }
-                        }
-                    }
-                }
-            }
-            
-            val processedInput = input.copy(
-                leftStickX = (finalLeftX * lsSensitivityX).coerceIn(-1.0f, 1.0f),
-                leftStickY = (finalLeftY * lsSensitivityY).coerceIn(-1.0f, 1.0f),
-                rightStickX = (finalRightX * rsSensitivityX).coerceIn(-1.0f, 1.0f),
-                rightStickY = (finalRightY * rsSensitivityY).coerceIn(-1.0f, 1.0f)
-            )
-            if (shouldUpdateUi) {
-                latestInput = processedInput
-            }
 
             activeDriver?.updateInput(processedInput)
             dsuServer.updateInput(input)
@@ -258,12 +195,12 @@ fun main(args: Array<String>) {
             onInputReceived = inputHandler
         )
 
-        val aoaManager = com.sanket.tools.nexpaddesktop.network.AoaManager()
+        val aoaManager = com.sanket.tools.nexpaddesktop.connection.usb.aoa.AoaManager()
         aoaManager.onAoaConnected = { name -> connectedDeviceName = name; connectionType = 1; aoaRequiresElevation = false } // 1 is USB in this app
         aoaManager.onAoaDisconnected = { connectedDeviceName = null; connectionType = null }
         aoaManager.onInputReceived = inputHandler
-        var requiredVidHex = "22B8"
-        var requiredPidHex = "2E82"
+        var requiredVidHex = ""
+        var requiredPidHex = ""
         aoaManager.onRequestElevation = { vid, pid -> 
             requiredVidHex = String.format("%04X", vid)
             requiredPidHex = String.format("%04X", pid)
@@ -272,28 +209,24 @@ fun main(args: Array<String>) {
         
         onRequestAoaElevation = {
             aoaRequiresElevation = false
-            scope.launch(Dispatchers.IO) {
-                try {
-                    val exePath = System.getProperty("jpackage.app-path")
-                    val batFile = java.io.File(System.getProperty("java.io.tmpdir"), "nexpad_elevate.bat")
-                    
-                    if (exePath != null) {
-                        // Running as packaged .exe
-                        batFile.writeText("\"$exePath\" --install-driver $requiredVidHex $requiredPidHex\r\npause")
-                    } else {
-                        // Running via gradlew run
-                        val appPath = System.getProperty("java.class.path")
-                        val javaHome = System.getProperty("java.home")
-                        batFile.writeText("\"$javaHome\\bin\\java.exe\" -cp \"$appPath\" com.sanket.tools.nexpaddesktop.MainKt --install-driver $requiredVidHex $requiredPidHex\r\npause")
+            scope.launch {
+                val (exec, args) = com.sanket.tools.nexpaddesktop.utils.WindowsElevation.getElevationTarget("--install-driver $requiredVidHex $requiredPidHex")
+                println("AoaManager: Requesting UAC elevation via native ShellExecuteEx...")
+
+                when (val result = com.sanket.tools.nexpaddesktop.utils.WindowsElevation.runElevated(exec, args)) {
+                    is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.Success -> {
+                        if (result.exitCode == 0) {
+                            println("AoaManager: Driver installed successfully! Re-scanning USB...")
+                        } else {
+                            println("AoaManager ERROR: Driver installer exited with code ${result.exitCode}")
+                        }
                     }
-                    
-                    val pb = ProcessBuilder(
-                        "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command",
-                        "Start-Process -FilePath '${batFile.absolutePath}' -Verb RunAs"
-                    )
-                    pb.start().waitFor()
-                } catch (e: Exception) {
-                    println("Failed to launch elevated process: ${e.message}")
+                    is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.UserCancelled -> {
+                        println("AoaManager: User rejected UAC prompt.")
+                    }
+                    is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.Error -> {
+                        println("AoaManager ERROR: Elevation failed: ${result.message}")
+                    }
                 }
             }
         }

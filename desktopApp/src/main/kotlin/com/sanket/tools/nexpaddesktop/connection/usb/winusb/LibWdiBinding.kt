@@ -1,4 +1,4 @@
-package com.sanket.tools.nexpaddesktop.network
+package com.sanket.tools.nexpaddesktop.connection.usb.winusb
 
 import com.sun.jna.Library
 import com.sun.jna.Native

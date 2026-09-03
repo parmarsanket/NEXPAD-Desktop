@@ -1,4 +1,4 @@
-package com.sanket.tools.nexpaddesktop.network
+package com.sanket.tools.nexpaddesktop.connection.usb.winusb
 
 import com.sun.jna.platform.win32.Kernel32
 import java.io.File
@@ -13,10 +13,6 @@ import kotlin.system.exitProcess
  */
 object DriverInstaller {
     
-    // Moto G85 MTP mode
-    private const val VID: Short = 0x22B8.toShort()
-    private const val PID: Short = 0x2E82.toShort()
-
     fun installWinUsb(vidHex: String, pidHex: String) {
         println("DriverInstaller: Elevating to install WinUSB for VID:$vidHex PID:$pidHex...")
         try {
@@ -50,7 +46,6 @@ object DriverInstaller {
             )
             if (res != 0) {
                 println("DriverInstaller ERROR: wdi_prepare_driver failed: $res")
-                Thread.sleep(5000)
                 exitProcess(1)
             }
             
@@ -65,12 +60,10 @@ object DriverInstaller {
             )
             if (res != 0) {
                 println("DriverInstaller ERROR: wdi_install_driver failed: $res")
-                Thread.sleep(5000)
                 exitProcess(1)
             }
             
             println("DriverInstaller SUCCESS: WinUSB driver installed.")
-            Thread.sleep(5000)
             exitProcess(0)
         } catch (e: Exception) {
             println("DriverInstaller ERROR: ${e.message}")

@@ -1,4 +1,4 @@
-package com.sanket.tools.nexpaddesktop.network
+package com.sanket.tools.nexpaddesktop.connection.usb.aoa
 
 import org.usb4java.DeviceHandle
 import org.usb4java.LibUsb

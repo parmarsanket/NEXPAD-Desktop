@@ -1,4 +1,4 @@
-package com.sanket.tools.nexpaddesktop.network
+package com.sanket.tools.nexpaddesktop.connection.wifi
 
 import java.net.NetworkInterface
 
