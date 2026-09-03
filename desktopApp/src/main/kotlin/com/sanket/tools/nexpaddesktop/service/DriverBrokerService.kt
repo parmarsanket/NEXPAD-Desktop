@@ -40,14 +40,60 @@ object DriverBrokerService {
     }
 
     private fun swapToWinUsb() {
-        println("DriverBrokerService: Executing swapToWinUsb...")
-        // We will call libwdi to install WinUSB for VID:22B8 PID:2E82 (or generic matching)
-        // For now, this is a placeholder stub until we finish the JNA struct memory mapping
+        println("DriverBrokerService: Executing swapToWinUsb via libwdi...")
+        try {
+            val libwdi = LibWdiBinding.INSTANCE
+            
+            // 1. Prepare WinUSB driver (generates INF and self-signs CAT)
+            val prepOptions = LibWdiBinding.wdi_options_prepare()
+            prepOptions.driver_type = LibWdiBinding.WDI_WINUSB
+            prepOptions.vendor_name = "NEXPAD"
+            prepOptions.device_name = "NEXPAD AOA Target"
+            prepOptions.write() // Sync to native memory
+
+            val prepResult = libwdi.wdi_prepare_driver(
+                null, 
+                "C:\\Windows\\Temp\\nexpad_usb", 
+                "nexpad.inf", 
+                prepOptions
+            )
+            println("DriverBrokerService: wdi_prepare_driver returned $prepResult")
+
+            if (prepResult == 0) {
+                // 2. Install the driver for our phone's specific VID:PID
+                // Moto G85 uses VID 22B8 and PID 2E82 in MTP mode
+                val installOptions = LibWdiBinding.wdi_options_install()
+                installOptions.driver_type = LibWdiBinding.WDI_WINUSB
+                installOptions.hwid = "USB\\VID_22B8&PID_2E82"
+                installOptions.write()
+
+                val installResult = libwdi.wdi_install_driver(
+                    null,
+                    "C:\\Windows\\Temp\\nexpad_usb",
+                    "nexpad.inf",
+                    installOptions
+                )
+                println("DriverBrokerService: wdi_install_driver returned $installResult")
+            }
+        } catch (e: Exception) {
+            println("DriverBrokerService ERROR: Failed to call libwdi. Is libwdi.dll in the redist folder? Error: ${e.message}")
+        }
     }
 
     private fun restoreMtp() {
         println("DriverBrokerService: Executing restoreMtp...")
-        // Call pnputil.exe /delete-driver oemX.inf /uninstall /force
-        // For now, this is a placeholder stub
+        try {
+            // Using pnputil to remove the injected WinUSB driver, Windows automatically falls back to MTP
+            val process = Runtime.getRuntime().exec("pnputil.exe /delete-driver nexpad.inf /uninstall /force")
+            process.waitFor()
+            println("DriverBrokerService: restoreMtp pnputil returned ${process.exitValue()}")
+        } catch (e: Exception) {
+            println("DriverBrokerService ERROR: restoreMtp failed - ${e.message}")
+        }
     }
+}
+
+fun main() = kotlinx.coroutines.runBlocking {
+    println("NEXPAD Driver Service starting...")
+    DriverBrokerService.start()
 }

@@ -245,6 +245,14 @@ fun main() = application {
             onInputReceived = inputHandler
         )
 
+        val aoaManager = com.sanket.tools.nexpaddesktop.network.AoaManager()
+        aoaManager.onAoaConnected = { name -> connectedDeviceName = name; connectionType = "USB (Direct)" }
+        aoaManager.onAoaDisconnected = { connectedDeviceName = null; connectionType = null }
+        aoaManager.onInputReceived = inputHandler
+        
+        // Temporarily, we start scanning on load for this branch
+        scope.launch(Dispatchers.IO) { aoaManager.scanAndConnect() }
+
         scope.launch { server?.start() }
         
         scope.launch { discoveryServer.start() }
