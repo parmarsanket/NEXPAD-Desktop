@@ -57,12 +57,10 @@ fun main(args: Array<String>) {
     if (installDriverIndex != -1) {
         val vidHex = if (installDriverIndex + 1 < args.size) args[installDriverIndex + 1] else ""
         val pidHex = if (installDriverIndex + 2 < args.size) args[installDriverIndex + 2] else ""
-        com.sanket.tools.nexpaddesktop.connection.usb.winusb.DriverInstaller.installWinUsb(vidHex, pidHex)
-        return
-    }
-    if (args.contains("--restore-driver")) {
-        com.sanket.tools.nexpaddesktop.connection.usb.winusb.DriverInstaller.restoreMtp()
-        return
+        val miHex = if (installDriverIndex + 3 < args.size) args[installDriverIndex + 3] else "none"
+        
+        val exitCode = com.sanket.tools.nexpaddesktop.connection.usb.winusb.WinUsbDriverManager.installWinUsb(vidHex, pidHex, miHex)
+        kotlin.system.exitProcess(exitCode)
     }
 
     application {
