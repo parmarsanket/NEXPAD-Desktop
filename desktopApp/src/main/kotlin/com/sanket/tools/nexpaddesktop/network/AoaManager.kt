@@ -13,7 +13,7 @@ class AoaManager {
     // Callbacks to simulate IGamepadConnection
     var onAoaConnected: ((String) -> Unit)? = null
     var onAoaDisconnected: (() -> Unit)? = null
-    var onInputReceived: ((com.sanket.tools.nexpaddesktop.model.GamepadInput) -> Unit)? = null
+    var onInputReceived: ((com.sanket.tools.nexpad.model.GamepadInput) -> Unit)? = null
 
     init {
         val ctx = Context()

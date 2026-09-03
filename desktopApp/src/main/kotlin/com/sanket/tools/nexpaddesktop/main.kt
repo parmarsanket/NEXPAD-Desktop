@@ -246,7 +246,7 @@ fun main() = application {
         )
 
         val aoaManager = com.sanket.tools.nexpaddesktop.network.AoaManager()
-        aoaManager.onAoaConnected = { name -> connectedDeviceName = name; connectionType = "USB (Direct)" }
+        aoaManager.onAoaConnected = { name -> connectedDeviceName = name; connectionType = 1 } // 1 is USB in this app
         aoaManager.onAoaDisconnected = { connectedDeviceName = null; connectionType = null }
         aoaManager.onInputReceived = inputHandler
         
