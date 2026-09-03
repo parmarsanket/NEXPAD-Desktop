@@ -73,7 +73,17 @@ object WindowsElevation {
         val javaHome = System.getProperty("java.home")
         val javaExe = "$javaHome\\bin\\java.exe"
         val classpath = System.getProperty("java.class.path")
-        val mainClass = "com.sanket.tools.nexpaddesktop.MainKt"
+        
+        // Dynamically find the main class to avoid hardcoded strings
+        var mainClass = Thread.getAllStackTraces().keys
+            .find { it.name == "main" }
+            ?.stackTrace?.find { it.methodName == "main" }?.className
+
+        if (mainClass == null) {
+            mainClass = System.getProperty("sun.java.command")?.split(" ")?.firstOrNull() 
+                ?: "com.sanket.tools.nexpaddesktop.MainKt"
+        }
+
         val arguments = "-cp \"$classpath\" $mainClass $subArgs"
         return Pair(javaExe, arguments)
     }
