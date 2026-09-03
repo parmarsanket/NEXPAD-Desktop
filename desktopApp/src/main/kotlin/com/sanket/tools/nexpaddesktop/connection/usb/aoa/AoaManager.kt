@@ -1,103 +1,201 @@
 package com.sanket.tools.nexpaddesktop.connection.usb.aoa
 
-import com.sanket.tools.nexpaddesktop.connection.usb.ElevationRequiredException
-import com.sanket.tools.nexpaddesktop.connection.usb.UsbScanner
+import com.sanket.tools.nexpad.model.GamepadInput
 import org.usb4java.Context
+import org.usb4java.DeviceHandle
 import org.usb4java.LibUsb
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+
+enum class AoaState {
+    IDLE,
+    SCANNING,
+    ANDROID_DEVICE_FOUND,
+    OPEN_HANDSHAKE_INTERFACE,
+    HANDSHAKE_IN_PROGRESS,
+    WAIT_FOR_REENUMERATION,
+    AOA_DEVICE_FOUND,
+    OPEN_ACCESSORY_INTERFACE,
+    STREAMING,
+    NEEDS_DRIVER,
+    DRIVER_INSTALL_IN_PROGRESS
+}
 
 class AoaManager {
-
     var onAoaConnected: ((String) -> Unit)? = null
     var onAoaDisconnected: (() -> Unit)? = null
-    var onInputReceived: ((com.sanket.tools.nexpad.model.GamepadInput) -> Unit)? = null
-    var onRequestElevation: ((Short, Short) -> Unit)? = null
+    var onInputReceived: ((GamepadInput) -> Unit)? = null
+    
+    // Callback to trigger UAC prompt. Requires VID, PID, and optionally the specific MTP Interface Number.
+    var onRequestElevation: ((Short, Short, Int?) -> Unit)? = null
 
     private var context: Context? = null
-    private var running = false
-    private var hasPromptedElevation = false
+    var currentState = AoaState.IDLE
+        private set
 
     init {
         val ctx = Context()
-        if (LibUsb.init(ctx) == LibUsb.SUCCESS) {
-            context = ctx
-            println("AoaManager: libusb initialized successfully")
+        val result = LibUsb.init(ctx)
+        if (result != LibUsb.SUCCESS) {
+            println("AoaManager ERROR: Unable to initialize libusb. ")
         } else {
-            println("AoaManager ERROR: Failed to init libusb")
+            this.context = ctx
+            println("AoaManager: libusb initialized successfully")
         }
     }
 
-    fun scanAndConnect() {
-        running = true
+    suspend fun scanAndConnect() = coroutineScope {
+        if (context == null) return@coroutineScope
+        currentState = AoaState.SCANNING
         println("AoaManager: Starting continuous USB scanning loop...")
-        val ctx = context ?: return
 
-        while (running) {
+        while (isActive) {
+            when (currentState) {
+                AoaState.SCANNING -> {
+                    val candidates = UsbDeviceDetector.findCandidates(context!!)
+                    
+                    val aoaCandidate = candidates.filterIsInstance<CandidateUsbDevice.AoaDevice>().firstOrNull()
+                    if (aoaCandidate != null) {
+                        currentState = AoaState.AOA_DEVICE_FOUND
+                        processAoaDevice(aoaCandidate)
+                        continue
+                    }
+
+                    val androidCandidate = candidates.filterIsInstance<CandidateUsbDevice.AndroidDevice>().firstOrNull()
+                    if (androidCandidate != null) {
+                        currentState = AoaState.ANDROID_DEVICE_FOUND
+                        processAndroidDevice(androidCandidate)
+                        continue
+                    }
+                    
+                    delay(1000)
+                }
+                
+                AoaState.WAIT_FOR_REENUMERATION -> {
+                    delay(500)
+                    currentState = AoaState.SCANNING // Let the scanning loop find the new AOA device
+                }
+
+                AoaState.NEEDS_DRIVER -> {
+                    // Waiting for the UI to resolve the driver issue via UAC
+                    delay(1000)
+                }
+
+                AoaState.DRIVER_INSTALL_IN_PROGRESS -> {
+                    // UAC has been requested, waiting for the result
+                    delay(1000)
+                }
+                
+                else -> {
+                    delay(1000)
+                }
+            }
+        }
+        cleanup()
+    }
+
+    private suspend fun processAndroidDevice(candidate: CandidateUsbDevice.AndroidDevice) {
+        currentState = AoaState.OPEN_HANDSHAKE_INTERFACE
+        
+        val handle = DeviceHandle()
+        val openResult = LibUsb.open(candidate.device, handle)
+        
+        if (openResult == LibUsb.SUCCESS) {
+            println("AoaManager: Opened Android device [VID:${String.format("%04X", candidate.vid)} PID:${String.format("%04X", candidate.pid)}]")
+            LibUsb.setAutoDetachKernelDriver(handle, true)
+            
+            currentState = AoaState.HANDSHAKE_IN_PROGRESS
             try {
-                // 1. Check if AOA device is already re-enumerated and ready
-                val aoaHandle = UsbScanner.findDevice(ctx, AoaProtocol.AOA_VID, AoaProtocol.AOA_PID_ACCESSORY)
-                    ?: UsbScanner.findDevice(ctx, AoaProtocol.AOA_VID, AoaProtocol.AOA_PID_ACCESSORY_ADB)
-
-                if (aoaHandle != null) {
-                    println("AoaManager: Found AOA device! Starting stream...")
-                    hasPromptedElevation = false
-                    onAoaConnected?.invoke("Android Phone (USB Direct)")
-                    
-                    runBlocking {
-                        AoaTransport.startBulkStreaming(aoaHandle) { input ->
-                            onInputReceived?.invoke(input)
-                        }
-                    }
-                    
-                    onAoaDisconnected?.invoke()
-                    Thread.sleep(1000)
-                    continue
-                }
-
-                // 2. Look for any Android phone in MTP mode
-                val phonePair = UsbScanner.findAnyAndroidPhone(ctx)
-                if (phonePair != null) {
-                    val (phoneHandle, phoneDevice) = phonePair
-                    println("AoaManager: Found phone! Attempting AOA handshake...")
-                    
-                    val success: Boolean
-                    try {
-                        success = AoaProtocol.sendHandshake(phoneHandle, phoneDevice)
-                    } finally {
-                        LibUsb.close(phoneHandle)
-                        LibUsb.unrefDevice(phoneDevice)
-                    }
-
-                    if (success) {
-                        hasPromptedElevation = false
-                        println("AoaManager: Handshake successful, waiting for re-enumeration...")
-                        Thread.sleep(3000)
-                    } else {
-                        println("AoaManager: Handshake failed. Retrying...")
-                        Thread.sleep(2000)
-                    }
+                // Borrow handle to handshake
+                val handshakeSuccess = AoaHandshake.sendHandshake(handle)
+                if (handshakeSuccess) {
+                    currentState = AoaState.WAIT_FOR_REENUMERATION
                 } else {
-                    Thread.sleep(1000)
+                    currentState = AoaState.SCANNING
                 }
-
-            } catch (e: ElevationRequiredException) {
-                if (!hasPromptedElevation) {
-                    val vidHex = String.format("%04X", e.vid)
-                    val pidHex = String.format("%04X", e.pid)
-                    println("AoaManager: Caught ElevationRequiredException for VID:$vidHex PID:$pidHex")
-                    hasPromptedElevation = true
-                    onRequestElevation?.invoke(e.vid, e.pid)
+            } catch (e: UsbHandshakeException) {
+                println("AoaManager: Handshake exception: ${e.message}")
+                if (e.failure == UsbOpenFailure.AccessDenied) {
+                    println("AoaManager: Access Denied to EP0. Requesting WinUSB Driver Installation...")
+                    currentState = AoaState.NEEDS_DRIVER
+                    onRequestElevation?.invoke(candidate.vid, candidate.pid, candidate.mtpInterfaceNumber)
+                } else {
+                    currentState = AoaState.SCANNING
                 }
-                Thread.sleep(2000)
-            } catch (e: Exception) {
-                println("AoaManager: Unexpected error: ${e.message}")
-                Thread.sleep(2000)
+            } finally {
+                LibUsb.close(handle)
+                LibUsb.unrefDevice(candidate.device)
+            }
+        } else {
+            LibUsb.unrefDevice(candidate.device)
+            if (openResult == LibUsb.ERROR_ACCESS || openResult == LibUsb.ERROR_NOT_SUPPORTED) {
+                println("AoaManager: LibUsb.open Access Denied. Requesting WinUSB Driver Installation...")
+                currentState = AoaState.NEEDS_DRIVER
+                onRequestElevation?.invoke(candidate.vid, candidate.pid, candidate.mtpInterfaceNumber)
+            } else {
+                currentState = AoaState.SCANNING
             }
         }
     }
 
+    private suspend fun processAoaDevice(candidate: CandidateUsbDevice.AoaDevice) {
+        currentState = AoaState.OPEN_ACCESSORY_INTERFACE
+        
+        val handle = DeviceHandle()
+        val openResult = LibUsb.open(candidate.device, handle)
+        
+        if (openResult == LibUsb.SUCCESS) {
+            println("AoaManager: Opened AOA device [VID:${String.format("%04X", candidate.vid)} PID:${String.format("%04X", candidate.pid)}]")
+            LibUsb.setAutoDetachKernelDriver(handle, true)
+            
+            currentState = AoaState.STREAMING
+            onAoaConnected?.invoke("Android Phone (USB Direct)")
+            
+            try {
+                // Hand over streaming to transport. It borrows the handle but we own it.
+                AoaTransport.startBulkStreaming(handle) { input ->
+                    onInputReceived?.invoke(input)
+                }
+            } finally {
+                LibUsb.close(handle)
+                LibUsb.unrefDevice(candidate.device)
+                onAoaDisconnected?.invoke()
+                currentState = AoaState.SCANNING
+            }
+        } else {
+            LibUsb.unrefDevice(candidate.device)
+            if (openResult == LibUsb.ERROR_ACCESS || openResult == LibUsb.ERROR_NOT_SUPPORTED) {
+                println("AoaManager: LibUsb.open Access Denied on AOA Device! Requesting WinUSB for Phase 2...")
+                currentState = AoaState.NEEDS_DRIVER
+                onRequestElevation?.invoke(candidate.vid, candidate.pid, null)
+            } else {
+                currentState = AoaState.SCANNING
+            }
+        }
+    }
+    
+    /**
+     * Called by the UI when it initiates the UAC prompt.
+     */
+    fun notifyDriverInstallStarted() {
+        if (currentState == AoaState.NEEDS_DRIVER) {
+            currentState = AoaState.DRIVER_INSTALL_IN_PROGRESS
+        }
+    }
+
+    /**
+     * Called by the UI when the driver installation finishes (success or fail).
+     */
+    fun notifyDriverInstallFinished() {
+        if (currentState == AoaState.DRIVER_INSTALL_IN_PROGRESS) {
+            currentState = AoaState.SCANNING // Retries finding the device
+        }
+    }
+
     fun cleanup() {
-        running = false
         context?.let { LibUsb.exit(it) }
     }
 }

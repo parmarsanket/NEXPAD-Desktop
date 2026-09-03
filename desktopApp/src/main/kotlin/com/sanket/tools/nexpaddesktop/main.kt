@@ -201,18 +201,29 @@ fun main(args: Array<String>) {
         aoaManager.onInputReceived = inputHandler
         var requiredVidHex = ""
         var requiredPidHex = ""
-        aoaManager.onRequestElevation = { vid, pid -> 
+        var requiredMi = ""
+
+        aoaManager.onRequestElevation = { vid, pid, mi -> 
             requiredVidHex = String.format("%04X", vid)
             requiredPidHex = String.format("%04X", pid)
+            requiredMi = mi?.toString() ?: "none"
             aoaRequiresElevation = true 
         }
         
         onRequestAoaElevation = {
             aoaRequiresElevation = false
+            aoaManager.notifyDriverInstallStarted()
+            
             scope.launch {
                 println("Main: Requesting UAC elevation via native ShellExecuteEx...")
                 
-                val target = com.sanket.tools.nexpaddesktop.utils.ElevationTargetResolver.resolveHelper("--install-driver $requiredVidHex $requiredPidHex")
+                val args = if (requiredMi != "none") {
+                    "--install-driver $requiredVidHex $requiredPidHex $requiredMi"
+                } else {
+                    "--install-driver $requiredVidHex $requiredPidHex"
+                }
+                
+                val target = com.sanket.tools.nexpaddesktop.utils.ElevationTargetResolver.resolveHelper(args)
                 
                 when (val result = com.sanket.tools.nexpaddesktop.utils.WindowsElevation.runElevated(target)) {
                     is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.Success -> {
@@ -230,6 +241,7 @@ fun main(args: Array<String>) {
                         println("Main: Failed to launch elevated process. Win32 Error: ${result.errorCode} - ${result.message}")
                     }
                 }
+                aoaManager.notifyDriverInstallFinished()
             }
         }
         
