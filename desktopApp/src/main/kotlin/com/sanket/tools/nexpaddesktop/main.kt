@@ -210,22 +210,24 @@ fun main(args: Array<String>) {
         onRequestAoaElevation = {
             aoaRequiresElevation = false
             scope.launch {
-                val (exec, args) = com.sanket.tools.nexpaddesktop.utils.WindowsElevation.getElevationTarget("--install-driver $requiredVidHex $requiredPidHex")
-                println("AoaManager: Requesting UAC elevation via native ShellExecuteEx...")
-
-                when (val result = com.sanket.tools.nexpaddesktop.utils.WindowsElevation.runElevated(exec, args)) {
+                println("Main: Requesting UAC elevation via native ShellExecuteEx...")
+                
+                val target = com.sanket.tools.nexpaddesktop.utils.ElevationTargetResolver.resolveHelper("--install-driver $requiredVidHex $requiredPidHex")
+                
+                when (val result = com.sanket.tools.nexpaddesktop.utils.WindowsElevation.runElevated(target)) {
                     is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.Success -> {
+                        println("Main: Background driver install finished with exit code ${result.exitCode}")
                         if (result.exitCode == 0) {
-                            println("AoaManager: Driver installed successfully! Re-scanning USB...")
+                            println("Main: WinUSB driver installed successfully. Scanner loop will retry handshake.")
                         } else {
-                            println("AoaManager ERROR: Driver installer exited with code ${result.exitCode}")
+                            println("Main: Driver installation failed (Code ${result.exitCode}). AOA connection will likely fail.")
                         }
                     }
                     is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.UserCancelled -> {
-                        println("AoaManager: User rejected UAC prompt.")
+                        println("Main: User cancelled UAC prompt. Driver not installed.")
                     }
                     is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.Error -> {
-                        println("AoaManager ERROR: Elevation failed: ${result.message}")
+                        println("Main: Failed to launch elevated process. Win32 Error: ${result.errorCode} - ${result.message}")
                     }
                 }
             }
