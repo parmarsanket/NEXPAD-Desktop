@@ -48,10 +48,11 @@ Section "Install"
   ; Bundle all pre-compiled files from the packageApp task
   File /r "desktopApp\build\compose\binaries\main\app\com.sanket.tools.nexpaddesktop\*"
         
-  ; Bundle the driver installers and service wrapper
+  ; Bundle the driver installers, service wrapper, and libwdi library
   File /oname=ViGEmBusSetup.exe "redist\ViGEmBusSetup.exe"
   File /oname=nexpad-service.exe "redist\nexpad-service.exe"
   File /oname=nexpad-service.xml "redist\nexpad-service.xml"
+  File /oname=libwdi.dll "redist\libwdi.dll"
 
   ; Write Uninstaller
   WriteUninstaller "$INSTDIR\uninstall.exe"
