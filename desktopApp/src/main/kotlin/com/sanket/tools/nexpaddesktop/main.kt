@@ -32,7 +32,8 @@ fun main(args: Array<String>) {
     if (installDriverIndex != -1) {
         val vidHex = if (installDriverIndex + 1 < args.size) args[installDriverIndex + 1] else ""
         val pidHex = if (installDriverIndex + 2 < args.size) args[installDriverIndex + 2] else ""
-        val miParam = if (installDriverIndex + 3 < args.size) args[installDriverIndex + 3] else "none"
+        val rawMi = if (installDriverIndex + 3 < args.size) args[installDriverIndex + 3] else "none"
+        val miParam = if (rawMi.all { it.isDigit() }) rawMi else "none"
         
         println("Main: Running in headless driver installation mode for VID: $vidHex PID: $pidHex MI: $miParam")
         val exitCode = com.sanket.tools.nexpaddesktop.connection.usb.winusb.WinUsbDriverManager.installWinUsb(vidHex, pidHex, miParam)
@@ -111,6 +112,15 @@ fun main(args: Array<String>) {
             when (val result = com.sanket.tools.nexpaddesktop.utils.WindowsElevation.runElevated(target)) {
                 is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.Success -> {
                     println("Main: Background driver install finished with exit code ${result.exitCode}")
+                    
+                    // Display driver installer logs for transparency
+                    val logFile = java.io.File("C:\\Users\\Public\\nexpad_driver_install.log")
+                    if (logFile.exists()) {
+                        try {
+                            logFile.readLines().forEach { println("Main [DriverLog]: $it") }
+                        } catch (_: Exception) {}
+                    }
+                    
                     val success = result.exitCode == 0
                     aoaManager.onDriverInstallCompleted(success)
                     if (success) {

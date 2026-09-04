@@ -87,6 +87,10 @@ class AoaManager {
             try {
                 val aoaCandidate = candidates.filterIsInstance<CandidateUsbDevice.AoaDevice>().firstOrNull()
                 if (aoaCandidate != null) {
+                    if (userDismissedElevation) {
+                        delay(2000)
+                        continue
+                    }
                     val elevationRequired = processAoaDevice(aoaCandidate)
                     if (elevationRequired && currentState is AoaState.Idle && !userDismissedElevation) {
                         println("[AOA/Manager] AOA Device requires WinUSB (Phase 2). Transitioning to InstallingDriver state.")
@@ -101,6 +105,10 @@ class AoaManager {
 
                 val androidCandidate = candidates.filterIsInstance<CandidateUsbDevice.AndroidDevice>().firstOrNull()
                 if (androidCandidate != null) {
+                    if (userDismissedElevation) {
+                        delay(3000)
+                        continue
+                    }
                     val elevationRequired = processAndroidDevice(androidCandidate)
                     if (elevationRequired && currentState is AoaState.Idle && !userDismissedElevation) {
                         println("[AOA/Manager] Device requires WinUSB driver (Phase 1). Transitioning to InstallingDriver state.")

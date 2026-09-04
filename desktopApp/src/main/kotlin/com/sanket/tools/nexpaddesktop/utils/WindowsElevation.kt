@@ -127,6 +127,9 @@ object ElevationTargetResolver {
         }
 
         // 3. IDE / Gradle Fallback (Running via java.exe directly)
+        // ShellExecuteEx has a ~2048-character limit on lpParameters.
+        // In dev/Gradle mode, the classpath alone is 7000+ characters, causing silent truncation and failure.
+        // We write a small helper batch file that executes java with the full classpath and captures all logs.
         val javaHome = File(System.getProperty("java.home"))
         var javaExe = File(javaHome, "bin/java.exe")
         if (!javaExe.exists()) {
@@ -137,8 +140,14 @@ object ElevationTargetResolver {
         debugLog.appendLine("javaExe: ${javaExe.absolutePath}, exists: ${javaExe.exists()}")
         debugLog.appendLine("classpath: $classpath")
 
-        val commandLine = buildString {
-            append("-cp ")
+        val logFile = File("C:\\Users\\Public\\nexpad_driver_install.log")
+        val batFile = File(System.getProperty("java.io.tmpdir"), "nexpad_driver_elevate.bat")
+
+        val batContent = buildString {
+            appendLine("@echo off")
+            appendLine("chcp 65001 >nul")
+            append("> \"${logFile.absolutePath}\" 2>&1 ")
+            append("\"${javaExe.absolutePath}\" -cp ")
             append(quoteWindowsArgument(classpath))
             append(' ')
             append(MAIN_CLASS)
@@ -146,13 +155,17 @@ object ElevationTargetResolver {
                 append(' ')
                 append(subArgs)
             }
+            appendLine()
+            appendLine("exit /b %ERRORLEVEL%")
         }
+        batFile.writeText(batContent)
 
+        val comSpec = System.getenv("COMSPEC") ?: "cmd.exe"
         val target = WindowsElevation.ProcessTarget(
-            executable = javaExe,
-            arguments = commandLine
+            executable = File(comSpec),
+            arguments = "/c \"${batFile.absolutePath}\""
         )
-        debugLog.appendLine("Selected Target 3 (Java CLI): ${target.executable.absolutePath} ${target.arguments}")
+        debugLog.appendLine("Selected Target 3 (Batch Wrapper): ${target.executable.absolutePath} ${target.arguments}")
         File("C:\\Users\\Public\\nexpad_elevation_debug.txt").writeText(debugLog.toString())
         return target
     }
