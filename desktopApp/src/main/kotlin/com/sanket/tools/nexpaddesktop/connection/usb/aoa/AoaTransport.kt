@@ -4,6 +4,7 @@ import org.usb4java.DeviceHandle
 import org.usb4java.LibUsb
 import java.nio.ByteBuffer
 import java.nio.IntBuffer
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -44,6 +45,15 @@ object AoaTransport {
         val packetSize = com.sanket.tools.nexpad.protocol.NexpadProtocol.INPUT_PACKET_SIZE
         val decoder = AoaFrameDecoder(packetSize)
         var hasLoggedFirstPacket = false
+        
+        var lastSequenceNumber = Int.MIN_VALUE
+        var lostInWindow = 0
+        var receivedInWindow = 0
+        var packetCount = 0
+        
+        // Thread-safe state for the OUT coroutine to read from the IN coroutine
+        val latestEchoSequence = AtomicInteger(0)
+        val latestLossPctByte = AtomicInteger(0)
 
         // Launch a concurrent coroutine to process OUT feedback (rumble) and send heartbeats
         launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -60,7 +70,11 @@ object AoaTransport {
                         nextFeedback = feedbackChannel.tryReceive().getOrNull()
                     }
 
-                    val bytes = com.sanket.tools.nexpad.protocol.NexpadProtocol.encodeFeedback(lastFeedback, 0, 0)
+                    val bytes = com.sanket.tools.nexpad.protocol.NexpadProtocol.encodeFeedback(
+                        feedback = lastFeedback, 
+                        echoSequenceNumber = latestEchoSequence.get(), 
+                        packetLossByte = latestLossPctByte.get().toByte()
+                    )
                     outBuffer.clear()
                     outBuffer.put(bytes)
                     outBuffer.flip()
@@ -98,6 +112,26 @@ object AoaTransport {
                                 println("[AOA/Transport] First valid packet received! Streaming is active.")
                                 hasLoggedFirstPacket = true
                             }
+                            
+                            packetCount = (packetCount % 60) + 1
+                            val delta = input.sequenceNumber - lastSequenceNumber
+                            if (delta > 0 || lastSequenceNumber == Int.MIN_VALUE) {
+                                if (lastSequenceNumber != Int.MIN_VALUE && delta > 1) {
+                                    lostInWindow += (delta - 1).coerceAtMost(255)
+                                }
+                                receivedInWindow++
+                                lastSequenceNumber = input.sequenceNumber
+                                latestEchoSequence.set(input.sequenceNumber)
+                                
+                                if (packetCount % 60 == 0) {
+                                    val total = lostInWindow + receivedInWindow
+                                    val currentLossPct = if (total > 0) (255 * lostInWindow / total).coerceIn(0, 255) else 0
+                                    latestLossPctByte.set(currentLossPct)
+                                    lostInWindow = 0
+                                    receivedInWindow = 0
+                                }
+                            }
+                            
                             onInputReceived(input)
                         }
                     }
