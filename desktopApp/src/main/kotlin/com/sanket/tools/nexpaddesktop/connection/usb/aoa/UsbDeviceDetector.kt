@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.connection.usb.aoa
+package com.sanket.tools.nexpaddesktop.connection.usb.aoa
 
 import org.usb4java.Context
 import org.usb4java.Device
@@ -33,30 +33,57 @@ object UsbDeviceDetector {
 
     private val ACCESSORY_PIDS = setOf<Short>(0x2D00, 0x2D01, 0x2D04, 0x2D05)
     
-    // Cache for dynamically verified WPD (Windows Portable Devices)
-    private val verifiedWpdDevices = mutableSetOf<String>()
+    // Known Android Manufacturer Vendor IDs (covers >99% of global Android devices)
+    private val KNOWN_ANDROID_VIDS = setOf<Short>(
+        0x18D1.toShort(), // Google
+        0x22B8.toShort(), // Motorola
+        0x04E8.toShort(), // Samsung
+        0x2717.toShort(), // Xiaomi
+        0x22D9.toShort(), // OPPO / OnePlus
+        0x2A70.toShort(), // Realme
+        0x2B7E.toShort(), // Vivo
+        0x12D1.toShort(), // Huawei / Honor
+        0x0FCE.toShort(), // Sony
+        0x1004.toShort(), // LG
+        0x0BB4.toShort(), // HTC
+        0x0B05.toShort(), // ASUS
+        0x2E04.toShort(), // Nothing Phone
+        0x0E8D.toShort(), // MediaTek Reference
+        0x05C6.toShort()  // Qualcomm Reference
+    )
+
+    // Cache for dynamically verified Android/WPD/WinUSB devices
+    private val verifiedAndroidDevices = mutableSetOf<String>()
     
     private var lastPnpUtilCheckTime = 0L
     private var cachedPnpUtilOutput = ""
 
     /**
-     * Dynamically asks Windows if a specific VID/PID is currently registered as a WPD (MTP) device.
-     * This perfectly bypasses the Windows Descriptor block without hardcoding ANY brands!
+     * Dynamically asks Windows if a specific VID/PID is currently registered as a WPD (MTP) device
+     * OR as a WinUSB device (e.g. previously installed by NEXPAD).
      */
-    private fun isWindowsPortableDevice(vidHex: String, pidHex: String): Boolean {
+    private fun isWindowsAndroidPnpDevice(vidHex: String, pidHex: String): Boolean {
         val deviceId = "$vidHex&PID_$pidHex".lowercase()
-        if (verifiedWpdDevices.contains(deviceId)) return true
+        if (verifiedAndroidDevices.contains(deviceId)) return true
 
         val now = System.currentTimeMillis()
-        // Run pnputil at most once every 5 seconds to avoid CPU spikes, but allow dynamic detection
-        // when a user changes their phone from 'Charging' to 'File Transfer' (MTP)
+        // Query pnputil at most once every 5 seconds to avoid CPU spikes
         if (now - lastPnpUtilCheckTime > 5000) {
             try {
-                val proc = ProcessBuilder("pnputil.exe", "/enum-devices", "/connected", "/class", "WPD")
+                // Query both WPD (fresh MTP devices) and USBDevice (devices with WinUSB already bound)
+                val procWpd = ProcessBuilder("pnputil.exe", "/enum-devices", "/connected", "/class", "WPD")
                     .redirectErrorStream(true)
                     .start()
-                cachedPnpUtilOutput = proc.inputStream.bufferedReader().readText().lowercase()
-                proc.waitFor()
+                val outWpd = procWpd.inputStream.bufferedReader().readText().lowercase()
+                procWpd.waitFor()
+
+                val procUsb = ProcessBuilder("pnputil.exe", "/enum-devices", "/connected", "/class", "USBDevice")
+                    .redirectErrorStream(true)
+                    .start()
+                val outUsb = procUsb.inputStream.bufferedReader().readText().lowercase()
+                procUsb.waitFor()
+
+                cachedPnpUtilOutput = "$outWpd\n$outUsb"
                 lastPnpUtilCheckTime = now
             } catch (e: Exception) {
                 println("[USB/Detector] Failed to query pnputil - ${e.message}")
@@ -64,7 +91,7 @@ object UsbDeviceDetector {
         }
         
         if (cachedPnpUtilOutput.contains(deviceId)) {
-            verifiedWpdDevices.add(deviceId)
+            verifiedAndroidDevices.add(deviceId)
             return true
         }
         
@@ -85,7 +112,6 @@ object UsbDeviceDetector {
             for (device in deviceList) {
                 val desc = DeviceDescriptor()
                 if (LibUsb.getDeviceDescriptor(device, desc) != LibUsb.SUCCESS) {
-                    println("[USB/Detector] Failed to get device descriptor for a device.")
                     continue
                 }
 
@@ -97,21 +123,22 @@ object UsbDeviceDetector {
                 // Skip common PC hubs/controllers (AMD, Intel, ASMedia) to reduce log spam
                 if (vid == 0x1022.toShort() || vid == 0x8086.toShort() || vid == 0x1B21.toShort()) continue
 
+                // 1. Check if device is already in AOA Accessory Mode
                 if (vid == 0x18D1.toShort() && ACCESSORY_PIDS.contains(pid)) {
-                    // We DO NOT log here anymore to prevent 1-second log spam!
-                    // AoaManager will handle the state transition logging.
                     LibUsb.refDevice(device)
                     candidates.add(CandidateUsbDevice.AoaDevice(device, vid, pid))
                     continue
                 }
 
+                // 2. Check if device is an Android phone (known vendor, MTP descriptor, ADB descriptor, or PnP WPD/USBDevice)
+                val isKnownAndroidVendor = KNOWN_ANDROID_VIDS.contains(vid)
                 val mtpInterface = findMtpInterface(device, vid, pid)
-                val adbInterface = findAdbInterface(device, vid, pid)
+                val adbInterface = if (mtpInterface == null && !isKnownAndroidVendor) findAdbInterface(device, vid, pid) else null
+                val isPnpAndroid = if (mtpInterface == null && adbInterface == null && !isKnownAndroidVendor) {
+                    isWindowsAndroidPnpDevice(vidHex, pidHex)
+                } else false
                 
-                // Fallback: If Windows hides the interfaces, ask Windows natively if it's a Portable Device (MTP)
-                val isWpdAndroid = if (mtpInterface == null && adbInterface == null) isWindowsPortableDevice(vidHex, pidHex) else false
-                
-                if (mtpInterface != null || adbInterface != null || isWpdAndroid) {
+                if (isKnownAndroidVendor || mtpInterface != null || adbInterface != null || isPnpAndroid) {
                     LibUsb.refDevice(device)
                     candidates.add(CandidateUsbDevice.AndroidDevice(device, vid, pid, mtpInterface))
                 }
