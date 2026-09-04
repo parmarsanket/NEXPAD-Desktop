@@ -71,4 +71,7 @@ interface LibWdiBinding : Library {
     
     // Installs the driver (requires Admin)
     fun wdi_install_driver(device_info: wdi_device_info?, path: String?, inf_name: String?, options: wdi_options_install?): Int
+
+    // Returns a human-readable string for any libwdi error code
+    fun wdi_strerror(errcode: Int): String
 }

@@ -40,6 +40,7 @@ fun MainApplicationWindow(
     connectionType: Int?,
     aoaRequiresElevation: Boolean = false,
     onRequestAoaElevation: () -> Unit = {},
+    onDismissAoaElevation: () -> Unit = {},
     gyroSettings: GyroSettings,
     onGyroSettingsChange: (GyroSettings) -> Unit,
     processedYaw: Float,
@@ -72,7 +73,8 @@ fun MainApplicationWindow(
                     connectedDeviceName = connectedDeviceName,
                     connectionType = connectionType,
                     aoaRequiresElevation = aoaRequiresElevation,
-                    onRequestAoaElevation = onRequestAoaElevation
+                    onRequestAoaElevation = onRequestAoaElevation,
+                    onDismissAoaElevation = onDismissAoaElevation
                 )
                 Screen.CONTROLLER -> ControllerScreen(
                     latestInput = latestInput,

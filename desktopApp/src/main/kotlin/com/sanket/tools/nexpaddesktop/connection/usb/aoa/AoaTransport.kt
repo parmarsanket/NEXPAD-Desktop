@@ -98,6 +98,7 @@ object AoaTransport {
     ) = coroutineScope {
         val outBuffer = ByteBuffer.allocateDirect(FEEDBACK_BUFFER_SIZE)
         val outTransferred = IntBuffer.allocate(1)
+        val feedbackBytes = ByteArray(NexpadProtocol.FEEDBACK_PACKET_SIZE)
         var lastFeedback = GamepadFeedback(0, 0)
 
         try {
@@ -115,14 +116,16 @@ object AoaTransport {
                     nextFeedback = feedbackChannel.tryReceive().getOrNull()
                 }
 
-                val bytes = NexpadProtocol.encodeFeedback(
+                NexpadProtocol.encodeFeedback(
                     feedback = lastFeedback,
                     echoSequenceNumber = latestEchoSequence.get(),
-                    packetLossByte = latestLossPctByte.get().toByte()
+                    packetLossByte = latestLossPctByte.get().toByte(),
+                    out = feedbackBytes,
+                    offset = 0
                 )
 
                 outBuffer.clear()
-                outBuffer.put(bytes)
+                outBuffer.put(feedbackBytes, 0, NexpadProtocol.FEEDBACK_PACKET_SIZE)
                 outBuffer.flip()
                 outTransferred.clear()
 
@@ -147,6 +150,7 @@ object AoaTransport {
     ) {
         val buffer = ByteBuffer.allocateDirect(BULK_READ_BUFFER_SIZE)
         val transferred = IntBuffer.allocate(1)
+        val rawReadBytes = ByteArray(BULK_READ_BUFFER_SIZE)
 
         val packetSize = NexpadProtocol.INPUT_PACKET_SIZE
         val decoder = AoaFrameDecoder(packetSize)
@@ -164,12 +168,10 @@ object AoaTransport {
 
             if (result == LibUsb.SUCCESS && transferred.get(0) > 0) {
                 val bytesRead = transferred.get(0)
-                val data = ByteArray(bytesRead)
-                buffer.get(data)
+                buffer.get(rawReadBytes, 0, bytesRead)
 
-                val completePackets = decoder.appendBytes(data)
-                for (packetData in completePackets) {
-                    val input = NexpadProtocol.decodeInput(packetData) ?: continue
+                decoder.append(rawReadBytes, 0, bytesRead) { packetBuffer, packetOffset ->
+                    val input = NexpadProtocol.decodeInput(packetBuffer, packetOffset) ?: return@append
 
                     if (!hasLoggedFirstPacket) {
                         println("[AOA/Transport] First valid packet received! Streaming is active.")

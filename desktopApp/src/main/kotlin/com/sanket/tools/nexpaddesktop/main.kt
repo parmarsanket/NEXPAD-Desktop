@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop
+package com.sanket.tools.nexpaddesktop
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.window.Window
@@ -111,20 +111,33 @@ fun main(args: Array<String>) {
             when (val result = com.sanket.tools.nexpaddesktop.utils.WindowsElevation.runElevated(target)) {
                 is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.Success -> {
                     println("Main: Background driver install finished with exit code ${result.exitCode}")
-                    if (result.exitCode == 0) {
+                    val success = result.exitCode == 0
+                    aoaManager.onDriverInstallCompleted(success)
+                    if (success) {
                         println("Main: WinUSB driver installed successfully. Scanner loop will retry handshake.")
                     } else {
                         println("Main: Driver installation failed (Code ${result.exitCode}). AOA connection will likely fail.")
+                        aoaManager.userDismissedElevation = true
                     }
                 }
                 is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.UserCancelled -> {
                     println("Main: User cancelled UAC prompt. Driver not installed.")
+                    aoaManager.userDismissedElevation = true
+                    aoaManager.onDriverInstallCompleted(false)
                 }
                 is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.Error -> {
                     println("Main: Failed to launch elevated process. Win32 Error: ${result.errorCode} - ${result.message}")
+                    aoaManager.userDismissedElevation = true
+                    aoaManager.onDriverInstallCompleted(false)
                 }
             }
         }
+    }
+
+    val onDismissAoaElevation: () -> Unit = {
+        aoaRequiresElevation = false
+        aoaManager.userDismissedElevation = true
+        println("Main: User dismissed AOA elevation prompt.")
     }
     
     // ══════════════════════════════════════════════════════════
@@ -260,6 +273,7 @@ fun main(args: Array<String>) {
                 
                 aoaRequiresElevation = aoaRequiresElevation,
                 onRequestAoaElevation = onRequestAoaElevation,
+                onDismissAoaElevation = onDismissAoaElevation,
 
                 gyroSettings = gyroSettings,
                 onGyroSettingsChange = { gyroSettings = it },

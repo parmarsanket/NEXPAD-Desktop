@@ -31,71 +31,55 @@ sealed interface CandidateUsbDevice {
 
 object UsbDeviceDetector {
 
+    // Official Google Android Open Accessory standard PIDs (from Google AOA 2.0 Spec)
     private val ACCESSORY_PIDS = setOf<Short>(0x2D00, 0x2D01, 0x2D04, 0x2D05)
     
-    // Known Android Manufacturer Vendor IDs (covers >99% of global Android devices)
-    private val KNOWN_ANDROID_VIDS = setOf<Short>(
-        0x18D1.toShort(), // Google
-        0x22B8.toShort(), // Motorola
-        0x04E8.toShort(), // Samsung
-        0x2717.toShort(), // Xiaomi
-        0x22D9.toShort(), // OPPO / OnePlus
-        0x2A70.toShort(), // Realme
-        0x2B7E.toShort(), // Vivo
-        0x12D1.toShort(), // Huawei / Honor
-        0x0FCE.toShort(), // Sony
-        0x1004.toShort(), // LG
-        0x0BB4.toShort(), // HTC
-        0x0B05.toShort(), // ASUS
-        0x2E04.toShort(), // Nothing Phone
-        0x0E8D.toShort(), // MediaTek Reference
-        0x05C6.toShort()  // Qualcomm Reference
-    )
-
-    // Cache for dynamically verified Android/WPD/WinUSB devices
-    private val verifiedAndroidDevices = mutableSetOf<String>()
+    // Dynamic cache of connected Android devices discovered via Windows PnP
+    // ZERO hardcoded vendor IDs — populated dynamically from Windows PnP metadata!
+    private val dynamicPnpAndroidDevices = mutableSetOf<String>()
     
-    private var lastPnpUtilCheckTime = 0L
-    private var cachedPnpUtilOutput = ""
+    private var lastPnpScanTime = 0L
 
     /**
-     * Dynamically asks Windows if a specific VID/PID is currently registered as a WPD (MTP) device
-     * OR as a WinUSB device (e.g. previously installed by NEXPAD).
+     * Queries Windows PnP dynamically for connected Android devices.
+     * Detects:
+     * - Windows Portable Devices (Class WPD - standard MTP)
+     * - Android USB Devices (Class AndroidUsbDeviceClass - ADB / composite)
+     * - NEXPAD WinUSB Devices (Class USBDevice with NEXPAD driver)
      */
-    private fun isWindowsAndroidPnpDevice(vidHex: String, pidHex: String): Boolean {
-        val deviceId = "$vidHex&PID_$pidHex".lowercase()
-        if (verifiedAndroidDevices.contains(deviceId)) return true
-
+    private fun refreshPnpAndroidDevices() {
         val now = System.currentTimeMillis()
-        // Query pnputil at most once every 5 seconds to avoid CPU spikes
-        if (now - lastPnpUtilCheckTime > 5000) {
-            try {
-                // Query both WPD (fresh MTP devices) and USBDevice (devices with WinUSB already bound)
-                val procWpd = ProcessBuilder("pnputil.exe", "/enum-devices", "/connected", "/class", "WPD")
-                    .redirectErrorStream(true)
-                    .start()
-                val outWpd = procWpd.inputStream.bufferedReader().readText().lowercase()
-                procWpd.waitFor()
+        if (now - lastPnpScanTime < 5000) return
+        lastPnpScanTime = now
 
-                val procUsb = ProcessBuilder("pnputil.exe", "/enum-devices", "/connected", "/class", "USBDevice")
-                    .redirectErrorStream(true)
-                    .start()
-                val outUsb = procUsb.inputStream.bufferedReader().readText().lowercase()
-                procUsb.waitFor()
+        try {
+            val proc = ProcessBuilder("pnputil.exe", "/enum-devices", "/connected")
+                .redirectErrorStream(true)
+                .start()
+            val text = proc.inputStream.bufferedReader().readText()
+            proc.waitFor()
 
-                cachedPnpUtilOutput = "$outWpd\n$outUsb"
-                lastPnpUtilCheckTime = now
-            } catch (e: Exception) {
-                println("[USB/Detector] Failed to query pnputil - ${e.message}")
+            dynamicPnpAndroidDevices.clear()
+            val blocks = text.split("Instance ID:")
+            for (block in blocks) {
+                val lower = block.lowercase()
+                val isWpd = lower.contains("class name:                 wpd")
+                val isAndroidClass = lower.contains("class name:                 androidusbdeviceclass")
+                val isNexpadWinUsb = lower.contains("class name:                 usbdevice") && 
+                                     (lower.contains("nexpad") || lower.contains("libusb.info"))
+
+                if (isWpd || isAndroidClass || isNexpadWinUsb) {
+                    val vidMatch = Regex("vid_([0-9a-fA-F]{4})", RegexOption.IGNORE_CASE).find(block)
+                    val pidMatch = Regex("pid_([0-9a-fA-F]{4})", RegexOption.IGNORE_CASE).find(block)
+                    if (vidMatch != null && pidMatch != null) {
+                        val key = "${vidMatch.groupValues[1]}:${pidMatch.groupValues[1]}".uppercase()
+                        dynamicPnpAndroidDevices.add(key)
+                    }
+                }
             }
+        } catch (e: Exception) {
+            println("[USB/Detector] Failed to query pnputil - ${e.message}")
         }
-        
-        if (cachedPnpUtilOutput.contains(deviceId)) {
-            verifiedAndroidDevices.add(deviceId)
-            return true
-        }
-        
-        return false
     }
 
     /**
@@ -108,6 +92,8 @@ object UsbDeviceDetector {
         
         if (LibUsb.getDeviceList(context, deviceList) < 0) return emptyList()
 
+        refreshPnpAndroidDevices()
+
         try {
             for (device in deviceList) {
                 val desc = DeviceDescriptor()
@@ -119,26 +105,26 @@ object UsbDeviceDetector {
                 val pid = desc.idProduct()
                 val vidHex = String.format("%04X", vid)
                 val pidHex = String.format("%04X", pid)
+                val deviceKey = "$vidHex:$pidHex".uppercase()
 
-                // Skip common PC hubs/controllers (AMD, Intel, ASMedia) to reduce log spam
+                // Skip common PC internal root hubs/controllers (AMD, Intel, ASMedia)
                 if (vid == 0x1022.toShort() || vid == 0x8086.toShort() || vid == 0x1B21.toShort()) continue
 
-                // 1. Check if device is already in AOA Accessory Mode
+                // 1. Google AOA Accessory Mode (standard 0x18D1:0x2D00..0x2D05)
                 if (vid == 0x18D1.toShort() && ACCESSORY_PIDS.contains(pid)) {
                     LibUsb.refDevice(device)
                     candidates.add(CandidateUsbDevice.AoaDevice(device, vid, pid))
                     continue
                 }
 
-                // 2. Check if device is an Android phone (known vendor, MTP descriptor, ADB descriptor, or PnP WPD/USBDevice)
-                val isKnownAndroidVendor = KNOWN_ANDROID_VIDS.contains(vid)
+                // 2. Dynamic Discovery (No hardcoded VIDs):
+                // - Descriptors expose standard MTP or ADB interface
+                // - OR Windows PnP registers it under WPD, AndroidUsbDeviceClass, or NEXPAD USBDevice
                 val mtpInterface = findMtpInterface(device, vid, pid)
-                val adbInterface = if (mtpInterface == null && !isKnownAndroidVendor) findAdbInterface(device, vid, pid) else null
-                val isPnpAndroid = if (mtpInterface == null && adbInterface == null && !isKnownAndroidVendor) {
-                    isWindowsAndroidPnpDevice(vidHex, pidHex)
-                } else false
-                
-                if (isKnownAndroidVendor || mtpInterface != null || adbInterface != null || isPnpAndroid) {
+                val adbInterface = if (mtpInterface == null) findAdbInterface(device, vid, pid) else null
+                val isPnpAndroid = dynamicPnpAndroidDevices.contains(deviceKey)
+
+                if (mtpInterface != null || adbInterface != null || isPnpAndroid) {
                     LibUsb.refDevice(device)
                     candidates.add(CandidateUsbDevice.AndroidDevice(device, vid, pid, mtpInterface))
                 }
@@ -161,9 +147,11 @@ object UsbDeviceDetector {
                     val intSubClass = alt.bInterfaceSubClass().toInt() and 0xFF
                     val intProtocol = alt.bInterfaceProtocol().toInt() and 0xFF
                     
+                    // Standard MTP (Class 6 / Sub 1 / Prot 1)
                     if (intClass == LibUsb.CLASS_IMAGE.toInt() && intSubClass == 0x01 && intProtocol == 0x01) {
                         return (alt.bInterfaceNumber().toInt() and 0xFF)
                     }
+                    // Vendor-specific MTP (Class FF / Sub FF / Prot 0)
                     if (intClass == LibUsb.CLASS_VENDOR_SPEC.toInt() && intSubClass == 0xFF && intProtocol == 0x00) {
                         return (alt.bInterfaceNumber().toInt() and 0xFF)
                     }
@@ -187,6 +175,7 @@ object UsbDeviceDetector {
                     val intSubClass = alt.bInterfaceSubClass().toInt() and 0xFF
                     val intProtocol = alt.bInterfaceProtocol().toInt() and 0xFF
                     
+                    // Standard Android ADB (Class FF / Sub 42 / Prot 1)
                     if (intClass == LibUsb.CLASS_VENDOR_SPEC.toInt() && intSubClass == 0x42 && intProtocol == 0x01) {
                         return (alt.bInterfaceNumber().toInt() and 0xFF)
                     }

@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.connection.usb.aoa
+package com.sanket.tools.nexpaddesktop.connection.usb.aoa
 
 import com.sanket.tools.nexpad.model.GamepadInput
 import org.usb4java.Context
@@ -22,6 +22,9 @@ class AoaManager {
     // Callback to trigger UAC prompt. Requires VID, PID, and optionally the specific MTP Interface Number.
     var onRequestElevation: ((Short, Short, Int?) -> Unit)? = null
 
+    // Prevents endless elevation prompt loops when user cancels
+    @Volatile var userDismissedElevation = false
+
     private var activeFeedbackChannel: kotlinx.coroutines.channels.Channel<com.sanket.tools.nexpad.model.GamepadFeedback>? = null
 
     fun sendFeedback(feedback: com.sanket.tools.nexpad.model.GamepadFeedback) {
@@ -31,7 +34,7 @@ class AoaManager {
     private var context: Context? = null
     private var currentState: AoaState = AoaState.Idle
 
-    private fun refreshContext() {
+    fun refreshContext() {
         println("[AOA/Manager] Refreshing LibUsb context to clear Windows PnP cache...")
         context?.let { LibUsb.exit(it) }
         val newCtx = Context()
@@ -40,11 +43,21 @@ class AoaManager {
         }
     }
 
+    fun onDriverInstallCompleted(success: Boolean) {
+        println("[AOA/Manager] Driver installation finished (success=$success). Refreshing USB context.")
+        currentState = AoaState.Idle
+        refreshContext()
+    }
+
+    fun resetDismissedElevation() {
+        userDismissedElevation = false
+    }
+
     init {
         val ctx = Context()
         val result = LibUsb.init(ctx)
         if (result != LibUsb.SUCCESS) {
-            println("[AOA/Manager] ERROR: Unable to initialize libusb. ")
+            println("[AOA/Manager] ERROR: Unable to initialize libusb.")
         } else {
             this.context = ctx
             println("[AOA/Manager] libusb initialized successfully")
@@ -56,7 +69,8 @@ class AoaManager {
         println("[AOA/Manager] Starting continuous USB scanning loop...")
 
         while (isActive) {
-            // Handle State Machine Timeouts
+            // While Windows is actively installing a driver, DO NOT query or open USB devices!
+            // Probing device descriptors during driver installation causes PNP_VetoOutstandingOpen (-11 error)!
             if (currentState is AoaState.InstallingDriver) {
                 val state = currentState as AoaState.InstallingDriver
                 if (System.currentTimeMillis() - state.startTime > 30_000) {
@@ -64,6 +78,8 @@ class AoaManager {
                     currentState = AoaState.Idle
                     refreshContext()
                 }
+                delay(1000)
+                continue
             }
 
             val candidates = UsbDeviceDetector.findCandidates(context!!)
@@ -72,7 +88,7 @@ class AoaManager {
                 val aoaCandidate = candidates.filterIsInstance<CandidateUsbDevice.AoaDevice>().firstOrNull()
                 if (aoaCandidate != null) {
                     val elevationRequired = processAoaDevice(aoaCandidate)
-                    if (elevationRequired && currentState is AoaState.Idle) {
+                    if (elevationRequired && currentState is AoaState.Idle && !userDismissedElevation) {
                         println("[AOA/Manager] AOA Device requires WinUSB (Phase 2). Transitioning to InstallingDriver state.")
                         currentState = AoaState.InstallingDriver(System.currentTimeMillis())
                         onRequestElevation?.invoke(aoaCandidate.vid, aoaCandidate.pid, null)
@@ -86,14 +102,12 @@ class AoaManager {
                 val androidCandidate = candidates.filterIsInstance<CandidateUsbDevice.AndroidDevice>().firstOrNull()
                 if (androidCandidate != null) {
                     val elevationRequired = processAndroidDevice(androidCandidate)
-                    if (elevationRequired && currentState is AoaState.Idle) {
+                    if (elevationRequired && currentState is AoaState.Idle && !userDismissedElevation) {
                         println("[AOA/Manager] Device requires WinUSB driver (Phase 1). Transitioning to InstallingDriver state.")
                         currentState = AoaState.InstallingDriver(System.currentTimeMillis())
                         onRequestElevation?.invoke(androidCandidate.vid, androidCandidate.pid, androidCandidate.mtpInterfaceNumber)
                     } else if (!elevationRequired && currentState is AoaState.InstallingDriver) {
                         println("[AOA/Manager] Phase 1 Handshake successful! Resetting state to Idle.")
-                        // We reset to Idle here so that if the device reconnects as AOA and needs Phase 2,
-                        // it can correctly transition to InstallingDriver again!
                         currentState = AoaState.Idle
                     }
                     delay(2000)
@@ -120,7 +134,6 @@ class AoaManager {
             LibUsb.setAutoDetachKernelDriver(handle, true)
             
             try {
-                // Borrow handle to handshake
                 AoaHandshake.sendHandshake(handle, candidate.device)
                 return false
             } catch (e: UsbHandshakeException) {
@@ -128,11 +141,6 @@ class AoaManager {
                     println("[AOA/Manager] Handshake exception: ${e.message}")
                 }
                 if (e.failure == UsbOpenFailure.AccessDenied) {
-                    if (currentState is AoaState.Idle) {
-                        println("[AOA/Manager] Access Denied to EP0. Requesting WinUSB Driver Installation...")
-                    } else {
-                        println("[AOA/Manager] Waiting for WinUSB driver installation to finish...")
-                    }
                     return true
                 }
                 return false
@@ -141,11 +149,6 @@ class AoaManager {
             }
         } else {
             if (openResult == LibUsb.ERROR_ACCESS || openResult == LibUsb.ERROR_NOT_SUPPORTED) {
-                if (currentState is AoaState.Idle) {
-                    println("[AOA/Manager] LibUsb.open Access Denied. Requesting WinUSB Driver Installation...")
-                } else {
-                    println("[AOA/Manager] Waiting for WinUSB driver installation to finish...")
-                }
                 return true
             }
             return false
@@ -161,12 +164,12 @@ class AoaManager {
             LibUsb.setAutoDetachKernelDriver(handle, true)
             
             onAoaConnected?.invoke("Android Phone (USB Direct)")
+            userDismissedElevation = false // Reset on successful connection
             
             try {
                 val feedbackChannel = kotlinx.coroutines.channels.Channel<com.sanket.tools.nexpad.model.GamepadFeedback>(kotlinx.coroutines.channels.Channel.CONFLATED)
                 activeFeedbackChannel = feedbackChannel
 
-                // Hand over streaming to transport. It borrows the handle but we own it.
                 AoaTransport.startBulkStreaming(handle, feedbackChannel) { input ->
                     onInputReceived?.invoke(input)
                 }
@@ -174,16 +177,11 @@ class AoaManager {
                 activeFeedbackChannel = null
                 LibUsb.close(handle)
                 onAoaDisconnected?.invoke()
-                currentState = AoaState.Idle // Reset to idle on disconnect
+                currentState = AoaState.Idle
             }
             return false
         } else {
             if (openResult == LibUsb.ERROR_ACCESS || openResult == LibUsb.ERROR_NOT_SUPPORTED) {
-                if (currentState is AoaState.Idle) {
-                    println("[AOA/Manager] LibUsb.open Access Denied on AOA Device! Phase 2 WinUSB required.")
-                } else {
-                    println("[AOA/Manager] Waiting for Phase 2 WinUSB driver installation to finish...")
-                }
                 return true
             }
             return false

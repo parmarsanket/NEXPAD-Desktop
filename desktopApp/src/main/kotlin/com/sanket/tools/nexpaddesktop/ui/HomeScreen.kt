@@ -48,7 +48,8 @@ fun HomeScreen(
     connectedDeviceName: String? = null,
     connectionType: Int? = null,
     aoaRequiresElevation: Boolean = false,
-    onRequestAoaElevation: () -> Unit = {}
+    onRequestAoaElevation: () -> Unit = {},
+    onDismissAoaElevation: () -> Unit = {}
 ) {
     // Server pulse
     val infinite = rememberInfiniteTransition(label = "pulse")
@@ -73,7 +74,10 @@ fun HomeScreen(
             .fillMaxSize()
     ) {
         if (aoaRequiresElevation) {
-            AoaElevationDialog(onRequestAoaElevation)
+            AoaElevationDialog(
+                onConfirm = onRequestAoaElevation,
+                onDismiss = onDismissAoaElevation
+            )
         }
 
         Column(
@@ -439,8 +443,11 @@ private fun RadarAnimation() {
 }
 
 @Composable
-fun AoaElevationDialog(onConfirm: () -> Unit) {
-    androidx.compose.ui.window.Dialog(onCloseRequest = {}) {
+fun AoaElevationDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit = {}
+) {
+    androidx.compose.ui.window.Dialog(onCloseRequest = onDismiss) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -450,12 +457,28 @@ fun AoaElevationDialog(onConfirm: () -> Unit) {
                 .padding(24.dp)
         ) {
             Column {
-                Text("USB Driver Swap Required", color = NeonPalette.Cyan, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("USB Driver Setup Required", color = NeonPalette.Cyan, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("NEXPAD needs to swap your phone's USB driver to WinUSB to enable low-latency direct connection. This requires Administrator permissions.", color = Color.White)
+                Text("NEXPAD needs to configure WinUSB for your connected phone to enable low-latency gamepad streaming over USB. This requires one-time Administrator approval.", color = Color.White, fontSize = 14.sp)
                 Spacer(modifier = Modifier.height(24.dp))
-                androidx.compose.material3.Button(onClick = onConfirm, modifier = Modifier.fillMaxWidth(), colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = NeonPalette.Purple)) {
-                    Text("Grant Permission", color = Color.White)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = onDismiss, 
+                        modifier = Modifier.weight(1f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.Gray)
+                    ) {
+                        Text("Not Now", color = Color.White)
+                    }
+                    androidx.compose.material3.Button(
+                        onClick = onConfirm, 
+                        modifier = Modifier.weight(1f), 
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = NeonPalette.Purple)
+                    ) {
+                        Text("Grant Permission", color = Color.White)
+                    }
                 }
             }
         }

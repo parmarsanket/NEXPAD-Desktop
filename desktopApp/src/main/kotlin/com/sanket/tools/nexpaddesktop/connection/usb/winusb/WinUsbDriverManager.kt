@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.connection.usb.winusb
+package com.sanket.tools.nexpaddesktop.connection.usb.winusb
 
 import java.io.File
 import kotlin.system.exitProcess
@@ -45,7 +45,8 @@ object WinUsbDriverManager {
                 )
                 
                 if (prepRes != 0) {
-                    println("[WinUSB/Driver] ERROR: wdi_prepare_driver failed: $prepRes")
+                    val errDesc = try { LibWdiBinding.INSTANCE.wdi_strerror(prepRes) } catch (_: Throwable) { "$prepRes" }
+                    println("[WinUSB/Driver] ERROR: wdi_prepare_driver failed: $prepRes ($errDesc)")
                     return 1
                 }
                 
@@ -56,7 +57,8 @@ object WinUsbDriverManager {
                 )
                 
                 if (installRes != 0) {
-                    println("[WinUSB/Driver] ERROR: wdi_install_driver failed: $installRes")
+                    val errDesc = try { LibWdiBinding.INSTANCE.wdi_strerror(installRes) } catch (_: Throwable) { "$installRes" }
+                    println("[WinUSB/Driver] ERROR: wdi_install_driver failed: $installRes ($errDesc)")
                     return 1
                 }
                 
