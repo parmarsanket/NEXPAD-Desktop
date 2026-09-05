@@ -66,14 +66,16 @@ class AoaManager {
 
     // Mutual exclusion: when ADB device is present / USB debugging is ON, AOA is suppressed
     var isAdbActive: () -> Boolean = { false }
+    // Single Active Transport Guard: pause scanning when any other connection is active
+    var isScanningPaused: () -> Boolean = { false }
 
     suspend fun scanAndConnect() = coroutineScope {
         if (context == null) return@coroutineScope
         println("[AOA/Manager] Starting continuous USB scanning loop...")
 
         while (isActive) {
-            // If USB Debugging is ON and an ADB device is present, AOA must completely back off!
-            if (isAdbActive()) {
+            // If another transport is active (Bluetooth, Wi-Fi, ADB) or scanning is paused, completely back off!
+            if (isScanningPaused() || isAdbActive()) {
                 delay(1500)
                 continue
             }

@@ -45,6 +45,9 @@ class BluetoothRfcommServer {
 
     private var serverJob: Job? = null
 
+    // Single Active Transport Guard: do not accept incoming BT connections if another transport is active
+    var isExternalTransportActive: () -> Boolean = { false }
+
     fun isConnected(): Boolean = isConnected.get()
 
     fun start(scope: CoroutineScope) {
@@ -179,6 +182,14 @@ class BluetoothRfcommServer {
                 clientAddr.read()
                 val clientMac = formatBtAddress(clientAddr.btAddr)
                 val deviceDisplayName = "Phone ($clientMac)"
+
+                if (isExternalTransportActive()) {
+                    println("⚠️ [Bluetooth] Rejecting incoming BT connection from $deviceDisplayName: another transport is active.")
+                    closeSocket(acceptedSock)
+                    delay(500)
+                    continue
+                }
+
                 println("⚡ [Bluetooth] Client connected: $deviceDisplayName")
 
                 clientSocket = acceptedSock

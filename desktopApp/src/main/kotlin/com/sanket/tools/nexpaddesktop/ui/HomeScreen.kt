@@ -267,16 +267,22 @@ fun HomeScreen(
             val isDeviceConnected = connectedDeviceName != null
 
             Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                ConnectionToggle(label = "WiFi", icon = Icons.Default.Wifi, isAvailable = isDeviceConnected && availableConnections.contains(1), isActive = connectionType == 1)
-                ConnectionToggle(label = "USB", icon = Icons.Default.Usb, isAvailable = isDeviceConnected && availableConnections.contains(2), isActive = connectionType == 2)
-                ConnectionToggle(label = "Bluetooth", icon = Icons.Default.Bluetooth, isAvailable = isDeviceConnected && availableConnections.contains(3), isActive = connectionType == 3)
+                ConnectionToggle(label = "Wi-Fi", icon = Icons.Default.Wifi, isDeviceConnected = isDeviceConnected, isActive = connectionType == 1)
+                ConnectionToggle(label = "USB", icon = Icons.Default.Usb, isDeviceConnected = isDeviceConnected, isActive = connectionType == 2)
+                ConnectionToggle(label = "Bluetooth", icon = Icons.Default.Bluetooth, isDeviceConnected = isDeviceConnected, isActive = connectionType == 3)
             }
         }
     }
 }
 
 @Composable
-private fun ConnectionToggle(label: String, icon: ImageVector, isAvailable: Boolean, isActive: Boolean, extraContent: @Composable () -> Unit = {}) {
+private fun ConnectionToggle(
+    label: String,
+    icon: ImageVector,
+    isDeviceConnected: Boolean,
+    isActive: Boolean,
+    extraContent: @Composable () -> Unit = {}
+) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
 
@@ -356,10 +362,15 @@ private fun ConnectionToggle(label: String, icon: ImageVector, isAvailable: Bool
                     // Spacer between extra content and status dot
                     Spacer(modifier = Modifier.width(8.dp))
                     
-                    if (isAvailable && !isActive) {
-                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(NeonPalette.Green))
-                    } else if (isActive) {
-                        Text("Active", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    if (isActive) {
+                        Text("Active", color = NeonPalette.Cyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    } else if (isDeviceConnected) {
+                        Text("Standby", color = NeonPalette.CardIdleText.copy(alpha = 0.45f), fontSize = 12.sp, fontWeight = FontWeight.Normal)
+                    } else {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(NeonPalette.Green))
+                            Text("Ready", color = NeonPalette.CardIdleText, fontSize = 12.sp)
+                        }
                     }
                 }
             }

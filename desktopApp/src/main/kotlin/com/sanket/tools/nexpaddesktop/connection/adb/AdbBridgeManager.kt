@@ -49,6 +49,9 @@ class AdbBridgeManager(
 
     private val feedbackChannel = Channel<GamepadFeedback>(Channel.CONFLATED)
 
+    // Single Active Transport Guard: pause scanner when another transport is active
+    var isScanningPaused: () -> Boolean = { false }
+
     fun startScanner(parentScope: CoroutineScope) {
         if (isRunning.getAndSet(true)) return
 
@@ -63,6 +66,10 @@ class AdbBridgeManager(
             }
 
             while (isActive && isRunning.get()) {
+                if (isScanningPaused()) {
+                    delay(1500)
+                    continue
+                }
                 if (!isConnected.get()) {
                     val resolvedPath = adbPath ?: AdbPathResolver.resolveAdbPath()
                     if (resolvedPath != null) {

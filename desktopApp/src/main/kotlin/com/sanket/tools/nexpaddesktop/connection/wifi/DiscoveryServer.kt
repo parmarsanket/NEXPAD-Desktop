@@ -19,6 +19,9 @@ class DiscoveryServer(private val port: Int = 9998) {
     private var serverSocket: BoundDatagramSocket? = null
     private var selectorManager: SelectorManager? = null
 
+    // Single Active Transport Guard: do not advertise if a client is already connected
+    var isPaused: () -> Boolean = { false }
+
     suspend fun start() = withContext(Dispatchers.IO) {
         selectorManager = SelectorManager(Dispatchers.IO)
         // Bind to all interfaces on discovery port
@@ -36,6 +39,9 @@ class DiscoveryServer(private val port: Int = 9998) {
                 val data = datagram.packet.readByteArray()
                 
                 if (data.isNotEmpty() && data[0] == NexpadProtocol.PACKET_TYPE_DISCOVER) {
+                    if (isPaused()) {
+                        continue // Ignore discovery while a game session is active
+                    }
                     println("🔍 Received DISCOVER packet from ${datagram.address}")
                     
                     // Reply Format: [PACKET_TYPE_SERVER_INFO(1)] [NameLength(1)] [NameBytes(N)]

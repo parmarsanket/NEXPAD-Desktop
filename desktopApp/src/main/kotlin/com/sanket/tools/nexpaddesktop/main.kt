@@ -12,6 +12,8 @@ import com.sanket.tools.nexpaddesktop.model.GyroSettings
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpaddesktop.ui.MainApplicationWindow
 import com.sanket.tools.nexpaddesktop.ui.theme.NexpadDesktopTheme
+import com.sanket.tools.nexpaddesktop.connection.ActiveTransport
+import com.sanket.tools.nexpad.model.GamepadFeedback
 import com.sanket.tools.nexpaddesktop.ui.ControllerType
 import com.sun.jna.platform.win32.Kernel32
 import kotlinx.coroutines.Dispatchers
@@ -72,8 +74,9 @@ fun main(args: Array<String>) {
     
     // Track connection state
     var isDriverConnected by remember { mutableStateOf(false) }
+    var activeTransport by remember { mutableStateOf(ActiveTransport.NONE) }
     var connectedDeviceName by remember { mutableStateOf<String?>(null) }
-    var connectionType by remember { mutableStateOf<Int?>(null) } // 1 = USB, 2 = WiFi
+    var connectionType by remember { mutableStateOf<Int?>(null) } // 1 = WiFi, 2 = USB, 3 = BT
     
     // Motion Smoothing State
     var gyroSettings by remember { mutableStateOf(GyroSettings()) }
@@ -156,28 +159,26 @@ fun main(args: Array<String>) {
     //  DRIVER LIFECYCLE — Re-create driver when controller type changes
     // ══════════════════════════════════════════════════════════
     DisposableEffect(activeController) {
+        val sendRumbleFeedback: (GamepadFeedback) -> Unit = { feedback ->
+            scope.launch {
+                try {
+                    when (activeTransport) {
+                        ActiveTransport.WIFI -> server?.sendFeedback(feedback)
+                        ActiveTransport.USB_AOA -> aoaManager.sendFeedback(feedback)
+                        ActiveTransport.USB_ADB -> adbBridgeManager.sendFeedback(feedback)
+                        ActiveTransport.BLUETOOTH -> btServer.sendFeedback(feedback)
+                        ActiveTransport.NONE -> {}
+                    }
+                } catch (e: Throwable) {
+                    appError = "Rumble Error: ${e.message}"
+                }
+            }
+        }
+
         val newDriver = if (activeController == ControllerType.XBOX_360) {
-            VirtualGamepadDriver(onRumble = { feedback -> 
-                scope.launch { 
-                    try { 
-                        server?.sendFeedback(feedback)
-                        aoaManager.sendFeedback(feedback)
-                        adbBridgeManager.sendFeedback(feedback)
-                        btServer.sendFeedback(feedback)
-                    } catch (e: Throwable) { appError = "Xbox Rumble Error: ${e.message}" }
-                }
-            })
+            VirtualGamepadDriver(onRumble = sendRumbleFeedback)
         } else {
-            VirtualDualShock4Driver(onRumble = { feedback -> 
-                scope.launch { 
-                    try { 
-                        server?.sendFeedback(feedback)
-                        aoaManager.sendFeedback(feedback)
-                        adbBridgeManager.sendFeedback(feedback)
-                        btServer.sendFeedback(feedback)
-                    } catch (e: Throwable) { appError = "DS4 Rumble Error: ${e.message}" }
-                }
-            })
+            VirtualDualShock4Driver(onRumble = sendRumbleFeedback)
         }
         newDriver.connect()
         activeDriver = newDriver
@@ -236,20 +237,49 @@ fun main(args: Array<String>) {
 
         server = UdpServer(
             port = 9999,
-            onClientConnected = { name, type -> connectedDeviceName = name; connectionType = type },
-            onClientDisconnected = { connectedDeviceName = null; connectionType = null },
+            onClientConnected = { name, _ -> 
+                activeTransport = ActiveTransport.WIFI
+                connectedDeviceName = name
+                connectionType = 1 // 1 is Wi-Fi in HomeScreen.kt
+                aoaRequiresElevation = false 
+            },
+            onClientDisconnected = { 
+                if (activeTransport == ActiveTransport.WIFI) {
+                    activeTransport = ActiveTransport.NONE
+                    connectedDeviceName = null
+                    connectionType = null 
+                }
+            },
             onInputReceived = inputHandler
-        )
+        ).apply {
+            isExternalTransportActive = { activeTransport != ActiveTransport.NONE && activeTransport != ActiveTransport.WIFI }
+        }
 
-        aoaManager.onAoaConnected = { name -> connectedDeviceName = name; connectionType = 2; aoaRequiresElevation = false } // 2 is USB in this app
-        aoaManager.onAoaDisconnected = { connectedDeviceName = null; connectionType = null }
+        aoaManager.onAoaConnected = { name -> 
+            activeTransport = ActiveTransport.USB_AOA
+            connectedDeviceName = name
+            connectionType = 2 // 2 is USB in HomeScreen.kt
+            aoaRequiresElevation = false 
+        }
+        aoaManager.onAoaDisconnected = { 
+            if (activeTransport == ActiveTransport.USB_AOA) {
+                activeTransport = ActiveTransport.NONE
+                connectedDeviceName = null
+                connectionType = null 
+            }
+        }
         aoaManager.onInputReceived = inputHandler
 
         // Mutual exclusion: If USB Debugging is ON and ADB is detected, AOA is suppressed completely
         aoaManager.isAdbActive = { adbBridgeManager.hasActiveAdb() }
+        // Single Active Transport Guard: pause USB scanning when another transport is active
+        aoaManager.isScanningPaused = { activeTransport != ActiveTransport.NONE && activeTransport != ActiveTransport.USB_AOA }
 
         aoaManager.onRequestElevation = { vid, pid, mi -> 
-            if (!adbBridgeManager.hasActiveAdb()) {
+            if (activeTransport != ActiveTransport.NONE) {
+                println("[Main] Suppressed AOA elevation request: another transport ($activeTransport) is active!")
+                aoaRequiresElevation = false
+            } else if (!adbBridgeManager.hasActiveAdb()) {
                 requiredVidHex = String.format("%04X", vid)
                 requiredPidHex = String.format("%04X", pid)
                 requiredMi = mi?.toString() ?: "none"
@@ -260,25 +290,44 @@ fun main(args: Array<String>) {
             }
         }
         
-        adbBridgeManager.onAdbConnected = { name -> connectedDeviceName = name; connectionType = 2; aoaRequiresElevation = false }
-        adbBridgeManager.onAdbDisconnected = { connectedDeviceName = null; connectionType = null }
+        adbBridgeManager.onAdbConnected = { name -> 
+            activeTransport = ActiveTransport.USB_ADB
+            connectedDeviceName = name
+            connectionType = 2
+            aoaRequiresElevation = false 
+        }
+        adbBridgeManager.onAdbDisconnected = { 
+            if (activeTransport == ActiveTransport.USB_ADB) {
+                activeTransport = ActiveTransport.NONE
+                connectedDeviceName = null
+                connectionType = null 
+            }
+        }
         adbBridgeManager.onInputReceived = inputHandler
+        // Single Active Transport Guard: pause ADB process polling when another transport is active
+        adbBridgeManager.isScanningPaused = { activeTransport != ActiveTransport.NONE && activeTransport != ActiveTransport.USB_ADB }
         adbBridgeManager.startScanner(scope)
 
         // Bluetooth RFCOMM Server
+        btServer.isExternalTransportActive = { activeTransport != ActiveTransport.NONE && activeTransport != ActiveTransport.BLUETOOTH }
         btServer.onBtConnected = { name ->
+            activeTransport = ActiveTransport.BLUETOOTH
             connectedDeviceName = name
             connectionType = 3 // 3 is Bluetooth in HomeScreen.kt
             aoaRequiresElevation = false
         }
         btServer.onBtDisconnected = {
-            if (connectionType == 3) {
+            if (activeTransport == ActiveTransport.BLUETOOTH) {
+                activeTransport = ActiveTransport.NONE
                 connectedDeviceName = null
                 connectionType = null
             }
         }
         btServer.onInputReceived = inputHandler
         btServer.start(scope)
+
+        // Single Active Transport Guard: discovery server pauses advertising if a client is active
+        discoveryServer.isPaused = { activeTransport != ActiveTransport.NONE }
 
         scope.launch(Dispatchers.IO) { aoaManager.scanAndConnect() }
 

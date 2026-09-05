@@ -54,6 +54,9 @@ class UdpServer(
     private var lostInWindow = 0
     private var receivedInWindow = 0
 
+    // Single Active Transport Guard: drop incoming UDP packets if another transport is active
+    var isExternalTransportActive: () -> Boolean = { false }
+
     @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     private val dedicatedDispatcher = kotlinx.coroutines.newSingleThreadContext("UdpServerThread")
 
@@ -92,6 +95,11 @@ class UdpServer(
                         clientAddress = null
                         onClientDisconnected?.invoke()
                     }
+                    continue
+                }
+
+                if (isExternalTransportActive()) {
+                    // Another transport (USB/Bluetooth) has exclusive control; drop incoming UDP
                     continue
                 }
                 
