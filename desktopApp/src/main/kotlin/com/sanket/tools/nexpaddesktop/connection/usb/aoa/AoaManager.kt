@@ -64,11 +64,20 @@ class AoaManager {
         }
     }
 
+    // Mutual exclusion: when ADB device is present / USB debugging is ON, AOA is suppressed
+    var isAdbActive: () -> Boolean = { false }
+
     suspend fun scanAndConnect() = coroutineScope {
         if (context == null) return@coroutineScope
         println("[AOA/Manager] Starting continuous USB scanning loop...")
 
         while (isActive) {
+            // If USB Debugging is ON and an ADB device is present, AOA must completely back off!
+            if (isAdbActive()) {
+                delay(1500)
+                continue
+            }
+
             // While Windows is actively installing a driver, DO NOT query or open USB devices!
             // Probing device descriptors during driver installation causes PNP_VetoOutstandingOpen (-11 error)!
             if (currentState is AoaState.InstallingDriver) {

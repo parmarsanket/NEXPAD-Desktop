@@ -35,16 +35,16 @@ object UsbDeviceDetector {
     private val ACCESSORY_PIDS = setOf<Short>(0x2D00, 0x2D01, 0x2D04, 0x2D05)
     
     // Dynamic cache of connected Android devices discovered via Windows PnP
-    // ZERO hardcoded vendor IDs — populated dynamically from Windows PnP metadata!
     private val dynamicPnpAndroidDevices = mutableSetOf<String>()
+    private val dynamicPnpAdbDevices = mutableSetOf<String>()
     
     private var lastPnpScanTime = 0L
 
     /**
      * Queries Windows PnP dynamically for connected Android devices.
      * Detects:
-     * - Windows Portable Devices (Class WPD - standard MTP)
-     * - Android USB Devices (Class AndroidUsbDeviceClass - ADB / composite)
+     * - Windows Portable Devices (Class WPD - standard MTP without ADB)
+     * - Android USB Devices (Class AndroidUsbDeviceClass - ADB enabled!)
      * - NEXPAD WinUSB Devices (Class USBDevice with NEXPAD driver)
      */
     private fun refreshPnpAndroidDevices() {
@@ -60,6 +60,7 @@ object UsbDeviceDetector {
             proc.waitFor()
 
             dynamicPnpAndroidDevices.clear()
+            dynamicPnpAdbDevices.clear()
             val blocks = text.split("Instance ID:")
             for (block in blocks) {
                 val lower = block.lowercase()
@@ -68,11 +69,14 @@ object UsbDeviceDetector {
                 val isNexpadWinUsb = lower.contains("class name:                 usbdevice") && 
                                      (lower.contains("nexpad") || lower.contains("libusb.info"))
 
-                if (isWpd || isAndroidClass || isNexpadWinUsb) {
-                    val vidMatch = Regex("vid_([0-9a-fA-F]{4})", RegexOption.IGNORE_CASE).find(block)
-                    val pidMatch = Regex("pid_([0-9a-fA-F]{4})", RegexOption.IGNORE_CASE).find(block)
-                    if (vidMatch != null && pidMatch != null) {
-                        val key = "${vidMatch.groupValues[1]}:${pidMatch.groupValues[1]}".uppercase()
+                val vidMatch = Regex("vid_([0-9a-fA-F]{4})", RegexOption.IGNORE_CASE).find(block)
+                val pidMatch = Regex("pid_([0-9a-fA-F]{4})", RegexOption.IGNORE_CASE).find(block)
+                if (vidMatch != null && pidMatch != null) {
+                    val key = "${vidMatch.groupValues[1]}:${pidMatch.groupValues[1]}".uppercase()
+                    if (isAndroidClass) {
+                        dynamicPnpAdbDevices.add(key)
+                    }
+                    if (isWpd || isNexpadWinUsb) {
                         dynamicPnpAndroidDevices.add(key)
                     }
                 }
@@ -84,6 +88,7 @@ object UsbDeviceDetector {
 
     /**
      * Enumerates USB devices and identifies Android phones and AOA devices based on classes/PIDs.
+     * EXCLUDES any device that has USB Debugging (ADB) enabled, reserving it strictly for ADB Bridge!
      * CALLER IS RESPONSIBLE for calling .unref() on every candidate returned by this method!
      */
     fun findCandidates(context: Context): List<CandidateUsbDevice> {
@@ -117,14 +122,21 @@ object UsbDeviceDetector {
                     continue
                 }
 
-                // 2. Dynamic Discovery (No hardcoded VIDs):
-                // - Descriptors expose standard MTP or ADB interface
-                // - OR Windows PnP registers it under WPD, AndroidUsbDeviceClass, or NEXPAD USBDevice
+                // Mutual exclusion: If USB Debugging is ON (device has ADB interface or AndroidUsbDeviceClass in PnP),
+                // NEVER treat it as an AOA candidate! It belongs exclusively to ADB Bridge.
+                val isAdb = dynamicPnpAdbDevices.contains(deviceKey) || findAdbInterface(device, vid, pid) != null
+                if (isAdb) {
+                    // USB Debugging is ON on this device! Skip AOA processing completely.
+                    continue
+                }
+
+                // 2. Dynamic Discovery for devices WITHOUT USB Debugging:
+                // - Descriptors expose standard MTP interface
+                // - OR Windows PnP registers it under WPD or NEXPAD USBDevice
                 val mtpInterface = findMtpInterface(device, vid, pid)
-                val adbInterface = if (mtpInterface == null) findAdbInterface(device, vid, pid) else null
                 val isPnpAndroid = dynamicPnpAndroidDevices.contains(deviceKey)
 
-                if (mtpInterface != null || adbInterface != null || isPnpAndroid) {
+                if (mtpInterface != null || isPnpAndroid) {
                     LibUsb.refDevice(device)
                     candidates.add(CandidateUsbDevice.AndroidDevice(device, vid, pid, mtpInterface))
                 }

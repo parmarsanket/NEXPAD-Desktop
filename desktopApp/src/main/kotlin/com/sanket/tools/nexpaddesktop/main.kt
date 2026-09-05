@@ -57,6 +57,7 @@ fun main(args: Array<String>) {
     val scope = rememberCoroutineScope()
     var server by remember { mutableStateOf<UdpServer?>(null) }
     val aoaManager = remember { com.sanket.tools.nexpaddesktop.connection.usb.aoa.AoaManager() }
+    val adbBridgeManager = remember { com.sanket.tools.nexpaddesktop.connection.adb.AdbBridgeManager() }
     
     var activeController by remember { mutableStateOf(ControllerType.XBOX_360) }
     
@@ -160,6 +161,7 @@ fun main(args: Array<String>) {
                     try { 
                         server?.sendFeedback(feedback)
                         aoaManager.sendFeedback(feedback)
+                        adbBridgeManager.sendFeedback(feedback)
                     } catch (e: Throwable) { appError = "Xbox Rumble Error: ${e.message}" }
                 }
             })
@@ -169,6 +171,7 @@ fun main(args: Array<String>) {
                     try { 
                         server?.sendFeedback(feedback)
                         aoaManager.sendFeedback(feedback)
+                        adbBridgeManager.sendFeedback(feedback)
                     } catch (e: Throwable) { appError = "DS4 Rumble Error: ${e.message}" }
                 }
             })
@@ -239,19 +242,33 @@ fun main(args: Array<String>) {
         aoaManager.onAoaDisconnected = { connectedDeviceName = null; connectionType = null }
         aoaManager.onInputReceived = inputHandler
 
+        // Mutual exclusion: If USB Debugging is ON and ADB is detected, AOA is suppressed completely
+        aoaManager.isAdbActive = { adbBridgeManager.hasActiveAdb() }
+
         aoaManager.onRequestElevation = { vid, pid, mi -> 
-            requiredVidHex = String.format("%04X", vid)
-            requiredPidHex = String.format("%04X", pid)
-            requiredMi = mi?.toString() ?: "none"
-            aoaRequiresElevation = true 
+            if (!adbBridgeManager.hasActiveAdb()) {
+                requiredVidHex = String.format("%04X", vid)
+                requiredPidHex = String.format("%04X", pid)
+                requiredMi = mi?.toString() ?: "none"
+                aoaRequiresElevation = true 
+            } else {
+                println("[Main] Suppressed AOA elevation request because ADB device is active!")
+                aoaRequiresElevation = false
+            }
         }
         
+        adbBridgeManager.onAdbConnected = { name -> connectedDeviceName = name; connectionType = 1; aoaRequiresElevation = false }
+        adbBridgeManager.onAdbDisconnected = { connectedDeviceName = null; connectionType = null }
+        adbBridgeManager.onInputReceived = inputHandler
+        adbBridgeManager.startScanner(scope)
+
         scope.launch(Dispatchers.IO) { aoaManager.scanAndConnect() }
 
         scope.launch { server?.start() }
         
         scope.launch { discoveryServer.start() }
         onDispose {
+            adbBridgeManager.stop()
             server?.stop()
             discoveryServer.stop()
             dsuServer.stop()

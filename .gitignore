@@ -39,3 +39,5 @@ installer_build/
 redist/ViGEmBusSetup.exe
 *.msi
 *.appimage
+/tools/
+/desktopApp/tools/
