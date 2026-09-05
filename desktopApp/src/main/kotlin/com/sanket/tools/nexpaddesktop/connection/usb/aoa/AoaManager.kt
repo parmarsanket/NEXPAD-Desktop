@@ -10,6 +10,7 @@ import kotlinx.coroutines.coroutineScope
 
 sealed class AoaState {
     data object Idle : AoaState()
+    data class HandshakeSent(val timestamp: Long, val vid: Short, val pid: Short) : AoaState()
     data class InstallingDriver(val startTime: Long) : AoaState()
     data object Connected : AoaState()
 }
@@ -39,19 +40,9 @@ class AoaManager {
     private var context: Context? = null
     private var currentState: AoaState = AoaState.Idle
 
-    fun refreshContext() {
-        println("[AOA/Manager] Refreshing LibUsb context to clear Windows PnP cache...")
-        context?.let { LibUsb.exit(it) }
-        val newCtx = Context()
-        if (LibUsb.init(newCtx) == LibUsb.SUCCESS) {
-            this.context = newCtx
-        }
-    }
-
     fun onDriverInstallCompleted(success: Boolean) {
-        println("[AOA/Manager] Driver installation finished (success=$success). Refreshing USB context.")
+        println("[AOA/Manager] Driver installation finished (success=$success).")
         currentState = AoaState.Idle
-        refreshContext()
     }
 
     fun resetDismissedElevation() {
@@ -93,7 +84,6 @@ class AoaManager {
                 if (System.currentTimeMillis() - state.startTime > 30_000) {
                     println("[AOA/Manager] WinUSB installation timed out or user cancelled. Resetting to Idle state.")
                     currentState = AoaState.Idle
-                    refreshContext()
                 }
                 delay(1000)
                 continue
@@ -102,6 +92,25 @@ class AoaManager {
             val candidates = UsbDeviceDetector.findCandidates(context!!)
             
             try {
+                // If handshake was recently sent, wait for phone to complete re-enumeration as 0x18D1
+                if (currentState is AoaState.HandshakeSent) {
+                    val hs = currentState as AoaState.HandshakeSent
+                    val elapsed = System.currentTimeMillis() - hs.timestamp
+                    val aoaFound = candidates.any { it is CandidateUsbDevice.AoaDevice }
+
+                    if (aoaFound) {
+                        println("[AOA/Manager] AOA Accessory re-enumeration detected! Proceeding to connect.")
+                        currentState = AoaState.Idle
+                    } else if (elapsed < 6000) {
+                        // Phone is still rebooting its USB controller into accessory mode; do not spam START(53)
+                        delay(1200)
+                        continue
+                    } else {
+                        println("[AOA/Manager] AOA re-enumeration timed out after 6s. Resetting state.")
+                        currentState = AoaState.Idle
+                    }
+                }
+
                 val aoaCandidate = candidates.filterIsInstance<CandidateUsbDevice.AoaDevice>().firstOrNull()
                 if (aoaCandidate != null) {
                     if (!aoaCandidate.friendlyName.isNullOrBlank()) {
@@ -153,7 +162,11 @@ class AoaManager {
             LibUsb.setAutoDetachKernelDriver(handle, true)
             
             try {
-                AoaHandshake.sendHandshake(handle, candidate.device)
+                val handshakeOk = AoaHandshake.sendHandshake(handle, candidate.device)
+                if (handshakeOk) {
+                    currentState = AoaState.HandshakeSent(System.currentTimeMillis(), candidate.vid, candidate.pid)
+                    return false
+                }
                 return false
             } catch (e: UsbHandshakeException) {
                 if (currentState is AoaState.Idle) {
@@ -205,6 +218,7 @@ class AoaManager {
             }
 
             onAoaConnected?.invoke("$displayName (USB Direct)")
+            currentState = AoaState.Connected
             userDismissedElevation = false // Reset on successful connection
             
             try {

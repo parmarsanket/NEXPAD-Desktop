@@ -5,9 +5,7 @@ import kotlin.system.exitProcess
 
 object WinUsbDriverManager {
     
-    fun installWinUsb(vidHex: String, pidHex: String, miStr: String): Int {
-        println("[WinUSB/Driver] Elevating to install WinUSB for VID:$vidHex PID:$pidHex MI:$miStr...")
-        
+    private fun installForDevice(vidHex: String, pidHex: String, miStr: String): Int {
         try {
             val isComposite = miStr != "none"
             val deviceId = if (isComposite) {
@@ -62,7 +60,7 @@ object WinUsbDriverManager {
                     return 1
                 }
                 
-                println("[WinUSB/Driver] SUCCESS: WinUSB driver installed.")
+                println("[WinUSB/Driver] SUCCESS: WinUSB driver installed for $deviceId.")
                 return 0
             } catch (e: Exception) {
                 println("[WinUSB/Driver] ERROR during driver operations: ${e.message}")
@@ -72,5 +70,20 @@ object WinUsbDriverManager {
             println("[WinUSB/Driver] ERROR: ${e.message}")
             return 1
         }
+    }
+
+    fun installWinUsb(vidHex: String, pidHex: String, miStr: String): Int {
+        println("[WinUSB/Driver] Elevating to install WinUSB for VID:$vidHex PID:$pidHex MI:$miStr...")
+        val res = installForDevice(vidHex, pidHex, miStr)
+        if (res != 0) return res
+
+        // Pre-install WinUSB for Google AOA Accessory (18D1:2D00 and 18D1:2D01)
+        // so Phase 2 AOA accessory re-enumeration succeeds without requiring a second elevation prompt!
+        if (!vidHex.equals("18D1", ignoreCase = true)) {
+            println("[WinUSB/Driver] Pre-installing WinUSB for AOA Accessory (VID:18D1 PID:2D00)...")
+            try { installForDevice("18D1", "2D00", "none") } catch (_: Exception) {}
+            try { installForDevice("18D1", "2D01", "none") } catch (_: Exception) {}
+        }
+        return 0
     }
 }

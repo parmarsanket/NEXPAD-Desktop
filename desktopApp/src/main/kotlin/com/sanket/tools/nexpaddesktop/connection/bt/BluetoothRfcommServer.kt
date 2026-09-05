@@ -69,6 +69,14 @@ class BluetoothRfcommServer {
         }
     }
 
+    fun pause() {
+        if (serverSocket != WinsockBluetooth.INVALID_SOCKET) {
+            val s = serverSocket
+            serverSocket = WinsockBluetooth.INVALID_SOCKET
+            closeSocket(s)
+        }
+    }
+
     fun stop() {
         if (!isRunning.getAndSet(false)) return
 
@@ -99,7 +107,20 @@ class BluetoothRfcommServer {
             return
         }
 
+        var hadRadioWarning = false
+
         while (isRunning.get() && currentCoroutineContext().isActive) {
+            // Single Active Transport Guard: If another transport is active (AOA, ADB, Wi-Fi), completely pause!
+            if (isExternalTransportActive()) {
+                if (serverSocket != WinsockBluetooth.INVALID_SOCKET) {
+                    val s = serverSocket
+                    serverSocket = WinsockBluetooth.INVALID_SOCKET
+                    closeSocket(s)
+                }
+                delay(1500)
+                continue
+            }
+
             // 1. Create Bluetooth Socket
             val sock = WinsockBluetooth.INSTANCE.socket(
                 WinsockBluetooth.AF_BTH,
@@ -108,9 +129,11 @@ class BluetoothRfcommServer {
             )
 
             if (sock == WinsockBluetooth.INVALID_SOCKET) {
-                val err = WinsockBluetooth.INSTANCE.WSAGetLastError()
-                println("⚠️ [Bluetooth] Failed to create AF_BTH socket: Win32 Error $err")
-                delay(3000)
+                if (!hadRadioWarning) {
+                    hadRadioWarning = true
+                    println("⚠️ [Bluetooth] Bluetooth radio is OFF or unavailable in Windows. Standing by...")
+                }
+                delay(5000)
                 continue
             }
 
@@ -127,17 +150,20 @@ class BluetoothRfcommServer {
 
             val bindRes = WinsockBluetooth.INSTANCE.bind(sock, serverAddr, WinsockBluetooth.SOCKADDR_BTH.SIZE)
             if (bindRes == WinsockBluetooth.SOCKET_ERROR) {
-                val err = WinsockBluetooth.INSTANCE.WSAGetLastError()
                 closeSocket(sock)
                 serverSocket = WinsockBluetooth.INVALID_SOCKET
 
-                if (err == WinsockBluetooth.WSAENETDOWN) {
-                    println("⚠️ [Bluetooth] Bluetooth radio is OFF or unavailable in Windows. Retrying in 4s...")
-                } else {
-                    println("⚠️ [Bluetooth] Failed to bind Bluetooth socket: Win32 Error $err. Retrying in 4s...")
+                if (!hadRadioWarning) {
+                    hadRadioWarning = true
+                    println("⚠️ [Bluetooth] Bluetooth radio is OFF or unavailable in Windows. Standing by...")
                 }
-                delay(4000)
+                delay(5000)
                 continue
+            }
+
+            if (hadRadioWarning) {
+                hadRadioWarning = false
+                println("⚡ [Bluetooth] Bluetooth radio detected and enabled!")
             }
 
             // 3. Read assigned channel via getsockname
@@ -155,8 +181,6 @@ class BluetoothRfcommServer {
             // 5. Start listening
             val listenRes = WinsockBluetooth.INSTANCE.listen(sock, 1)
             if (listenRes == WinsockBluetooth.SOCKET_ERROR) {
-                val err = WinsockBluetooth.INSTANCE.WSAGetLastError()
-                println("⚠️ [Bluetooth] listen() failed: Win32 Error $err")
                 closeSocket(sock)
                 serverSocket = WinsockBluetooth.INVALID_SOCKET
                 delay(3000)
@@ -167,14 +191,18 @@ class BluetoothRfcommServer {
 
             // 6. Accept Loop
             while (isRunning.get() && currentCoroutineContext().isActive) {
+                if (isExternalTransportActive()) {
+                    closeSocket(sock)
+                    serverSocket = WinsockBluetooth.INVALID_SOCKET
+                    break
+                }
+
                 val clientAddr = WinsockBluetooth.SOCKADDR_BTH()
                 val clientAddrLen = IntByReference(WinsockBluetooth.SOCKADDR_BTH.SIZE)
 
                 val acceptedSock = WinsockBluetooth.INSTANCE.accept(sock, clientAddr, clientAddrLen)
                 if (acceptedSock == WinsockBluetooth.INVALID_SOCKET) {
-                    val err = WinsockBluetooth.INSTANCE.WSAGetLastError()
-                    if (!isRunning.get()) break
-                    println("⚠️ [Bluetooth] accept() returned error: $err")
+                    if (!isRunning.get() || isExternalTransportActive()) break
                     delay(500)
                     continue
                 }

@@ -243,6 +243,7 @@ fun main(args: Array<String>) {
                     connectedDeviceName = name
                 }
                 isAoaDriverNeeded = false 
+                btServer.pause()
             },
             onClientDisconnected = { 
                 if (activeTransport == ActiveTransport.WIFI || activeTransport == ActiveTransport.USB_TETHERING) {
@@ -259,6 +260,7 @@ fun main(args: Array<String>) {
             activeTransport = ActiveTransport.USB_AOA
             connectedDeviceName = name
             isAoaDriverNeeded = false 
+            btServer.pause()
         }
         aoaManager.onAoaDisconnected = { 
             if (activeTransport == ActiveTransport.USB_AOA) {
@@ -290,6 +292,7 @@ fun main(args: Array<String>) {
             activeTransport = ActiveTransport.USB_ADB
             connectedDeviceName = name
             isAoaDriverNeeded = false 
+            btServer.pause()
         }
         adbBridgeManager.onAdbDisconnected = { 
             if (activeTransport == ActiveTransport.USB_ADB) {

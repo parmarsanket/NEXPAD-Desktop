@@ -14,7 +14,9 @@ import java.io.File
 object WindowsElevation {
 
     private const val SHELLEXECUTE_MASK_NOCLOSE_PROCESS = 0x00000040
+    private const val SHELLEXECUTE_MASK_NOASYNC = 0x00000100
     private const val SHELL_VERB_RUN_AS = "runas"
+    private const val STILL_ACTIVE = 259
 
     sealed interface Result {
         data class Success(val exitCode: Int) : Result
@@ -30,14 +32,14 @@ object WindowsElevation {
 
     /**
      * Executes an elevated process without any flashing CMD/PowerShell windows.
-     * Suspends asynchronously on Dispatchers.IO until the elevated process exits.
+     * Suspends asynchronously on Dispatchers.IO until the elevated process exits or times out.
      */
     suspend fun runElevated(target: ProcessTarget): Result = withContext(Dispatchers.IO) {
         validateTarget(target)?.let { return@withContext it }
 
         val sei = ShellAPI.SHELLEXECUTEINFO().apply {
             cbSize = size()
-            fMask = SHELLEXECUTE_MASK_NOCLOSE_PROCESS
+            fMask = SHELLEXECUTE_MASK_NOCLOSE_PROCESS or SHELLEXECUTE_MASK_NOASYNC
             lpVerb = SHELL_VERB_RUN_AS
             lpFile = target.executable.absolutePath
             lpParameters = target.arguments.ifBlank { null }
@@ -57,13 +59,33 @@ object WindowsElevation {
         val hProcess = sei.hProcess ?: return@withContext Result.Error(-1, "Process handle was null")
 
         try {
-            Kernel32.INSTANCE.WaitForSingleObject(hProcess, WinBase.INFINITE)
             val exitCodeRef = IntByReference()
-            if (Kernel32.INSTANCE.GetExitCodeProcess(hProcess, exitCodeRef)) {
+            val maxWaitMs = 35_000L
+            val pollIntervalMs = 300
+            val startTime = System.currentTimeMillis()
+            var exitFound = false
+
+            while (System.currentTimeMillis() - startTime < maxWaitMs) {
+                val waitRes = Kernel32.INSTANCE.WaitForSingleObject(hProcess, pollIntervalMs)
+                if (waitRes == WinBase.WAIT_OBJECT_0) {
+                    exitFound = true
+                    break
+                }
+                if (Kernel32.INSTANCE.GetExitCodeProcess(hProcess, exitCodeRef)) {
+                    if (exitCodeRef.value != STILL_ACTIVE) {
+                        exitFound = true
+                        break
+                    }
+                }
+            }
+
+            if (exitFound && Kernel32.INSTANCE.GetExitCodeProcess(hProcess, exitCodeRef)) {
                 Result.Success(exitCodeRef.value)
+            } else if (exitFound) {
+                Result.Success(0)
             } else {
-                val err = Kernel32.INSTANCE.GetLastError()
-                Result.Error(err, "Failed to get process exit code (Win32: $err)")
+                val lastErr = Kernel32.INSTANCE.GetLastError()
+                Result.Error(lastErr, "Elevated driver installation timed out after 35 seconds.")
             }
         } finally {
             Kernel32.INSTANCE.CloseHandle(hProcess)
@@ -156,7 +178,7 @@ object ElevationTargetResolver {
                 append(subArgs)
             }
             appendLine()
-            appendLine("exit /b %ERRORLEVEL%")
+            appendLine("exit %ERRORLEVEL%")
         }
         batFile.writeText(batContent)
 
