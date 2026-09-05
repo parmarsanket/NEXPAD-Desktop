@@ -58,6 +58,7 @@ fun main(args: Array<String>) {
     var server by remember { mutableStateOf<UdpServer?>(null) }
     val aoaManager = remember { com.sanket.tools.nexpaddesktop.connection.usb.aoa.AoaManager() }
     val adbBridgeManager = remember { com.sanket.tools.nexpaddesktop.connection.adb.AdbBridgeManager() }
+    val btServer = remember { com.sanket.tools.nexpaddesktop.connection.bt.BluetoothRfcommServer() }
     
     var activeController by remember { mutableStateOf(ControllerType.XBOX_360) }
     
@@ -162,6 +163,7 @@ fun main(args: Array<String>) {
                         server?.sendFeedback(feedback)
                         aoaManager.sendFeedback(feedback)
                         adbBridgeManager.sendFeedback(feedback)
+                        btServer.sendFeedback(feedback)
                     } catch (e: Throwable) { appError = "Xbox Rumble Error: ${e.message}" }
                 }
             })
@@ -172,6 +174,7 @@ fun main(args: Array<String>) {
                         server?.sendFeedback(feedback)
                         aoaManager.sendFeedback(feedback)
                         adbBridgeManager.sendFeedback(feedback)
+                        btServer.sendFeedback(feedback)
                     } catch (e: Throwable) { appError = "DS4 Rumble Error: ${e.message}" }
                 }
             })
@@ -238,7 +241,7 @@ fun main(args: Array<String>) {
             onInputReceived = inputHandler
         )
 
-        aoaManager.onAoaConnected = { name -> connectedDeviceName = name; connectionType = 1; aoaRequiresElevation = false } // 1 is USB in this app
+        aoaManager.onAoaConnected = { name -> connectedDeviceName = name; connectionType = 2; aoaRequiresElevation = false } // 2 is USB in this app
         aoaManager.onAoaDisconnected = { connectedDeviceName = null; connectionType = null }
         aoaManager.onInputReceived = inputHandler
 
@@ -257,10 +260,25 @@ fun main(args: Array<String>) {
             }
         }
         
-        adbBridgeManager.onAdbConnected = { name -> connectedDeviceName = name; connectionType = 1; aoaRequiresElevation = false }
+        adbBridgeManager.onAdbConnected = { name -> connectedDeviceName = name; connectionType = 2; aoaRequiresElevation = false }
         adbBridgeManager.onAdbDisconnected = { connectedDeviceName = null; connectionType = null }
         adbBridgeManager.onInputReceived = inputHandler
         adbBridgeManager.startScanner(scope)
+
+        // Bluetooth RFCOMM Server
+        btServer.onBtConnected = { name ->
+            connectedDeviceName = name
+            connectionType = 3 // 3 is Bluetooth in HomeScreen.kt
+            aoaRequiresElevation = false
+        }
+        btServer.onBtDisconnected = {
+            if (connectionType == 3) {
+                connectedDeviceName = null
+                connectionType = null
+            }
+        }
+        btServer.onInputReceived = inputHandler
+        btServer.start(scope)
 
         scope.launch(Dispatchers.IO) { aoaManager.scanAndConnect() }
 
@@ -268,6 +286,7 @@ fun main(args: Array<String>) {
         
         scope.launch { discoveryServer.start() }
         onDispose {
+            btServer.stop()
             adbBridgeManager.stop()
             server?.stop()
             discoveryServer.stop()
