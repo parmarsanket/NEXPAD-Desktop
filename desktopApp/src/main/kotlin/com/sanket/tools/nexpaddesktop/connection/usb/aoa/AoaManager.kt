@@ -19,11 +19,16 @@ class AoaManager {
     var onAoaDisconnected: (() -> Unit)? = null
     var onInputReceived: ((GamepadInput) -> Unit)? = null
     
+    // Notifies UI when WinUSB driver is required for the attached phone
+    var onDriverNeedChanged: ((needed: Boolean, vid: Short?, pid: Short?, mi: Int?) -> Unit)? = null
+    
     // Callback to trigger UAC prompt. Requires VID, PID, and optionally the specific MTP Interface Number.
     var onRequestElevation: ((Short, Short, Int?) -> Unit)? = null
 
     // Prevents endless elevation prompt loops when user cancels
     @Volatile var userDismissedElevation = false
+
+    var lastDetectedPhoneName: String? = null
 
     private var activeFeedbackChannel: kotlinx.coroutines.channels.Channel<com.sanket.tools.nexpad.model.GamepadFeedback>? = null
 
@@ -76,6 +81,7 @@ class AoaManager {
         while (isActive) {
             // If another transport is active (Bluetooth, Wi-Fi, ADB) or scanning is paused, completely back off!
             if (isScanningPaused() || isAdbActive()) {
+                onDriverNeedChanged?.invoke(false, null, null, null)
                 delay(1500)
                 continue
             }
@@ -98,41 +104,35 @@ class AoaManager {
             try {
                 val aoaCandidate = candidates.filterIsInstance<CandidateUsbDevice.AoaDevice>().firstOrNull()
                 if (aoaCandidate != null) {
-                    if (userDismissedElevation) {
-                        delay(2000)
-                        continue
+                    if (!aoaCandidate.friendlyName.isNullOrBlank()) {
+                        lastDetectedPhoneName = aoaCandidate.friendlyName
                     }
                     val elevationRequired = processAoaDevice(aoaCandidate)
-                    if (elevationRequired && currentState is AoaState.Idle && !userDismissedElevation) {
-                        println("[AOA/Manager] AOA Device requires WinUSB (Phase 2). Transitioning to InstallingDriver state.")
-                        currentState = AoaState.InstallingDriver(System.currentTimeMillis())
-                        onRequestElevation?.invoke(aoaCandidate.vid, aoaCandidate.pid, null)
-                    } else if (!elevationRequired && currentState is AoaState.InstallingDriver) {
-                        println("[AOA/Manager] Phase 2 AOA connection successful. Resetting state to Connected.")
-                        currentState = AoaState.Connected
+                    if (elevationRequired) {
+                        onDriverNeedChanged?.invoke(true, aoaCandidate.vid, aoaCandidate.pid, null)
+                    } else {
+                        onDriverNeedChanged?.invoke(false, null, null, null)
                     }
                     continue
                 }
 
                 val androidCandidate = candidates.filterIsInstance<CandidateUsbDevice.AndroidDevice>().firstOrNull()
                 if (androidCandidate != null) {
-                    if (userDismissedElevation) {
-                        delay(3000)
-                        continue
+                    if (!androidCandidate.friendlyName.isNullOrBlank()) {
+                        lastDetectedPhoneName = androidCandidate.friendlyName
                     }
                     val elevationRequired = processAndroidDevice(androidCandidate)
-                    if (elevationRequired && currentState is AoaState.Idle && !userDismissedElevation) {
-                        println("[AOA/Manager] Device requires WinUSB driver (Phase 1). Transitioning to InstallingDriver state.")
-                        currentState = AoaState.InstallingDriver(System.currentTimeMillis())
-                        onRequestElevation?.invoke(androidCandidate.vid, androidCandidate.pid, androidCandidate.mtpInterfaceNumber)
-                    } else if (!elevationRequired && currentState is AoaState.InstallingDriver) {
-                        println("[AOA/Manager] Phase 1 Handshake successful! Resetting state to Idle.")
-                        currentState = AoaState.Idle
+                    if (elevationRequired) {
+                        onDriverNeedChanged?.invoke(true, androidCandidate.vid, androidCandidate.pid, androidCandidate.mtpInterfaceNumber)
+                    } else {
+                        onDriverNeedChanged?.invoke(false, null, null, null)
                     }
                     delay(2000)
                     continue
                 }
                 
+                // No candidate needing driver
+                onDriverNeedChanged?.invoke(false, null, null, null)
                 delay(1000)
             } finally {
                 // CRITICAL: Prevent memory leak of unused USB handles!
@@ -182,7 +182,29 @@ class AoaManager {
             println("[AOA/Manager] Opened AOA device [VID:${String.format("%04X", candidate.vid)} PID:${String.format("%04X", candidate.pid)}]")
             LibUsb.setAutoDetachKernelDriver(handle, true)
             
-            onAoaConnected?.invoke("Android Phone (USB Direct)")
+            var displayName = candidate.friendlyName 
+                ?: lastDetectedPhoneName 
+                ?: UsbDeviceDetector.cachedLastPhoneName 
+                ?: "Android Phone"
+
+            if (displayName == "Android Phone") {
+                val desc = org.usb4java.DeviceDescriptor()
+                if (LibUsb.getDeviceDescriptor(candidate.device, desc) == LibUsb.SUCCESS) {
+                    val iProd = desc.iProduct()
+                    if (iProd > 0) {
+                        val sb = StringBuffer()
+                        if (LibUsb.getStringDescriptorAscii(handle, iProd, sb) >= 0) {
+                            val prodStr = sb.toString().trim()
+                            if (prodStr.isNotBlank() && prodStr != "Android" && prodStr != "Nexpad Controller") {
+                                displayName = prodStr
+                                lastDetectedPhoneName = prodStr
+                            }
+                        }
+                    }
+                }
+            }
+
+            onAoaConnected?.invoke("$displayName (USB Direct)")
             userDismissedElevation = false // Reset on successful connection
             
             try {

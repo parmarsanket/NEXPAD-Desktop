@@ -10,6 +10,7 @@ sealed interface CandidateUsbDevice {
     val device: Device
     val vid: Short
     val pid: Short
+    val friendlyName: String?
     
     fun unref() {
         LibUsb.unrefDevice(device)
@@ -18,14 +19,16 @@ sealed interface CandidateUsbDevice {
     data class AoaDevice(
         override val device: Device, 
         override val vid: Short, 
-        override val pid: Short
+        override val pid: Short,
+        override val friendlyName: String? = null
     ) : CandidateUsbDevice
 
     data class AndroidDevice(
         override val device: Device, 
         override val vid: Short, 
         override val pid: Short,
-        val mtpInterfaceNumber: Int?
+        val mtpInterfaceNumber: Int?,
+        override val friendlyName: String? = null
     ) : CandidateUsbDevice
 }
 
@@ -37,6 +40,8 @@ object UsbDeviceDetector {
     // Dynamic cache of connected Android devices discovered via Windows PnP
     private val dynamicPnpAndroidDevices = mutableSetOf<String>()
     private val dynamicPnpAdbDevices = mutableSetOf<String>()
+    private val dynamicPnpDeviceNames = mutableMapOf<String, String>()
+    @Volatile var cachedLastPhoneName: String? = null
     
     private var lastPnpScanTime = 0L
 
@@ -67,10 +72,13 @@ object UsbDeviceDetector {
                 val isWpd = lower.contains("class name:                 wpd")
                 val isAndroidClass = lower.contains("class name:                 androidusbdeviceclass")
                 val isNexpadWinUsb = lower.contains("class name:                 usbdevice") && 
-                                     (lower.contains("nexpad") || lower.contains("libusb.info"))
+                                     (lower.contains("nexpad") || lower.contains("libusb.info") || lower.contains("winusb"))
 
                 val vidMatch = Regex("vid_([0-9a-fA-F]{4})", RegexOption.IGNORE_CASE).find(block)
                 val pidMatch = Regex("pid_([0-9a-fA-F]{4})", RegexOption.IGNORE_CASE).find(block)
+                val descMatch = Regex("Device Description:\\s*([^\\r\\n]+)", RegexOption.IGNORE_CASE).find(block)
+                val rawDesc = descMatch?.groupValues?.get(1)?.trim()
+
                 if (vidMatch != null && pidMatch != null) {
                     val key = "${vidMatch.groupValues[1]}:${pidMatch.groupValues[1]}".uppercase()
                     if (isAndroidClass) {
@@ -78,6 +86,10 @@ object UsbDeviceDetector {
                     }
                     if (isWpd || isNexpadWinUsb) {
                         dynamicPnpAndroidDevices.add(key)
+                    }
+                    if (rawDesc != null && !rawDesc.contains("Composite", ignoreCase = true) && !rawDesc.equals("MTP USB Device", ignoreCase = true)) {
+                        dynamicPnpDeviceNames[key] = rawDesc
+                        cachedLastPhoneName = rawDesc
                     }
                 }
             }
@@ -118,7 +130,8 @@ object UsbDeviceDetector {
                 // 1. Google AOA Accessory Mode (standard 0x18D1:0x2D00..0x2D05)
                 if (vid == 0x18D1.toShort() && ACCESSORY_PIDS.contains(pid)) {
                     LibUsb.refDevice(device)
-                    candidates.add(CandidateUsbDevice.AoaDevice(device, vid, pid))
+                    val phoneName = dynamicPnpDeviceNames[deviceKey] ?: cachedLastPhoneName
+                    candidates.add(CandidateUsbDevice.AoaDevice(device, vid, pid, phoneName))
                     continue
                 }
 
@@ -138,7 +151,8 @@ object UsbDeviceDetector {
 
                 if (mtpInterface != null || isPnpAndroid) {
                     LibUsb.refDevice(device)
-                    candidates.add(CandidateUsbDevice.AndroidDevice(device, vid, pid, mtpInterface))
+                    val phoneName = dynamicPnpDeviceNames[deviceKey] ?: cachedLastPhoneName
+                    candidates.add(CandidateUsbDevice.AndroidDevice(device, vid, pid, mtpInterface, phoneName))
                 }
             }
         } finally {

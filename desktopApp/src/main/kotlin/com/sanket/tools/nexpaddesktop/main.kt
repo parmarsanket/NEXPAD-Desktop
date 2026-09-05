@@ -13,6 +13,7 @@ import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpaddesktop.ui.MainApplicationWindow
 import com.sanket.tools.nexpaddesktop.ui.theme.NexpadDesktopTheme
 import com.sanket.tools.nexpaddesktop.connection.ActiveTransport
+import com.sanket.tools.nexpaddesktop.connection.DriverInstallState
 import com.sanket.tools.nexpad.model.GamepadFeedback
 import com.sanket.tools.nexpaddesktop.ui.ControllerType
 import com.sun.jna.platform.win32.Kernel32
@@ -76,7 +77,6 @@ fun main(args: Array<String>) {
     var isDriverConnected by remember { mutableStateOf(false) }
     var activeTransport by remember { mutableStateOf(ActiveTransport.NONE) }
     var connectedDeviceName by remember { mutableStateOf<String?>(null) }
-    var connectionType by remember { mutableStateOf<Int?>(null) } // 1 = WiFi, 2 = USB, 3 = BT
     
     // Motion Smoothing State
     var gyroSettings by remember { mutableStateOf(GyroSettings()) }
@@ -95,14 +95,15 @@ fun main(args: Array<String>) {
     
     var appError by remember { mutableStateOf("") }
     
-    // AOA Elevation State
-    var aoaRequiresElevation by remember { mutableStateOf(false) }
+    // AOA Driver Installation State
+    var isAoaDriverNeeded by remember { mutableStateOf(false) }
+    var driverInstallState by remember { mutableStateOf(DriverInstallState.IDLE) }
     var requiredVidHex by remember { mutableStateOf("") }
     var requiredPidHex by remember { mutableStateOf("") }
     var requiredMi by remember { mutableStateOf("") }
     
-    val onRequestAoaElevation: () -> Unit = {
-        aoaRequiresElevation = false
+    val onInstallAoaDriver: () -> Unit = {
+        driverInstallState = DriverInstallState.INSTALLING
         scope.launch {
             println("Main: Requesting UAC elevation via native ShellExecuteEx...")
             
@@ -130,29 +131,25 @@ fun main(args: Array<String>) {
                     aoaManager.onDriverInstallCompleted(success)
                     if (success) {
                         println("Main: WinUSB driver installed successfully. Scanner loop will retry handshake.")
+                        isAoaDriverNeeded = false
+                        driverInstallState = DriverInstallState.FINISHED
+                        kotlinx.coroutines.delay(2000)
+                        driverInstallState = DriverInstallState.IDLE
                     } else {
-                        println("Main: Driver installation failed (Code ${result.exitCode}). AOA connection will likely fail.")
-                        aoaManager.userDismissedElevation = true
+                        println("Main: Driver installation failed (Code ${result.exitCode}).")
+                        driverInstallState = DriverInstallState.IDLE
                     }
                 }
                 is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.UserCancelled -> {
-                    println("Main: User cancelled UAC prompt. Driver not installed.")
-                    aoaManager.userDismissedElevation = true
-                    aoaManager.onDriverInstallCompleted(false)
+                    println("Main: User cancelled UAC prompt.")
+                    driverInstallState = DriverInstallState.IDLE
                 }
                 is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.Error -> {
                     println("Main: Failed to launch elevated process. Win32 Error: ${result.errorCode} - ${result.message}")
-                    aoaManager.userDismissedElevation = true
-                    aoaManager.onDriverInstallCompleted(false)
+                    driverInstallState = DriverInstallState.IDLE
                 }
             }
         }
-    }
-
-    val onDismissAoaElevation: () -> Unit = {
-        aoaRequiresElevation = false
-        aoaManager.userDismissedElevation = true
-        println("Main: User dismissed AOA elevation prompt.")
     }
     
     // ══════════════════════════════════════════════════════════
@@ -163,7 +160,7 @@ fun main(args: Array<String>) {
             scope.launch {
                 try {
                     when (activeTransport) {
-                        ActiveTransport.WIFI -> server?.sendFeedback(feedback)
+                        ActiveTransport.WIFI, ActiveTransport.USB_TETHERING -> server?.sendFeedback(feedback)
                         ActiveTransport.USB_AOA -> aoaManager.sendFeedback(feedback)
                         ActiveTransport.USB_ADB -> adbBridgeManager.sendFeedback(feedback)
                         ActiveTransport.BLUETOOTH -> btServer.sendFeedback(feedback)
@@ -237,35 +234,36 @@ fun main(args: Array<String>) {
 
         server = UdpServer(
             port = 9999,
-            onClientConnected = { name, _ -> 
-                activeTransport = ActiveTransport.WIFI
-                connectedDeviceName = name
-                connectionType = 1 // 1 is Wi-Fi in HomeScreen.kt
-                aoaRequiresElevation = false 
+            onClientConnected = { name, connType -> 
+                if (connType == 2) {
+                    activeTransport = ActiveTransport.USB_TETHERING
+                    connectedDeviceName = "$name (USB Tethering)"
+                } else {
+                    activeTransport = ActiveTransport.WIFI
+                    connectedDeviceName = name
+                }
+                isAoaDriverNeeded = false 
             },
             onClientDisconnected = { 
-                if (activeTransport == ActiveTransport.WIFI) {
+                if (activeTransport == ActiveTransport.WIFI || activeTransport == ActiveTransport.USB_TETHERING) {
                     activeTransport = ActiveTransport.NONE
                     connectedDeviceName = null
-                    connectionType = null 
                 }
             },
             onInputReceived = inputHandler
         ).apply {
-            isExternalTransportActive = { activeTransport != ActiveTransport.NONE && activeTransport != ActiveTransport.WIFI }
+            isExternalTransportActive = { activeTransport != ActiveTransport.NONE && activeTransport != ActiveTransport.WIFI && activeTransport != ActiveTransport.USB_TETHERING }
         }
 
         aoaManager.onAoaConnected = { name -> 
             activeTransport = ActiveTransport.USB_AOA
             connectedDeviceName = name
-            connectionType = 2 // 2 is USB in HomeScreen.kt
-            aoaRequiresElevation = false 
+            isAoaDriverNeeded = false 
         }
         aoaManager.onAoaDisconnected = { 
             if (activeTransport == ActiveTransport.USB_AOA) {
                 activeTransport = ActiveTransport.NONE
                 connectedDeviceName = null
-                connectionType = null 
             }
         }
         aoaManager.onInputReceived = inputHandler
@@ -275,32 +273,28 @@ fun main(args: Array<String>) {
         // Single Active Transport Guard: pause USB scanning when another transport is active
         aoaManager.isScanningPaused = { activeTransport != ActiveTransport.NONE && activeTransport != ActiveTransport.USB_AOA }
 
-        aoaManager.onRequestElevation = { vid, pid, mi -> 
-            if (activeTransport != ActiveTransport.NONE) {
-                println("[Main] Suppressed AOA elevation request: another transport ($activeTransport) is active!")
-                aoaRequiresElevation = false
-            } else if (!adbBridgeManager.hasActiveAdb()) {
-                requiredVidHex = String.format("%04X", vid)
-                requiredPidHex = String.format("%04X", pid)
-                requiredMi = mi?.toString() ?: "none"
-                aoaRequiresElevation = true 
+        aoaManager.onDriverNeedChanged = { needed, vid, pid, mi -> 
+            if (activeTransport != ActiveTransport.NONE || adbBridgeManager.hasActiveAdb()) {
+                isAoaDriverNeeded = false
             } else {
-                println("[Main] Suppressed AOA elevation request because ADB device is active!")
-                aoaRequiresElevation = false
+                isAoaDriverNeeded = needed
+                if (needed && vid != null && pid != null) {
+                    requiredVidHex = String.format("%04X", vid)
+                    requiredPidHex = String.format("%04X", pid)
+                    requiredMi = mi?.toString() ?: "none"
+                }
             }
         }
         
         adbBridgeManager.onAdbConnected = { name -> 
             activeTransport = ActiveTransport.USB_ADB
             connectedDeviceName = name
-            connectionType = 2
-            aoaRequiresElevation = false 
+            isAoaDriverNeeded = false 
         }
         adbBridgeManager.onAdbDisconnected = { 
             if (activeTransport == ActiveTransport.USB_ADB) {
                 activeTransport = ActiveTransport.NONE
                 connectedDeviceName = null
-                connectionType = null 
             }
         }
         adbBridgeManager.onInputReceived = inputHandler
@@ -313,14 +307,12 @@ fun main(args: Array<String>) {
         btServer.onBtConnected = { name ->
             activeTransport = ActiveTransport.BLUETOOTH
             connectedDeviceName = name
-            connectionType = 3 // 3 is Bluetooth in HomeScreen.kt
-            aoaRequiresElevation = false
+            isAoaDriverNeeded = false
         }
-        btServer.onBtDisconnected = {
+        btServer.onBtDisconnected = { 
             if (activeTransport == ActiveTransport.BLUETOOTH) {
                 activeTransport = ActiveTransport.NONE
                 connectedDeviceName = null
-                connectionType = null
             }
         }
         btServer.onInputReceived = inputHandler
@@ -364,11 +356,11 @@ fun main(args: Array<String>) {
                 
                 isDriverConnected = isDriverConnected,
                 connectedDeviceName = connectedDeviceName,
-                connectionType = connectionType,
+                activeTransport = activeTransport,
                 
-                aoaRequiresElevation = aoaRequiresElevation,
-                onRequestAoaElevation = onRequestAoaElevation,
-                onDismissAoaElevation = onDismissAoaElevation,
+                isAoaDriverNeeded = isAoaDriverNeeded,
+                driverInstallState = driverInstallState,
+                onInstallAoaDriver = onInstallAoaDriver,
 
                 gyroSettings = gyroSettings,
                 onGyroSettingsChange = { gyroSettings = it },

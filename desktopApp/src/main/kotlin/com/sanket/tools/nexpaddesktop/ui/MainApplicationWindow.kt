@@ -37,10 +37,10 @@ fun MainApplicationWindow(
     onRsSensitivityYChange: (Float) -> Unit,
     isDriverConnected: Boolean,
     connectedDeviceName: String?,
-    connectionType: Int?,
-    aoaRequiresElevation: Boolean = false,
-    onRequestAoaElevation: () -> Unit = {},
-    onDismissAoaElevation: () -> Unit = {},
+    activeTransport: com.sanket.tools.nexpaddesktop.connection.ActiveTransport = com.sanket.tools.nexpaddesktop.connection.ActiveTransport.NONE,
+    isAoaDriverNeeded: Boolean = false,
+    driverInstallState: com.sanket.tools.nexpaddesktop.connection.DriverInstallState = com.sanket.tools.nexpaddesktop.connection.DriverInstallState.IDLE,
+    onInstallAoaDriver: () -> Unit = {},
     gyroSettings: GyroSettings,
     onGyroSettingsChange: (GyroSettings) -> Unit,
     processedYaw: Float,
@@ -71,10 +71,10 @@ fun MainApplicationWindow(
                 Screen.HOME -> HomeScreen(
                     isDriverConnected = isDriverConnected,
                     connectedDeviceName = connectedDeviceName,
-                    connectionType = connectionType,
-                    aoaRequiresElevation = aoaRequiresElevation,
-                    onRequestAoaElevation = onRequestAoaElevation,
-                    onDismissAoaElevation = onDismissAoaElevation
+                    activeTransport = activeTransport,
+                    isAoaDriverNeeded = isAoaDriverNeeded,
+                    driverInstallState = driverInstallState,
+                    onInstallAoaDriver = onInstallAoaDriver
                 )
                 Screen.CONTROLLER -> ControllerScreen(
                     latestInput = latestInput,

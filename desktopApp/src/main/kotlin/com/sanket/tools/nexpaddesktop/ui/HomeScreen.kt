@@ -46,10 +46,10 @@ import com.sanket.tools.nexpaddesktop.ui.components.statusPillGlow
 fun HomeScreen(
     isDriverConnected: Boolean,
     connectedDeviceName: String? = null,
-    connectionType: Int? = null,
-    aoaRequiresElevation: Boolean = false,
-    onRequestAoaElevation: () -> Unit = {},
-    onDismissAoaElevation: () -> Unit = {}
+    activeTransport: com.sanket.tools.nexpaddesktop.connection.ActiveTransport = com.sanket.tools.nexpaddesktop.connection.ActiveTransport.NONE,
+    isAoaDriverNeeded: Boolean = false,
+    driverInstallState: com.sanket.tools.nexpaddesktop.connection.DriverInstallState = com.sanket.tools.nexpaddesktop.connection.DriverInstallState.IDLE,
+    onInstallAoaDriver: () -> Unit = {}
 ) {
     // Server pulse
     val infinite = rememberInfiniteTransition(label = "pulse")
@@ -73,13 +73,6 @@ fun HomeScreen(
         modifier = Modifier
             .fillMaxSize()
     ) {
-        if (aoaRequiresElevation) {
-            AoaElevationDialog(
-                onConfirm = onRequestAoaElevation,
-                onDismiss = onDismissAoaElevation
-            )
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -233,10 +226,13 @@ fun HomeScreen(
                         }
     
                         // Connection Type Badge
-                        val (typeIcon, typeText) = when (connectionType) {
-                            2 -> Icons.Default.Usb to "USB"
-                            3 -> Icons.Default.Bluetooth to "Bluetooth"
-                            else -> Icons.Default.Wifi to "WiFi" // 1 or unknown defaults to WiFi
+                        val (typeIcon, typeText) = when (activeTransport) {
+                            com.sanket.tools.nexpaddesktop.connection.ActiveTransport.WIFI -> Icons.Default.Wifi to "Wi-Fi"
+                            com.sanket.tools.nexpaddesktop.connection.ActiveTransport.USB_TETHERING -> Icons.Default.Usb to "USB Tethering"
+                            com.sanket.tools.nexpaddesktop.connection.ActiveTransport.USB_AOA -> Icons.Default.Usb to "USB (AOA)"
+                            com.sanket.tools.nexpaddesktop.connection.ActiveTransport.USB_ADB -> Icons.Default.Usb to "USB (ADB)"
+                            com.sanket.tools.nexpaddesktop.connection.ActiveTransport.BLUETOOTH -> Icons.Default.Bluetooth to "Bluetooth"
+                            com.sanket.tools.nexpaddesktop.connection.ActiveTransport.NONE -> Icons.Default.Wifi to "Wi-Fi"
                         }
                         
                         Row(
@@ -266,10 +262,102 @@ fun HomeScreen(
 
             val isDeviceConnected = connectedDeviceName != null
 
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                ConnectionToggle(label = "Wi-Fi", icon = Icons.Default.Wifi, isDeviceConnected = isDeviceConnected, isActive = connectionType == 1)
-                ConnectionToggle(label = "USB", icon = Icons.Default.Usb, isDeviceConnected = isDeviceConnected, isActive = connectionType == 2)
-                ConnectionToggle(label = "Bluetooth", icon = Icons.Default.Bluetooth, isDeviceConnected = isDeviceConnected, isActive = connectionType == 3)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // 1. Wi-Fi / USB Tethering
+                val isWifiActive = activeTransport == com.sanket.tools.nexpaddesktop.connection.ActiveTransport.WIFI
+                val isTetheringActive = activeTransport == com.sanket.tools.nexpaddesktop.connection.ActiveTransport.USB_TETHERING
+                val isNetworkActive = isWifiActive || isTetheringActive
+                val networkLabel = when {
+                    isTetheringActive -> "USB Tethering"
+                    isWifiActive -> "Wi-Fi"
+                    else -> "Wi-Fi / USB Tethering"
+                }
+                val networkIcon = if (isTetheringActive) Icons.Default.Usb else Icons.Default.Wifi
+
+                ConnectionToggle(
+                    label = networkLabel,
+                    icon = networkIcon,
+                    isDeviceConnected = isDeviceConnected,
+                    isActive = isNetworkActive
+                )
+
+                // 2. USB (AOA Protocol)
+                val isAoaActive = activeTransport == com.sanket.tools.nexpaddesktop.connection.ActiveTransport.USB_AOA
+                val showAoaDriverInstall = !isAoaActive && (isAoaDriverNeeded || driverInstallState != com.sanket.tools.nexpaddesktop.connection.DriverInstallState.IDLE)
+                ConnectionToggle(
+                    label = "USB (AOA Protocol)",
+                    icon = Icons.Default.Usb,
+                    isDeviceConnected = isDeviceConnected,
+                    isActive = isAoaActive,
+                    hasCustomStatus = showAoaDriverInstall,
+                    extraContent = {
+                        if (showAoaDriverInstall) {
+                            when (driverInstallState) {
+                                com.sanket.tools.nexpaddesktop.connection.DriverInstallState.IDLE -> {
+                                    Button(
+                                        onClick = onInstallAoaDriver,
+                                        shape = RoundedCornerShape(8.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = NeonPalette.Purple,
+                                            contentColor = Color.White
+                                        ),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                        modifier = Modifier.height(28.dp)
+                                    ) {
+                                        Text("Install Driver", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                                com.sanket.tools.nexpaddesktop.connection.DriverInstallState.INSTALLING -> {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(14.dp),
+                                            strokeWidth = 2.dp,
+                                            color = NeonPalette.Cyan
+                                        )
+                                        Text("Installing...", color = NeonPalette.Cyan, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                    }
+                                }
+                                com.sanket.tools.nexpaddesktop.connection.DriverInstallState.FINISHED -> {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            tint = NeonPalette.Green,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Text("Finished", color = NeonPalette.Green, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                )
+
+                // 3. USB (ADB Bridge)
+                ConnectionToggle(
+                    label = "USB (ADB Bridge)",
+                    icon = Icons.Default.Usb,
+                    isDeviceConnected = isDeviceConnected,
+                    isActive = activeTransport == com.sanket.tools.nexpaddesktop.connection.ActiveTransport.USB_ADB
+                )
+
+                // 4. Bluetooth
+                ConnectionToggle(
+                    label = "Bluetooth",
+                    icon = Icons.Default.Bluetooth,
+                    isDeviceConnected = isDeviceConnected,
+                    isActive = activeTransport == com.sanket.tools.nexpaddesktop.connection.ActiveTransport.BLUETOOTH
+                )
             }
         }
     }
@@ -281,6 +369,7 @@ private fun ConnectionToggle(
     icon: ImageVector,
     isDeviceConnected: Boolean,
     isActive: Boolean,
+    hasCustomStatus: Boolean = false,
     extraContent: @Composable () -> Unit = {}
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -359,17 +448,19 @@ private fun ConnectionToggle(
                 ) {
                     extraContent()
                     
-                    // Spacer between extra content and status dot
-                    Spacer(modifier = Modifier.width(8.dp))
-                    
-                    if (isActive) {
-                        Text("Active", color = NeonPalette.Cyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    } else if (isDeviceConnected) {
-                        Text("Standby", color = NeonPalette.CardIdleText.copy(alpha = 0.45f), fontSize = 12.sp, fontWeight = FontWeight.Normal)
-                    } else {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(NeonPalette.Green))
-                            Text("Ready", color = NeonPalette.CardIdleText, fontSize = 12.sp)
+                    if (!hasCustomStatus) {
+                        // Spacer between extra content and status dot
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        if (isActive) {
+                            Text("Active", color = NeonPalette.Cyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        } else if (isDeviceConnected) {
+                            Text("Standby", color = NeonPalette.CardIdleText.copy(alpha = 0.45f), fontSize = 12.sp, fontWeight = FontWeight.Normal)
+                        } else {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(NeonPalette.Green))
+                                Text("Ready", color = NeonPalette.CardIdleText, fontSize = 12.sp)
+                            }
                         }
                     }
                 }
@@ -450,49 +541,6 @@ private fun RadarAnimation() {
             fontSize = 12.sp,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
-    }
-}
-
-@Composable
-fun AoaElevationDialog(
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit = {}
-) {
-    androidx.compose.ui.window.Dialog(onCloseRequest = onDismiss) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(NeonPalette.CardIdleBg)
-                .border(1.dp, NeonPalette.Purple, RoundedCornerShape(12.dp))
-                .padding(24.dp)
-        ) {
-            Column {
-                Text("USB Driver Setup Required", color = NeonPalette.Cyan, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("NEXPAD needs to configure WinUSB for your connected phone to enable low-latency gamepad streaming over USB. This requires one-time Administrator approval.", color = Color.White, fontSize = 14.sp)
-                Spacer(modifier = Modifier.height(24.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    androidx.compose.material3.OutlinedButton(
-                        onClick = onDismiss, 
-                        modifier = Modifier.weight(1f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.Gray)
-                    ) {
-                        Text("Not Now", color = Color.White)
-                    }
-                    androidx.compose.material3.Button(
-                        onClick = onConfirm, 
-                        modifier = Modifier.weight(1f), 
-                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = NeonPalette.Purple)
-                    ) {
-                        Text("Grant Permission", color = Color.White)
-                    }
-                }
-            }
-        }
     }
 }
 
