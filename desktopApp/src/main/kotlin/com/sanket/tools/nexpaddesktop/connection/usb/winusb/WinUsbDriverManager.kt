@@ -65,6 +65,10 @@ object WinUsbDriverManager {
             } catch (e: Exception) {
                 println("[WinUSB/Driver] ERROR during driver operations: ${e.message}")
                 return 1
+            } finally {
+                try {
+                    infFile.parentFile.deleteRecursively()
+                } catch (_: Exception) {}
             }
         } catch (e: Exception) {
             println("[WinUSB/Driver] ERROR: ${e.message}")
