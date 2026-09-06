@@ -64,10 +64,18 @@ class AoaManager {
     var isAdbActive: () -> Boolean = { false }
     // Single Active Transport Guard: pause scanning when any other connection is active
     var isScanningPaused: () -> Boolean = { false }
+    // Startup sync: wait for ADB initial probe to complete before evaluating USB candidates
+    var isAdbInitialScanCompleted: () -> Boolean = { true }
 
     suspend fun scanAndConnect() = coroutineScope {
         if (context == null) return@coroutineScope
         println("[AOA/Manager] Starting continuous USB scanning loop...")
+
+        // Grace period on startup: wait up to 2500ms for ADB initial probe to finish
+        val startupWaitStart = System.currentTimeMillis()
+        while (isActive && !isAdbInitialScanCompleted() && (System.currentTimeMillis() - startupWaitStart < 2500L)) {
+            delay(100)
+        }
 
         while (isActive) {
             // If another transport is active (Bluetooth, Wi-Fi, ADB) or scanning is paused, completely back off!
@@ -217,21 +225,34 @@ class AoaManager {
                 }
             }
 
-            onAoaConnected?.invoke(displayName)
-            currentState = AoaState.Connected
-            userDismissedElevation = false // Reset on successful connection
-            
             try {
                 val feedbackChannel = kotlinx.coroutines.channels.Channel<com.sanket.tools.nexpad.model.GamepadFeedback>(kotlinx.coroutines.channels.Channel.CONFLATED)
                 activeFeedbackChannel = feedbackChannel
 
-                AoaTransport.startBulkStreaming(handle, feedbackChannel) { input ->
-                    onInputReceived?.invoke(input)
-                }
+                AoaTransport.startBulkStreaming(
+                    handle = handle,
+                    feedbackChannel = feedbackChannel,
+                    onSessionStarted = {
+                        currentState = AoaState.Connected
+                        userDismissedElevation = false
+                        onAoaConnected?.invoke(displayName)
+                    },
+                    onSessionEnded = {
+                        if (currentState is AoaState.Connected) {
+                            currentState = AoaState.Idle
+                            onAoaDisconnected?.invoke()
+                        }
+                    },
+                    onInputReceived = { input ->
+                        onInputReceived?.invoke(input)
+                    }
+                )
             } finally {
                 activeFeedbackChannel = null
                 LibUsb.close(handle)
-                onAoaDisconnected?.invoke()
+                if (currentState is AoaState.Connected) {
+                    onAoaDisconnected?.invoke()
+                }
                 currentState = AoaState.Idle
             }
             return false

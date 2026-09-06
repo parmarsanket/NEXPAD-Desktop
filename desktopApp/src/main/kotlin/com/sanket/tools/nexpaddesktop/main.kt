@@ -272,6 +272,7 @@ fun main(args: Array<String>) {
 
         // Mutual exclusion: If USB Debugging is ON and ADB is detected, AOA is suppressed completely
         aoaManager.isAdbActive = { adbBridgeManager.hasActiveAdb() }
+        aoaManager.isAdbInitialScanCompleted = { adbBridgeManager.isInitialScanCompleted.get() }
         // Single Active Transport Guard: pause USB scanning when another transport is active
         aoaManager.isScanningPaused = { activeTransport != ActiveTransport.NONE && activeTransport != ActiveTransport.USB_AOA }
 
@@ -321,8 +322,8 @@ fun main(args: Array<String>) {
         btServer.onInputReceived = inputHandler
         btServer.start(scope)
 
-        // Single Active Transport Guard: discovery server pauses advertising if a client is active
-        discoveryServer.isPaused = { activeTransport != ActiveTransport.NONE }
+        // Discovery server remains unpaused so phones can always discover the PC on LAN
+        discoveryServer.isPaused = { false }
 
         scope.launch(Dispatchers.IO) { aoaManager.scanAndConnect() }
 

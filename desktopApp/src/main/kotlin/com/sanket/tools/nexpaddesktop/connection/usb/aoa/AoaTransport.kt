@@ -34,6 +34,8 @@ object AoaTransport {
     suspend fun startBulkStreaming(
         handle: DeviceHandle,
         feedbackChannel: ReceiveChannel<GamepadFeedback>,
+        onSessionStarted: () -> Unit = {},
+        onSessionEnded: () -> Unit = {},
         onInputReceived: (GamepadInput) -> Unit
     ) = coroutineScope {
         val endpoints = AoaInterfaceDiscovery.discover(handle)
@@ -77,6 +79,8 @@ object AoaTransport {
                 triggerOutChannel = triggerOutChannel,
                 latestEchoSequence = latestEchoSequence,
                 latestLossPctByte = latestLossPctByte,
+                onSessionStarted = onSessionStarted,
+                onSessionEnded = onSessionEnded,
                 onInputReceived = onInputReceived
             )
         } finally {
@@ -146,6 +150,8 @@ object AoaTransport {
         triggerOutChannel: Channel<Unit>,
         latestEchoSequence: AtomicInteger,
         latestLossPctByte: AtomicInteger,
+        onSessionStarted: () -> Unit,
+        onSessionEnded: () -> Unit,
         onInputReceived: (GamepadInput) -> Unit
     ) {
         val buffer = ByteBuffer.allocateDirect(BULK_READ_BUFFER_SIZE)
@@ -154,62 +160,77 @@ object AoaTransport {
 
         val packetSize = NexpadProtocol.INPUT_PACKET_SIZE
         val decoder = AoaFrameDecoder(packetSize)
-        var hasLoggedFirstPacket = false
+        var isSessionActive = false
+        var lastPacketReceivedTime = 0L
 
         var lastSequenceNumber = Int.MIN_VALUE
         var lostInWindow = 0
         var receivedInWindow = 0
         var packetCount = 0
 
-        while (isActive) {
-            buffer.clear()
-            transferred.clear()
-            val result = LibUsb.bulkTransfer(handle, bulkInEndpoint, buffer, transferred, READ_TIMEOUT_MS)
+        try {
+            while (isActive) {
+                buffer.clear()
+                transferred.clear()
+                val result = LibUsb.bulkTransfer(handle, bulkInEndpoint, buffer, transferred, READ_TIMEOUT_MS)
 
-            if (result == LibUsb.SUCCESS && transferred.get(0) > 0) {
-                val bytesRead = transferred.get(0)
-                buffer.get(rawReadBytes, 0, bytesRead)
+                if (result == LibUsb.SUCCESS && transferred.get(0) > 0) {
+                    val bytesRead = transferred.get(0)
+                    buffer.get(rawReadBytes, 0, bytesRead)
 
-                decoder.append(rawReadBytes, 0, bytesRead) { packetBuffer, packetOffset ->
-                    val input = NexpadProtocol.decodeInput(packetBuffer, packetOffset) ?: return@append
+                    decoder.append(rawReadBytes, 0, bytesRead) { packetBuffer, packetOffset ->
+                        val input = NexpadProtocol.decodeInput(packetBuffer, packetOffset) ?: return@append
 
-                    if (!hasLoggedFirstPacket) {
-                        println("[AOA/Transport] First valid packet received! Streaming is active.")
-                        hasLoggedFirstPacket = true
-                    }
-
-                    packetCount = (packetCount % STATS_WINDOW_PACKETS) + 1
-                    val delta = input.sequenceNumber - lastSequenceNumber
-                    if (delta > 0 || lastSequenceNumber == Int.MIN_VALUE) {
-                        if (lastSequenceNumber != Int.MIN_VALUE && delta > 1) {
-                            lostInWindow += (delta - 1).coerceAtMost(255)
-                        }
-                        receivedInWindow++
-                        lastSequenceNumber = input.sequenceNumber
-                        latestEchoSequence.set(input.sequenceNumber)
-
-                        if (packetCount % STATS_WINDOW_PACKETS == 0) {
-                            val total = lostInWindow + receivedInWindow
-                            val currentLossPct = if (total > 0) (255 * lostInWindow / total).coerceIn(0, 255) else 0
-                            latestLossPctByte.set(currentLossPct)
-                            lostInWindow = 0
-                            receivedInWindow = 0
+                        lastPacketReceivedTime = System.currentTimeMillis()
+                        if (!isSessionActive) {
+                            isSessionActive = true
+                            println("[AOA/Transport] First valid packet received! AOA Session is now ACTIVE.")
+                            onSessionStarted()
                         }
 
-                        // Trigger immediate feedback echo for EVERY packet (Conflated channel avoids queueing)
-                        triggerOutChannel.trySend(Unit)
-                    }
+                        packetCount = (packetCount % STATS_WINDOW_PACKETS) + 1
+                        val delta = input.sequenceNumber - lastSequenceNumber
+                        if (delta > 0 || lastSequenceNumber == Int.MIN_VALUE) {
+                            if (lastSequenceNumber != Int.MIN_VALUE && delta > 1) {
+                                lostInWindow += (delta - 1).coerceAtMost(255)
+                            }
+                            receivedInWindow++
+                            lastSequenceNumber = input.sequenceNumber
+                            latestEchoSequence.set(input.sequenceNumber)
 
-                    onInputReceived(input)
+                            if (packetCount % STATS_WINDOW_PACKETS == 0) {
+                                val total = lostInWindow + receivedInWindow
+                                val currentLossPct = if (total > 0) (255 * lostInWindow / total).coerceIn(0, 255) else 0
+                                latestLossPctByte.set(currentLossPct)
+                                lostInWindow = 0
+                                receivedInWindow = 0
+                            }
+
+                            // Trigger immediate feedback echo for EVERY packet (Conflated channel avoids queueing)
+                            triggerOutChannel.trySend(Unit)
+                        }
+
+                        onInputReceived(input)
+                    }
+                } else if (result == LibUsb.ERROR_TIMEOUT) {
+                    // Normal timeout during read; check if active session timed out
+                    if (isSessionActive && (System.currentTimeMillis() - lastPacketReceivedTime > 2500L)) {
+                        println("[AOA/Transport] AOA stream idle (no packets for 2.5s). Ending active session.")
+                        isSessionActive = false
+                        onSessionEnded()
+                    }
+                } else if (result == LibUsb.ERROR_PIPE || result == LibUsb.ERROR_NO_DEVICE) {
+                    println("[AOA/Transport] Device disconnected (${LibUsb.errorName(result)}).")
+                    break
+                } else if (result < 0) {
+                    println("[AOA/Transport] Bulk read error: ${LibUsb.errorName(result)}")
+                    break
                 }
-            } else if (result == LibUsb.ERROR_TIMEOUT) {
-                // Normal timeout, keep polling
-            } else if (result == LibUsb.ERROR_PIPE || result == LibUsb.ERROR_NO_DEVICE) {
-                println("[AOA/Transport] Device disconnected (${LibUsb.errorName(result)}).")
-                break
-            } else if (result < 0) {
-                println("[AOA/Transport] Bulk read error: ${LibUsb.errorName(result)}")
-                break
+            }
+        } finally {
+            if (isSessionActive) {
+                isSessionActive = false
+                onSessionEnded()
             }
         }
     }

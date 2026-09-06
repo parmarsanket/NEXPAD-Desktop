@@ -39,9 +39,6 @@ class DiscoveryServer(private val port: Int = 9998) {
                 val data = datagram.packet.readByteArray()
                 
                 if (data.isNotEmpty() && data[0] == NexpadProtocol.PACKET_TYPE_DISCOVER) {
-                    if (isPaused()) {
-                        continue // Ignore discovery while a game session is active
-                    }
                     println("🔍 Received DISCOVER packet from ${datagram.address}")
                     
                     // Reply Format: [PACKET_TYPE_SERVER_INFO(1)] [NameLength(1)] [NameBytes(N)]

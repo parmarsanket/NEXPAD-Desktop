@@ -52,6 +52,11 @@ class AdbBridgeManager(
     // Single Active Transport Guard: pause scanner when another transport is active
     var isScanningPaused: () -> Boolean = { false }
 
+    val isAdbDevicePresent = AtomicBoolean(false)
+    val isInitialScanCompleted = AtomicBoolean(false)
+
+    fun hasActiveAdb(): Boolean = isConnected.get() || isAdbDevicePresent.get()
+
     fun startScanner(parentScope: CoroutineScope) {
         if (isRunning.getAndSet(true)) return
 
@@ -60,9 +65,10 @@ class AdbBridgeManager(
             val adbPath = AdbPathResolver.resolveAdbPath()
             if (adbPath == null) {
                 println("[ADB/Bridge] ADB executable not available. Scanner standing by.")
+                isInitialScanCompleted.set(true)
             } else {
-                // Immediate initial check to suppress AOA right away if an ADB device is already plugged in
                 findReadyDevice(adbPath)
+                isInitialScanCompleted.set(true)
             }
 
             while (isActive && isRunning.get()) {
@@ -85,10 +91,6 @@ class AdbBridgeManager(
     }
 
     private data class AdbDeviceInfo(val serial: String, val displayName: String)
-
-    val isAdbDevicePresent = AtomicBoolean(false)
-
-    fun hasActiveAdb(): Boolean = isConnected.get() || isAdbDevicePresent.get()
 
     private fun findReadyDevice(adbPath: String): AdbDeviceInfo? {
         return try {
