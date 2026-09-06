@@ -237,7 +237,7 @@ fun main(args: Array<String>) {
             onClientConnected = { name, connType -> 
                 if (connType == 2) {
                     activeTransport = ActiveTransport.USB_TETHERING
-                    connectedDeviceName = "$name (USB Tethering)"
+                    connectedDeviceName = name
                 } else {
                     activeTransport = ActiveTransport.WIFI
                     connectedDeviceName = name

@@ -45,9 +45,18 @@ Section "Install"
   ; Set output path to installation directory
   SetOutPath "$INSTDIR"
   
+  ; Close running instance if user is updating/re-installing
+  DetailPrint "Ensuring NEXPAD is closed before updating..."
+  nsExec::ExecToLog 'taskkill /F /IM com.sanket.tools.nexpaddesktop.exe'
+
   ; Bundle all pre-compiled files from the packageApp task
   File /r "desktopApp\build\compose\binaries\main\app\com.sanket.tools.nexpaddesktop\*"
         
+  ; Bundle standalone ADB tools and dependencies for non-developer end users
+  SetOutPath "$INSTDIR\tools\adb"
+  File /r "desktopApp\tools\adb\*"
+  SetOutPath "$INSTDIR"
+
   ; Bundle the driver installers, service wrapper, and libwdi library
   File /oname=ViGEmBusSetup.exe "redist\ViGEmBusSetup.exe"
   File /oname=libwdi.dll "redist\libwdi.dll"
@@ -68,10 +77,19 @@ Section "Install"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NEXPAD" "DisplayVersion" "1.0.0"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NEXPAD" "Publisher" "Sanket Tools"
 
-  ; Add Windows Firewall exception so the phone can send UDP packets to this app
-  ; We add both the exe AND open port 9999 explicitly so Windows doesn't block either
+  ; Add Windows Firewall exceptions so the phone can communicate with this app
+  ; Port 9999: Gamepad UDP / ADB tunnel
+  ; Port 9998: LAN Discovery broadcast
+  ; Port 26760: DSU Motion Server
+  DetailPrint "Configuring Windows Firewall rules..."
   ExecWait 'netsh advfirewall firewall delete rule name="NEXPAD Desktop" >nul 2>&1'
-  ExecWait 'netsh advfirewall firewall add rule name="NEXPAD Desktop" dir=in action=allow protocol=UDP localport=9999 enable=yes profile=any'
+  ExecWait 'netsh advfirewall firewall delete rule name="NEXPAD Gamepad UDP" >nul 2>&1'
+  ExecWait 'netsh advfirewall firewall add rule name="NEXPAD Gamepad UDP" dir=in action=allow protocol=UDP localport=9999 enable=yes profile=any'
+  ExecWait 'netsh advfirewall firewall delete rule name="NEXPAD Discovery" >nul 2>&1'
+  ExecWait 'netsh advfirewall firewall add rule name="NEXPAD Discovery" dir=in action=allow protocol=UDP localport=9998 enable=yes profile=any'
+  ExecWait 'netsh advfirewall firewall delete rule name="NEXPAD DSU" >nul 2>&1'
+  ExecWait 'netsh advfirewall firewall add rule name="NEXPAD DSU" dir=in action=allow protocol=UDP localport=26760 enable=yes profile=any'
+  ExecWait 'netsh advfirewall firewall delete rule name="NEXPAD Desktop EXE" >nul 2>&1'
   ExecWait 'netsh advfirewall firewall add rule name="NEXPAD Desktop EXE" dir=in action=allow protocol=any program="$INSTDIR\com.sanket.tools.nexpaddesktop.exe" enable=yes profile=any'
 
   ; Apply Windows QoS Policy to force DSCP 46 (EF/Voice) tagging on UDP feedback packets
@@ -108,6 +126,10 @@ SectionEnd
 Section "un.NEXPAD Desktop" SEC_UN_APP
   SectionIn RO ; Read Only: The main app must always be uninstalled
 
+  ; Close running instance before uninstalling
+  DetailPrint "Closing any running instances of NEXPAD Desktop..."
+  nsExec::ExecToLog 'taskkill /F /IM com.sanket.tools.nexpaddesktop.exe'
+
   ; Remove shortcuts
   Delete "$SMPROGRAMS\NEXPAD\NEXPAD.lnk"
   Delete "$SMPROGRAMS\NEXPAD\Uninstall.lnk"
@@ -118,12 +140,14 @@ Section "un.NEXPAD Desktop" SEC_UN_APP
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NEXPAD"
 
   ; Clean up Firewall Rules and QoS Policy
+  nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="NEXPAD Gamepad UDP"'
+  nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="NEXPAD Discovery"'
+  nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="NEXPAD DSU"'
   nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="NEXPAD Desktop"'
   nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="NEXPAD Desktop EXE"'
   nsExec::ExecToLog 'powershell.exe -ExecutionPolicy Bypass -Command "Remove-NetQosPolicy -Name $\"NEXPAD_Gamepad_QoS$\" -Confirm:$$false"'
 
-
-  ; Recursively remove all files in installation directory (including ViGEmBusSetup.exe)
+  ; Recursively remove all files in installation directory (including tools, ViGEmBusSetup.exe, etc.)
   RMDir /r "$INSTDIR"
 SectionEnd
 

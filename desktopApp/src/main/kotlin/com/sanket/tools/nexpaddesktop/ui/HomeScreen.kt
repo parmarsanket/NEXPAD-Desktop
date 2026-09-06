@@ -166,13 +166,18 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // ── Device Section ──
-            Text("Device", color = NeonPalette.CardIdleText, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            Text(if (connectedDeviceName == null) "Device" else "Connected Device", color = NeonPalette.CardIdleText, fontSize = 14.sp, fontWeight = FontWeight.Medium)
             Spacer(modifier = Modifier.height(10.dp))
 
             if (connectedDeviceName == null) {
                 // Radar Animation when no device is connected
                 RadarAnimation()
             } else {
+                val cleanDeviceName = connectedDeviceName
+                    .replace(Regex("\\s*\\((?:Bluetooth|USB Tethering|USB Direct|ADB|USB / ADB|Wi-Fi)\\)\\s*$", RegexOption.IGNORE_CASE), "")
+                    .trim()
+                    .ifEmpty { connectedDeviceName }
+
                 // Device Connected Card
                 Box(
                     modifier = Modifier
@@ -214,7 +219,7 @@ fun HomeScreen(
                             }
     
                             Column {
-                                Text(connectedDeviceName, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                                Text(cleanDeviceName, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)

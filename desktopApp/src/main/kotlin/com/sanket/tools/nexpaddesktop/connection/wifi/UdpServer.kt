@@ -18,6 +18,7 @@ import io.ktor.utils.io.core.ByteReadPacket
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 
+import io.ktor.network.sockets.toJavaAddress
 import com.sun.jna.Native
 import com.sun.jna.platform.win32.Kernel32
 import com.sun.jna.platform.win32.WinBase
@@ -25,6 +26,20 @@ import com.sun.jna.win32.StdCallLibrary
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.io.readByteArray
 import kotlin.time.Duration.Companion.milliseconds
+
+private fun formatAddress(addr: SocketAddress?): String {
+    if (addr == null) return "null"
+    return try {
+        val javaSock = (addr as? InetSocketAddress)?.toJavaAddress() as? java.net.InetSocketAddress
+        if (javaSock != null) {
+            "${javaSock.hostString}:${javaSock.port}"
+        } else {
+            addr.javaClass.simpleName
+        }
+    } catch (_: Exception) {
+        "unknown"
+    }
+}
 
 interface WinMM : StdCallLibrary {
     fun timeBeginPeriod(uPeriod: Int): Int
@@ -121,15 +136,15 @@ class UdpServer(
                 if (!hasLoggedFirstPacket) {
                     hasLoggedFirstPacket = true
                     val debugFirstByte = if (data.isNotEmpty()) data[0] else -1
-                    println("📡 [UDP DEBUG] Received first packet. Size: ${data.size} bytes | First byte: $debugFirstByte | From: $clientAddress")
+                    println("📡 [UDP DEBUG] Received first packet. Size: ${data.size} bytes | First byte: $debugFirstByte | From: ${formatAddress(clientAddress)}")
                 } else if (packetCount == 60) {
-                    println("📡 [UDP DEBUG] Packets received: $totalPackets | From: $clientAddress")
+                    println("📡 [UDP DEBUG] Packets received: $totalPackets | From: ${formatAddress(clientAddress)}")
                 }
                 
                 
                 // Formal Handshake Protocol
                 if (firstByte == NexpadProtocol.PACKET_TYPE_CONNECT) {
-                    println("🤝 [UDP DEBUG] Received CONNECT handshake from $clientAddress")
+                    println("🤝 [UDP DEBUG] Received CONNECT handshake from ${formatAddress(clientAddress)}")
                     
                     var deviceName = "Unknown Device"
                     var connType = 1
@@ -141,16 +156,33 @@ class UdpServer(
                             deviceName = String(data, 3, nameLen, Charsets.UTF_8)
                         }
                     }
+
+                    // Auto-detect USB Tethering without reverse DNS lookup (zero blocking)
+                    if (connType != 2) {
+                        try {
+                            val javaSock = (datagram.address as? io.ktor.network.sockets.InetSocketAddress)?.toJavaAddress() as? java.net.InetSocketAddress
+                            val inet = javaSock?.address
+                            if (inet != null && NetworkUtils.isUsbTetheringAddress(inet)) {
+                                println("⚡ [UDP Server] Auto-detected USB Tethering from client address: ${javaSock.hostString}")
+                                connType = 2
+                            }
+                        } catch (_: Exception) {}
+                    }
                     
                     onClientConnected?.invoke(deviceName, connType)
 
-                    val buffer = ByteBuffer.allocate(1)
+                    val pcName = System.getenv("COMPUTERNAME") ?: "Windows PC"
+                    val pcBytes = pcName.toByteArray(Charsets.UTF_8)
+                    val safeLen = pcBytes.size.coerceAtMost(255)
+                    val buffer = ByteBuffer.allocate(2 + safeLen)
                     buffer.put(NexpadProtocol.PACKET_TYPE_CONNECTED)
+                    buffer.put(safeLen.toByte())
+                    buffer.put(pcBytes, 0, safeLen)
                     val responsePacket = Datagram(ByteReadPacket(buffer.array()), datagram.address)
                     socket.send(responsePacket)
                     continue
                 } else if (firstByte == NexpadProtocol.PACKET_TYPE_DISCONNECT) {
-                    println("👋 [UDP DEBUG] Received DISCONNECT from $clientAddress")
+                    println("👋 [UDP DEBUG] Received DISCONNECT from ${formatAddress(clientAddress)}")
                     clientAddress = null
                     onClientDisconnected?.invoke()
                     continue

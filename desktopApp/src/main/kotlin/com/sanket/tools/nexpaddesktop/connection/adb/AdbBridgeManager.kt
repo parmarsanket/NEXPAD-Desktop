@@ -117,7 +117,7 @@ class AdbBridgeManager(
                                 modelName = part.substringAfter("model:").replace('_', ' ')
                             }
                         }
-                        readyDevice = AdbDeviceInfo(serial, "$modelName (ADB)")
+                        readyDevice = AdbDeviceInfo(serial, modelName)
                     }
                 }
             }
@@ -141,6 +141,7 @@ class AdbBridgeManager(
         }
 
         activeDeviceSerial = device.serial
+        broadcastAdbDeviceReady(adbPath, device.serial)
 
         // 2. Open ServerSocket if not already listening
         try {
@@ -157,6 +158,7 @@ class AdbBridgeManager(
 
         // 3. Accept connection with timeout
         val socket = try {
+            broadcastAdbDeviceReady(adbPath, device.serial)
             serverSocket?.accept()
         } catch (_: java.net.SocketTimeoutException) {
             null
@@ -168,6 +170,35 @@ class AdbBridgeManager(
         if (socket != null) {
             handleClientSession(adbPath, device, socket)
         }
+    }
+
+    private fun getHostDisplayName(): String {
+        return System.getenv("COMPUTERNAME")
+            ?: try { InetAddress.getLocalHost().hostName } catch (_: Exception) { null }
+            ?: "Windows PC"
+    }
+
+    private fun broadcastAdbDeviceReady(adbPath: String, serial: String) {
+        try {
+            val pcName = getHostDisplayName()
+            ProcessBuilder(
+                adbPath, "-s", serial,
+                "shell", "am", "broadcast",
+                "-a", "com.sanket.tools.nexpad.ADB_DEVICE_READY",
+                "--es", "pc_name", pcName
+            ).start()
+        } catch (_: Exception) {}
+    }
+
+    private fun broadcastAdbDeviceDisconnected(adbPath: String?, serial: String?) {
+        if (adbPath == null || serial == null) return
+        try {
+            ProcessBuilder(
+                adbPath, "-s", serial,
+                "shell", "am", "broadcast",
+                "-a", "com.sanket.tools.nexpad.ADB_DEVICE_DISCONNECTED"
+            ).start()
+        } catch (_: Exception) {}
     }
 
     private fun executeAdbReverse(adbPath: String, serial: String): Boolean {
@@ -226,6 +257,22 @@ class AdbBridgeManager(
         // Outbound Feedback / Rumble / RTT Echo Loop
         val outJob = connectionScope?.launch {
             val out = socket.getOutputStream()
+
+            // Send initial connected frame with PC hostname so phone learns laptop name
+            try {
+                val pcName = System.getenv("COMPUTERNAME")
+                    ?: try { InetAddress.getLocalHost().hostName } catch (_: Exception) { null }
+                    ?: "Windows PC"
+                val pcBytes = pcName.toByteArray(Charsets.UTF_8)
+                val safeLen = pcBytes.size.coerceAtMost(255)
+                val hsBytes = ByteArray(2 + safeLen)
+                hsBytes[0] = NexpadProtocol.PACKET_TYPE_CONNECTED
+                hsBytes[1] = safeLen.toByte()
+                System.arraycopy(pcBytes, 0, hsBytes, 2, safeLen)
+                out.write(hsBytes)
+                out.flush()
+            } catch (_: Exception) {}
+
             val feedbackBytes = ByteArray(NexpadProtocol.FEEDBACK_PACKET_SIZE)
             var lastFeedback = GamepadFeedback(0, 0)
 
@@ -313,6 +360,7 @@ class AdbBridgeManager(
             clientSocket = null
 
             println("[ADB/Bridge] Client disconnected.")
+            broadcastAdbDeviceDisconnected(adbPath, activeDeviceSerial)
             removeAdbReverse(adbPath, activeDeviceSerial)
             activeDeviceSerial = null
             onAdbDisconnected?.invoke()
@@ -337,6 +385,7 @@ class AdbBridgeManager(
         serverSocket = null
 
         val adbPath = AdbPathResolver.resolveAdbPath()
+        broadcastAdbDeviceDisconnected(adbPath, activeDeviceSerial)
         removeAdbReverse(adbPath, activeDeviceSerial)
         activeDeviceSerial = null
     }

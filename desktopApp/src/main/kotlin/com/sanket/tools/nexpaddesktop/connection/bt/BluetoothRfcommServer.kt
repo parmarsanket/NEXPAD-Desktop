@@ -209,7 +209,12 @@ class BluetoothRfcommServer {
 
                 clientAddr.read()
                 val clientMac = formatBtAddress(clientAddr.btAddr)
-                val deviceDisplayName = "Phone ($clientMac)"
+                val friendlyName = queryDeviceFriendlyName(clientAddr.btAddr)
+                val deviceDisplayName = if (!friendlyName.isNullOrBlank()) {
+                    friendlyName
+                } else {
+                    "Phone ($clientMac)"
+                }
 
                 if (isExternalTransportActive()) {
                     println("⚠️ [Bluetooth] Rejecting incoming BT connection from $deviceDisplayName: another transport is active.")
@@ -354,6 +359,7 @@ class BluetoothRfcommServer {
         // RX Inbound Input Loop (Phone -> PC Inputs)
         try {
             var hasLoggedFirstPacket = false
+            var handshakeChecked = false
 
             while (isActive && isConnected.get()) {
                 val bytesRead = WinsockBluetooth.INSTANCE.recv(socket, rxRawBuffer, rxRawBuffer.size, 0)
@@ -365,9 +371,35 @@ class BluetoothRfcommServer {
                     break
                 }
 
+                var streamOffset = 0
+                var streamLength = bytesRead
+
+                // Check if the client sends an in-band CONNECT handshake identifying its phone model
+                if (!handshakeChecked) {
+                    if (rxRawBuffer[0] == NexpadProtocol.PACKET_TYPE_CONNECT) {
+                        if (bytesRead >= 3) {
+                            val nameLen = rxRawBuffer[2].toInt() and 0xFF
+                            if (bytesRead >= 3 + nameLen) {
+                                handshakeChecked = true
+                                val phoneModel = String(rxRawBuffer, 3, nameLen, Charsets.UTF_8).trim()
+                                if (phoneModel.isNotEmpty()) {
+                                    println("⚡ [Bluetooth] Phone identified via handshake: $phoneModel")
+                                    onBtConnected?.invoke(phoneModel)
+                                }
+                                streamOffset = 3 + nameLen
+                                streamLength = bytesRead - streamOffset
+                            }
+                        }
+                    } else {
+                        handshakeChecked = true
+                    }
+                }
+
+                if (streamLength <= 0) continue
+
                 var latestInputInBurst: GamepadInput? = null
 
-                decoder.append(rxRawBuffer, 0, bytesRead) { packetBuffer, packetOffset ->
+                decoder.append(rxRawBuffer, streamOffset, streamLength) { packetBuffer, packetOffset ->
                     val gamepadInput = NexpadProtocol.decodeInput(packetBuffer, packetOffset) ?: return@append
 
                     if (!hasLoggedFirstPacket) {
@@ -424,5 +456,23 @@ class BluetoothRfcommServer {
         val b4 = ((bthAddr ushr 8) and 0xFF).toInt()
         val b5 = (bthAddr and 0xFF).toInt()
         return String.format("%02X:%02X:%02X:%02X:%02X:%02X", b0, b1, b2, b3, b4, b5)
+    }
+
+    private fun queryDeviceFriendlyName(btAddr: Long): String? {
+        return try {
+            val bthProps = WinsockBluetooth.BTH_PROPS ?: return null
+            val info = WinsockBluetooth.BLUETOOTH_DEVICE_INFO().apply {
+                this.Address = btAddr
+            }
+            val res = bthProps.BluetoothGetDeviceInfo(null, info)
+            if (res == 0) {
+                val name = com.sun.jna.Native.toString(info.szName).trim()
+                if (name.isNotEmpty()) name else null
+            } else {
+                null
+            }
+        } catch (_: Throwable) {
+            null
+        }
     }
 }

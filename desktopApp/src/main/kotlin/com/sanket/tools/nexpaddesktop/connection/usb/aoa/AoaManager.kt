@@ -217,7 +217,7 @@ class AoaManager {
                 }
             }
 
-            onAoaConnected?.invoke("$displayName (USB Direct)")
+            onAoaConnected?.invoke(displayName)
             currentState = AoaState.Connected
             userDismissedElevation = false // Reset on successful connection
             

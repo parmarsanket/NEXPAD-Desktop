@@ -82,10 +82,13 @@ object AoaHandshake {
             }
 
             // 2. SEND_STRING (Request 52)
+            val pcName = System.getenv("COMPUTERNAME")
+                ?: try { java.net.InetAddress.getLocalHost().hostName } catch (_: Exception) { null }
+                ?: "Windows PC"
             val strings = arrayOf(
                 "Nexpad",              // manufacturer
                 "Nexpad Controller",   // model
-                "NEXPAD USB Gamepad",  // description
+                pcName,                // description (carries laptop hostname to phone)
                 "1.0",                 // version
                 "https://nexpad.dev",  // URI
                 "nexpad-serial-001"    // serial

@@ -135,6 +135,42 @@ object WinsockBluetooth {
         fun setsockopt(s: Long, level: Int, optname: Int, optval: Pointer, optlen: Int): Int
     }
 
+    @Structure.FieldOrder(
+        "dwSize", "Address", "ulClassofDevice", "fConnected", "fRemembered", "fAuthenticated",
+        "stLastSeen", "stLastUsed", "szName"
+    )
+    open class BLUETOOTH_DEVICE_INFO : Structure() {
+        @JvmField var dwSize: Int = 0
+        @JvmField var Address: Long = 0L
+        @JvmField var ulClassofDevice: Int = 0
+        @JvmField var fConnected: Int = 0
+        @JvmField var fRemembered: Int = 0
+        @JvmField var fAuthenticated: Int = 0
+        @JvmField var stLastSeen: com.sun.jna.platform.win32.WinBase.SYSTEMTIME = com.sun.jna.platform.win32.WinBase.SYSTEMTIME()
+        @JvmField var stLastUsed: com.sun.jna.platform.win32.WinBase.SYSTEMTIME = com.sun.jna.platform.win32.WinBase.SYSTEMTIME()
+        @JvmField var szName: CharArray = CharArray(248)
+
+        init {
+            dwSize = size()
+        }
+    }
+
+    interface BthProps : Library {
+        fun BluetoothGetDeviceInfo(hRadio: Pointer?, pbtdi: BLUETOOTH_DEVICE_INFO): Int
+    }
+
+    val BTH_PROPS: BthProps? by lazy {
+        try {
+            Native.load("bthprops.cpl", BthProps::class.java, W32APIOptions.UNICODE_OPTIONS)
+        } catch (_: Throwable) {
+            try {
+                Native.load("bluetoothapis", BthProps::class.java, W32APIOptions.UNICODE_OPTIONS)
+            } catch (_: Throwable) {
+                null
+            }
+        }
+    }
+
     val INSTANCE: Ws2_32 by lazy {
         Native.load("ws2_32", Ws2_32::class.java, W32APIOptions.UNICODE_OPTIONS)
     }
