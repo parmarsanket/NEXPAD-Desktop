@@ -2,13 +2,10 @@ package com.sanket.tools.nexpaddesktop.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,239 +16,284 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.sanket.tools.nexpaddesktop.plugins.DesktopPluginItem
-import com.sanket.tools.nexpaddesktop.plugins.DesktopPluginManager
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.graphics.Brush
+import com.sanket.tools.nexpaddesktop.plugins.NxprcExporter
+import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
 import com.sanket.tools.nexpaddesktop.ui.components.glassCard
+import com.sanket.tools.nexpaddesktop.ui.designer.NxprcCanvasPreview
 import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 import kotlinx.coroutines.launch
 
 @Composable
 fun PluginsScreen() {
-    val plugins = remember { DesktopPluginManager.getAvailablePlugins() }
-    var selectedPlugin by remember { mutableStateOf(plugins.firstOrNull()) }
-    var transferStatus by remember { mutableStateOf<String?>(null) }
-    var isTransferring by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    Column(
+    var htmlSource by remember { mutableStateOf(NxprcHtmlCssConverter.PRESET_ULTRA_NEXPAD_A) }
+    var componentId by remember { mutableStateOf("rc.ultra_a") }
+    var componentName by remember { mutableStateOf("Ultra A Button") }
+    var category by remember { mutableStateOf("BUTTON") }
+    var defaultControl by remember { mutableStateOf("A") }
+    var exportStatus by remember { mutableStateOf<String?>(null) }
+    var isExporting by remember { mutableStateOf(false) }
+
+    // Live compiled document with safe fallback
+    val compiledDoc = remember(htmlSource, componentId, componentName, category, defaultControl) {
+        try {
+            NxprcHtmlCssConverter.convert(
+                source = htmlSource,
+                id = componentId,
+                name = componentName,
+                category = category,
+                defaultControl = defaultControl
+            )
+        } catch (_: Exception) {
+            NxprcHtmlCssConverter.convert(
+                source = NxprcHtmlCssConverter.PRESET_ULTRA_NEXPAD_A,
+                id = componentId,
+                name = componentName,
+                category = category,
+                defaultControl = defaultControl
+            )
+        }
+    }
+
+    Row(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Top Header
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        // Left Column: HTML / CSS Code Editor
+        Column(
+            modifier = Modifier
+                .weight(1.15f)
+                .fillMaxHeight()
+                .glassCard()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column {
-                Text(
-                    text = "Controller Component Studio",
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontWeight = FontWeight.Black,
-                        color = NeonPalette.Cyan
-                    )
-                )
-                Text(
-                    text = "Manage, create, and hot-transfer .nxpcomponent designs directly to your Android device",
-                    style = MaterialTheme.typography.bodyMedium.copy(color = NeonPalette.CardIdleText)
-                )
-            }
+            Text("HTML / CSS Code", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
 
-            // Status Pill
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(NeonPalette.PanelBgTop)
-                    .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
+            // Compact Presets Row
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Icon(Icons.Default.Bolt, contentDescription = null, tint = NeonPalette.Cyan, modifier = Modifier.size(18.dp))
-                    Text("Zero-Latency Pipeline Active", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text("Presets:", fontSize = 11.sp, color = NeonPalette.CardIdleText)
+                OutlinedButton(
+                    onClick = {
+                        htmlSource = NxprcHtmlCssConverter.PRESET_ULTRA_NEXPAD_A
+                        componentId = "rc.ultra_a"
+                        componentName = "Ultra A Button"
+                        defaultControl = "A"
+                    },
+                    shape = RoundedCornerShape(6.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text("Ultra (A)", fontSize = 11.sp, color = NeonPalette.Cyan)
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        htmlSource = NxprcHtmlCssConverter.PRESET_CYBER_REACTOR
+                        componentId = "rc.cyber_reactor_a"
+                        componentName = "Cyber Reactor A"
+                        defaultControl = "A"
+                    },
+                    shape = RoundedCornerShape(6.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text("Reactor (A)", fontSize = 11.sp, color = Color(0xFF69D980))
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        htmlSource = NxprcHtmlCssConverter.PRESET_CRIMSON_OCTA
+                        componentId = "rc.crimson_octa_b"
+                        componentName = "Crimson Octa B"
+                        defaultControl = "B"
+                    },
+                    shape = RoundedCornerShape(6.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text("Octa (B)", fontSize = 11.sp, color = Color(0xFFFF0055))
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        htmlSource = NxprcHtmlCssConverter.PRESET_SPEED_TURBO
+                        componentId = "rc.speed_turbo_x"
+                        componentName = "Speed Turbo X"
+                        defaultControl = "X"
+                    },
+                    shape = RoundedCornerShape(6.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text("Turbo (X)", fontSize = 11.sp, color = Color(0xFFFFCC00))
                 }
             }
+
+            OutlinedTextField(
+                value = htmlSource,
+                onValueChange = { htmlSource = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace, fontSize = 12.sp),
+                placeholder = { Text("Paste HTML / CSS / SVG button code here...") }
+            )
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
-
-        // Main 2-Column Layout
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.spacedBy(20.dp)
+        // Right Column: Merged Sandbox Preview & Export
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .glassCard()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Left Column: Component List
-            Column(
-                modifier = Modifier
-                    .width(360.dp)
-                    .fillMaxHeight()
-                    .glassCard()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Available Components (${plugins.size})",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                )
+                Text("Sandbox Preview & Export", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text("Tap to test tactile physics", color = NeonPalette.Cyan.copy(alpha = 0.7f), fontSize = 10.sp)
+            }
 
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+            // Dynamic Square Preview Box
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                val previewSize = minOf(maxWidth * 0.95f, maxHeight * 0.98f, 220.dp).coerceAtLeast(100.dp)
+                Box(
+                    modifier = Modifier
+                        .size(previewSize)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            Brush.radialGradient(
+                                listOf(Color(0xFF0C1322), Color(0xFF030712))
+                            )
+                        )
+                        .border(1.5.dp, NeonPalette.Cyan.copy(alpha = 0.35f), RoundedCornerShape(16.dp)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    items(plugins, key = { it.id }) { item ->
-                        val isSelected = selectedPlugin?.id == item.id
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (isSelected) NeonPalette.Cyan.copy(alpha = 0.15f) else Color(0xFF0C1322))
-                                .border(
-                                    1.dp,
-                                    if (isSelected) NeonPalette.Cyan else Color.White.copy(alpha = 0.08f),
-                                    RoundedCornerShape(12.dp)
-                                )
-                                .clickable {
-                                    selectedPlugin = item
-                                    transferStatus = null
-                                }
-                                .padding(12.dp)
-                        ) {
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = item.name,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isSelected) NeonPalette.Cyan else Color.White,
-                                        fontSize = 14.sp
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(NeonPalette.Purple.copy(alpha = 0.2f))
-                                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                                    ) {
-                                        Text(item.defaultControl, color = NeonPalette.Purple, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                }
-                                Text(
-                                    text = "${item.category} • by ${item.author}",
-                                    fontSize = 11.sp,
-                                    color = NeonPalette.CardIdleText
-                                )
-                            }
-                        }
-                    }
+                    val buttonDp = (previewSize.value * 0.78f).toInt().coerceAtLeast(70)
+                    NxprcCanvasPreview(document = compiledDoc, sizeDp = buttonDp)
                 }
             }
 
-            // Right Column: Inspector & Transfer Action
-            val current = selectedPlugin
-            if (current != null) {
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .glassCard()
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+            // Compact Layers Info Bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color(0xFF070E1A))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Layers: ${compiledDoc.canvas.layers.size}", color = NeonPalette.Cyan, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                Text("Idle: ${compiledDoc.animations.idleType}", color = Color.White.copy(alpha = 0.8f), fontSize = 11.sp)
+                Text("Touch: ${compiledDoc.animations.pressFeedback}", color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp)
+            }
+
+            // Metadata Inputs (ID, Name, Key, Category)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = componentId,
+                    onValueChange = { componentId = it },
+                    label = { Text("ID") },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    textStyle = LocalTextStyle.current.copy(fontSize = 12.sp)
+                )
+                OutlinedTextField(
+                    value = componentName,
+                    onValueChange = { componentName = it },
+                    label = { Text("Name") },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    textStyle = LocalTextStyle.current.copy(fontSize = 12.sp)
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = defaultControl,
+                    onValueChange = { defaultControl = it },
+                    label = { Text("Key") },
+                    modifier = Modifier.weight(0.42f),
+                    singleLine = true,
+                    textStyle = LocalTextStyle.current.copy(fontSize = 12.sp)
+                )
+                OutlinedTextField(
+                    value = category,
+                    onValueChange = { category = it },
+                    label = { Text("Category") },
+                    modifier = Modifier.weight(0.58f),
+                    singleLine = true,
+                    textStyle = LocalTextStyle.current.copy(fontSize = 12.sp)
+                )
+            }
+
+            if (exportStatus != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (exportStatus!!.contains("Error") || exportStatus!!.contains("canceled")) Color(0xFF3B121A) else Color(0xFF0F2C24)
+                    ),
+                    shape = RoundedCornerShape(6.dp)
                 ) {
-                    // Component Meta Header
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                text = current.name,
-                                style = MaterialTheme.typography.headlineSmall.copy(
-                                    fontWeight = FontWeight.Black,
-                                    color = Color.White
-                                )
-                            )
-                            Text(
-                                text = current.description,
-                                style = MaterialTheme.typography.bodySmall.copy(color = NeonPalette.CardIdleText)
-                            )
-                        }
-
-                        // Transfer Button (ADB Push)
-                        Button(
-                            onClick = {
-                                scope.launch {
-                                    isTransferring = true
-                                    transferStatus = "Transferring via USB Debugging (ADB)..."
-                                    val res = DesktopPluginManager.transferViaAdb(current)
-                                    res.fold(
-                                        onSuccess = { msg -> transferStatus = msg },
-                                        onFailure = { ex -> transferStatus = "ADB Error: ${ex.message}" }
-                                    )
-                                    isTransferring = false
-                                }
-                            },
-                            enabled = !isTransferring,
-                            colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            Icon(Icons.Default.Usb, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Push via ADB (USB)", color = Color.Black, fontWeight = FontWeight.Bold)
-                        }
-                    }
-
-                    // Transfer Status Alert
-                    if (transferStatus != null) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (transferStatus!!.contains("Error")) Color(0xFF3B121A) else Color(0xFF0F2C24)
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(
-                                text = transferStatus!!,
-                                color = if (transferStatus!!.contains("Error")) Color(0xFFFF6B6B) else Color(0xFF00FF99),
-                                modifier = Modifier.padding(12.dp),
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-
-                    // JSON Specification View
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Declarative Component Specification (.nxpcomponent JSON)",
-                            color = NeonPalette.CardIdleText,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFF040810))
-                                .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
-                                .padding(14.dp)
-                        ) {
-                            Text(
-                                text = current.jsonContent,
-                                fontFamily = FontFamily.Monospace,
-                                color = NeonPalette.Cyan.copy(alpha = 0.9f),
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
+                    Text(
+                        text = exportStatus!!,
+                        color = if (exportStatus!!.contains("Error") || exportStatus!!.contains("canceled")) Color(0xFFFF6B6B) else Color(0xFF00FF99),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        fontSize = 11.sp
+                    )
                 }
+            }
+
+            // Prominent Full-Width Export Button
+            Button(
+                onClick = {
+                    scope.launch {
+                        isExporting = true
+                        val res = NxprcExporter.exportToFile(compiledDoc)
+                        res.fold(
+                            onSuccess = { file ->
+                                exportStatus = "Saved: ${file.name} (${file.length()} bytes)"
+                            },
+                            onFailure = { ex ->
+                                exportStatus = ex.message ?: "Export failed"
+                            }
+                        )
+                        isExporting = false
+                    }
+                },
+                enabled = !isExporting,
+                modifier = Modifier.fillMaxWidth().height(44.dp),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan)
+            ) {
+                Icon(Icons.Default.Download, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Export .nxprc File", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
             }
         }
     }

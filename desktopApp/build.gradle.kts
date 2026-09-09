@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlinJvm)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 dependencies {
@@ -27,6 +28,9 @@ dependencies {
 
     // AOA Proof-of-Concept Test — libusb JVM bindings
     implementation("org.usb4java:usb4java:1.3.0")
+
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlin.test)
 }
 
 compose.desktop {
