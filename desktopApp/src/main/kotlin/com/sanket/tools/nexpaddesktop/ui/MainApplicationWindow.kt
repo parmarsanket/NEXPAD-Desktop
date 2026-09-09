@@ -15,7 +15,7 @@ import com.sanket.tools.nexpaddesktop.model.GyroSettings
 import com.sanket.tools.nexpaddesktop.ui.components.drawCyberGrid
 import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 
-enum class Screen { HOME, CONTROLLER, NODE, CONVERTER, OUTPUT, KBM }
+enum class Screen { HOME, CONTROLLER, PLUGINS, NODE, CONVERTER, OUTPUT, KBM }
 enum class ControllerType(val displayName: String) { 
     XBOX_360("Microsoft Xbox 360"), 
     DUALSHOCK_4("Sony PlayStation 4 (DualShock 4)") 
@@ -94,6 +94,7 @@ fun MainApplicationWindow(
                     processedPitch = processedPitch,
                     onRecalibrate = onRecalibrate
                 )
+                Screen.PLUGINS -> PluginsScreen()
                 Screen.OUTPUT -> OutputScreen()
                 else -> {
                     // Placeholder for NODE, CONVERTER, KBM

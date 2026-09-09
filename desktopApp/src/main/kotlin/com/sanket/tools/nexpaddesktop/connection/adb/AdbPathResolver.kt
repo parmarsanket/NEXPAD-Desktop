@@ -36,14 +36,16 @@ object AdbPathResolver {
             return "adb"
         }
 
-        // 3. PRIORITY #3: Standard Environment Variables (developer fallback)
+        // 3. PRIORITY #3: Standard Environment Variables & Windows LocalAppData (developer fallback)
         val envPaths = listOfNotNull(
             System.getenv("ANDROID_HOME")?.let { File(it, "platform-tools/adb.exe") },
-            System.getenv("ANDROID_SDK_ROOT")?.let { File(it, "platform-tools/adb.exe") }
+            System.getenv("ANDROID_SDK_ROOT")?.let { File(it, "platform-tools/adb.exe") },
+            System.getenv("LOCALAPPDATA")?.let { File(it, "Android/Sdk/platform-tools/adb.exe") },
+            File(System.getProperty("user.home"), "AppData/Local/Android/Sdk/platform-tools/adb.exe")
         )
         for (file in envPaths) {
             if (file.exists() && file.canExecute() && canExecute(file.absolutePath)) {
-                println("[ADB/Resolver] Fallback: Found ADB via environment: ${file.absolutePath}")
+                println("[ADB/Resolver] Fallback: Found ADB via environment/LocalAppData: ${file.absolutePath}")
                 cachedAdbPath = file.absolutePath
                 return file.absolutePath
             }
