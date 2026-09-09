@@ -47,7 +47,7 @@ fun PluginsScreen() {
         ) {
             Column {
                 Text(
-                    text = "Controller Plugins & Component Studio",
+                    text = "Controller Component Studio",
                     style = MaterialTheme.typography.headlineMedium.copy(
                         fontWeight = FontWeight.Black,
                         color = NeonPalette.Cyan
@@ -183,51 +183,27 @@ fun PluginsScreen() {
                             )
                         }
 
-                        // Transfer Buttons
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Button(
-                                onClick = {
-                                    scope.launch {
-                                        isTransferring = true
-                                        transferStatus = "Transferring via USB Debugging (ADB)..."
-                                        val res = DesktopPluginManager.transferViaAdb(current)
-                                        res.fold(
-                                            onSuccess = { msg -> transferStatus = msg },
-                                            onFailure = { ex -> transferStatus = "ADB Error: ${ex.message}" }
-                                        )
-                                        isTransferring = false
-                                    }
-                                },
-                                enabled = !isTransferring,
-                                colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
-                                shape = RoundedCornerShape(10.dp)
-                            ) {
-                                Icon(Icons.Default.Usb, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text("Push via ADB (USB)", color = Color.Black, fontWeight = FontWeight.Bold)
-                            }
-
-                            OutlinedButton(
-                                onClick = {
-                                    scope.launch {
-                                        isTransferring = true
-                                        transferStatus = "Sending via FTP Protocol (Port 9996)..."
-                                        val res = DesktopPluginManager.transferViaFtp(current)
-                                        res.fold(
-                                            onSuccess = { msg -> transferStatus = msg },
-                                            onFailure = { ex -> transferStatus = "FTP Error: ${ex.message}" }
-                                        )
-                                        isTransferring = false
-                                    }
-                                },
-                                enabled = !isTransferring,
-                                shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Purple)
-                            ) {
-                                Icon(Icons.Default.Wifi, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text("Send via FTP")
-                            }
+                        // Transfer Button (ADB Push)
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    isTransferring = true
+                                    transferStatus = "Transferring via USB Debugging (ADB)..."
+                                    val res = DesktopPluginManager.transferViaAdb(current)
+                                    res.fold(
+                                        onSuccess = { msg -> transferStatus = msg },
+                                        onFailure = { ex -> transferStatus = "ADB Error: ${ex.message}" }
+                                    )
+                                    isTransferring = false
+                                }
+                            },
+                            enabled = !isTransferring,
+                            colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Default.Usb, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Push via ADB (USB)", color = Color.Black, fontWeight = FontWeight.Bold)
                         }
                     }
 

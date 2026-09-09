@@ -1,12 +1,9 @@
 package com.sanket.tools.nexpaddesktop.plugins
 
-import com.sanket.tools.nexpad.protocol.NexpadProtocol
 import com.sanket.tools.nexpaddesktop.connection.adb.AdbPathResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.net.InetSocketAddress
-import java.net.Socket
 
 data class DesktopPluginItem(
     val id: String,
@@ -290,62 +287,6 @@ object DesktopPluginManager {
 
             Result.success("Transferred ${item.name} via ADB to phone successfully! (Hot-reloaded)")
         } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Transfers a component using NexpadProtocol FTP packets over a TCP socket (Wi-Fi or forwarded ADB port).
-     */
-    suspend fun transferViaFtp(
-        item: DesktopPluginItem,
-        host: String = "127.0.0.1",
-        port: Int = NexpadProtocol.FTP_PORT
-    ): Result<String> = withContext(Dispatchers.IO) {
-        val socket = Socket()
-        try {
-            socket.connect(InetSocketAddress(host, port), 3000)
-            val out = socket.getOutputStream()
-            val input = socket.getInputStream()
-
-            val fileName = "${item.id}.json"
-            val fileBytes = item.jsonContent.encodeToByteArray()
-
-            // 1. Send FTP Start Packet
-            val startPacket = NexpadProtocol.encodeFtpStart(fileName, fileBytes.size)
-            out.write(startPacket)
-            out.flush()
-
-            // Read ACK
-            val ackBuf = ByteArray(32)
-            val ackLen = input.read(ackBuf)
-            if (ackLen < 0) return@withContext Result.failure(IllegalStateException("Connection closed before ACK"))
-
-            // 2. Send Chunks
-            var offset = 0
-            var chunkIndex = 0
-            while (offset < fileBytes.size) {
-                val chunkSize = minOf(NexpadProtocol.FTP_DEFAULT_CHUNK_SIZE, fileBytes.size - offset)
-                val chunkPacket = NexpadProtocol.encodeFtpChunk(chunkIndex, fileBytes, offset, chunkSize)
-                out.write(chunkPacket)
-                out.flush()
-
-                // Read chunk ACK
-                input.read(ackBuf)
-
-                offset += chunkSize
-                chunkIndex++
-            }
-
-            // 3. Send Complete Packet
-            val completePacket = NexpadProtocol.encodeFtpComplete(fileName)
-            out.write(completePacket)
-            out.flush()
-
-            socket.close()
-            Result.success("Transferred ${item.name} (${fileBytes.size} bytes) via FTP to $host:$port!")
-        } catch (e: Exception) {
-            socket.close()
             Result.failure(e)
         }
     }
