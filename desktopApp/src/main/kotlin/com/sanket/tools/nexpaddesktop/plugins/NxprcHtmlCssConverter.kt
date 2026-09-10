@@ -185,6 +185,7 @@ object NxprcHtmlCssConverter {
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8">
     <style>
         .button-a {
             width: 80px;
@@ -236,51 +237,91 @@ object NxprcHtmlCssConverter {
     </style>
 </head>
 <body>
-    <div class="button-a"><span>A</span></div>
+    <button class="button-a" data-control="A" data-category="BUTTON" data-name="Cyber Reactor A"><span>A</span></button>
 </body>
 </html>
 """.trimIndent()
 
-    @Deprecated(
-        message = "PRESET_CRIMSON_OCTA uses inline <svg> (banned by NXPRC rule 2) and is missing required data-control/data-category/data-name attributes. Do not pass to NxprcPackager.compile().",
-        level = DeprecationLevel.WARNING
-    )
     val PRESET_CRIMSON_OCTA = """
-<button class="crimson-octa">
-  <svg viewBox="0 0 100 100">
-    <path d="M30 10 L70 10 L90 30 L90 70 L70 90 L30 90 L10 70 L10 30 Z" />
-  </svg>
-  <span>B</span>
-</button>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
 <style>
-.crimson-octa {
-  background: radial-gradient(circle at 35% 30%, #FF0055, #660022, #140208);
-  border: 2px solid #FF0055;
-  box-shadow: 0 0 18px #FF0055;
-  color: #FFFFFF;
-}
+  :root {
+    --accent: #FF0055;
+    --accent-glow: rgba(255, 0, 85, 0.6);
+  }
+  .crimson-octa {
+    position: relative;
+    width: 96px;
+    height: 96px;
+    clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+    background: radial-gradient(circle at 35% 30%, #ff1766 0%, #990033 50%, #20000a 100%);
+    border: 2px solid var(--accent);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7), 0 0 20px var(--accent-glow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .crimson-octa span {
+    font-size: 38px;
+    font-weight: 900;
+    color: #FFFFFF;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8), 0 0 12px var(--accent);
+  }
+  .crimson-octa:active {
+    transform: scale(0.93) translateY(2px);
+  }
 </style>
+</head>
+<body>
+  <button class="crimson-octa" data-control="B" data-category="BUTTON" data-name="Crimson Octagon">
+    <span>B</span>
+  </button>
+</body>
+</html>
 """.trimIndent()
 
-    @Deprecated(
-        message = "PRESET_SPEED_TURBO uses inline <svg> which is banned by NXPRC rule 2. Do not pass to NxprcPackager.compile().",
-        level = DeprecationLevel.WARNING
-    )
     val PRESET_SPEED_TURBO = """
-<button class="speed-turbo">
-  <svg viewBox="0 0 100 100">
-    <path d="M50 5 L60 40 L95 40 L65 65 L75 95 L50 75 L25 95 L35 65 L5 40 L40 40 Z" />
-  </svg>
-  <span>X</span>
-</button>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
 <style>
-.speed-turbo {
-  background: linear-gradient(135deg, #FFCC00, #996600, #221A00);
-  border: 2px solid #FFCC00;
-  box-shadow: 0 0 22px #FFCC00;
-  color: #FFFFFF;
-}
+  :root {
+    --accent: #FFCC00;
+    --accent-glow: rgba(255, 204, 0, 0.6);
+  }
+  .speed-turbo {
+    position: relative;
+    width: 96px;
+    height: 96px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #ffdb4d 0%, #cc9900 45%, #2a2000 100%);
+    border: 2px solid var(--accent);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65), 0 0 20px var(--accent-glow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .speed-turbo span {
+    font-size: 38px;
+    font-weight: 900;
+    color: #FFFFFF;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8), 0 0 12px var(--accent);
+  }
+  .speed-turbo:active {
+    transform: scale(0.93) translateY(2px);
+  }
 </style>
+</head>
+<body>
+  <button class="speed-turbo" data-control="X" data-category="BUTTON" data-name="Speed Turbo X">
+    <span>X</span>
+  </button>
+</body>
+</html>
 """.trimIndent()
 
     val PRESET_NEO_TACTILE_A = """
@@ -633,34 +674,50 @@ object NxprcHtmlCssConverter {
   :root {
     --dpad-size: 80px;
     --accent: #00F0FF;
+    --accent-glow: rgba(0, 240, 255, 0.5);
   }
   .dpad-btn {
     width: var(--dpad-size);
     height: var(--dpad-size);
     border-radius: 18px;
-    background: radial-gradient(circle at 50% 25%, #252a36 0%, #13161c 70%, #0a0b0e 100%);
-    border: 2px solid #333a4a;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.25), inset 0 -4px 8px rgba(0, 0, 0, 0.7);
+    background: 
+      radial-gradient(circle at 50% 20%, rgba(0, 240, 255, 0.18) 0%, transparent 55%),
+      linear-gradient(180deg, #2a3140 0%, #161a22 60%, #0a0c10 100%);
+    border: 2px solid #3d475c;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.65), inset 0 2px 4px rgba(255, 255, 255, 0.3), inset 0 -4px 8px rgba(0, 0, 0, 0.75), 0 0 16px var(--accent-glow);
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
   }
+  .dpad-btn::before {
+    content: "";
+    position: absolute;
+    top: 9px;
+    left: 18px;
+    width: 44px;
+    height: 3px;
+    border-radius: 1.5px;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    opacity: 0.85;
+  }
   .dpad-btn::after {
     content: "";
     position: absolute;
     top: 8%;
-    left: 15%;
-    width: 70%;
-    height: 35%;
+    left: 14%;
+    width: 72%;
+    height: 36%;
     border-radius: 12px;
-    background: radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.4) 0%, transparent 70%);
+    background: radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.45) 0%, transparent 70%);
   }
   .dpad-arrow {
     font-size: 32px;
     font-weight: 900;
     color: var(--accent);
-    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0,0,0,0.8);
+    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0,0,0,0.9), 0 -1px 0 rgba(255,255,255,0.6);
+    z-index: 5;
   }
   .dpad-btn:active {
     transform: scale(0.92) translateY(2px);
@@ -684,14 +741,20 @@ object NxprcHtmlCssConverter {
   :root {
     --cross-size: 140px;
     --accent: #00F0FF;
+    --accent-glow: rgba(0, 240, 255, 0.35);
   }
   .dpad-cross {
     width: var(--cross-size);
     height: var(--cross-size);
     border-radius: 28px;
-    background: radial-gradient(circle at 50% 50%, #1e222b 0%, #11141a 75%, #08090c 100%);
-    border: 2px solid #2d3342;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7), inset 0 2px 6px rgba(255, 255, 255, 0.2), inset 0 -6px 14px rgba(0, 0, 0, 0.8), 0 0 24px rgba(0, 240, 255, 0.25);
+    background: 
+      radial-gradient(circle at 50% 50%, #222834 0%, #12151c 65%, #08090d 100%);
+    border: 2px solid #363f52;
+    box-shadow: 
+      0 12px 28px rgba(0, 0, 0, 0.75), 
+      inset 0 2px 5px rgba(255, 255, 255, 0.25), 
+      inset 0 -6px 14px rgba(0, 0, 0, 0.85), 
+      0 0 24px var(--accent-glow);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -700,17 +763,26 @@ object NxprcHtmlCssConverter {
   .dpad-cross::before {
     content: "";
     position: absolute;
-    width: 46px;
-    height: 46px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
-    background: radial-gradient(circle at 45% 45%, #2a303d 0%, #0d0f14 100%);
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.8), 0 1px 2px rgba(255, 255, 255, 0.15);
+    background: radial-gradient(circle at 45% 45%, #2a3140 0%, #0d0f14 100%);
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.9), 0 1px 2px rgba(255, 255, 255, 0.2);
+    border: 1.5px solid rgba(0, 240, 255, 0.3);
+  }
+  .dpad-cross::after {
+    content: "";
+    position: absolute;
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    border: 1.5px dashed rgba(0, 240, 255, 0.35);
   }
   .cross-center {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 900;
     color: var(--accent);
-    text-shadow: 0 0 8px var(--accent);
+    text-shadow: 0 0 10px var(--accent), 0 2px 4px rgba(0,0,0,0.8);
     z-index: 5;
   }
   .dpad-cross:active {
@@ -719,7 +791,7 @@ object NxprcHtmlCssConverter {
 </style>
 </head>
 <body>
-  <button class="dpad-cross" data-control="DPAD" data-category="DPAD" data-name="Cross Pad">
+  <button class="dpad-cross" data-control="DPAD" data-category="DPAD" data-name="Tactile Cross Pad">
     <span class="cross-center">❖</span>
   </button>
 </body>
@@ -740,8 +812,8 @@ object NxprcHtmlCssConverter {
     width: 72px;
     height: 110px;
     border-radius: 20px;
-    background: linear-gradient(180deg, #242936 0%, #151820 40%, #0a0c10 100%);
-    border: 2px solid #363d4f;
+    background: linear-gradient(180deg, #282f3d 0%, #161922 45%, #0a0c10 100%);
+    border: 2px solid #3d4659;
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.65), inset 0 2px 4px rgba(255, 255, 255, 0.3), inset 0 -8px 16px rgba(0, 0, 0, 0.8), 0 0 18px var(--accent-glow);
     display: flex;
     flex-direction: column;
@@ -795,14 +867,15 @@ object NxprcHtmlCssConverter {
 <style>
   :root {
     --accent: #00F0FF;
+    --accent-glow: rgba(0, 240, 255, 0.35);
   }
   .bumper-btn {
     width: 120px;
     height: 52px;
     border-radius: 18px;
-    background: linear-gradient(180deg, #2a303d 0%, #171a22 60%, #0c0e12 100%);
-    border: 2px solid #3a4254;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.3), inset 0 -4px 8px rgba(0, 0, 0, 0.7), 0 0 16px rgba(0, 240, 255, 0.35);
+    background: linear-gradient(180deg, #2c3342 0%, #171a23 60%, #0c0e13 100%);
+    border: 2px solid #3d475c;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.3), inset 0 -4px 8px rgba(0, 0, 0, 0.7), 0 0 16px var(--accent-glow);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -846,6 +919,7 @@ object NxprcHtmlCssConverter {
   :root {
     --stick-size: 100px;
     --accent: #4ADE80;
+    --accent-glow: rgba(74, 222, 128, 0.25);
   }
   .stick-btn {
     width: var(--stick-size);
@@ -853,7 +927,7 @@ object NxprcHtmlCssConverter {
     border-radius: 50%;
     background: radial-gradient(circle at 45% 40%, #2b313d 0%, #14171e 65%, #08090c 100%);
     border: 3px solid #3d4657;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7), inset 0 3px 6px rgba(255, 255, 255, 0.25), inset 0 -8px 16px rgba(0, 0, 0, 0.8), 0 0 20px rgba(74, 222, 128, 0.25);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7), inset 0 3px 6px rgba(255, 255, 255, 0.25), inset 0 -8px 16px rgba(0, 0, 0, 0.8), 0 0 20px var(--accent-glow);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -906,9 +980,9 @@ object NxprcHtmlCssConverter {
     width: 64px;
     height: 44px;
     border-radius: 14px;
-    background: radial-gradient(circle at 50% 30%, #242833 0%, #101217 100%);
-    border: 1.5px solid #363c4c;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55), inset 0 1px 3px rgba(255, 255, 255, 0.25), inset 0 -3px 6px rgba(0, 0, 0, 0.7);
+    background: radial-gradient(circle at 50% 30%, #29303e 0%, #12151d 100%);
+    border: 1.5px solid #3d475c;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6), inset 0 1px 3px rgba(255, 255, 255, 0.3), inset 0 -3px 6px rgba(0, 0, 0, 0.75);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -919,8 +993,8 @@ object NxprcHtmlCssConverter {
     width: 22px;
     height: 3px;
     border-radius: 1.5px;
-    background: #E0E0E0;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    background: #FFFFFF;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.8), 0 0 4px rgba(255,255,255,0.4);
   }
   .system-btn:active {
     transform: scale(0.92) translateY(2px);
@@ -946,34 +1020,50 @@ object NxprcHtmlCssConverter {
   :root {
     --dpad-size: 80px;
     --accent: #00F0FF;
+    --accent-glow: rgba(0, 240, 255, 0.5);
   }
   .dpad-btn {
     width: var(--dpad-size);
     height: var(--dpad-size);
     border-radius: 18px;
-    background: radial-gradient(circle at 50% 75%, #252a36 0%, #13161c 70%, #0a0b0e 100%);
-    border: 2px solid #333a4a;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.25), inset 0 -4px 8px rgba(0, 0, 0, 0.7);
+    background: 
+      radial-gradient(circle at 50% 80%, rgba(0, 240, 255, 0.18) 0%, transparent 55%),
+      linear-gradient(0deg, #2a3140 0%, #161a22 60%, #0a0c10 100%);
+    border: 2px solid #3d475c;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.65), inset 0 2px 4px rgba(255, 255, 255, 0.3), inset 0 -4px 8px rgba(0, 0, 0, 0.75), 0 0 16px var(--accent-glow);
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
   }
+  .dpad-btn::before {
+    content: "";
+    position: absolute;
+    bottom: 9px;
+    left: 18px;
+    width: 44px;
+    height: 3px;
+    border-radius: 1.5px;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    opacity: 0.85;
+  }
   .dpad-btn::after {
     content: "";
     position: absolute;
     bottom: 8%;
-    left: 15%;
-    width: 70%;
-    height: 35%;
+    left: 14%;
+    width: 72%;
+    height: 36%;
     border-radius: 12px;
-    background: radial-gradient(ellipse at 50% 70%, rgba(255, 255, 255, 0.4) 0%, transparent 70%);
+    background: radial-gradient(ellipse at 50% 70%, rgba(255, 255, 255, 0.45) 0%, transparent 70%);
   }
   .dpad-arrow {
     font-size: 32px;
     font-weight: 900;
     color: var(--accent);
-    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0,0,0,0.8);
+    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0,0,0,0.9), 0 -1px 0 rgba(255,255,255,0.6);
+    z-index: 5;
   }
   .dpad-btn:active {
     transform: scale(0.92) translateY(2px);
@@ -997,24 +1087,50 @@ object NxprcHtmlCssConverter {
   :root {
     --dpad-size: 80px;
     --accent: #00F0FF;
+    --accent-glow: rgba(0, 240, 255, 0.5);
   }
   .dpad-btn {
     width: var(--dpad-size);
     height: var(--dpad-size);
     border-radius: 18px;
-    background: radial-gradient(circle at 25% 50%, #252a36 0%, #13161c 70%, #0a0b0e 100%);
-    border: 2px solid #333a4a;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.25), inset 0 -4px 8px rgba(0, 0, 0, 0.7);
+    background: 
+      radial-gradient(circle at 20% 50%, rgba(0, 240, 255, 0.18) 0%, transparent 55%),
+      linear-gradient(90deg, #2a3140 0%, #161a22 60%, #0a0c10 100%);
+    border: 2px solid #3d475c;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.65), inset 0 2px 4px rgba(255, 255, 255, 0.3), inset 0 -4px 8px rgba(0, 0, 0, 0.75), 0 0 16px var(--accent-glow);
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
   }
+  .dpad-btn::before {
+    content: "";
+    position: absolute;
+    left: 9px;
+    top: 18px;
+    width: 3px;
+    height: 44px;
+    border-radius: 1.5px;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    opacity: 0.85;
+  }
+  .dpad-btn::after {
+    content: "";
+    position: absolute;
+    top: 14%;
+    left: 8%;
+    width: 36%;
+    height: 72%;
+    border-radius: 12px;
+    background: radial-gradient(ellipse at 30% 50%, rgba(255, 255, 255, 0.45) 0%, transparent 70%);
+  }
   .dpad-arrow {
     font-size: 32px;
     font-weight: 900;
     color: var(--accent);
-    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0,0,0,0.8);
+    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0,0,0,0.9), 0 -1px 0 rgba(255,255,255,0.6);
+    z-index: 5;
   }
   .dpad-btn:active {
     transform: scale(0.92) translateY(2px);
@@ -1038,24 +1154,50 @@ object NxprcHtmlCssConverter {
   :root {
     --dpad-size: 80px;
     --accent: #00F0FF;
+    --accent-glow: rgba(0, 240, 255, 0.5);
   }
   .dpad-btn {
     width: var(--dpad-size);
     height: var(--dpad-size);
     border-radius: 18px;
-    background: radial-gradient(circle at 75% 50%, #252a36 0%, #13161c 70%, #0a0b0e 100%);
-    border: 2px solid #333a4a;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.25), inset 0 -4px 8px rgba(0, 0, 0, 0.7);
+    background: 
+      radial-gradient(circle at 80% 50%, rgba(0, 240, 255, 0.18) 0%, transparent 55%),
+      linear-gradient(270deg, #2a3140 0%, #161a22 60%, #0a0c10 100%);
+    border: 2px solid #3d475c;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.65), inset 0 2px 4px rgba(255, 255, 255, 0.3), inset 0 -4px 8px rgba(0, 0, 0, 0.75), 0 0 16px var(--accent-glow);
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
   }
+  .dpad-btn::before {
+    content: "";
+    position: absolute;
+    right: 9px;
+    top: 18px;
+    width: 3px;
+    height: 44px;
+    border-radius: 1.5px;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    opacity: 0.85;
+  }
+  .dpad-btn::after {
+    content: "";
+    position: absolute;
+    top: 14%;
+    right: 8%;
+    width: 36%;
+    height: 72%;
+    border-radius: 12px;
+    background: radial-gradient(ellipse at 70% 50%, rgba(255, 255, 255, 0.45) 0%, transparent 70%);
+  }
   .dpad-arrow {
     font-size: 32px;
     font-weight: 900;
     color: var(--accent);
-    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0,0,0,0.8);
+    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0,0,0,0.9), 0 -1px 0 rgba(255,255,255,0.6);
+    z-index: 5;
   }
   .dpad-btn:active {
     transform: scale(0.92) translateY(2px);
@@ -1084,8 +1226,8 @@ object NxprcHtmlCssConverter {
     width: 72px;
     height: 110px;
     border-radius: 20px;
-    background: linear-gradient(180deg, #242936 0%, #151820 40%, #0a0c10 100%);
-    border: 2px solid #363d4f;
+    background: linear-gradient(180deg, #282f3d 0%, #161922 45%, #0a0c10 100%);
+    border: 2px solid #3d4659;
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.65), inset 0 2px 4px rgba(255, 255, 255, 0.3), inset 0 -8px 16px rgba(0, 0, 0, 0.8), 0 0 18px var(--accent-glow);
     display: flex;
     flex-direction: column;
@@ -1139,14 +1281,15 @@ object NxprcHtmlCssConverter {
 <style>
   :root {
     --accent: #00F0FF;
+    --accent-glow: rgba(0, 240, 255, 0.35);
   }
   .bumper-btn {
     width: 120px;
     height: 52px;
     border-radius: 18px;
-    background: linear-gradient(180deg, #2a303d 0%, #171a22 60%, #0c0e12 100%);
-    border: 2px solid #3a4254;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.3), inset 0 -4px 8px rgba(0, 0, 0, 0.7), 0 0 16px rgba(0, 240, 255, 0.35);
+    background: linear-gradient(180deg, #2c3342 0%, #171a23 60%, #0c0e13 100%);
+    border: 2px solid #3d475c;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.3), inset 0 -4px 8px rgba(0, 0, 0, 0.7), 0 0 16px var(--accent-glow);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1189,7 +1332,8 @@ object NxprcHtmlCssConverter {
 <style>
   :root {
     --stick-size: 100px;
-    --accent: #4ADE80;
+    --accent: #00F0FF;
+    --accent-glow: rgba(0, 240, 255, 0.25);
   }
   .stick-btn {
     width: var(--stick-size);
@@ -1197,7 +1341,7 @@ object NxprcHtmlCssConverter {
     border-radius: 50%;
     background: radial-gradient(circle at 45% 40%, #2b313d 0%, #14171e 65%, #08090c 100%);
     border: 3px solid #3d4657;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7), inset 0 3px 6px rgba(255, 255, 255, 0.25), inset 0 -8px 16px rgba(0, 0, 0, 0.8), 0 0 20px rgba(74, 222, 128, 0.25);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7), inset 0 3px 6px rgba(255, 255, 255, 0.25), inset 0 -8px 16px rgba(0, 0, 0, 0.8), 0 0 20px var(--accent-glow);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1218,7 +1362,7 @@ object NxprcHtmlCssConverter {
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    border: 2px dashed rgba(74, 222, 128, 0.5);
+    border: 2px dashed rgba(0, 240, 255, 0.5);
   }
   .stick-label {
     font-size: 22px;
@@ -1250,17 +1394,18 @@ object NxprcHtmlCssConverter {
     width: 64px;
     height: 44px;
     border-radius: 14px;
-    background: radial-gradient(circle at 50% 30%, #242833 0%, #101217 100%);
-    border: 1.5px solid #363c4c;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55), inset 0 1px 3px rgba(255, 255, 255, 0.25), inset 0 -3px 6px rgba(0, 0, 0, 0.7);
+    background: radial-gradient(circle at 50% 30%, #29303e 0%, #12151d 100%);
+    border: 1.5px solid #3d475c;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6), inset 0 1px 3px rgba(255, 255, 255, 0.3), inset 0 -3px 6px rgba(0, 0, 0, 0.75);
     display: flex;
     align-items: center;
     justify-content: center;
   }
   .view-icon {
-    font-size: 20px;
-    color: #E0E0E0;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    font-size: 22px;
+    font-weight: 900;
+    color: #FFFFFF;
+    text-shadow: 0 0 8px rgba(0, 240, 255, 0.6), 0 1px 2px rgba(0,0,0,0.9);
   }
   .system-btn:active {
     transform: scale(0.92) translateY(2px);
@@ -1285,9 +1430,9 @@ object NxprcHtmlCssConverter {
     width: 70px;
     height: 70px;
     border-radius: 50%;
-    background: radial-gradient(circle at 50% 35%, #2c3342 0%, #131720 70%, #07090d 100%);
-    border: 2px solid #4a5568;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -6px 12px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 255, 255, 0.35);
+    background: radial-gradient(circle at 50% 35%, #303748 0%, #151922 70%, #07090d 100%);
+    border: 2px solid #4f5b72;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -6px 12px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 255, 255, 0.35);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1297,7 +1442,7 @@ object NxprcHtmlCssConverter {
     font-size: 32px;
     font-weight: 900;
     color: #FFFFFF;
-    text-shadow: 0 0 14px rgba(255, 255, 255, 0.85), 0 2px 4px rgba(0,0,0,0.9);
+    text-shadow: 0 0 14px rgba(255, 255, 255, 0.85), 0 0 22px rgba(0, 240, 255, 0.5), 0 2px 4px rgba(0,0,0,0.9);
   }
   .system-home-btn:active {
     transform: scale(0.93) translateY(2px);
