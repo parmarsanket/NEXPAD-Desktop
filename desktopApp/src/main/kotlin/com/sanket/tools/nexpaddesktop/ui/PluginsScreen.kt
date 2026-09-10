@@ -284,6 +284,9 @@ fun PluginsScreen() {
                                     category = firstButton.category
                                     componentId = firstButton.defaultId
                                     componentName = firstButton.defaultName
+                                    targetWidthDp = firstButton.widthDp
+                                    targetHeightDp = firstButton.heightDp
+                                    htmlSource = NxprcHtmlCssConverter.getReferenceTemplate(firstButton.key, firstButton.category)
                                 }
                             },
                             shape = RoundedCornerShape(8.dp),
@@ -320,6 +323,7 @@ fun PluginsScreen() {
                                 componentName = btn.defaultName
                                 targetWidthDp = btn.widthDp
                                 targetHeightDp = btn.heightDp
+                                htmlSource = NxprcHtmlCssConverter.getReferenceTemplate(btn.key, btn.category)
                             },
                             shape = RoundedCornerShape(6.dp),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp),
