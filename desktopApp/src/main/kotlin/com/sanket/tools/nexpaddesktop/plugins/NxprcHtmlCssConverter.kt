@@ -29,157 +29,7 @@ object NxprcHtmlCssConverter {
     }
 
     /** Pre-built HTML/CSS templates for instant testing */
-    val PRESET_ULTRA_NEXPAD_A = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-:root {
-    --button-size: 96px;
-    --a-light: #d8ffdf;
-    --a-main: #65d67e;
-    --a-mid: #32a94d;
-    --a-dark: #125d29;
-}
-
-.nexpad-btn {
-    width: var(--button-size);
-    height: var(--button-size);
-    position: relative;
-    display: block;
-    border-radius: 50%;
-    overflow: hidden;
-    box-sizing: border-box;
-    opacity: 0.96;
-    transform-origin: 30% 70%;
-    transform: translate(0px, 0px) rotate(2deg) scaleX(1) scaleY(1);
-    background:
-        radial-gradient(circle at 26% 18%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.32) 10%, transparent 30%),
-        radial-gradient(circle at 72% 78%, rgba(0,0,0,0.30) 0%, transparent 55%),
-        radial-gradient(circle at 48% 44%, var(--a-light) 0%, var(--a-main) 34%, var(--a-mid) 68%, var(--a-dark) 100%),
-        linear-gradient(145deg, rgba(255,255,255,0.12), rgba(0,0,0,0.10));
-    box-shadow:
-        0px 2px 3px rgba(255,255,255,0.18),
-        0px 5px 8px rgba(0,0,0,0.28),
-        0px 12px 20px rgba(0,0,0,0.34),
-        0px 22px 34px rgba(0,0,0,0.20),
-        inset 0px 2px 3px rgba(255,255,255,0.36),
-        inset 2px 0px 6px rgba(255,255,255,0.10),
-        inset -3px 0px 8px rgba(0,0,0,0.12),
-        inset 0px -9px 15px rgba(0,0,0,0.32);
-}
-
-.nexpad-btn::before {
-    content: "";
-    position: absolute;
-    left: 5%;
-    top: 5%;
-    width: 90%;
-    height: 90%;
-    border-radius: 50%;
-    transform-origin: 35% 30%;
-    transform: rotate(-7deg);
-    background:
-        radial-gradient(ellipse at 27% 16%, rgba(255,255,255,0.58) 0%, rgba(255,255,255,0.18) 21%, transparent 48%),
-        radial-gradient(ellipse at 55% 105%, rgba(0,0,0,0.30) 0%, transparent 62%),
-        radial-gradient(circle at 50% 45%, rgba(255,255,255,0.08), transparent 70%);
-    box-shadow:
-        inset 0px 2px 4px rgba(255,255,255,0.26),
-        inset 2px 0px 5px rgba(255,255,255,0.07),
-        inset -2px 0px 6px rgba(0,0,0,0.10),
-        inset 0px -6px 10px rgba(0,0,0,0.18);
-    opacity: 0.88;
-}
-
-.nexpad-btn::after {
-    content: "";
-    position: absolute;
-    left: 14%;
-    top: 7%;
-    width: 58%;
-    height: 29%;
-    border-radius: 50%;
-    transform: rotate(-17deg) scaleY(0.92);
-    background: radial-gradient(ellipse at 32% 28%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.52) 18%, rgba(255,255,255,0.16) 43%, transparent 76%);
-    opacity: 0.88;
-}
-
-.a-inner-ring {
-    position: absolute;
-    left: 9px;
-    top: 9px;
-    width: 78px;
-    height: 78px;
-    border-radius: 50%;
-    border-top: 1px solid rgba(255,255,255,0.42);
-    border-left: 1px solid rgba(255,255,255,0.18);
-    border-right: 1px solid rgba(255,255,255,0.07);
-    border-bottom: 1px solid rgba(0,0,0,0.20);
-    box-shadow: inset 0px 1px 3px rgba(255,255,255,0.16), inset 0px -2px 5px rgba(0,0,0,0.13);
-    opacity: 0.9;
-}
-
-.a-reflection {
-    position: absolute;
-    right: 12%;
-    bottom: 15%;
-    width: 33%;
-    height: 11%;
-    border-radius: 50%;
-    transform: rotate(-20deg) scaleY(0.9);
-    background: radial-gradient(ellipse at center, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.06) 45%, transparent 75%);
-    opacity: 0.75;
-}
-
-.a-highlight {
-    position: absolute;
-    left: 29%;
-    top: 14%;
-    width: 15%;
-    height: 5%;
-    border-radius: 50%;
-    background: radial-gradient(ellipse, rgba(255,255,255,0.78), rgba(255,255,255,0.20) 45%, transparent 75%);
-    transform: rotate(-8deg);
-    opacity: 0.78;
-}
-
-.a-label {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-    font-size: 44px;
-    font-weight: 900;
-    color: rgba(255,255,255,0.97);
-    opacity: 0.98;
-    text-shadow:
-        0px -1px 0px rgba(255,255,255,0.90),
-        0px 1px 0px rgba(255,255,255,0.35),
-        0px 2px 2px rgba(0,0,0,0.26),
-        0px 4px 5px rgba(0,0,0,0.28),
-        0px 7px 10px rgba(0,0,0,0.18);
-}
-
-.nexpad-btn:active {
-    opacity: 0.93;
-    transform: translateY(2px) scale(0.95);
-}
-</style>
-</head>
-<body>
-    <button class="nexpad-btn" data-control="A" data-name="Ultra A Button" data-category="BUTTON">
-        <div class="a-inner-ring"></div>
-        <div class="a-reflection"></div>
-        <div class="a-highlight"></div>
-        <span class="a-label">A</span>
-    </button>
-</body>
-</html>
-""".trimIndent()
+    val PRESET_ULTRA_NEXPAD_A get() = PRESET_NEO_TACTILE_A
 
     val PRESET_CYBER_REACTOR = """
 <!DOCTYPE html>
@@ -332,7 +182,7 @@ object NxprcHtmlCssConverter {
 <style>
   :root {
     --btn-size: 96px;
-    --accent-glow: rgba(74, 222, 128, 0.6);
+    --accent-glow: rgba(74, 222, 128, 0.7);
     --accent-core: #4ade80;
   }
 
@@ -341,12 +191,17 @@ object NxprcHtmlCssConverter {
     width: var(--btn-size);
     height: var(--btn-size);
     border-radius: 50%;
-    background: radial-gradient(circle at 50% 50%, #111a14 0%, #0a110c 70%, #040805 100%);
-    border: 2px solid #233829;
+    background:
+      radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.25) 0%, transparent 40%),
+      radial-gradient(circle at 68% 78%, rgba(0, 0, 0, 0.65) 0%, transparent 55%),
+      radial-gradient(circle at 50% 50%, #0e1c14 0%, #06100a 65%, #020603 100%);
+    border: 2px solid #1c3d28;
     box-shadow: 
-      0 10px 24px rgba(0, 0, 0, 0.65),
-      0 0 0 3px rgba(18, 30, 22, 0.9),
-      0 0 20px var(--accent-glow);
+      0 12px 28px rgba(0, 0, 0, 0.75),
+      0 0 0 3px rgba(18, 40, 26, 0.95),
+      0 0 24px var(--accent-glow),
+      inset 0 2px 4px rgba(255, 255, 255, 0.25),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.85);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -358,24 +213,24 @@ object NxprcHtmlCssConverter {
     inset: 0;
     border-radius: 50%;
     background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.15) 0%, transparent 45%),
-      conic-gradient(from 180deg at 50% 50%, #17261b, #294230, #131f16, #294230, #17261b);
+      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.2) 0%, transparent 45%),
+      conic-gradient(from 180deg at 50% 50%, #173322, #326343, #122418, #478c5e, #173322, #326343, #122418);
     box-shadow: 
-      inset 0 3px 6px rgba(255, 255, 255, 0.2),
-      inset 0 -6px 12px rgba(0, 0, 0, 0.7);
+      inset 0 3px 6px rgba(255, 255, 255, 0.25),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.8);
   }
 
   .nexpad-btn::after {
     content: "";
     position: absolute;
     top: 6%;
-    left: 15%;
-    width: 70%;
-    height: 38%;
+    left: 14%;
+    width: 72%;
+    height: 40%;
     border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.15) 45%, transparent 75%);
+    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.2) 42%, transparent 75%);
     transform: rotate(-10deg);
-    border-top: 1px solid rgba(255, 255, 255, 0.4);
+    border-top: 1.5px solid rgba(255, 255, 255, 0.55);
   }
 
   .nexpad-btn .btn-core {
@@ -384,13 +239,13 @@ object NxprcHtmlCssConverter {
     height: 68px;
     border-radius: 50%;
     background: 
-      radial-gradient(circle at 38% 30%, rgba(255, 255, 255, 0.4) 0%, transparent 35%),
-      radial-gradient(circle at 65% 75%, rgba(0, 0, 0, 0.45) 0%, transparent 50%),
-      linear-gradient(145deg, #10b981 0%, #059669 50%, #047857 100%);
-    border: 1.5px solid rgba(74, 222, 128, 0.5);
+      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.55) 0%, transparent 35%),
+      radial-gradient(circle at 68% 75%, rgba(0, 0, 0, 0.55) 0%, transparent 50%),
+      linear-gradient(145deg, #34d399 0%, #10b981 35%, #059669 70%, #064e3b 100%);
+    border: 1.5px solid rgba(74, 222, 128, 0.65);
     box-shadow: 
-      inset 0 2px 4px rgba(255, 255, 255, 0.35),
-      inset 0 -4px 8px rgba(0, 0, 0, 0.6);
+      inset 0 2px 5px rgba(255, 255, 255, 0.45),
+      inset 0 -5px 10px rgba(0, 0, 0, 0.7);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -401,10 +256,10 @@ object NxprcHtmlCssConverter {
     font-weight: 900;
     color: #ffffff;
     text-shadow: 
-      0 1px 0 rgba(255, 255, 255, 0.8),
-      0 -1px 0 rgba(0, 0, 0, 0.9),
-      0 3px 6px rgba(0, 0, 0, 0.75),
-      0 0 12px var(--accent-core);
+      0 1px 0 rgba(255, 255, 255, 0.95),
+      0 -1px 0 rgba(0, 0, 0, 0.95),
+      0 3px 8px rgba(0, 0, 0, 0.8),
+      0 0 14px var(--accent-core);
   }
 
   .nexpad-btn:active {
@@ -430,64 +285,86 @@ object NxprcHtmlCssConverter {
 <style>
   :root {
     --btn-size: 96px;
-    --accent-glow: rgba(255, 51, 102, 0.6);
+    --accent-glow: rgba(255, 51, 102, 0.7);
     --accent-core: #ff3366;
   }
+
   .nexpad-btn {
     position: relative;
     width: var(--btn-size);
     height: var(--btn-size);
     border-radius: 50%;
-    background: radial-gradient(circle at 50% 50%, #201115 0%, #120a0d 70%, #080405 100%);
-    border: 2px solid #3d232a;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.65), 0 0 0 3px rgba(32, 17, 21, 0.9), 0 0 20px var(--accent-glow);
+    background:
+      radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.25) 0%, transparent 40%),
+      radial-gradient(circle at 68% 78%, rgba(0, 0, 0, 0.65) 0%, transparent 55%),
+      radial-gradient(circle at 50% 50%, #220c13 0%, #120509 65%, #050102 100%);
+    border: 2px solid #4a1926;
+    box-shadow: 
+      0 12px 28px rgba(0, 0, 0, 0.75),
+      0 0 0 3px rgba(45, 14, 22, 0.95),
+      0 0 24px var(--accent-glow),
+      inset 0 2px 4px rgba(255, 255, 255, 0.25),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.85);
     display: flex;
     align-items: center;
     justify-content: center;
   }
+
   .nexpad-btn::before {
     content: "";
     position: absolute;
     inset: 0;
     border-radius: 50%;
     background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.15) 0%, transparent 45%),
-      conic-gradient(from 180deg at 50% 50%, #2b171c, #4a2831, #1f1014, #4a2831, #2b171c);
-    box-shadow: inset 0 3px 6px rgba(255, 255, 255, 0.2), inset 0 -6px 12px rgba(0, 0, 0, 0.7);
+      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.2) 0%, transparent 45%),
+      conic-gradient(from 180deg at 50% 50%, #38161f, #70263a, #240e14, #99334e, #38161f, #70263a, #240e14);
+    box-shadow: 
+      inset 0 3px 6px rgba(255, 255, 255, 0.25),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.8);
   }
+
   .nexpad-btn::after {
     content: "";
     position: absolute;
     top: 6%;
-    left: 15%;
-    width: 70%;
-    height: 38%;
+    left: 14%;
+    width: 72%;
+    height: 40%;
     border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.15) 45%, transparent 75%);
+    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.2) 42%, transparent 75%);
     transform: rotate(-10deg);
-    border-top: 1px solid rgba(255, 255, 255, 0.4);
+    border-top: 1.5px solid rgba(255, 255, 255, 0.55);
   }
+
   .nexpad-btn .btn-core {
     position: relative;
     width: 68px;
     height: 68px;
     border-radius: 50%;
     background: 
-      radial-gradient(circle at 38% 30%, rgba(255, 255, 255, 0.4) 0%, transparent 35%),
-      radial-gradient(circle at 65% 75%, rgba(0, 0, 0, 0.45) 0%, transparent 50%),
-      linear-gradient(145deg, #f43f5e 0%, #e11d48 50%, #881337 100%);
-    border: 1.5px solid rgba(255, 51, 102, 0.5);
-    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -4px 8px rgba(0, 0, 0, 0.6);
+      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.55) 0%, transparent 35%),
+      radial-gradient(circle at 68% 75%, rgba(0, 0, 0, 0.55) 0%, transparent 50%),
+      linear-gradient(145deg, #fb7185 0%, #f43f5e 35%, #e11d48 70%, #881337 100%);
+    border: 1.5px solid rgba(255, 51, 102, 0.65);
+    box-shadow: 
+      inset 0 2px 5px rgba(255, 255, 255, 0.45),
+      inset 0 -5px 10px rgba(0, 0, 0, 0.7);
     display: flex;
     align-items: center;
     justify-content: center;
   }
+
   .nexpad-btn .btn-label {
     font-size: 34px;
     font-weight: 900;
     color: #ffffff;
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8), 0 -1px 0 rgba(0, 0, 0, 0.9), 0 3px 6px rgba(0, 0, 0, 0.75), 0 0 12px var(--accent-core);
+    text-shadow: 
+      0 1px 0 rgba(255, 255, 255, 0.95),
+      0 -1px 0 rgba(0, 0, 0, 0.95),
+      0 3px 8px rgba(0, 0, 0, 0.8),
+      0 0 14px var(--accent-core);
   }
+
   .nexpad-btn:active {
     transform: scale(0.93) translateY(3px);
   }
@@ -511,64 +388,86 @@ object NxprcHtmlCssConverter {
 <style>
   :root {
     --btn-size: 96px;
-    --accent-glow: rgba(0, 176, 255, 0.6);
+    --accent-glow: rgba(0, 176, 255, 0.7);
     --accent-core: #00b0ff;
   }
+
   .nexpad-btn {
     position: relative;
     width: var(--btn-size);
     height: var(--btn-size);
     border-radius: 50%;
-    background: radial-gradient(circle at 50% 50%, #101622 0%, #090e17 70%, #04060b 100%);
-    border: 2px solid #22324a;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.65), 0 0 0 3px rgba(16, 24, 38, 0.9), 0 0 20px var(--accent-glow);
+    background:
+      radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.25) 0%, transparent 40%),
+      radial-gradient(circle at 68% 78%, rgba(0, 0, 0, 0.65) 0%, transparent 55%),
+      radial-gradient(circle at 50% 50%, #0c1824 0%, #050d14 65%, #010406 100%);
+    border: 2px solid #1a364f;
+    box-shadow: 
+      0 12px 28px rgba(0, 0, 0, 0.75),
+      0 0 0 3px rgba(14, 30, 48, 0.95),
+      0 0 24px var(--accent-glow),
+      inset 0 2px 4px rgba(255, 255, 255, 0.25),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.85);
     display: flex;
     align-items: center;
     justify-content: center;
   }
+
   .nexpad-btn::before {
     content: "";
     position: absolute;
     inset: 0;
     border-radius: 50%;
     background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.15) 0%, transparent 45%),
-      conic-gradient(from 180deg at 50% 50%, #162438, #263e61, #121c2c, #263e61, #162438);
-    box-shadow: inset 0 3px 6px rgba(255, 255, 255, 0.2), inset 0 -6px 12px rgba(0, 0, 0, 0.7);
+      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.2) 0%, transparent 45%),
+      conic-gradient(from 180deg at 50% 50%, #14293d, #29547d, #0d1b29, #3d7cb8, #14293d, #29547d, #0d1b29);
+    box-shadow: 
+      inset 0 3px 6px rgba(255, 255, 255, 0.25),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.8);
   }
+
   .nexpad-btn::after {
     content: "";
     position: absolute;
     top: 6%;
-    left: 15%;
-    width: 70%;
-    height: 38%;
+    left: 14%;
+    width: 72%;
+    height: 40%;
     border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.15) 45%, transparent 75%);
+    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.2) 42%, transparent 75%);
     transform: rotate(-10deg);
-    border-top: 1px solid rgba(255, 255, 255, 0.4);
+    border-top: 1.5px solid rgba(255, 255, 255, 0.55);
   }
+
   .nexpad-btn .btn-core {
     position: relative;
     width: 68px;
     height: 68px;
     border-radius: 50%;
     background: 
-      radial-gradient(circle at 38% 30%, rgba(255, 255, 255, 0.4) 0%, transparent 35%),
-      radial-gradient(circle at 65% 75%, rgba(0, 0, 0, 0.45) 0%, transparent 50%),
-      linear-gradient(145deg, #0284c7 0%, #0369a1 50%, #0c4a6e 100%);
-    border: 1.5px solid rgba(0, 176, 255, 0.5);
-    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -4px 8px rgba(0, 0, 0, 0.6);
+      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.55) 0%, transparent 35%),
+      radial-gradient(circle at 68% 75%, rgba(0, 0, 0, 0.55) 0%, transparent 50%),
+      linear-gradient(145deg, #38bdf8 0%, #0ea5e9 35%, #0284c7 70%, #0c4a6e 100%);
+    border: 1.5px solid rgba(0, 176, 255, 0.65);
+    box-shadow: 
+      inset 0 2px 5px rgba(255, 255, 255, 0.45),
+      inset 0 -5px 10px rgba(0, 0, 0, 0.7);
     display: flex;
     align-items: center;
     justify-content: center;
   }
+
   .nexpad-btn .btn-label {
     font-size: 34px;
     font-weight: 900;
     color: #ffffff;
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8), 0 -1px 0 rgba(0, 0, 0, 0.9), 0 3px 6px rgba(0, 0, 0, 0.75), 0 0 12px var(--accent-core);
+    text-shadow: 
+      0 1px 0 rgba(255, 255, 255, 0.95),
+      0 -1px 0 rgba(0, 0, 0, 0.95),
+      0 3px 8px rgba(0, 0, 0, 0.8),
+      0 0 14px var(--accent-core);
   }
+
   .nexpad-btn:active {
     transform: scale(0.93) translateY(3px);
   }
@@ -592,64 +491,86 @@ object NxprcHtmlCssConverter {
 <style>
   :root {
     --btn-size: 96px;
-    --accent-glow: rgba(255, 204, 0, 0.6);
+    --accent-glow: rgba(255, 204, 0, 0.7);
     --accent-core: #ffcc00;
   }
+
   .nexpad-btn {
     position: relative;
     width: var(--btn-size);
     height: var(--btn-size);
     border-radius: 50%;
-    background: radial-gradient(circle at 50% 50%, #1e1a10 0%, #121008 70%, #060503 100%);
-    border: 2px solid #3d3525;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.65), 0 0 0 3px rgba(30, 26, 18, 0.9), 0 0 20px var(--accent-glow);
+    background:
+      radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.25) 0%, transparent 40%),
+      radial-gradient(circle at 68% 78%, rgba(0, 0, 0, 0.65) 0%, transparent 55%),
+      radial-gradient(circle at 50% 50%, #201a08 0%, #110d04 65%, #040301 100%);
+    border: 2px solid #473a14;
+    box-shadow: 
+      0 12px 28px rgba(0, 0, 0, 0.75),
+      0 0 0 3px rgba(45, 36, 11, 0.95),
+      0 0 24px var(--accent-glow),
+      inset 0 2px 4px rgba(255, 255, 255, 0.25),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.85);
     display: flex;
     align-items: center;
     justify-content: center;
   }
+
   .nexpad-btn::before {
     content: "";
     position: absolute;
     inset: 0;
     border-radius: 50%;
     background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.15) 0%, transparent 45%),
-      conic-gradient(from 180deg at 50% 50%, #2b2517, #4a3e26, #1f1a10, #4a3e26, #2b2517);
-    box-shadow: inset 0 3px 6px rgba(255, 255, 255, 0.2), inset 0 -6px 12px rgba(0, 0, 0, 0.7);
+      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.2) 0%, transparent 45%),
+      conic-gradient(from 180deg at 50% 50%, #3d3110, #7d6521, #29200b, #b89531, #3d3110, #7d6521, #29200b);
+    box-shadow: 
+      inset 0 3px 6px rgba(255, 255, 255, 0.25),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.8);
   }
+
   .nexpad-btn::after {
     content: "";
     position: absolute;
     top: 6%;
-    left: 15%;
-    width: 70%;
-    height: 38%;
+    left: 14%;
+    width: 72%;
+    height: 40%;
     border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.15) 45%, transparent 75%);
+    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.2) 42%, transparent 75%);
     transform: rotate(-10deg);
-    border-top: 1px solid rgba(255, 255, 255, 0.4);
+    border-top: 1.5px solid rgba(255, 255, 255, 0.55);
   }
+
   .nexpad-btn .btn-core {
     position: relative;
     width: 68px;
     height: 68px;
     border-radius: 50%;
     background: 
-      radial-gradient(circle at 38% 30%, rgba(255, 255, 255, 0.4) 0%, transparent 35%),
-      radial-gradient(circle at 65% 75%, rgba(0, 0, 0, 0.45) 0%, transparent 50%),
-      linear-gradient(145deg, #eab308 0%, #ca8a04 50%, #713f12 100%);
-    border: 1.5px solid rgba(255, 204, 0, 0.5);
-    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -4px 8px rgba(0, 0, 0, 0.6);
+      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.55) 0%, transparent 35%),
+      radial-gradient(circle at 68% 75%, rgba(0, 0, 0, 0.55) 0%, transparent 50%),
+      linear-gradient(145deg, #fde047 0%, #eab308 35%, #ca8a04 70%, #713f12 100%);
+    border: 1.5px solid rgba(255, 204, 0, 0.65);
+    box-shadow: 
+      inset 0 2px 5px rgba(255, 255, 255, 0.45),
+      inset 0 -5px 10px rgba(0, 0, 0, 0.7);
     display: flex;
     align-items: center;
     justify-content: center;
   }
+
   .nexpad-btn .btn-label {
     font-size: 34px;
     font-weight: 900;
     color: #ffffff;
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8), 0 -1px 0 rgba(0, 0, 0, 0.9), 0 3px 6px rgba(0, 0, 0, 0.75), 0 0 12px var(--accent-core);
+    text-shadow: 
+      0 1px 0 rgba(255, 255, 255, 0.95),
+      0 -1px 0 rgba(0, 0, 0, 0.95),
+      0 3px 8px rgba(0, 0, 0, 0.8),
+      0 0 14px var(--accent-core);
   }
+
   .nexpad-btn:active {
     transform: scale(0.93) translateY(3px);
   }

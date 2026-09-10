@@ -284,9 +284,19 @@ class NxprcCategoryParityTest {
                         val r = ((layer.glowColor shr 16) and 0xFF).toInt()
                         val g = ((layer.glowColor shr 8) and 0xFF).toInt()
                         val b = (layer.glowColor and 0xFF).toInt()
-                        gLayer.color = Color(r, g, b, 70)
-                        val radius = (btnW / 2f + layer.blurRadius * density).coerceAtLeast(10f)
-                        gLayer.fillOval((width / 2f - radius).toInt(), (height / 2f - radius).toInt(), (radius * 2).toInt(), (radius * 2).toInt())
+                        val btnRad = minOf(btnW, btnH) / 2f
+                        val blurSpread = (layer.blurRadius * density).coerceAtLeast(8f)
+                        val totalRadius = (btnRad + blurSpread).coerceAtLeast(10f)
+                        val innerFrac = (btnRad / totalRadius).coerceIn(0.1f, 0.85f)
+                        val fractions = floatArrayOf(0f, innerFrac, (innerFrac + (1f - innerFrac) * 0.5f).coerceAtMost(0.95f), 1f)
+                        val colors = arrayOf(
+                            Color(r, g, b, 90),
+                            Color(r, g, b, 75),
+                            Color(r, g, b, 25),
+                            Color(r, g, b, 0)
+                        )
+                        gLayer.paint = RadialGradientPaint(width / 2f, height / 2f, totalRadius, fractions, colors)
+                        gLayer.fillOval((width / 2f - totalRadius).toInt(), (height / 2f - totalRadius).toInt(), (totalRadius * 2).toInt(), (totalRadius * 2).toInt())
                     }
                     is CanvasLayer.BoxLayer -> {
                         val boxW = btnW * layer.widthRatio
@@ -710,5 +720,46 @@ class NxprcCategoryParityTest {
 
         g.dispose()
         return card
+    }
+
+    @Test
+    fun testModernArtAbxyShowcase() {
+        println("=== GENERATING MODERN ART ABXY SHOWCASE ===")
+        val buttons = listOf(
+            Triple("Action A (Emerald)", NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A, "A"),
+            Triple("Action B (Crimson)", NxprcHtmlCssConverter.PRESET_NEO_TACTILE_B, "B"),
+            Triple("Action X (Sapphire)", NxprcHtmlCssConverter.PRESET_NEO_TACTILE_X, "X"),
+            Triple("Action Y (Amber)", NxprcHtmlCssConverter.PRESET_NEO_TACTILE_Y, "Y")
+        )
+
+        val showcase = BufferedImage(980, 310, BufferedImage.TYPE_INT_ARGB)
+        val sg = showcase.createGraphics()
+        sg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+        sg.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
+        sg.color = Color(0x08, 0x0B, 0x12)
+        sg.fillRect(0, 0, 980, 310)
+
+        sg.font = Font("SansSerif", Font.BOLD, 16)
+        sg.color = Color(0x00, 0xF0, 0xFF)
+        sg.drawString("NEXPAD MODERN ART STARTER SUITE — FACE BUTTONS (ABXY)", 40, 35)
+
+        buttons.forEachIndexed { i, (label, src, key) ->
+            val doc = NxprcPackager.compile(src, "rc.action_${key.lowercase()}", label, "BUTTON", key)
+            val btnImg = renderNxprcToImage(doc, 220, 220)
+            val startX = 35 + i * 235
+            val startY = 55
+            sg.drawImage(btnImg, startX, startY, 210, 210, null)
+            sg.color = Color(255, 255, 255, 30)
+            sg.drawRoundRect(startX - 5, startY - 5, 220, 220, 12, 12)
+
+            sg.font = Font("SansSerif", Font.BOLD, 13)
+            sg.color = Color.WHITE
+            sg.drawString(label, startX + 25, startY + 235)
+        }
+
+        sg.dispose()
+        val outFile = File("C:\\Users\\parma\\.gemini\\antigravity\\brain\\988b000e-5aeb-432b-aa81-d784a06545f7\\modern_art_abxy_verification.png")
+        ImageIO.write(showcase, "PNG", outFile)
+        println("Generated modern art ABXY showcase: ${outFile.absolutePath}")
     }
 }

@@ -99,7 +99,7 @@ fun PluginsScreen() {
     var selectedCategory by remember { mutableStateOf("ABXY") }
     var selectedButtonKey by remember { mutableStateOf("A") }
 
-    var htmlSource by remember { mutableStateOf(NxprcHtmlCssConverter.PRESET_ULTRA_NEXPAD_A) }
+    var htmlSource by remember { mutableStateOf(NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A) }
     var componentId by remember { mutableStateOf("rc.action_a") }
     var componentName by remember { mutableStateOf("Action A Button") }
     var category by remember { mutableStateOf("BUTTON") }
@@ -117,7 +117,7 @@ fun PluginsScreen() {
     var compiledDoc by remember {
         mutableStateOf(
             NxprcHtmlCssConverter.convert(
-                source = NxprcHtmlCssConverter.PRESET_ULTRA_NEXPAD_A,
+                source = NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A,
                 id = "rc.action_a",
                 name = "Action A Button",
                 category = "BUTTON",
