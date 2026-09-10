@@ -1246,11 +1246,14 @@ class WebEngineTest {
         val cx = 200
         val cy = 200
 
-        val btnW = 280f
-        val btnH = 280f
+        // Render at the document's CSS pixel size. The previous 280px value
+        // scaled a 102px HTML button by 2.75 before comparison and made the
+        // native PNG look incorrectly oversized.
+        val btnW = doc.manifest.widthDp.toFloat()
+        val btnH = doc.manifest.heightDp.toFloat()
         val btnLeft = (400f - btnW) / 2f
         val btnTop = (400f - btnH) / 2f
-        val density = btnW / 102f
+        val density = btnW / doc.manifest.widthDp.toFloat().coerceAtLeast(1f)
 
         val primaryBox = doc.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull()
         val tlArc = (primaryBox?.cornerRadiusTopLeft ?: 28f) * density
@@ -1389,7 +1392,7 @@ class WebEngineTest {
                                 is FillBrush.RadialGradient -> {
                                     val gcx = boxX + boxW * fill.centerXRatio
                                     val gcy = boxY + boxH * fill.centerYRatio
-                                    val radius = (Math.min(boxW, boxH) * fill.radiusRatio * 1.15f).coerceAtLeast(1f)
+                                    val radius = (Math.min(boxW, boxH) * fill.radiusRatio).coerceAtLeast(1f)
                                     val fractions = fill.stops.takeIf { it.size == fill.colors.size && it.size >= 2 }?.toFloatArray()
                                         ?: FloatArray(fill.colors.size) { it.toFloat() / (fill.colors.size - 1).coerceAtLeast(1) }
                                     val colors = fill.colors.map { col ->

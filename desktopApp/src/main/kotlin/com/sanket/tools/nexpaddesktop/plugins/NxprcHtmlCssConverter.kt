@@ -43,7 +43,7 @@ object NxprcHtmlCssConverter {
     --a-dark: #125d29;
 }
 
-.a-button {
+.nexpad-btn {
     width: var(--button-size);
     height: var(--button-size);
     position: relative;
@@ -70,7 +70,7 @@ object NxprcHtmlCssConverter {
         inset 0px -9px 15px rgba(0,0,0,0.32);
 }
 
-.a-button::before {
+.nexpad-btn::before {
     content: "";
     position: absolute;
     left: 5%;
@@ -92,7 +92,7 @@ object NxprcHtmlCssConverter {
     opacity: 0.88;
 }
 
-.a-button::after {
+.nexpad-btn::after {
     content: "";
     position: absolute;
     left: 14%;
@@ -102,7 +102,6 @@ object NxprcHtmlCssConverter {
     border-radius: 50%;
     transform: rotate(-17deg) scaleY(0.92);
     background: radial-gradient(ellipse at 32% 28%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.52) 18%, rgba(255,255,255,0.16) 43%, transparent 76%);
-    filter: blur(1.2px);
     opacity: 0.88;
 }
 
@@ -130,7 +129,6 @@ object NxprcHtmlCssConverter {
     border-radius: 50%;
     transform: rotate(-20deg) scaleY(0.9);
     background: radial-gradient(ellipse at center, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.06) 45%, transparent 75%);
-    filter: blur(2px);
     opacity: 0.75;
 }
 
@@ -143,7 +141,6 @@ object NxprcHtmlCssConverter {
     border-radius: 50%;
     background: radial-gradient(ellipse, rgba(255,255,255,0.78), rgba(255,255,255,0.20) 45%, transparent 75%);
     transform: rotate(-8deg);
-    filter: blur(1px);
     opacity: 0.78;
 }
 
@@ -167,19 +164,19 @@ object NxprcHtmlCssConverter {
         0px 7px 10px rgba(0,0,0,0.18);
 }
 
-.a-button:active {
+.nexpad-btn:active {
     opacity: 0.93;
     transform: translateY(2px) scale(0.95);
 }
 </style>
 </head>
 <body>
-    <div class="a-button" data-id="rc.ultra_a" data-name="Ultra A Button" data-control="A" data-category="BUTTON">
+    <button class="nexpad-btn" data-control="A" data-name="Ultra A Button" data-category="BUTTON">
         <div class="a-inner-ring"></div>
         <div class="a-reflection"></div>
         <div class="a-highlight"></div>
         <span class="a-label">A</span>
-    </div>
+    </button>
 </body>
 </html>
 """.trimIndent()
@@ -244,6 +241,10 @@ object NxprcHtmlCssConverter {
 </html>
 """.trimIndent()
 
+    @Deprecated(
+        message = "PRESET_CRIMSON_OCTA uses inline <svg> (banned by NXPRC rule 2) and is missing required data-control/data-category/data-name attributes. Do not pass to NxprcPackager.compile().",
+        level = DeprecationLevel.WARNING
+    )
     val PRESET_CRIMSON_OCTA = """
 <button class="crimson-octa">
   <svg viewBox="0 0 100 100">
@@ -261,6 +262,10 @@ object NxprcHtmlCssConverter {
 </style>
 """.trimIndent()
 
+    @Deprecated(
+        message = "PRESET_SPEED_TURBO uses inline <svg> which is banned by NXPRC rule 2. Do not pass to NxprcPackager.compile().",
+        level = DeprecationLevel.WARNING
+    )
     val PRESET_SPEED_TURBO = """
 <button class="speed-turbo">
   <svg viewBox="0 0 100 100">
@@ -1308,9 +1313,38 @@ object NxprcHtmlCssConverter {
 """.trimIndent()
 
     /**
-     * Returns the 100% compile-ready reference template for any controller button key.
+     * Returns the optional reference template (document structure guide only) for any controller button key.
+     * Templates are REFERENCE ONLY — do not treat them as 100% NXPRC-compliant HTML.
+     * Some legacy templates may contain properties unsupported by the NXPRC compiler (e.g. filter: blur()).
+     * Always follow the STRICT NEXPAD COMPILER CONTRACT defined in [generateAiPrompt].
      */
-    fun getReferenceTemplate(control: String): String {
+    fun getReferenceTemplate(control: String): String = getReferenceTemplateInternal(control, "BUTTON")
+
+    /** Returns the category-specific reference template (structure guide only) used by the desktop studio AI prompt. */
+    fun getReferenceTemplate(control: String, category: String): String = getReferenceTemplateInternal(control, category)
+
+    private fun getReferenceTemplateInternal(control: String, category: String): String {
+        if (category.uppercase() != "BUTTON") {
+            return when (category.uppercase()) {
+                "DPAD" -> when (control.uppercase()) {
+                    "DOWN" -> PRESET_DPAD_DOWN
+                    "LEFT" -> PRESET_DPAD_LEFT
+                    "RIGHT" -> PRESET_DPAD_RIGHT
+                    "DPAD" -> PRESET_DPAD_CROSS
+                    else -> PRESET_DPAD_UP
+                }
+                "TRIGGER" -> if (control.uppercase() == "LT") PRESET_TRIGGER_LT else PRESET_TRIGGER_RT
+                "BUMPER" -> if (control.uppercase() == "LB") PRESET_BUMPER_LB else PRESET_BUMPER_RB
+                "JOYSTICK" -> if (control.uppercase() == "RS") PRESET_THUMBSTICK_RS else PRESET_THUMBSTICK_LS
+                "SYSTEM" -> when (control.uppercase()) {
+                    "VIEW" -> PRESET_SYSTEM_VIEW
+                    "HOME" -> PRESET_SYSTEM_HOME
+                    else -> PRESET_SYSTEM_MENU
+                }
+                else -> getReferenceTemplateInternal(control, "BUTTON")
+            }
+        }
+
         return when (control.uppercase()) {
             "A" -> PRESET_NEO_TACTILE_A
             "B" -> PRESET_NEO_TACTILE_B
@@ -1365,12 +1399,20 @@ object NxprcHtmlCssConverter {
 - Or any modern frontier LLM with HTML/CSS code generation capabilities
 """.trimIndent()
 
-    private fun engineBoundaries(): String = """
-### STRICT NEXPAD COMPILER BOUNDARIES:
-1. **Single Root Element**: The `<body>` MUST contain exactly ONE `<button class="nexpad-btn" data-control="..." data-category="...">` root element. All inner markup must be contained within this button.
-2. **Zero Scripts / Zero External Assets**: NO `<script>` tags, NO external stylesheets (`<link>`), NO external web fonts (`@import url(...)`). Use system fonts: `system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`.
-3. **No Canvas/Images**: NO HTML5 `<canvas>`, `<iframe>`, or `<img>` tags. Use pure CSS: gradients (linear, radial, conic), multi-tier `box-shadow` (inset & outset), borders, transforms, and pseudo-elements (`::before`, `::after`).
-4. **Active Tactile Physics**: Always define `.nexpad-btn:active { transform: scale(...) translateY(...); }` — NEXPAD automatically compiles this into native Jetpack Compose spring touch physics.
+private fun engineBoundaries(rootClass: String): String = """
+### STRICT NEXPAD COMPILER CONTRACT — FOLLOW THIS EXACTLY:
+1. **Single compiled component**: `<body>` must contain exactly one root `<button class="$rootClass" data-control="..." data-category="..." data-name="...">`. Keep every visual child inside it. The compiler selects this button and does not render a general web page.
+2. **Portable document**: Include one `<style>` block, one root button, and no JavaScript, `<canvas>`, `<iframe>`, `<img>`, `<svg>`, `<link>`, `@import`, external fonts, or external assets. Use system fonts only.
+3. **Use the supported paint primitives**: `background`/`background-color`, `linear-gradient`, `radial-gradient`, `conic-gradient`, explicit `border`, `border-radius`, `box-shadow` (including multiple inset/outset shadows), `opacity`, `transform`, `transform-origin`, `overflow: hidden`, and `clip-path: polygon(...)`.
+4. **Safe geometry**: Use `px` dimensions for the root and visual children. Use `border-radius` or `clip-path: polygon(...)` for circles, capsules, stars, diamonds, hexagons, handmade, asymmetric, and organic silhouettes. Do not use CSS masks, `path()` Bézier geometry, `filter: blur()`, `backdrop-filter`, `mix-blend-mode`, 3D transforms, or layout-dependent geometry.
+5. **Explicit layers**: Set `position: relative` on the root. Set `position: absolute`, `left`, `top`, `width`, and `height` on every decorative child. Use `z-index` only for simple layer ordering. Flex may be used only for simple centering; never depend on flexbox distribution, intrinsic sizing, margins, padding, `gap`, grid, or normal page flow for visual placement.
+6. **Text must be real DOM text**: Put labels and decorative symbols in actual `<span>`/`<div>` text nodes. Do not use `content: 'A'`, generated text icons, icon fonts, emoji, or pseudo-element text; pseudo-elements may use `content: ""` only for painted shapes.
+7. **Stable CSS only**: Do not use `@media`, `@supports`, `@keyframes`, `animation`, `transition`, `:hover`, `:focus`, `:focus-visible`, or `!important`. These are browser/page-state features and are not reliable in the NXPRC static button preview. Use `$rootClass:active` only for press feedback.
+8. **Interaction**: Always define `$rootClass:active { transform: scale(...) translateY(...); }` using the exact root class. Do not put the press transform on a child unless the design specifically requires it.
+9. **Colors and gradients**: Use explicit hex/rgb/rgba colors, CSS variables declared in `:root`, and explicit gradient stops. Never rely on `currentColor`, inherited colors, `color-mix()`, system theme colors, or uninitialized variables. Keep all colors inside the component so the desktop and Android previews match.
+10. **Creative freedom**: `data-category` is metadata, not a shape instruction. It does not force a circle, cross, capsule, paddle, ring, gimbal, or any other silhouette. Preserve the user's requested shape, proportions, color palette, and visual language—even when they differ from the category.
+11. **Self-check before output**: Confirm the document has exactly one compiled button, explicit px geometry, no unsupported features listed above, real text labels, a valid active rule, and only supported paint properties.
+12. **Output validity**: Return one complete HTML document inside one `html` code block and no explanation outside it.
 """.trimIndent()
 
     private fun generateAbxyPrompt(control: String, widthDp: Int, heightDp: Int): String {
@@ -1389,10 +1431,10 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 ### TARGET COMPONENT: ABXY FACE BUTTON
 - **Button Key**: $control (Standard Gamepad Face Button)
 - **Category**: BUTTON
-- **Target Dimensions**: width: ${widthDp}px; height: ${heightDp}px; (Aspect ratio 1:1, perfectly circular)
+- **Target Dimensions**: width: ${widthDp}px; height: ${heightDp}px; (fixed canvas size; choose any silhouette)
 - **Standard Color Profile**: $colorName (Accent: $hexCode, Glow: $rgbGlow)
 - **Recommended Core**: $coreGrad
-- **Physical Concept**: Momentary tactile action button with optical spherical convex lens depth, 3D extruded typography, top-down directional lighting, and physical spring depression.
+- **Design Intent (OPTIONAL INSPIRATION)**: Momentary tactile action feedback with readable labeling, layered depth, directional lighting, and physical spring depression. The silhouette is completely yours.
 
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
 The NEXPAD engine converts your HTML/CSS into native GPU Compose Canvas draw layers (.nxprc format):
@@ -1414,12 +1456,12 @@ The NEXPAD engine converts your HTML/CSS into native GPU Compose Canvas draw lay
 5. **Tactile Active Physics**:
    - `.nexpad-btn:active { transform: scale(0.93) translateY(3px); }` (compiles into native Compose spring physics).
 
-${engineBoundaries()}
+${engineBoundaries("nexpad-btn")}
 
-### PRODUCTION REFERENCE TEMPLATE (100% COMPILE-READY):
-Use this verified template as your structural foundation:
+### OPTIONAL STARTER TEMPLATE (REFERENCE ONLY):
+Use this only to understand the expected document structure. Design freely, but do not copy any property that conflicts with the STRICT NEXPAD COMPILER CONTRACT above. Rebuild the geometry, colors, layers, and visual language with the supported subset:
 ```html
-${getReferenceTemplate(control)}
+${getReferenceTemplate(control, "BUTTON")}
 ```
 
 ### USER CUSTOMIZATION REQUEST:
@@ -1449,7 +1491,7 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Category**: DPAD
 - **Target Dimensions**: width: ${widthDp}px; height: ${heightDp}px;
 - **Directional Glyph**: $arrowGlyph
-- **Physical Concept**: ${if (control.uppercase() == "DPAD") "Unified 4-arm tactile cross-pad with directional slope bevels (UP, DOWN, LEFT, RIGHT), a central concave thumb pivot well, and 8-way diagonal rolling capability." else "A discrete directional D-Pad button featuring an oriented high-contrast directional arrow indicator ($arrowGlyph), sloped thumb ramp, and tactile microswitch actuation."}
+- **Design Intent (OPTIONAL INSPIRATION)**: Preserve directional meaning for $control with clear visual feedback and tactile actuation. A cross-pad, arrow, wedge, star, organic form, or any other silhouette is valid; do not force a conventional D-pad shape.
 
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
 The NEXPAD engine converts your HTML/CSS into native GPU Compose Canvas draw layers (.nxprc format):
@@ -1468,14 +1510,14 @@ The NEXPAD engine converts your HTML/CSS into native GPU Compose Canvas draw lay
    - Outset: `box-shadow: 0 10px 24px rgba(0,0,0,0.65), 0 0 0 2px rgba(35,40,55,0.8), 0 0 20px var(--accent-glow);`
    - Inset: `box-shadow: inset 0 2px 4px rgba(255,255,255,0.25), inset 0 -5px 10px rgba(0,0,0,0.7);`
 3. **Tactile Active Physics**:
-   - `.nexpad-btn:active { transform: ${if (control.uppercase() == "DPAD") "scale(0.95)" else "scale(0.92) translateY(2px)"}; }`
+   - `.dpad-btn:active { transform: ${if (control.uppercase() == "DPAD") "scale(0.95)" else "scale(0.92) translateY(2px)"}; }`
 
-${engineBoundaries()}
+${engineBoundaries("dpad-btn")}
 
-### PRODUCTION REFERENCE TEMPLATE (100% COMPILE-READY):
-Use this verified template as your structural foundation:
+### OPTIONAL STARTER TEMPLATE (REFERENCE ONLY):
+Use this only to understand the expected document structure. Design freely, but do not copy any property that conflicts with the STRICT NEXPAD COMPILER CONTRACT above. Rebuild the geometry, colors, layers, and visual language with the supported subset:
 ```html
-${getReferenceTemplate(control)}
+${getReferenceTemplate(control, "DPAD")}
 ```
 
 ### USER CUSTOMIZATION REQUEST:
@@ -1497,9 +1539,9 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 ### TARGET COMPONENT: ANALOG PULL TRIGGER ($control)
 - **Button Key**: $control (${if (control.uppercase() == "LT") "Left Trigger / Brake / Aim" else "Right Trigger / Throttle / Fire"})
 - **Category**: TRIGGER
-- **Target Dimensions**: width: ${widthDp}px; height: ${heightDp}px; (Aspect ratio ~1:1.5, tall vertical paddle)
+- **Target Dimensions**: width: ${widthDp}px; height: ${heightDp}px; (fixed canvas size; choose any silhouette)
 - **Labels**: Primary "$control" with sub-label "$subLabel"
-- **Physical Concept**: Ergonomic top-shoulder pull trigger paddle featuring curved finger-cradle geometry, vertical pull depth shading, horizontal finger traction grip ribs, and downward swing compression.
+- **Design Intent (OPTIONAL INSPIRATION)**: Represent analog pull, pressure, and release with clear travel feedback. A paddle, wedge, ring, vertical bar, star, or any original silhouette is valid.
 
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
 The NEXPAD engine converts your HTML/CSS into native GPU Compose Canvas draw layers (.nxprc format):
@@ -1515,14 +1557,14 @@ The NEXPAD engine converts your HTML/CSS into native GPU Compose Canvas draw lay
 4. **Stacked Typography**:
    - Vertical flex column: `<span class="trigger-label">$control</span>` (font-size 26px, weight 900) + `<span class="trigger-sub">$subLabel</span>` (font-size 10px, letter-spacing 1.5px).
 5. **Tactile Active Travel Physics**:
-   - `.nexpad-btn:active { transform: scaleY(0.94) translateY(4px); }` (simulates physical downward paddle pull stroke).
+   - `.trigger-btn:active { transform: scaleY(0.94) translateY(4px); }` (simulates physical downward paddle pull stroke).
 
-${engineBoundaries()}
+${engineBoundaries("trigger-btn")}
 
-### PRODUCTION REFERENCE TEMPLATE (100% COMPILE-READY):
-Use this verified template as your structural foundation:
+### OPTIONAL STARTER TEMPLATE (REFERENCE ONLY):
+Use this only to understand the expected document structure. Design freely, but do not copy any property that conflicts with the STRICT NEXPAD COMPILER CONTRACT above. Rebuild the geometry, colors, layers, and visual language with the supported subset:
 ```html
-${getReferenceTemplate(control)}
+${getReferenceTemplate(control, "TRIGGER")}
 ```
 
 ### USER CUSTOMIZATION REQUEST:
@@ -1541,8 +1583,8 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 ### TARGET COMPONENT: SHOULDER BUMPER SWITCH ($control)
 - **Button Key**: $control (${if (control.uppercase() == "LB") "Left Bumper / Secondary Weapon" else "Right Bumper / Primary Weapon"})
 - **Category**: BUMPER
-- **Target Dimensions**: width: ${widthDp}px; height: ${heightDp}px; (Aspect ratio ~2.3:1, wide horizontal capsule)
-- **Physical Concept**: Wide curved horizontal shoulder bumper with a low-profile tactile microswitch, horizontal specular reflection streak, metallic chamfered rim, and crisp shallow click depression.
+- **Target Dimensions**: width: ${widthDp}px; height: ${heightDp}px; (fixed canvas size; choose any silhouette)
+- **Design Intent (OPTIONAL INSPIRATION)**: Represent a shallow shoulder click with clear press feedback. A capsule, tile, shard, star, handmade polygon, or any original silhouette is valid.
 
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
 The NEXPAD engine converts your HTML/CSS into native GPU Compose Canvas draw layers (.nxprc format):
@@ -1558,14 +1600,14 @@ The NEXPAD engine converts your HTML/CSS into native GPU Compose Canvas draw lay
 4. **Typography**:
    - `<span class="bumper-label">$control</span>`: Font size 24px, weight 900, with horizontal specular highlight and dark drop shadow.
 5. **Tactile Active Click Physics**:
-   - `.nexpad-btn:active { transform: scale(0.96) translateY(2px); }` (simulates shallow micro-switch click).
+   - `.bumper-btn:active { transform: scale(0.96) translateY(2px); }` (simulates shallow micro-switch click).
 
-${engineBoundaries()}
+${engineBoundaries("bumper-btn")}
 
-### PRODUCTION REFERENCE TEMPLATE (100% COMPILE-READY):
-Use this verified template as your structural foundation:
+### OPTIONAL STARTER TEMPLATE (REFERENCE ONLY):
+Use this only to understand the expected document structure. Design freely, but do not copy any property that conflicts with the STRICT NEXPAD COMPILER CONTRACT above. Rebuild the geometry, colors, layers, and visual language with the supported subset:
 ```html
-${getReferenceTemplate(control)}
+${getReferenceTemplate(control, "BUMPER")}
 ```
 
 ### USER CUSTOMIZATION REQUEST:
@@ -1586,8 +1628,8 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 ### TARGET COMPONENT: ANALOG THUMBSTICK ($control)
 - **Button Key**: $control ($clickLabel Click)
 - **Category**: JOYSTICK
-- **Target Dimensions**: width: ${widthDp}px; height: ${heightDp}px; (Aspect ratio 1:1, circular gimbal socket)
-- **Physical Concept**: 2-piece analog thumbstick consisting of an outer recessed spherical gimbal well housing, an inner raised concave rubberized thumb pad, concentric knurled traction grip rings, and integrated $clickLabel click actuation.
+- **Target Dimensions**: width: ${widthDp}px; height: ${heightDp}px; (fixed canvas size; choose any silhouette)
+- **Design Intent (OPTIONAL INSPIRATION)**: Represent analog movement and $clickLabel click actuation with readable state feedback. A gimbal, ring, square, abstract mark, organic form, or any original silhouette is valid.
 
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
 The NEXPAD engine converts your HTML/CSS into native GPU Compose Canvas draw layers (.nxprc format):
@@ -1604,14 +1646,14 @@ The NEXPAD engine converts your HTML/CSS into native GPU Compose Canvas draw lay
 4. **Stick Click Typography**:
    - `<span class="stick-label">$clickLabel</span>`: Font size 22px, weight 900, with neon ambient backlighting.
 5. **Tactile Active Press Physics**:
-   - `.nexpad-btn:active { transform: scale(0.92); }` (simulates physical thumbstick button depression).
+   - `.stick-btn:active { transform: scale(0.92); }` (simulates physical thumbstick button depression).
 
-${engineBoundaries()}
+${engineBoundaries("stick-btn")}
 
-### PRODUCTION REFERENCE TEMPLATE (100% COMPILE-READY):
-Use this verified template as your structural foundation:
+### OPTIONAL STARTER TEMPLATE (REFERENCE ONLY):
+Use this only to understand the expected document structure. Design freely, but do not copy any property that conflicts with the STRICT NEXPAD COMPILER CONTRACT above. Rebuild the geometry, colors, layers, and visual language with the supported subset:
 ```html
-${getReferenceTemplate(control)}
+${getReferenceTemplate(control, "JOYSTICK")}
 ```
 
 ### USER CUSTOMIZATION REQUEST:
@@ -1631,7 +1673,7 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Button Key**: $control (${when(control.uppercase()) { "MENU" -> "Menu / Pause / Start"; "VIEW" -> "View / Back / Select"; else -> "Home / Guide / Nexus" }})
 - **Category**: SYSTEM
 - **Target Dimensions**: width: ${widthDp}px; height: ${heightDp}px;
-- **Physical Concept**: Compact utility button (${if (control.uppercase() == "HOME") "circular illuminated guide sphere with nexus emblem" else "low-profile flush rounded pill button with engraved vector iconography"}).
+- **Design Intent (OPTIONAL INSPIRATION)**: Compact utility control with clear iconography and tactile click feedback. A sphere, pill, tile, emblem, star, or any original silhouette is valid.
 
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
 The NEXPAD engine converts your HTML/CSS into native GPU Compose Canvas draw layers (.nxprc format):
@@ -1651,14 +1693,14 @@ The NEXPAD engine converts your HTML/CSS into native GPU Compose Canvas draw lay
        else -> "- Central nexus/guide logo (`<span class=\"home-symbol\">⨂</span>`)."
    }}
 3. **Tactile Active Click Physics**:
-   - `.nexpad-btn:active { transform: scale(0.92) translateY(2px); }`
+   - `.system-btn:active { transform: scale(0.92) translateY(2px); }`
 
-${engineBoundaries()}
+${engineBoundaries("system-btn")}
 
-### PRODUCTION REFERENCE TEMPLATE (100% COMPILE-READY):
-Use this verified template as your structural foundation:
+### OPTIONAL STARTER TEMPLATE (REFERENCE ONLY):
+Use this only to understand the expected document structure. Design freely, but do not copy any property that conflicts with the STRICT NEXPAD COMPILER CONTRACT above. Rebuild the geometry, colors, layers, and visual language with the supported subset:
 ```html
-${getReferenceTemplate(control)}
+${getReferenceTemplate(control, "SYSTEM")}
 ```
 
 ### USER CUSTOMIZATION REQUEST:
@@ -1670,5 +1712,3 @@ Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``
 
     private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 }
-
-

@@ -1,5 +1,6 @@
 package com.sanket.tools.nexpaddesktop.plugins
 
+import com.sanket.tools.nexpad.nxprc.NxprcDocument
 import com.sanket.tools.nexpaddesktop.connection.adb.AdbPathResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -286,6 +287,60 @@ object DesktopPluginManager {
             tempFile.delete()
 
             Result.success("Transferred ${item.name} via ADB to phone successfully! (Hot-reloaded)")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Transfers an NxprcDocument (.nxprc binary) to the mobile device using active USB Debugging (ADB).
+     * Pushes to private filesDir (via run-as) with fallback to external app dir, and triggers instant reload.
+     */
+    suspend fun transferNxprcViaAdb(doc: NxprcDocument): Result<String> = withContext(Dispatchers.IO) {
+        val adbPath = AdbPathResolver.resolveAdbPath()
+            ?: return@withContext Result.failure(IllegalStateException("ADB executable not found. Ensure USB debugging is enabled."))
+
+        try {
+            // Check connected ADB devices
+            val devicesProcess = ProcessBuilder(adbPath, "devices").redirectErrorStream(true).start()
+            val output = devicesProcess.inputStream.bufferedReader().readText()
+            devicesProcess.waitFor()
+
+            val lines = output.lines().filter { it.contains("device") && !it.startsWith("List") }
+            if (lines.isEmpty()) {
+                return@withContext Result.failure(IllegalStateException("No phone connected via USB Debugging. Check cable & authorization."))
+            }
+
+            val serial = lines.first().split("\\s+".toRegex()).firstOrNull() ?: ""
+
+            // Encode to binary bytes
+            val binaryBytes = NxprcDocument.encodeToBytes(doc)
+            val tempFile = File.createTempFile("nxprc_", ".nxprc")
+            tempFile.writeBytes(binaryBytes)
+
+            val remoteFileName = "${doc.manifest.id.replace(Regex("[^a-zA-Z0-9_.-]"), "_")}.nxprc"
+            val tmpRemotePath = "/data/local/tmp/$remoteFileName"
+
+            // 1. Push to /data/local/tmp/
+            ProcessBuilder(adbPath, "-s", serial, "push", tempFile.absolutePath, tmpRemotePath)
+                .redirectErrorStream(true).start().waitFor()
+
+            // 2. Copy into app's private nxp_remote dir using run-as
+            val copyCmd = "run-as com.sanket.tools.nexpad sh -c 'mkdir -p /data/data/com.sanket.tools.nexpad/files/nxp_remote && cp $tmpRemotePath /data/data/com.sanket.tools.nexpad/files/nxp_remote/$remoteFileName'"
+            ProcessBuilder(adbPath, "-s", serial, "shell", copyCmd).redirectErrorStream(true).start().waitFor()
+
+            // 3. Fallback: Also try pushing to external app directory
+            val extDir = "/sdcard/Android/data/com.sanket.tools.nexpad/files/nxp_remote"
+            ProcessBuilder(adbPath, "-s", serial, "shell", "mkdir -p $extDir && cp $tmpRemotePath $extDir/$remoteFileName").start().waitFor()
+
+            // 4. Send broadcasts to tell Android app to reload immediately
+            ProcessBuilder(adbPath, "-s", serial, "shell", "am broadcast -a com.sanket.tools.nexpad.RELOAD_REMOTE_COMPONENTS").start().waitFor()
+            ProcessBuilder(adbPath, "-s", serial, "shell", "am broadcast -a com.sanket.tools.nexpad.RELOAD_COMPONENTS").start().waitFor()
+
+            // Cleanup temp file
+            tempFile.delete()
+
+            Result.success("Pushed ${doc.manifest.name} (.nxprc) to phone via ADB! (Hot-reloaded)")
         } catch (e: Exception) {
             Result.failure(e)
         }

@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Send
+import com.sanket.tools.nexpaddesktop.plugins.DesktopPluginManager
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -188,6 +190,11 @@ fun PluginsScreen() {
                             color = NeonPalette.Cyan.copy(alpha = 0.85f),
                             fontSize = 11.sp
                         )
+                        Text(
+                            "Category is mapping metadata; your HTML/CSS owns the shape.",
+                            color = Color.White.copy(alpha = 0.58f),
+                            fontSize = 10.sp
+                        )
                     }
 
                     // Specialized AI Prompt Action Buttons
@@ -226,7 +233,7 @@ fun PluginsScreen() {
 
                         OutlinedButton(
                             onClick = {
-                                htmlSource = NxprcHtmlCssConverter.getReferenceTemplate(defaultControl)
+                                htmlSource = NxprcHtmlCssConverter.getReferenceTemplate(defaultControl, category)
                                 promptCopiedBanner = "✓ Loaded starter template for $defaultControl ($category)!"
                             },
                             shape = RoundedCornerShape(6.dp),
@@ -277,8 +284,6 @@ fun PluginsScreen() {
                                     category = firstButton.category
                                     componentId = firstButton.defaultId
                                     componentName = firstButton.defaultName
-                                    targetWidthDp = firstButton.widthDp
-                                    targetHeightDp = firstButton.heightDp
                                 }
                             },
                             shape = RoundedCornerShape(8.dp),
@@ -501,31 +506,65 @@ fun PluginsScreen() {
                     }
                 }
 
-                // Full-Width Export Button
-                Button(
-                    onClick = {
-                        scope.launch {
-                            isExporting = true
-                            val res = NxprcExporter.exportToFile(compiledDoc)
-                            res.fold(
-                                onSuccess = { file ->
-                                    exportStatus = "Saved: ${file.name} (${file.length()} bytes)"
-                                },
-                                onFailure = { ex ->
-                                    exportStatus = ex.message ?: "Export failed"
-                                }
-                            )
-                            isExporting = false
-                        }
-                    },
-                    enabled = !isExporting,
-                    modifier = Modifier.fillMaxWidth().height(44.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan)
+                // Action Buttons Row: Export & Push via ADB
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Default.Download, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Export .nxprc File", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    // Export Button
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                isExporting = true
+                                val res = NxprcExporter.exportToFile(compiledDoc)
+                                res.fold(
+                                    onSuccess = { file ->
+                                        exportStatus = "Saved: ${file.name} (${file.length()} bytes)"
+                                    },
+                                    onFailure = { ex ->
+                                        exportStatus = ex.message ?: "Export failed"
+                                    }
+                                )
+                                isExporting = false
+                            }
+                        },
+                        enabled = !isExporting,
+                        modifier = Modifier.weight(1f).height(44.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan)
+                    ) {
+                        Icon(Icons.Default.Download, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Export File", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
+
+                    // Push via ADB Button
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                isExporting = true
+                                exportStatus = "Pushing to phone via ADB..."
+                                val res = DesktopPluginManager.transferNxprcViaAdb(compiledDoc)
+                                res.fold(
+                                    onSuccess = { msg ->
+                                        exportStatus = msg
+                                    },
+                                    onFailure = { ex ->
+                                        exportStatus = "ADB Push Error: ${ex.message}"
+                                    }
+                                )
+                                isExporting = false
+                            }
+                        },
+                        enabled = !isExporting,
+                        modifier = Modifier.weight(1f).height(44.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00FF99))
+                    ) {
+                        Icon(Icons.Default.Send, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Push to Phone (ADB)", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
                 }
             }
         }
