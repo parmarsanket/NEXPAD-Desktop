@@ -210,6 +210,10 @@ fun NxprcCanvasPreview(
                                 )
                             }
 
+                            val needsOffscreen = effects.compositingStrategy == com.sanket.tools.nexpad.nxprc.CompositingStrategy.OFFSCREEN ||
+                                (layerAlpha < 1.0f && (layer.fills.size > 1 || layer.boxShadows.isNotEmpty()))
+                            val subAlpha = if (needsOffscreen) 1.0f else layerAlpha
+
                             val drawBox: () -> Unit = {
                                 withTransform({
                                     if (rotAngle != 0f) rotate(rotAngle, pivot = pivot)
@@ -228,7 +232,7 @@ fun NxprcCanvasPreview(
                                         for (step in 1..steps) {
                                             val t = step.toFloat() / steps
                                             val extent = spreadPx + blurPx * t
-                                            val alpha = sColor.alpha * layerAlpha * (if (blurPx > 0f) (1f - t) * 0.22f else 1f)
+                                            val alpha = sColor.alpha * subAlpha * (if (blurPx > 0f) (1f - t) * 0.22f else 1f)
                                             val shadowColor = sColor.copy(alpha = alpha.coerceIn(0f, 1f))
                                             if (isPolygon) {
                                                 drawPath(polygonPath, color = shadowColor)
@@ -265,23 +269,23 @@ fun NxprcCanvasPreview(
 
                                     allBrushes.forEach { b ->
                                         if (isPolygon) {
-                                            drawPath(polygonPath, brush = b, alpha = layerAlpha)
+                                            drawPath(polygonPath, brush = b, alpha = subAlpha)
                                         } else if (isOval) {
                                             drawOval(
                                                 brush = b,
                                                 topLeft = Offset(boxLeft, boxTop),
                                                 size = Size(boxWidth, boxHeight),
-                                                alpha = layerAlpha
+                                                alpha = subAlpha
                                             )
                                         } else if (hasVariableCorners) {
-                                            drawPath(variablePath, brush = b, alpha = layerAlpha)
+                                            drawPath(variablePath, brush = b, alpha = subAlpha)
                                         } else {
                                             drawRoundRect(
                                                 brush = b,
                                                 topLeft = Offset(boxLeft, boxTop),
                                                 size = Size(boxWidth, boxHeight),
                                                 cornerRadius = CornerRadius(tl, tl),
-                                                alpha = layerAlpha
+                                                alpha = subAlpha
                                             )
                                         }
                                     }
@@ -296,19 +300,19 @@ fun NxprcCanvasPreview(
                                             Stroke(width = stWidth)
                                         }
                                         if (isPolygon) {
-                                            drawPath(polygonPath, color = stColor.copy(alpha = stColor.alpha * layerAlpha), style = strokeStyle)
+                                            drawPath(polygonPath, color = stColor.copy(alpha = stColor.alpha * subAlpha), style = strokeStyle)
                                         } else if (isOval) {
                                             drawOval(
-                                                color = stColor.copy(alpha = stColor.alpha * layerAlpha),
+                                                color = stColor.copy(alpha = stColor.alpha * subAlpha),
                                                 topLeft = Offset(boxLeft, boxTop),
                                                 size = Size(boxWidth, boxHeight),
                                                 style = strokeStyle
                                             )
                                         } else if (hasVariableCorners) {
-                                            drawPath(variablePath, color = stColor.copy(alpha = stColor.alpha * layerAlpha), style = strokeStyle)
+                                            drawPath(variablePath, color = stColor.copy(alpha = stColor.alpha * subAlpha), style = strokeStyle)
                                         } else {
                                             drawRoundRect(
-                                                color = stColor.copy(alpha = stColor.alpha * layerAlpha),
+                                                color = stColor.copy(alpha = stColor.alpha * subAlpha),
                                                 topLeft = Offset(boxLeft, boxTop),
                                                 size = Size(boxWidth, boxHeight),
                                                 cornerRadius = CornerRadius(tl, tl),
@@ -347,14 +351,14 @@ fun NxprcCanvasPreview(
                                                 val strokeW = (shadow.blurRadius.takeIf { it > 0f } ?: 3.5f) * pxPerUnit
                                                 if (isOval) {
                                                     drawOval(
-                                                        color = inColor.copy(alpha = inColor.alpha * layerAlpha),
+                                                        color = inColor.copy(alpha = inColor.alpha * subAlpha),
                                                         topLeft = Offset(boxLeft + sOffset.x, boxTop + sOffset.y),
                                                         size = Size(boxWidth, boxHeight),
                                                         style = Stroke(width = strokeW * 1.5f)
                                                     )
                                                 } else {
                                                     drawRoundRect(
-                                                        color = inColor.copy(alpha = inColor.alpha * layerAlpha),
+                                                        color = inColor.copy(alpha = inColor.alpha * subAlpha),
                                                         topLeft = Offset(boxLeft + sOffset.x, boxTop + sOffset.y),
                                                         size = Size(boxWidth, boxHeight),
                                                         cornerRadius = CornerRadius(tl, tl),
@@ -369,14 +373,21 @@ fun NxprcCanvasPreview(
 
                             val drawFilteredBox: () -> Unit = {
                                 val colorFilter = createNxprcColorFilter(effects.filter)
-                                if (colorFilter == null) {
+                                if (colorFilter == null && !needsOffscreen) {
                                     drawBox()
                                 } else {
-                                    val paint = Paint().apply { this.colorFilter = colorFilter }
-                                    drawContext.canvas.saveLayer(
-                                        Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight),
-                                        paint
+                                    val paint = Paint().apply {
+                                        if (colorFilter != null) this.colorFilter = colorFilter
+                                        if (needsOffscreen) this.alpha = layerAlpha
+                                    }
+                                    val outsets = effects.layerOutsets
+                                    val saveRect = Rect(
+                                        boxLeft - outsets.left * pxPerUnit - 20f,
+                                        boxTop - outsets.top * pxPerUnit - 20f,
+                                        boxLeft + boxWidth + outsets.right * pxPerUnit + 20f,
+                                        boxTop + boxHeight + outsets.bottom * pxPerUnit + 20f
                                     )
+                                    drawContext.canvas.saveLayer(saveRect, paint)
                                     drawBox()
                                     drawContext.canvas.restore()
                                 }
@@ -704,11 +715,16 @@ fun NxprcCanvasPreview(
             val fontSp = (baseFontSp * scaleFactor).sp
             val fontWeight = FontWeight.Bold
 
+            val offX = ((glyph?.offsetXRatio ?: 0f) * buttonW).dp
+            val offY = ((glyph?.offsetYRatio ?: 0f) * buttonH).dp
+
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier.graphicsLayer {
-                    rotationZ = rootBox?.effectiveTransform?.rotationDegrees ?: 0f
-                }
+                modifier = Modifier
+                    .offset(x = offX, y = offY)
+                    .graphicsLayer {
+                        rotationZ = rootBox?.effectiveTransform?.rotationDegrees ?: 0f
+                    }
             ) {
                 val extraShadows = glyph?.textShadows ?: emptyList()
                 if (extraShadows.isNotEmpty()) {
@@ -755,6 +771,29 @@ fun NxprcCanvasPreview(
         }
     }
 }
+}
+
+private fun sampleGradientColor(colors: List<Long>, stops: List<Float>, pos: Float): Color {
+    if (colors.isEmpty()) return Color.Transparent
+    if (colors.size == 1) return Color(colors[0])
+    val clamped = pos.coerceIn(0f, 1f)
+    var idx = 0
+    while (idx < stops.size - 1 && stops[idx + 1] < clamped) {
+        idx++
+    }
+    if (idx >= stops.size - 1) return Color(colors.last())
+    val s0 = stops[idx]
+    val s1 = stops[idx + 1]
+    val range = (s1 - s0).coerceAtLeast(0.0001f)
+    val t = ((clamped - s0) / range).coerceIn(0f, 1f)
+    val c1 = Color(colors[idx])
+    val c2 = Color(colors[idx + 1])
+    return Color(
+        red = c1.red + (c2.red - c1.red) * t,
+        green = c1.green + (c2.green - c1.green) * t,
+        blue = c1.blue + (c2.blue - c1.blue) * t,
+        alpha = c1.alpha + (c2.alpha - c1.alpha) * t
+    )
 }
 
 private fun createBrush(fill: FillBrush, size: Size, topLeft: Offset = Offset.Zero): Brush {
@@ -806,10 +845,26 @@ private fun createBrush(fill: FillBrush, size: Size, topLeft: Offset = Offset.Ze
         is FillBrush.SweepGradient -> {
             val cx = topLeft.x + size.width * fill.centerXRatio
             val cy = topLeft.y + size.height * fill.centerYRatio
-            Brush.sweepGradient(
-                colors = fill.colors.map { Color(it) },
-                center = Offset(cx, cy)
-            )
+            if (fill.startAngleDegrees != 0f && fill.colors.size >= 2) {
+                val shift = ((fill.startAngleDegrees % 360f + 360f) % 360f) / 360f
+                val n = fill.colors.size
+                val rawStops = if (fill.stops.size == n) fill.stops else List(n) { it.toFloat() / (n - 1) }
+                val samples = 36
+                val sampleStops = FloatArray(samples + 1) { it.toFloat() / samples }
+                val colorStops = sampleStops.map { s ->
+                    val origPos = (s - shift + 1.0f) % 1.0f
+                    s to sampleGradientColor(fill.colors, rawStops, origPos)
+                }.toTypedArray()
+                Brush.sweepGradient(
+                    colorStops = colorStops,
+                    center = Offset(cx, cy)
+                )
+            } else {
+                Brush.sweepGradient(
+                    colors = fill.colors.map { Color(it) },
+                    center = Offset(cx, cy)
+                )
+            }
         }
     }
 }
