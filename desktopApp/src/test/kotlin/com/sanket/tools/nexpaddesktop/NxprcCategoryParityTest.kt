@@ -554,6 +554,118 @@ class NxprcCategoryParityTest {
                         )
                         gLayer.drawString(text, tx, ty)
                     }
+                    is CanvasLayer.GradientShape -> {
+                        val shapeW = btnW * layer.widthRatio
+                        val shapeH = btnH * layer.heightRatio
+                        val shapeLeft = btnLeft + btnW * layer.effectiveTransform.offsetXRatio
+                        val shapeTop = btnTop + btnH * layer.effectiveTransform.offsetYRatio
+                        val cornerRadius = layer.cornerRadius * density
+                        val shapeType = layer.shapeType.uppercase()
+                        val isOval = shapeType == "OVAL"
+                        val shapeAlpha = layer.effectiveEffects.opacity.coerceIn(0f, 1f)
+
+                        val pivotX = shapeLeft + shapeW * layer.effectiveTransform.originXRatio
+                        val pivotY = shapeTop + shapeH * layer.effectiveTransform.originYRatio
+                        gLayer.translate(pivotX.toDouble(), pivotY.toDouble())
+                        if (layer.effectiveTransform.rotationDegrees != 0f) gLayer.rotate(Math.toRadians(layer.effectiveTransform.rotationDegrees.toDouble()))
+                        if (layer.effectiveTransform.scaleX != 1f || layer.effectiveTransform.scaleY != 1f) gLayer.scale(layer.effectiveTransform.scaleX.toDouble(), layer.effectiveTransform.scaleY.toDouble())
+                        gLayer.translate(-pivotX.toDouble(), -pivotY.toDouble())
+
+                        val shape = when {
+                            shapeType == "HEXAGON" -> buildPolygonShape(6, shapeLeft, shapeTop, shapeW, shapeH)
+                            shapeType == "OCTAGON" -> buildPolygonShape(8, shapeLeft, shapeTop, shapeW, shapeH)
+                            isOval -> Ellipse2D.Float(shapeLeft, shapeTop, shapeW, shapeH)
+                            else -> RoundRectangle2D.Float(shapeLeft, shapeTop, shapeW, shapeH, cornerRadius * 2f, cornerRadius * 2f)
+                        }
+
+                        // Fill
+                        when (val fill = layer.fill) {
+                            is FillBrush.Solid -> {
+                                val alpha = (((fill.color shr 24) and 0xFF) * shapeAlpha).toInt().coerceIn(0, 255)
+                                gLayer.color = Color(((fill.color shr 16) and 0xFF).toInt(), ((fill.color shr 8) and 0xFF).toInt(), (fill.color and 0xFF).toInt(), alpha)
+                            }
+                            is FillBrush.LinearGradient -> {
+                                val angleRad = Math.toRadians((fill.angleDegrees - 90.0))
+                                val gcx = shapeLeft + shapeW / 2f
+                                val gcy = shapeTop + shapeH / 2f
+                                val r = Math.hypot(shapeW.toDouble(), shapeH.toDouble()).toFloat() / 2f
+                                val cos = Math.cos(angleRad).toFloat()
+                                val sin = Math.sin(angleRad).toFloat()
+                                val x1 = gcx - cos * r
+                                val y1 = gcy - sin * r
+                                val x2 = gcx + cos * r
+                                val y2 = gcy + sin * r
+                                val fractions = fill.stops.takeIf { it.size == fill.colors.size && it.size >= 2 }?.toFloatArray()
+                                    ?: FloatArray(fill.colors.size) { it.toFloat() / (fill.colors.size - 1).coerceAtLeast(1) }
+                                val colors = fill.colors.map { col ->
+                                    val alpha = (((col shr 24) and 0xFF) * shapeAlpha).toInt().coerceIn(0, 255)
+                                    Color(((col shr 16) and 0xFF).toInt(), ((col shr 8) and 0xFF).toInt(), (col and 0xFF).toInt(), alpha)
+                                }.toTypedArray()
+                                gLayer.paint = LinearGradientPaint(x1, y1, x2, y2, fractions, colors)
+                            }
+                            is FillBrush.RadialGradient -> {
+                                val gcx = shapeLeft + shapeW * fill.centerXRatio
+                                val gcy = shapeTop + shapeH * fill.centerYRatio
+                                val radius = (Math.min(shapeW, shapeH) * fill.radiusRatio * 1.5f).coerceAtLeast(1f)
+                                val fractions = fill.stops.takeIf { it.size == fill.colors.size && it.size >= 2 }?.toFloatArray()
+                                    ?: FloatArray(fill.colors.size) { it.toFloat() / (fill.colors.size - 1).coerceAtLeast(1) }
+                                val colors = fill.colors.map { col ->
+                                    val alpha = (((col shr 24) and 0xFF) * shapeAlpha).toInt().coerceIn(0, 255)
+                                    Color(((col shr 16) and 0xFF).toInt(), ((col shr 8) and 0xFF).toInt(), (col and 0xFF).toInt(), alpha)
+                                }.toTypedArray()
+                                gLayer.paint = RadialGradientPaint(gcx, gcy, radius, fractions, colors)
+                            }
+                            else -> {}
+                        }
+                        gLayer.fill(shape)
+
+                        // Stroke
+                        layer.stroke?.let { st ->
+                            val alpha = (((st.color shr 24) and 0xFF) * shapeAlpha).toInt().coerceIn(0, 255)
+                            gLayer.color = Color(((st.color shr 16) and 0xFF).toInt(), ((st.color shr 8) and 0xFF).toInt(), (st.color and 0xFF).toInt(), alpha)
+                            if (st.isDashed) {
+                                gLayer.stroke = BasicStroke(st.width * density, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f, floatArrayOf(8f * density, 6f * density), 0f)
+                            } else {
+                                gLayer.stroke = BasicStroke(st.width * density)
+                            }
+                            gLayer.draw(shape)
+                        }
+                    }
+                    is CanvasLayer.BezelSocket -> {
+                        val baseRadius = minOf(btnW, btnH) / 2f
+                        val cx = btnLeft + btnW / 2f
+                        val cy = btnTop + btnH / 2f
+                        // 1. Soft bottom drop shadow
+                        val sAlpha = ((layer.shadowColor shr 24) and 0xFF).toInt()
+                        gLayer.color = Color(((layer.shadowColor shr 16) and 0xFF).toInt(), ((layer.shadowColor shr 8) and 0xFF).toInt(), (layer.shadowColor and 0xFF).toInt(), sAlpha)
+                        gLayer.fill(Ellipse2D.Float(cx - baseRadius * 0.98f, cy - baseRadius * 0.98f + baseRadius * 0.05f, baseRadius * 1.96f, baseRadius * 1.96f))
+                        // 2. Solid bezel well
+                        val bAlpha = ((layer.outerBezelColor shr 24) and 0xFF).toInt()
+                        gLayer.color = Color(((layer.outerBezelColor shr 16) and 0xFF).toInt(), ((layer.outerBezelColor shr 8) and 0xFF).toInt(), (layer.outerBezelColor and 0xFF).toInt(), bAlpha)
+                        gLayer.fill(Ellipse2D.Float(cx - baseRadius * 0.98f, cy - baseRadius * 0.98f, baseRadius * 1.96f, baseRadius * 1.96f))
+                        // 3. Bezel rim stroke
+                        val rAlpha = ((layer.outerBevelStroke shr 24) and 0xFF).toInt()
+                        gLayer.color = Color(((layer.outerBevelStroke shr 16) and 0xFF).toInt(), ((layer.outerBevelStroke shr 8) and 0xFF).toInt(), (layer.outerBevelStroke and 0xFF).toInt(), rAlpha)
+                        gLayer.stroke = BasicStroke(2f * density)
+                        gLayer.draw(Ellipse2D.Float(cx - baseRadius * 0.98f, cy - baseRadius * 0.98f, baseRadius * 1.96f, baseRadius * 1.96f))
+                    }
+                    is CanvasLayer.InnerShadow -> {
+                        val cx = btnLeft + btnW / 2f
+                        val cy = btnTop + btnH / 2f
+                        val arcRadius = minOf(btnW, btnH) / 2f * 0.86f
+                        val arcX = cx - arcRadius
+                        val arcY = cy - arcRadius
+                        val arcDiam = arcRadius * 2f
+                        gLayer.stroke = BasicStroke(layer.strokeWidth * density)
+                        // Top highlight rim
+                        val hAlpha = ((layer.highlightColor shr 24) and 0xFF).toInt()
+                        gLayer.color = Color(((layer.highlightColor shr 16) and 0xFF).toInt(), ((layer.highlightColor shr 8) and 0xFF).toInt(), (layer.highlightColor and 0xFF).toInt(), hAlpha)
+                        gLayer.draw(Arc2D.Float(arcX, arcY, arcDiam, arcDiam, 0f, 180f, Arc2D.OPEN))
+                        // Bottom dark shadow rim
+                        val shAlpha = ((layer.shadowColor shr 24) and 0xFF).toInt()
+                        gLayer.color = Color(((layer.shadowColor shr 16) and 0xFF).toInt(), ((layer.shadowColor shr 8) and 0xFF).toInt(), (layer.shadowColor and 0xFF).toInt(), shAlpha)
+                        gLayer.draw(Arc2D.Float(arcX, arcY, arcDiam, arcDiam, 180f, 180f, Arc2D.OPEN))
+                    }
                     else -> {}
                 }
             } finally {
@@ -562,6 +674,24 @@ class NxprcCategoryParityTest {
         }
         g2.dispose()
         return img
+    }
+
+    private fun buildPolygonShape(sides: Int, x: Float, y: Float, w: Float, h: Float): Shape {
+        val path = Path2D.Float()
+        val cx = x + w / 2f
+        val cy = y + h / 2f
+        val rx = w / 2f
+        val ry = h / 2f
+        val angleStep = (2.0 * Math.PI / sides)
+        val startAngle = -Math.PI / 2.0
+        for (i in 0 until sides) {
+            val a = startAngle + i * angleStep
+            val px = (cx + rx * Math.cos(a)).toFloat()
+            val py = (cy + ry * Math.sin(a)).toFloat()
+            if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
+        }
+        path.closePath()
+        return path
     }
 
     private fun getBoxShape(x: Float, y: Float, w: Float, h: Float, tl: Float, tr: Float, br: Float, bl: Float, isOval: Boolean): Shape {
@@ -761,5 +891,84 @@ class NxprcCategoryParityTest {
         val outFile = File("C:\\Users\\parma\\.gemini\\antigravity\\brain\\988b000e-5aeb-432b-aa81-d784a06545f7\\modern_art_abxy_verification.png")
         ImageIO.write(showcase, "PNG", outFile)
         println("Generated modern art ABXY showcase: ${outFile.absolutePath}")
+    }
+
+    @Test
+    fun testUserCosmicByteButtonParity() {
+        println("=======================================================================")
+        println("TESTING USER COSMIC BYTE A BUTTON COMPILATION & PARITY")
+        println("=======================================================================")
+
+        val htmlFile = File(brainDir, "scratch/preview_cosmic_a.html")
+        val html = if (htmlFile.exists()) htmlFile.readText() else """
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <style>
+                .nexpad-btn {
+                  position: relative;
+                  width: 96px;
+                  height: 96px;
+                  border-radius: 50%;
+                  background: linear-gradient(180deg, #2a2f35 0%, #0d0f12 100%);
+                }
+                .keycap {
+                  position: absolute;
+                  inset: 8px;
+                  border-radius: 50%;
+                  background: linear-gradient(180deg, #2c3238 0%, #121518 100%);
+                }
+                .glyph {
+                  font-size: 34px;
+                  font-weight: 900;
+                  color: #2ee879;
+                }
+              </style>
+            </head>
+            <body>
+              <button class="nexpad-btn"><span class="keycap"><span class="glyph">A</span></span></button>
+            </body>
+            </html>
+        """.trimIndent()
+
+        val doc = NxprcPackager.compile(
+            html,
+            "rc.cosmic_byte_a",
+            "Cosmic Byte Button A",
+            "BUTTON",
+            "A"
+        )
+
+        assertNotNull("Compiled document should not be null", doc)
+        assertTrue("Document must contain layers", doc.canvas.layers.isNotEmpty())
+
+        println("Compiled ${doc.canvas.layers.size} layers for Cosmic Byte Button A:")
+        doc.canvas.layers.forEachIndexed { idx, l ->
+            println("  #$idx: ${l::class.simpleName}")
+        }
+
+        val canvasSize = 400
+        val nativeImg = renderNxprcToImage(doc, canvasSize, canvasSize)
+        val nativeOut = File(scratchDir, "native_cosmic_a.png")
+        ImageIO.write(nativeImg, "png", nativeOut)
+
+        // Capture Headless Chrome screenshot
+        val styledHtml = wrapHtmlForPreview(html, canvasSize, canvasSize)
+        htmlFile.writeText(styledHtml)
+        val chromeOut = File(scratchDir, "chrome_cosmic_a.png")
+        val renderedChrome = captureChromeScreenshot(htmlFile, chromeOut, canvasSize, canvasSize)
+
+        if (renderedChrome && chromeOut.exists()) {
+            val chromeImg = ImageIO.read(chromeOut)
+            val parity = computeVisualParity(chromeImg, nativeImg)
+            println("Visual Parity for Cosmic Byte Button A: ${String.format("%.2f", parity)}%")
+
+            val card = generateSideBySideCard("ABXY", "Cosmic Byte Action Button A", chromeImg, nativeImg, parity)
+            val cardOut = File(brainDir, "cosmic_byte_a_parity_side_by_side.png")
+            ImageIO.write(card, "png", cardOut)
+            println("Generated side-by-side card: ${cardOut.absolutePath}")
+
+            assertTrue("Visual parity should exceed 90%, actual: $parity%", parity >= 90.0)
+        }
     }
 }
