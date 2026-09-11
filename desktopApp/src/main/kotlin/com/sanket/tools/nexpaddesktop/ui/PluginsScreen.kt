@@ -27,6 +27,7 @@ import com.sanket.tools.nexpaddesktop.plugins.NxprcExporter
 import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
 import com.sanket.tools.nexpaddesktop.ui.components.glassCard
 import com.sanket.tools.nexpaddesktop.ui.designer.NxprcCanvasPreview
+import com.sanket.tools.nexpaddesktop.ui.designer.FullAuditPreviewScreen
 import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -111,6 +112,7 @@ fun PluginsScreen() {
     var isExporting by remember { mutableStateOf(false) }
 
     var showAiPromptModal by remember { mutableStateOf(false) }
+    var showFullAuditPreview by remember { mutableStateOf(false) }
     var promptCopiedBanner by remember { mutableStateOf<String?>(null) }
 
     // Debounced async compilation — prevents UI jank on every keystroke
@@ -374,8 +376,20 @@ fun PluginsScreen() {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Live Sandbox & Export", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    Text("Tap to test tactile physics", color = NeonPalette.Cyan.copy(alpha = 0.7f), fontSize = 10.sp)
+                    Column {
+                        Text("Live Sandbox & Export", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text("Tap to test tactile physics", color = NeonPalette.Cyan.copy(alpha = 0.7f), fontSize = 10.sp)
+                    }
+
+                    Button(
+                        onClick = { showFullAuditPreview = true },
+                        shape = RoundedCornerShape(6.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F, 0x24, 0x36)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan)
+                    ) {
+                        Text("🔍 Full Audit Preview", color = NeonPalette.Cyan, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    }
                 }
 
                 // Dynamic Aspect-Ratio Preview Box
@@ -671,6 +685,15 @@ fun PluginsScreen() {
                     }
                 }
             }
+        }
+
+        // Full Layer-by-Layer Audit & Parity Preview Screen
+        if (showFullAuditPreview) {
+            FullAuditPreviewScreen(
+                document = compiledDoc,
+                htmlSource = htmlSource,
+                onClose = { showFullAuditPreview = false }
+            )
         }
     }
 }

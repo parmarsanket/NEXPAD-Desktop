@@ -2,6 +2,7 @@ package com.sanket.tools.nexpaddesktop.ui.designer
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
@@ -47,7 +48,9 @@ private fun createNxprcColorFilter(filter: FilterDef): ColorFilter? {
 fun NxprcCanvasPreview(
     document: NxprcDocument,
     modifier: Modifier = Modifier,
-    sizeDp: Int = 140
+    sizeDp: Int = 140,
+    activeLayersOnly: List<CanvasLayer>? = null,
+    backgroundColor: Color = Color.Transparent
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
@@ -120,7 +123,7 @@ fun NxprcCanvasPreview(
                 },
             contentAlignment = Alignment.Center
         ) {
-            Canvas(modifier = Modifier.size(sizeDp.dp)) {
+            Canvas(modifier = Modifier.size(sizeDp.dp).background(backgroundColor)) {
                 // Render the document viewBox at its real aspect ratio. The
                 // previous 90% constant made a 102px HTML button become 126px
                 // in a 140px preview and made parity comparisons misleading.
@@ -168,7 +171,8 @@ fun NxprcCanvasPreview(
                     }
                 }
 
-                document.canvas.layers.forEach { layer ->
+                val layersToRender = activeLayersOnly ?: document.canvas.layers
+                layersToRender.forEach { layer ->
                     when (layer) {
                         is CanvasLayer.BoxLayer -> {
                             val transform = layer.effectiveTransform
