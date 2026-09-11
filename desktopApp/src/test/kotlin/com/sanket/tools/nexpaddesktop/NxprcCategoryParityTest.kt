@@ -729,7 +729,11 @@ class NxprcCategoryParityTest {
                             } else {
                                 gLayer.stroke = BasicStroke(st.width * density)
                             }
-                            gLayer.draw(shape)
+                            if (isOval && st.isTopOnly) {
+                                gLayer.draw(Arc2D.Float(shapeLeft, shapeTop, shapeW, shapeH, 0f, 180f, Arc2D.OPEN))
+                            } else {
+                                gLayer.draw(shape)
+                            }
                         }
                     }
                     is CanvasLayer.BezelSocket -> {
@@ -1204,5 +1208,30 @@ class NxprcCategoryParityTest {
 
             assertTrue("Visual parity should exceed 85%, actual: $parity%", parity >= 85.0)
         }
+    }
+
+    @Test
+    fun testNeoTactileAParityAndCentering() {
+        val html = NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A
+        val doc = NxprcPackager.compile(
+            html = html,
+            id = "rc.neo_tactile_a",
+            name = "Neo Tactile A",
+            category = "BUTTON",
+            defaultControl = "A"
+        )
+
+        // 1. Verify glyph is perfectly centered (offX = 0, offY = 0)
+        val glyph = checkNotNull(doc.canvas.layers.filterIsInstance<CanvasLayer.CenterGlyph>().firstOrNull()) { "Must contain CenterGlyph for letter A" }
+        assertEquals(0.0f, glyph.offsetXRatio, 0.001f)
+        assertEquals(0.0f, glyph.offsetYRatio, 0.001f)
+        assertEquals("A", glyph.text)
+
+        // 2. Verify specular arc reflection BoxLayer
+        val specularArc = checkNotNull(doc.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull { it.stroke?.isTopOnly == true }) { "Must contain specular arc BoxLayer with isTopOnly stroke" }
+        assertEquals(true, specularArc.stroke?.isTopOnly)
+        assertTrue("Specular arc widthRatio should be ~72%", specularArc.widthRatio in 0.70f..0.74f)
+        assertTrue("Specular arc heightRatio should be ~40%", specularArc.heightRatio in 0.38f..0.42f)
+        assertEquals(-10.0f, specularArc.rotationDegrees, 0.01f)
     }
 }

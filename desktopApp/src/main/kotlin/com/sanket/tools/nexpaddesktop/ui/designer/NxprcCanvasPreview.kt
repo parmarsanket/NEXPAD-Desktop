@@ -306,12 +306,24 @@ fun NxprcCanvasPreview(
                                         if (isPolygon) {
                                             drawPath(polygonPath, color = stColor.copy(alpha = stColor.alpha * subAlpha), style = strokeStyle)
                                         } else if (isOval) {
-                                            drawOval(
-                                                color = stColor.copy(alpha = stColor.alpha * subAlpha),
-                                                topLeft = Offset(boxLeft, boxTop),
-                                                size = Size(boxWidth, boxHeight),
-                                                style = strokeStyle
-                                            )
+                                            if (st.isTopOnly) {
+                                                drawArc(
+                                                    color = stColor.copy(alpha = stColor.alpha * subAlpha),
+                                                    startAngle = 180f,
+                                                    sweepAngle = 180f,
+                                                    useCenter = false,
+                                                    topLeft = Offset(boxLeft, boxTop),
+                                                    size = Size(boxWidth, boxHeight),
+                                                    style = strokeStyle
+                                                )
+                                            } else {
+                                                drawOval(
+                                                    color = stColor.copy(alpha = stColor.alpha * subAlpha),
+                                                    topLeft = Offset(boxLeft, boxTop),
+                                                    size = Size(boxWidth, boxHeight),
+                                                    style = strokeStyle
+                                                )
+                                            }
                                         } else if (hasVariableCorners) {
                                             drawPath(variablePath, color = stColor.copy(alpha = stColor.alpha * subAlpha), style = strokeStyle)
                                         } else {
@@ -499,12 +511,24 @@ fun NxprcCanvasPreview(
                                         layer.stroke?.let { st ->
                                             val stColor = Color(st.color)
                                             val strokeStyle = if (st.isDashed) Stroke(width = st.width * pxPerUnit, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f * pxPerUnit, 6f * pxPerUnit), 0f)) else Stroke(width = st.width * pxPerUnit)
-                                            drawOval(
-                                                color = stColor.copy(alpha = stColor.alpha * shapeAlpha),
-                                                topLeft = Offset(shapeLeft, shapeTop),
-                                                size = shapeSize,
-                                                style = strokeStyle
-                                            )
+                                            if (st.isTopOnly) {
+                                                drawArc(
+                                                    color = stColor.copy(alpha = stColor.alpha * shapeAlpha),
+                                                    startAngle = 180f,
+                                                    sweepAngle = 180f,
+                                                    useCenter = false,
+                                                    topLeft = Offset(shapeLeft, shapeTop),
+                                                    size = shapeSize,
+                                                    style = strokeStyle
+                                                )
+                                            } else {
+                                                drawOval(
+                                                    color = stColor.copy(alpha = stColor.alpha * shapeAlpha),
+                                                    topLeft = Offset(shapeLeft, shapeTop),
+                                                    size = shapeSize,
+                                                    style = strokeStyle
+                                                )
+                                            }
                                         }
                                     }
                                     else -> {
@@ -664,8 +688,9 @@ fun NxprcCanvasPreview(
             }
 
         // Center text glyph or multi-text layers with embossed 3D lighting and tactile synchronization
-        val glyph = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.CenterGlyph>().firstOrNull() }
-        val textLayers = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.TextLayer>() }
+        val effectiveLayers = activeLayersOnly ?: document.canvas.layers
+        val glyph = remember(document, effectiveLayers) { effectiveLayers.filterIsInstance<CanvasLayer.CenterGlyph>().firstOrNull() }
+        val textLayers = remember(document, effectiveLayers) { effectiveLayers.filterIsInstance<CanvasLayer.TextLayer>() }
         val viewBox = document.canvas.viewBoxWidth.coerceAtLeast(1f)
         val viewBoxH = document.canvas.viewBoxHeight.coerceAtLeast(1f)
         val viewScale = minOf(sizeDp.toFloat() / viewBox, sizeDp.toFloat() / viewBoxH)
@@ -712,7 +737,7 @@ fun NxprcCanvasPreview(
                     )
                 }
             }
-        } else if (glyph != null || document.canvas.layers.any { it is CanvasLayer.CenterGlyph }) {
+        } else if (glyph != null) {
             val centerText = glyph?.text ?: document.manifest.defaultControl
             val textColor = glyph?.textColor ?: 0xFFF5F5F5L
             val baseFontSp = glyph?.fontSizeSp ?: (viewBox * 0.32f)
