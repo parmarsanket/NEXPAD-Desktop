@@ -875,11 +875,15 @@ class NxprcCategoryParityTest {
         }
 
         if (maxX > minX && maxY > minY) {
-            val pad = 10
-            val cropX = (minX - pad).coerceAtLeast(0)
-            val cropY = (minY - pad).coerceAtLeast(0)
-            val cropW = (maxX - minX + pad * 2).coerceAtMost(img.width - cropX)
-            val cropH = (maxY - minY + pad * 2).coerceAtMost(img.height - cropY)
+            val pad = 12
+            val cx = img.width / 2
+            val cy = img.height / 2
+            val halfW = maxOf(Math.abs(cx - minX), Math.abs(maxX - cx)) + pad
+            val halfH = maxOf(Math.abs(cy - minY), Math.abs(maxY - cy)) + pad
+            val cropX = (cx - halfW).coerceAtLeast(0)
+            val cropY = (cy - halfH).coerceAtLeast(0)
+            val cropW = (halfW * 2).coerceAtMost(img.width - cropX)
+            val cropH = (halfH * 2).coerceAtMost(img.height - cropY)
             return img.getSubimage(cropX, cropY, cropW, cropH)
         }
         return img
