@@ -13,17 +13,13 @@
      HISTORY.md         ROADMAP.md       ARCHITECTURE.md
      "Where we         "Where we're       "How it
       came from"          going"           works"
-          │
-          ▼
-      Git Tags
-   (v0.1 ──► v0.32)
 ```
 
 ---
 
 ## 🧭 Documentation Pillars
 
-- 📖 **[`HISTORY.md`](./HISTORY.md)** — **Where We Came From**: Chronological timeline of all 32 milestones from `v0.1` (Master Genesis) to `v0.32` (Universal Timeline Track Studio).
+- 📖 **[`HISTORY.md`](./HISTORY.md)** — **Where We Came From**: Chronological timeline of all 32 development branches from Master Genesis to the Universal Timeline Track Studio.
 - 🗺️ **[`ROADMAP.md`](./ROADMAP.md)** — **Where We're Going**: Inno Setup / MSIX zero-click packaging, DualSense haptic emulation, and standalone background driver services.
 - 🏛️ **[`ARCHITECTURE.md`](./ARCHITECTURE.md)** — **How It Works**: ViGEmBus C++ driver JNA kernel bindings, 1000Hz UdpServer, AOA WinUSB endpoints, and Compose Multiplatform architecture.
 
