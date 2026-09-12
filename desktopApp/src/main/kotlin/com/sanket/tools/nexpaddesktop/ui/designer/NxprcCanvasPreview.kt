@@ -44,6 +44,35 @@ private fun createNxprcColorFilter(filter: FilterDef): ColorFilter? {
     )))
 }
 
+private fun createHueRotateColorMatrix(degrees: Float): FloatArray {
+    val rad = (degrees % 360f) * (Math.PI / 180.0).toFloat()
+    val cosVal = kotlin.math.cos(rad)
+    val sinVal = kotlin.math.sin(rad)
+
+    val lumR = 0.213f
+    val lumG = 0.715f
+    val lumB = 0.072f
+
+    val m00 = lumR + cosVal * (1.0f - lumR) + sinVal * (-lumR)
+    val m01 = lumG + cosVal * (-lumG) + sinVal * (-lumG)
+    val m02 = lumB + cosVal * (-lumB) + sinVal * (1.0f - lumB)
+
+    val m10 = lumR + cosVal * (-lumR) + sinVal * (0.143f)
+    val m11 = lumG + cosVal * (1.0f - lumG) + sinVal * (0.140f)
+    val m12 = lumB + cosVal * (-lumB) + sinVal * (-0.283f)
+
+    val m20 = lumR + cosVal * (-lumR) + sinVal * (-(1.0f - lumR))
+    val m21 = lumG + cosVal * (-lumG) + sinVal * (lumG)
+    val m22 = lumB + cosVal * (1.0f - lumB) + sinVal * (lumB)
+
+    return floatArrayOf(
+        m00, m01, m02, 0f, 0f,
+        m10, m11, m12, 0f, 0f,
+        m20, m21, m22, 0f, 0f,
+        0f,  0f,  0f,  1f, 0f
+    )
+}
+
 @Composable
 fun NxprcCanvasPreview(
     document: NxprcDocument,
@@ -75,6 +104,7 @@ fun NxprcCanvasPreview(
     // Infinite transitions for idle animations — only active when needed
     val needsPulse = document.animations.idleType == "PULSE"
     val needsRotation = document.animations.idleType == "ROTATE"
+    val needsRgbCycle = document.animations.idleType == "RGB_CYCLE"
     val infiniteTransition = rememberInfiniteTransition()
 
     val pulseAlpha = if (needsPulse) {
@@ -99,6 +129,21 @@ fun NxprcCanvasPreview(
         ).value
     } else 0f
 
+    val rgbHueAngle = if (needsRgbCycle) {
+        infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(document.animations.idleDurationMs.coerceAtLeast(1000), easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            )
+        ).value
+    } else 0f
+
+    val rgbFilter = if (needsRgbCycle) {
+        ColorFilter.colorMatrix(ColorMatrix(createHueRotateColorMatrix(rgbHueAngle)))
+    } else null
+
     Box(
         modifier = modifier
             .size(sizeDp.dp)
@@ -120,6 +165,9 @@ fun NxprcCanvasPreview(
                     scaleX = scaleAnim
                     scaleY = scaleAnim
                     translationY = pressOffsetYAnim * density
+                    if (rgbFilter != null) {
+                        colorFilter = rgbFilter
+                    }
                 },
             contentAlignment = Alignment.Center
         ) {
