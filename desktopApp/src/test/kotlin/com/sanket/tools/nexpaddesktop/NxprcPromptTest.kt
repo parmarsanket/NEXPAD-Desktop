@@ -166,17 +166,21 @@ class NxprcPromptTest {
 
             // 2. Instruction Priority & Conflict Resolution
             assertTrue(prompt.contains("INSTRUCTION PRIORITY & CONFLICT RESOLUTION"), "$tag missing Instruction Priority")
+            assertTrue(prompt.contains("The Golden Rule"), "$tag missing The Golden Rule")
             assertTrue(prompt.contains("User's Explicit Customization"), "$tag missing User's Explicit Customization rule")
             assertTrue(prompt.contains("Conflict Rule"), "$tag missing Conflict Rule")
 
             // 3. Rule Classification Tags
-            assertTrue(prompt.contains("[REQUIRED]"), "$tag missing [REQUIRED] classification")
+            assertTrue(prompt.contains("[GLOBAL-REQUIRED]"), "$tag missing [GLOBAL-REQUIRED] classification")
+            assertTrue(prompt.contains("[COMPONENT-REQUIRED]"), "$tag missing [COMPONENT-REQUIRED] classification")
             assertTrue(prompt.contains("[RECOMMENDED]"), "$tag missing [RECOMMENDED] classification")
-            assertTrue(prompt.contains("[USER OVERRIDE]"), "$tag missing [USER OVERRIDE] classification")
+            assertTrue(prompt.contains("[USER-OVERRIDE]"), "$tag missing [USER-OVERRIDE] classification")
+            assertTrue(prompt.contains("[OPTIONAL]"), "$tag missing [OPTIONAL] classification")
 
             // 4. Category Semantics & Meaning
             assertTrue(prompt.contains("CATEGORY SEMANTICS & INTERACTION MEANING:"), "$tag missing Category Semantics")
-            assertTrue(prompt.contains("Touch Affordance"), "$tag missing Touch Affordance")
+            assertTrue(prompt.contains("Visual Affordance"), "$tag missing Visual Affordance")
+            assertTrue(prompt.contains("Interaction Meaning"), "$tag missing Interaction Meaning")
 
             // 5. Capability-Driven Utility Guidance
             assertTrue(prompt.contains("COMPILER CAPABILITIES — WHAT PRIMITIVES ARE BEST FOR:"), "$tag missing Capabilities section")
@@ -190,6 +194,7 @@ class NxprcPromptTest {
 
             // 7. Structured User Customization Schema
             assertTrue(prompt.contains("USER CUSTOMIZATION SCHEMA:"), "$tag missing Structured Customization Schema")
+            assertTrue(prompt.contains("The schema is a convenience, not a limitation"), "$tag missing schema convenience note")
             assertTrue(prompt.contains("STYLE"), "$tag missing STYLE slot")
 
             // 8. Syntax-Only Starter Template Anti-Copy Protection
