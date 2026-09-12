@@ -140,5 +140,62 @@ class NxprcPromptTest {
         assertTrue(templateDpad.contains("--spring-damping"))
         assertTrue(templateLT.contains("--spring-damping"))
     }
+
+    @Test
+    fun allCategoriesExposeUniversalGenerativeDesignArchitecture() {
+        val categories = listOf(
+            "BUTTON" to "A",
+            "DPAD"   to "UP",
+            "TRIGGER" to "RT",
+            "BUMPER"  to "RB",
+            "JOYSTICK" to "LS",
+            "SYSTEM"  to "MENU"
+        )
+
+        categories.forEach { (category, control) ->
+            val prompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = control,
+                category = category,
+                widthDp = 96,
+                heightDp = 96
+            )
+            val tag = "[$category/$control]"
+
+            // 1. Core Rules for Small Models
+            assertTrue(prompt.contains("CORE RULES (QUICK SUMMARY FOR ALL MODELS):"), "$tag missing Core Rules anchor")
+
+            // 2. Instruction Priority & Conflict Resolution
+            assertTrue(prompt.contains("INSTRUCTION PRIORITY & CONFLICT RESOLUTION"), "$tag missing Instruction Priority")
+            assertTrue(prompt.contains("User's Explicit Customization"), "$tag missing User's Explicit Customization rule")
+            assertTrue(prompt.contains("Conflict Rule"), "$tag missing Conflict Rule")
+
+            // 3. Rule Classification Tags
+            assertTrue(prompt.contains("[REQUIRED]"), "$tag missing [REQUIRED] classification")
+            assertTrue(prompt.contains("[RECOMMENDED]"), "$tag missing [RECOMMENDED] classification")
+            assertTrue(prompt.contains("[USER OVERRIDE]"), "$tag missing [USER OVERRIDE] classification")
+
+            // 4. Category Semantics & Meaning
+            assertTrue(prompt.contains("CATEGORY SEMANTICS & INTERACTION MEANING:"), "$tag missing Category Semantics")
+            assertTrue(prompt.contains("Touch Affordance"), "$tag missing Touch Affordance")
+
+            // 5. Capability-Driven Utility Guidance
+            assertTrue(prompt.contains("COMPILER CAPABILITIES — WHAT PRIMITIVES ARE BEST FOR:"), "$tag missing Capabilities section")
+            assertTrue(prompt.contains("radial-gradient"), "$tag missing radial-gradient utility")
+            assertTrue(prompt.contains("conic-gradient"), "$tag missing conic-gradient utility")
+
+            // 6. Design Quality & Restraint
+            assertTrue(prompt.contains("DESIGN QUALITY CRITERIA"), "$tag missing Design Quality Criteria")
+            assertTrue(prompt.contains("DESIGN RESTRAINT"), "$tag missing Design Restraint")
+            assertTrue(prompt.contains("minimum number of layers"), "$tag missing minimum layers rule")
+
+            // 7. Structured User Customization Schema
+            assertTrue(prompt.contains("USER CUSTOMIZATION SCHEMA:"), "$tag missing Structured Customization Schema")
+            assertTrue(prompt.contains("STYLE"), "$tag missing STYLE slot")
+
+            // 8. Syntax-Only Starter Template Anti-Copy Protection
+            assertTrue(prompt.contains("This template demonstrates document syntax only"), "$tag missing anti-copy template warning")
+        }
+    }
 }
+
 

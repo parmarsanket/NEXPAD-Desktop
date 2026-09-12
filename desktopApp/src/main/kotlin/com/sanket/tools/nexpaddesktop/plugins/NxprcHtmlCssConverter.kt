@@ -1518,38 +1518,104 @@ object NxprcHtmlCssConverter {
 # NEXPAD 10/10 VIRTUAL CONTROLLER COMPONENT SPECIFICATION
 **Engineered & Validated for Frontier Generative AI Models & NXPRC 10/10 Protocol Engine:**
 - OpenAI ChatGPT (GPT-4o, GPT-4, o1, o3-mini)
-- Anthropic Claude (Claude 3.5 Sonnet, Claude 3.7 Sonnet)
+- Anthropic Claude (Claude 3.7 Sonnet, Claude 3.5 Sonnet)
 - Google Gemini (Gemini 2.5 Flash / Pro, Gemini 2.0 Flash, Gemini 1.5 Pro)
 - DeepSeek (DeepSeek-V3, DeepSeek-R1)
-- xAI Grok (Grok 2, Grok 3)
-- Or any modern frontier LLM with HTML/CSS/SVG code generation capabilities
+- xAI Grok (Grok 3, Grok 2)
+- Or any modern LLM with HTML/CSS/SVG code generation capabilities
+
+## CORE RULES (QUICK SUMMARY FOR ALL MODELS):
+1. Build ONE virtual controller component inside a single `<button>` element.
+2. Follow the user's visual request first — user customization always wins.
+3. Keep the component self-contained: one `<style>` block, system fonts, zero external assets.
+4. Use only supported HTML/CSS/SVG primitives (no unsupported web page APIs).
+5. Preserve the component's interaction meaning (category semantics), not a mandatory shape.
+6. Make the design visually coherent with physically believable depth and lighting.
+7. Use creativity when details are unspecified — never default to a generic circle unless requested.
+8. Design with restraint: do not dump all effects at once; prefer minimal required layers.
+9. Ensure the label/icon remains clearly readable with strong contrast.
+10. Return ONLY the complete, self-contained HTML/CSS inside one code block.
 """.trimIndent()
 
 private fun engineBoundaries(rootClass: String): String = """
-### STRICT NEXPAD COMPILER CONTRACT — FOLLOW THIS EXACTLY:
-1. **Single compiled component**: `<body>` must contain exactly one root `<button class="$rootClass" data-control="..." data-category="..." data-name="...">`. Keep every visual child inside it. The compiler selects this button and does not render a general web page.
-2. **Portable self-contained document**: Include one `<style>` block, one root button, and no external dependencies (no external `<link>`, `@import`, remote font files, or external web scripts). System fonts only.
-3. **Paint & vector primitives (10/10 Protocol Engine)**:
-   - Fills: `background`/`background-color`, multi-stop `linear-gradient`, `radial-gradient`, and `conic-gradient`.
-   - Modern CSS Colors: hex (`#rrggbbaa`), `rgb()`, `rgba()`, `hsl()`, `hwb()`, `oklch()`, and `color(display-p3 ...)`.
-   - Borders & Outlines: explicit `border` (both `solid` and `dashed` are fully supported), `border-radius` (uniform or 4-corner), and `outline`.
-   - Multi-tier Box Shadows: multiple inset and outset shadows (`box-shadow: 0 8px 24px rgba(0,0,0,0.65), inset 0 2px 4px rgba(255,255,255,0.4)`).
-   - Optical Filters: Use GPU `filter: blur()`, `brightness()`, `contrast()`, `saturate()`, `hue-rotate()`, or SVG `<filter>` graphs for optical effects. Do not use `backdrop-filter` or `mix-blend-mode`.
-   - SVG Graphics & Filter Nodes: Embedded `<svg>` with `<path d="...">`, `<circle>`, `<rect>`, `<polygon>`, `<g>`, and `<filter id="...">` graphs (`<feGaussianBlur>`, `<feColorMatrix>`, `<feDropShadow>`, `<feBlend>`) are fully compiled to native Compose vector and filter graphs.
-4. **Safe geometry & shapes**: Use `px` dimensions for the root and visual children. Use `border-radius` or `clip-path: polygon(...)` for circles, capsules, stars, diamonds, hexagons, handmade, asymmetric, and organic silhouettes. Preserve the user's requested shape, proportions, and aesthetic.
-5. **Layout & flexbox**:
-   - Relative root with absolute layered children: Set `position: relative` on the root. Set `position: absolute`, `left`, `top`, `width`, and `height` on decorative children as needed. Use `z-index` for layer ordering.
-   - Flexbox layouts: Fully supported for alignment, flow, and grouped components. Use `display: flex`, `flex-direction: row | column`, `flex-wrap: wrap | nowrap`, `gap: ...px`, `row-gap`, `column-gap`, `justify-content`, and `align-items`.
-6. **Typographic auto-wrapping & text**:
-   - Text must be real DOM text: Put labels, legends, and decorative symbols in actual `<span>`/`<div>` text nodes. Multi-label layouts (such as 'LT' + 'BRAKE' or directional markers) are fully supported.
-   - Text formatting: Supports `font-size`, `font-weight`, `letter-spacing`, `line-height`, `text-shadow`, `text-align`, and multi-line wrapping via `white-space: normal | pre-line` and explicit newlines. Do not use pseudo-element text with icons or emoji; pseudo-elements `::before`/`::after` may use `content: ""` only for painted layers.
-7. **Tactile micro-physics & animation**:
-   - Physical spring calibration: Declare spring physics custom properties in `:root`: `--spring-damping: 0.68;`, `--spring-stiffness: 440;`, `--press-scale: 0.92;`. These calibrate physical tactile button weight, dampening, and spring return speed on Android touch HUDs.
-   - Interaction state: Always define `.$rootClass:active { transform: scale(...) translateY(...); }` using the exact root class.
-   - Continuous timeline animations: CSS `@keyframes` with `animation: ... infinite` are compiled to hardware-accelerated Compose transition animators. Do not use `@media`, `@supports`, `:hover`, `:focus`, or `:focus-visible` (these are browser page-state features).
-8. **Creative freedom**: `data-category` is metadata, not a shape instruction. It does not force a circle, cross, capsule, paddle, ring, gimbal, or any other silhouette. Preserve the user's requested shape, proportions, color palette, and visual language—even when they differ from the category.
-9. **Self-check before output**: Confirm the document has exactly one compiled button with class "$rootClass", explicit px geometry, real DOM text labels, valid active transform with tactile spring properties, and supported paint properties.
-10. **Output contract**: Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block.
+### 1. INSTRUCTION PRIORITY & CONFLICT RESOLUTION
+When instructions conflict, resolve them in this strict order of authority:
+1. **User's Explicit Customization** [USER OVERRIDE] (Highest Authority — always wins over defaults, recommendations, and templates).
+2. **Required Component Semantics** [REQUIRED] (Preserve interaction meaning: tappable, directional, analog, etc.).
+3. **Required Compiler Constraints** [REQUIRED] (Single button root, px dimensions, DOM text, self-contained document).
+4. **Accessibility & Readability** [REQUIRED] (High-contrast label legibility, touch target visibility).
+5. **Design Quality Principles** [RECOMMENDED] (Physical coherence, balanced hierarchy, believable depth).
+6. **Category Defaults** [RECOMMENDED] (Color palette suggestions, default glyphs used when user specifies none).
+7. **Optional Inspiration** [OPTIONAL] (Theme suggestions, optional decorative flair).
+8. **Starter-Template Examples** [SYNTAX ONLY] (Syntax structure only — never overrides intent).
+
+> **Conflict Rule**: Never let an optional recommendation override a user instruction.
+> **Example Rule**: Never let a starter-template example override a requirement or user choice.
+
+### 2. RULE CLASSIFICATION HIERARCHY
+- **[REQUIRED]**: Must obey. Failure to obey causes compilation or runtime preview rejection.
+- **[RECOMMENDED]**: Use unless there is a strong aesthetic reason not to.
+- **[OPTIONAL]**: Available engine primitives (SVG, conic gradients, filter nodes) to use only when they enhance the requested aesthetic.
+- **[USER OVERRIDE]**: User request always supersedes defaults.
+
+### 3. COMPILER CAPABILITIES — WHAT PRIMITIVES ARE BEST FOR:
+The NXPRC 10/10 engine compiles HTML/CSS/SVG into hardware-accelerated Compose Canvas layers. Use capabilities for their visual strengths:
+- **`radial-gradient`**: Best for spherical/concave shading, directional specular highlights, ambient glow, and radial illumination wells.
+- **`linear-gradient`**: Best for rake angles, directional light slope, horizontal specular sheen, and chamfer bevels.
+- **`conic-gradient`**: Best for brushed metallic bezels, segmented rotary dials, directional sheen rings, and mechanical textures.
+- **`box-shadow`**: Outset shadows for physical socket elevation and ambient halos; Inset shadows for 3D spherical bevel rims and recessed sockets.
+- **Embedded `<svg>` & Vector Nodes**: Best for custom vector iconography, chevrons, emblems, and technical markings (`<path d="...">`, `<circle>`, `<rect>`, `<polygon>`, `<g>`).
+- **SVG `<filter>` Graphs**: Best for optical graph effects (`<feGaussianBlur>`, `<feColorMatrix>`, `<feDropShadow>`, `<feBlend>`).
+- **Flexbox Layout**: Best for grouped items (menu bars, grip ribs, multi-label stacks), flow, and alignment (`display: flex`, `flex-direction`, `flex-wrap: wrap`, `gap`, `row-gap`, `column-gap`, `justify-content`, `align-items`).
+- **Typographic Auto-Wrapping**: Real DOM text formatting with `font-size`, `font-weight`, `letter-spacing`, `line-height`, `text-shadow`, and multi-line wrapping via `white-space: normal | pre-line` and explicit newlines.
+- **Modern CSS Colors**: Hex (`#rrggbbaa`), `rgb()`, `rgba()`, `hsl()`, `hwb()`, `oklch()`, and `color(display-p3 ...)`.
+
+### 4. STRICT NEXPAD COMPILER BOUNDARIES — FOLLOW THIS EXACTLY:
+1. **Single compiled component [REQUIRED]**: `<body>` must contain exactly one root `<button class="$rootClass" data-control="..." data-category="..." data-name="...">`. Keep every visual child inside it. The compiler selects this button and does not render a general web page.
+2. **Portable self-contained document [REQUIRED]**: Include one `<style>` block, one root button, and no external dependencies (no external `<link>`, `@import`, remote font files, or external web scripts). System fonts only.
+3. **Safe geometry & shapes [REQUIRED]**: Use `px` dimensions for the root and visual children. Use `border-radius` or `clip-path: polygon(...)` for circles, capsules, stars, diamonds, hexagons, handmade, asymmetric, and organic silhouettes. Preserve the user's requested shape, proportions, and aesthetic.
+4. **Explicit layers & positioning [REQUIRED]**: Set `position: relative` on the root. Set `position: absolute`, `left`, `top`, `width`, and `height` on decorative children as needed. Use `z-index` only for layer ordering.
+5. **Text must be real DOM text [REQUIRED]**: Put labels, legends, and decorative symbols in actual `<span>`/`<div>` text nodes. Multi-label layouts are fully supported. Do not use pseudo-element text with icons or emoji; pseudo-elements `::before`/`::after` may use `content: ""` only for painted layers.
+6. **Stable CSS only [REQUIRED]**: Do not use `@media`, `@supports`, `:hover`, `:focus`, or `:focus-visible` (these are browser page-state features). Use `$rootClass:active` only for press feedback.
+7. **Optical filter rule [REQUIRED]**: Use GPU `filter: blur()`, `brightness()`, `contrast()`, `saturate()`, `hue-rotate()`, or SVG `<filter>` graphs for optical effects. Do not use `backdrop-filter` or `mix-blend-mode`.
+8. **Tactile active interaction [REQUIRED]**: Always define `.$rootClass:active { transform: scale(...) translateY(...); }` using the exact root class.
+9. **Tactile spring micro-physics [REQUIRED]**: Declare spring physics custom properties in `:root`:
+   `--spring-damping: 0.68;`, `--spring-stiffness: 440;`, `--press-scale: 0.92;`
+   These calibrate physical tactile button weight, dampening, and spring return speed on mobile touch HUDs.
+10. **Creative freedom [REQUIRED]**: `data-category` is metadata, not a shape instruction. It does not force a circle, cross, capsule, paddle, ring, gimbal, or any other silhouette. Preserve the user's requested shape, proportions, color palette, and visual language—even when they differ from the category.
+
+### 5. DESIGN QUALITY CRITERIA & DESIGN RESTRAINT
+**Design Quality Criteria**:
+A successful virtual controller component optimizes for:
+1. *Recognizability*: Instantly identifiable key identity during gameplay.
+2. *Legibility*: High contrast label readable at small handheld touch scales.
+3. *Touch Affordance*: Visually communicates pressability, depth, and tactile actuation.
+4. *Visual Hierarchy*: Primary glyph stands out above decorative bezels and ambient halos.
+5. *Material Coherence*: Shading, highlights, and borders reflect a consistent material (matte, metallic, neon, glass).
+6. *Appropriate Depth*: Multi-tier inset/outset shadows creating realistic tactile socket recess.
+
+**Design Restraint ("Don't Overdesign")**:
+- Do not use every supported effect. Prefer the minimum number of layers required to achieve the requested aesthetic.
+- Avoid unnecessary glow, excessive shadows, or decorative elements that visually compete with the button label.
+
+### 6. DESIGN DECISION RULES:
+The model operates as an autonomous designer inside the compiler boundary:
+- Choose geometry that fits the concept (do not default to a circle unless the requested concept benefits from it).
+- Choose lighting that supports the material (specular highlights for metal/glass, soft ambient for matte plastic).
+- Choose depth that supports the interaction.
+- If user customization details are unspecified, exercise creative judgment aligned with the overall theme.
+
+### 7. SELF-CHECK CHECKLIST:
+Self-check before output:
+- Exactly one root `<button class="$rootClass"` with matching `data-control`, `data-category`, and `data-name`.
+- Real DOM text labels with strong contrast and readable font size.
+- Explicit px dimensions on root and layered children (`Set position: absolute, left, top, width, and height`).
+- Valid active state `.$rootClass:active` with spring micro-physics (`--spring-damping`, `--spring-stiffness`) in `:root`.
+- No forbidden properties (`Do not use @media`, no external fonts, no external scripts).
+- Preserves the user's requested shape and applies appropriate design restraint.
+
+### 8. AUTHORITATIVE OUTPUT CONTRACT:
+Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text outside it.
 """.trimIndent()
 
     private fun generateAbxyPrompt(control: String, widthDp: Int, heightDp: Int): String {
@@ -1565,18 +1631,23 @@ ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Face Action Button for NEXPAD.
 
-### TARGET COMPONENT: ABXY FACE BUTTON
-- **Button Key**: $control (Standard Gamepad Face Button)
-- **Category**: BUTTON
-- **Target Dimensions**: width: ${widthDp}px; height: ${heightDp}px; (fixed canvas size; choose any silhouette)
-- **Standard Color Profile**: $colorName (Accent: $hexCode, Glow: $rgbGlow)
-- **Recommended Core**: $coreGrad
-- **Design Intent (OPTIONAL INSPIRATION)**: Momentary tactile action feedback with readable labeling, layered depth, directional lighting, and physical spring depression. The silhouette is completely yours.
+### TARGET COMPONENT IDENTITY:
+- **Button Key [REQUIRED]**: $control (Standard Gamepad Face Button)
+- **Category [REQUIRED]**: BUTTON
+- **Target Dimensions [REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
+- **Standard Color Profile [RECOMMENDED]**: $colorName (Accent: $hexCode, Glow: $rgbGlow)
+- **Standard Core [RECOMMENDED]**: $coreGrad
+
+### CATEGORY SEMANTICS & INTERACTION MEANING:
+- **Category**: BUTTON (Discrete Momentary Action Control)
+- **Interaction Purpose**: Momentary discrete user actuation with tactile depression and instant spring release.
+- **Touch Affordance**: Prominent elevation, tactile socket well, clear pressability, high-contrast center label.
+- **Geometry**: `data-category` is metadata, not a shape instruction. The silhouette is completely yours: circle, hexagon, rounded rect, diamond, shield, or organic silhouette. Preserve the user's requested shape.
 
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
 The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
 1. **Root Button Tag (`<button class="nexpad-btn" data-control="$control" data-category="BUTTON" data-name="Action $control">`)**:
-   - `border-radius: 50%`: Compiled to native `CanvasLayer.BoxLayer` with oval/circular geometry (or use `clip-path: polygon(...)` for custom faceted geometries).
+   - `border-radius: 50%` (or `clip-path: polygon(...)` for custom faceted geometries).
    - `background`: Stack multiple `radial-gradient` layers:
      - Top-left specular highlight: `radial-gradient(circle at 28% 20%, rgba(255,255,255,0.8) 0%, transparent 35%)`
      - Bottom-right occlusion shadow: `radial-gradient(circle at 72% 80%, rgba(0,0,0,0.4) 0%, transparent 60%)`
@@ -1599,14 +1670,22 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
 
 ${engineBoundaries("nexpad-btn")}
 
+### USER CUSTOMIZATION SCHEMA:
+Specify your design preferences in the structured fields below (or describe them in free-form text). The AI will follow your explicit customization above all defaults:
+- **STYLE**: [e.g. Cyberpunk 2077 / Glassmorphism / Brushed Gunmetal / Retro Arcade / Minimal Flat / Anime Mecha / Custom]
+- **COLOR / ACCENT**: [e.g. Neon cyan & dark obsidian / Crimson & carbon / Custom palette (Default: $hexCode)]
+- **SHAPE / SILHOUETTE**: [e.g. Faceted octagon / Smooth capsule / Organic shield / Asymmetric shard (Default: Circular)]
+- **LABEL / GLYPH**: [e.g. "$control" / Custom text / SVG icon emblem (Default: "$control")]
+- **MATERIAL / TEXTURE**: [e.g. Matte polycarbonate / Anodized aluminum / Smoked translucent glass / Stippled rubber]
+- **LIGHTING & DEPTH**: [e.g. Top-left specular directional / Under-glow neon edge / Deep recessed socket]
+- **TACTILE PHYSICS**: [e.g. Snappy micro-switch / Heavy spring depression / Soft fluid damping]
+- **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
+
 ### OPTIONAL STARTER TEMPLATE (REFERENCE ONLY):
-Use this only to understand the expected document structure. Design freely, but do not copy any property that conflicts with the STRICT NEXPAD COMPILER CONTRACT above. Rebuild the geometry, colors, layers, and visual language with the supported subset:
+This template demonstrates document syntax only. Do NOT treat its colors, geometry, gradients, shadows, layer arrangement, typography, or proportions as design defaults. Build the visual design independently from the user's request:
 ```html
 ${getReferenceTemplate(control, "BUTTON")}
 ```
-
-### USER CUSTOMIZATION REQUEST:
-[Describe your desired visual aesthetic here, e.g. "Cyberpunk 2077 neon with dark carbon fiber", "Xbox Elite gunmetal brushed aluminum with glow", "PlayStation 5 frosted smoked glass with micro-dot texture", or "Retro arcade microswitch"]
 
 ### OUTPUT FORMAT CONTRACT:
 Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
@@ -1627,12 +1706,17 @@ ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller D-Pad Component for NEXPAD.
 
-### TARGET COMPONENT: DIRECTIONAL PAD (D-PAD)
-- **Button Key**: $control (${if (control.uppercase() == "DPAD") "Unified 4-Way Cross Pad" else "Directional Arrow Button"})
-- **Category**: DPAD
-- **Target Dimensions**: width: ${widthDp}px; height: ${heightDp}px;
-- **Directional Glyph**: $arrowGlyph
-- **Design Intent (OPTIONAL INSPIRATION)**: Preserve directional meaning for $control with clear visual feedback and tactile actuation. A cross-pad, arrow, wedge, star, organic form, or any other silhouette is valid; do not force a conventional D-pad shape.
+### TARGET COMPONENT IDENTITY:
+- **Button Key [REQUIRED]**: $control (${if (control.uppercase() == "DPAD") "Unified 4-Way Cross Pad" else "Directional Arrow Button"})
+- **Category [REQUIRED]**: DPAD
+- **Target Dimensions [REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px;
+- **Directional Glyph [RECOMMENDED]**: $arrowGlyph
+
+### CATEGORY SEMANTICS & INTERACTION MEANING:
+- **Category**: DPAD (Directional Navigation Control)
+- **Interaction Purpose**: Directional navigation with crisp actuation along cardinal or diagonal axes.
+- **Touch Affordance**: Directional meaning, central rocker pivot affordance, tactile directional zones.
+- **Geometry**: `data-category` is metadata, not a shape instruction. Cross, wedge, arrow, star, disc, or organic form are all valid. Preserve the user's requested shape.
 
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
 The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
@@ -1657,14 +1741,20 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
 
 ${engineBoundaries("dpad-btn")}
 
+### USER CUSTOMIZATION SCHEMA:
+Specify your design preferences in the structured fields below (or describe them in free-form text). The AI will follow your explicit customization above all defaults:
+- **STYLE**: [e.g. Stealth Matte Black / Cyberpunk High-Contrast Hazard / Retro Game Boy / Clean Minimal]
+- **COLOR / ACCENT**: [e.g. Electric Cyan / Neon Amber / Stealth Dark / Custom palette]
+- **SHAPE / SILHOUETTE**: [e.g. 12-point faceted cross / Segmented arrows / Radial disc / Wedge]
+- **DIRECTIONAL MARKINGS**: [e.g. Laser-etched arrows / Glowing chevrons / Raised tactile nubs]
+- **MATERIAL / TEXTURE**: [e.g. Textured ABS plastic / Brushed gunmetal / Rubberized grip]
+- **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
+
 ### OPTIONAL STARTER TEMPLATE (REFERENCE ONLY):
-Use this only to understand the expected document structure. Design freely, but do not copy any property that conflicts with the STRICT NEXPAD COMPILER CONTRACT above. Rebuild the geometry, colors, layers, and visual language with the supported subset:
+This template demonstrates document syntax only. Do NOT treat its colors, geometry, gradients, shadows, layer arrangement, typography, or proportions as design defaults. Build the visual design independently from the user's request:
 ```html
 ${getReferenceTemplate(control, "DPAD")}
 ```
-
-### USER CUSTOMIZATION REQUEST:
-[Describe your desired visual aesthetic here, e.g. "Stealth matte black with cyan directional laser engravings", "Retro Nintendo Game Boy matte dark gray cross", "Cyberpunk high-contrast hazard chevron styling", or "Mechanical arcade microswitch aesthetic"]
 
 ### OUTPUT FORMAT CONTRACT:
 Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
@@ -1679,12 +1769,17 @@ ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Analog Trigger for NEXPAD.
 
-### TARGET COMPONENT: ANALOG PULL TRIGGER ($control)
-- **Button Key**: $control (${if (control.uppercase() == "LT") "Left Trigger / Brake / Aim" else "Right Trigger / Throttle / Fire"})
-- **Category**: TRIGGER
-- **Target Dimensions**: width: ${widthDp}px; height: ${heightDp}px; (fixed canvas size; choose any silhouette)
-- **Labels**: Primary "$control" with sub-label "$subLabel"
-- **Design Intent (OPTIONAL INSPIRATION)**: Represent analog pull, pressure, and release with clear travel feedback. A paddle, wedge, ring, vertical bar, star, or any original silhouette is valid.
+### TARGET COMPONENT IDENTITY:
+- **Button Key [REQUIRED]**: $control (${if (control.uppercase() == "LT") "Left Trigger / Brake / Aim" else "Right Trigger / Throttle / Fire"})
+- **Category [REQUIRED]**: TRIGGER
+- **Target Dimensions [REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
+- **Labels [RECOMMENDED]**: Primary "$control" with sub-label "$subLabel"
+
+### CATEGORY SEMANTICS & INTERACTION MEANING:
+- **Category**: TRIGGER (Analog Progressive Pull Control)
+- **Interaction Purpose**: Analog pull, pressure, and progressive travel communication (throttle, brake, aim, fire).
+- **Touch Affordance**: Elongated stroke travel, traction friction ribs/grooves, downward pull physics (`scaleY(0.94) translateY(4px)`).
+- **Geometry**: `data-category` is metadata, not a shape instruction. Ergonomic paddle, wedge, vertical bar, ring, or custom form are all valid. Preserve the user's requested shape.
 
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
 The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
@@ -1707,14 +1802,20 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
 
 ${engineBoundaries("trigger-btn")}
 
+### USER CUSTOMIZATION SCHEMA:
+Specify your design preferences in the structured fields below (or describe them in free-form text). The AI will follow your explicit customization above all defaults:
+- **STYLE**: [e.g. Carbon Fiber Racing / Brembo Red Performance / Cyberpunk Neon Telemetry / Tactical Military]
+- **COLOR / ACCENT**: [e.g. Racing Red / Neon Magenta / Titanium Gray / Custom palette]
+- **SHAPE / SILHOUETTE**: [e.g. Ergonomic curved paddle / Angular wedge / Minimal capsule]
+- **TRACTION GRIP**: [e.g. Horizontal rubberized ribs / Stippled texture / Slotted heat vents]
+- **LABELS**: [e.g. "$control" + "$subLabel" / Icon only / Minimal single label]
+- **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
+
 ### OPTIONAL STARTER TEMPLATE (REFERENCE ONLY):
-Use this only to understand the expected document structure. Design freely, but do not copy any property that conflicts with the STRICT NEXPAD COMPILER CONTRACT above. Rebuild the geometry, colors, layers, and visual language with the supported subset:
+This template demonstrates document syntax only. Do NOT treat its colors, geometry, gradients, shadows, layer arrangement, typography, or proportions as design defaults. Build the visual design independently from the user's request:
 ```html
 ${getReferenceTemplate(control, "TRIGGER")}
 ```
-
-### USER CUSTOMIZATION REQUEST:
-[Describe your desired visual aesthetic here, e.g. "Carbon fiber racing trigger with Brembo red accents", "Cyberpunk neon magenta with digital pressure gauge gradient", "Military tactical grip with grooved stippling", or "Aerospace titanium with laser-etched telemetry"]
 
 ### OUTPUT FORMAT CONTRACT:
 Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
@@ -1726,11 +1827,16 @@ ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Shoulder Bumper for NEXPAD.
 
-### TARGET COMPONENT: SHOULDER BUMPER SWITCH ($control)
-- **Button Key**: $control (${if (control.uppercase() == "LB") "Left Bumper / Secondary Weapon" else "Right Bumper / Primary Weapon"})
-- **Category**: BUMPER
-- **Target Dimensions**: width: ${widthDp}px; height: ${heightDp}px; (fixed canvas size; choose any silhouette)
-- **Design Intent (OPTIONAL INSPIRATION)**: Represent a shallow shoulder click with clear press feedback. A capsule, tile, shard, star, handmade polygon, or any original silhouette is valid.
+### TARGET COMPONENT IDENTITY:
+- **Button Key [REQUIRED]**: $control (${if (control.uppercase() == "LB") "Left Bumper / Secondary Weapon" else "Right Bumper / Primary Weapon"})
+- **Category [REQUIRED]**: BUMPER
+- **Target Dimensions [REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
+
+### CATEGORY SEMANTICS & INTERACTION MEANING:
+- **Category**: BUMPER (Shoulder Switch Control)
+- **Interaction Purpose**: Shallow tactile shoulder actuation with crisp micro-switch click feedback.
+- **Touch Affordance**: Wide horizontal or wrap-around shoulder profile, specular sheen highlight, shallow press displacement.
+- **Geometry**: `data-category` is metadata, not a shape instruction. Wide capsule, curved wedge, shard, or custom polygon are all valid. Preserve the user's requested shape.
 
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
 The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
@@ -1753,14 +1859,19 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
 
 ${engineBoundaries("bumper-btn")}
 
+### USER CUSTOMIZATION SCHEMA:
+Specify your design preferences in the structured fields below (or describe them in free-form text). The AI will follow your explicit customization above all defaults:
+- **STYLE**: [e.g. Brushed Gunmetal Aluminum / Matte Stealth Carbon / Sci-Fi Thruster / Minimalist]
+- **COLOR / ACCENT**: [e.g. Electric Blue / Cyberpunk Yellow / Gunmetal / Custom palette]
+- **SHAPE / SILHOUETTE**: [e.g. Wide curved capsule / Angled faceted shoulder / Minimal tile]
+- **FINISH & SHEEN**: [e.g. Horizontal specular arc / Frosted matte / Edge illumination]
+- **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
+
 ### OPTIONAL STARTER TEMPLATE (REFERENCE ONLY):
-Use this only to understand the expected document structure. Design freely, but do not copy any property that conflicts with the STRICT NEXPAD COMPILER CONTRACT above. Rebuild the geometry, colors, layers, and visual language with the supported subset:
+This template demonstrates document syntax only. Do NOT treat its colors, geometry, gradients, shadows, layer arrangement, typography, or proportions as design defaults. Build the visual design independently from the user's request:
 ```html
 ${getReferenceTemplate(control, "BUMPER")}
 ```
-
-### USER CUSTOMIZATION REQUEST:
-[Describe your desired visual aesthetic here, e.g. "Brushed gunmetal aluminum with electric blue edge lighting", "Matte stealth carbon weave with subtle bevel", "Sci-fi spacecraft thruster bumper with glowing vents", or "Clean minimal Xbox Series style"]
 
 ### OUTPUT FORMAT CONTRACT:
 Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
@@ -1774,11 +1885,16 @@ ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Thumbstick Component for NEXPAD.
 
-### TARGET COMPONENT: ANALOG THUMBSTICK ($control)
-- **Button Key**: $control ($clickLabel Click)
-- **Category**: JOYSTICK
-- **Target Dimensions**: width: ${widthDp}px; height: ${heightDp}px; (fixed canvas size; choose any silhouette)
-- **Design Intent (OPTIONAL INSPIRATION)**: Represent analog movement and $clickLabel click actuation with readable state feedback. A gimbal, ring, square, abstract mark, organic form, or any original silhouette is valid.
+### TARGET COMPONENT IDENTITY:
+- **Button Key [REQUIRED]**: $control ($clickLabel Click)
+- **Category [REQUIRED]**: JOYSTICK
+- **Target Dimensions [REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
+
+### CATEGORY SEMANTICS & INTERACTION MEANING:
+- **Category**: JOYSTICK (Analog Centered Gimbal Control)
+- **Interaction Purpose**: Continuous 360-degree analog navigation and axial thumbstick click ($clickLabel actuation).
+- **Touch Affordance**: Outer gimbal socket well, concave thumb dome, concentric knurled grip texture for traction.
+- **Geometry**: `data-category` is metadata, not a shape instruction. Gimbal ring, dish, square housing, or stylized form are all valid. Preserve the user's requested shape.
 
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
 The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
@@ -1801,14 +1917,19 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
 
 ${engineBoundaries("stick-btn")}
 
+### USER CUSTOMIZATION SCHEMA:
+Specify your design preferences in the structured fields below (or describe them in free-form text). The AI will follow your explicit customization above all defaults:
+- **STYLE**: [e.g. Tactical Rubber Dome / Xbox Elite Magnetic Swappable / DualSense Two-Tone / Arcade Flight-Sim]
+- **COLOR / ACCENT**: [e.g. Neon Emerald Green / Cyberpunk Cyan / Stealth Black / Custom palette]
+- **THUMB DOME**: [e.g. Deep concave dish / Convex textured dome / Cross-hatch metallic surface]
+- **KNURLING & TRACTION**: [e.g. Concentric dashed rings / Radial tick marks / Diamond knurl texture]
+- **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
+
 ### OPTIONAL STARTER TEMPLATE (REFERENCE ONLY):
-Use this only to understand the expected document structure. Design freely, but do not copy any property that conflicts with the STRICT NEXPAD COMPILER CONTRACT above. Rebuild the geometry, colors, layers, and visual language with the supported subset:
+This template demonstrates document syntax only. Do NOT treat its colors, geometry, gradients, shadows, layer arrangement, typography, or proportions as design defaults. Build the visual design independently from the user's request:
 ```html
 ${getReferenceTemplate(control, "JOYSTICK")}
 ```
-
-### USER CUSTOMIZATION REQUEST:
-[Describe your desired visual aesthetic here, e.g. "Contoured tactical rubber dome with neon green grip ring", "Xbox Elite magnetic swappable metal stick with cross-hatch grip", "PlayStation DualSense two-tone concave dome", or "Arcade flight-sim gimbal joystick"]
 
 ### OUTPUT FORMAT CONTRACT:
 Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
@@ -1820,11 +1941,16 @@ ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller System/Utility Button for NEXPAD.
 
-### TARGET COMPONENT: SYSTEM / UTILITY BUTTON ($control)
-- **Button Key**: $control (${when(control.uppercase()) { "MENU" -> "Menu / Pause / Start"; "VIEW" -> "View / Back / Select"; else -> "Home / Guide / Nexus" }})
-- **Category**: SYSTEM
-- **Target Dimensions**: width: ${widthDp}px; height: ${heightDp}px;
-- **Design Intent (OPTIONAL INSPIRATION)**: Compact utility control with clear iconography and tactile click feedback. A sphere, pill, tile, emblem, star, or any original silhouette is valid.
+### TARGET COMPONENT IDENTITY:
+- **Button Key [REQUIRED]**: $control (${when(control.uppercase()) { "MENU" -> "Menu / Pause / Start"; "VIEW" -> "View / Back / Select"; else -> "Home / Guide / Nexus" }})
+- **Category [REQUIRED]**: SYSTEM
+- **Target Dimensions [REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px;
+
+### CATEGORY SEMANTICS & INTERACTION MEANING:
+- **Category**: SYSTEM (System & Utility Control)
+- **Interaction Purpose**: Secondary console utility actions (menu, pause, guide, view, options).
+- **Touch Affordance**: Compact, flush or low-profile footprint, immediate iconography recognition, subtle tactile click.
+- **Geometry**: `data-category` is metadata, not a shape instruction. Pill, sphere, tile, emblem, or custom form are all valid. Preserve the user's requested shape.
 
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
 The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
@@ -1850,14 +1976,19 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
 
 ${engineBoundaries("system-btn")}
 
+### USER CUSTOMIZATION SCHEMA:
+Specify your design preferences in the structured fields below (or describe them in free-form text). The AI will follow your explicit customization above all defaults:
+- **STYLE**: [e.g. Minimalist Matte Dark Pill / Cyberpunk Neon Toggle / Xbox Series Glass Guide / Brushed Steel Switch]
+- **COLOR / ACCENT**: [e.g. Subtle Cool White / Neon Yellow / Amber / Custom palette]
+- **SHAPE / SILHOUETTE**: [e.g. Compact pill / Circular guide emblem / Rounded tile]
+- **ICONOGRAPHY**: [e.g. Hamburger bars / Dual overlapping rectangles / Nexus sphere emblem]
+- **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
+
 ### OPTIONAL STARTER TEMPLATE (REFERENCE ONLY):
-Use this only to understand the expected document structure. Design freely, but do not copy any property that conflicts with the STRICT NEXPAD COMPILER CONTRACT above. Rebuild the geometry, colors, layers, and visual language with the supported subset:
+This template demonstrates document syntax only. Do NOT treat its colors, geometry, gradients, shadows, layer arrangement, typography, or proportions as design defaults. Build the visual design independently from the user's request:
 ```html
 ${getReferenceTemplate(control, "SYSTEM")}
 ```
-
-### USER CUSTOMIZATION REQUEST:
-[Describe your desired visual aesthetic here, e.g. "Minimalist matte dark pill with illuminated icon", "Cyberpunk neon yellow utility toggle", "Xbox Series glass guide button with white LED backlighting", or "Brushed steel flush console switch"]
 
 ### OUTPUT FORMAT CONTRACT:
 Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
