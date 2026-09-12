@@ -73,6 +73,36 @@ private fun createHueRotateColorMatrix(degrees: Float): FloatArray {
     )
 }
 
+internal fun evaluateAnimationTrack(track: AnimationTrack, progress: Float): Float {
+    if (track.keyframes.isEmpty()) return 0f
+    if (track.keyframes.size == 1) return track.keyframes[0].value
+
+    val p = progress.coerceIn(0f, 1f)
+    val sorted = track.keyframes
+
+    val afterIdx = sorted.indexOfFirst { it.fraction >= p }
+    if (afterIdx <= 0) {
+        return if (afterIdx == 0) sorted[0].value else sorted.last().value
+    }
+
+    val before = sorted[afterIdx - 1]
+    val after = sorted[afterIdx]
+
+    val span = after.fraction - before.fraction
+    if (span <= 0.00001f) return before.value
+
+    val localFraction = ((p - before.fraction) / span).coerceIn(0f, 1f)
+
+    val easedT = when (track.easing.uppercase()) {
+        "EASE_IN_OUT" -> localFraction * localFraction * (3f - 2f * localFraction)
+        "EASE_IN" -> localFraction * localFraction
+        "EASE_OUT" -> localFraction * (2f - localFraction)
+        else -> localFraction
+    }
+
+    return before.value + (after.value - before.value) * easedT
+}
+
 @Composable
 fun NxprcCanvasPreview(
     document: NxprcDocument,
@@ -140,8 +170,59 @@ fun NxprcCanvasPreview(
         ).value
     } else 0f
 
-    val rgbFilter = if (needsRgbCycle) {
-        ColorFilter.colorMatrix(ColorMatrix(createHueRotateColorMatrix(rgbHueAngle)))
+    // Dynamic Universal Timeline Track Sampling
+    val hasDynamicTracks = document.animations.tracks.isNotEmpty()
+    val trackDurationMs = document.animations.tracks.firstOrNull()?.durationMs ?: document.animations.idleDurationMs
+
+    val timelineProgress = if (hasDynamicTracks) {
+        infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(trackDurationMs.coerceAtLeast(200), easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            )
+        ).value
+    } else 0f
+
+    val trackScale = if (hasDynamicTracks) {
+        document.animations.tracks.firstOrNull { it.property == AnimatedProperty.SCALE }
+            ?.let { evaluateAnimationTrack(it, timelineProgress) } ?: 1f
+    } else 1f
+
+    val trackRotation = if (hasDynamicTracks) {
+        document.animations.tracks.firstOrNull { it.property == AnimatedProperty.ROTATION }
+            ?.let { evaluateAnimationTrack(it, timelineProgress) } ?: 0f
+    } else 0f
+
+    val trackOpacity = if (hasDynamicTracks) {
+        document.animations.tracks.firstOrNull { it.property == AnimatedProperty.OPACITY }
+            ?.let { evaluateAnimationTrack(it, timelineProgress) } ?: 1f
+    } else 1f
+
+    val trackTranslateX = if (hasDynamicTracks) {
+        document.animations.tracks.firstOrNull { it.property == AnimatedProperty.TRANSLATE_X }
+            ?.let { evaluateAnimationTrack(it, timelineProgress) } ?: 0f
+    } else 0f
+
+    val trackTranslateY = if (hasDynamicTracks) {
+        document.animations.tracks.firstOrNull { it.property == AnimatedProperty.TRANSLATE_Y }
+            ?.let { evaluateAnimationTrack(it, timelineProgress) } ?: 0f
+    } else 0f
+
+    val trackHueAngle = if (hasDynamicTracks) {
+        document.animations.tracks.firstOrNull { it.property == AnimatedProperty.HUE_ROTATE }
+            ?.let { evaluateAnimationTrack(it, timelineProgress) } ?: 0f
+    } else 0f
+
+    val activeHue = if (hasDynamicTracks && trackHueAngle != 0f) {
+        trackHueAngle
+    } else if (needsRgbCycle) {
+        rgbHueAngle
+    } else 0f
+
+    val rgbFilter = if (activeHue != 0f) {
+        ColorFilter.colorMatrix(ColorMatrix(createHueRotateColorMatrix(activeHue)))
     } else null
 
     Box(
@@ -162,9 +243,13 @@ fun NxprcCanvasPreview(
             modifier = Modifier
                 .size(sizeDp.dp)
                 .graphicsLayer {
-                    scaleX = scaleAnim
-                    scaleY = scaleAnim
-                    translationY = pressOffsetYAnim * density
+                    val finalScale = scaleAnim * trackScale
+                    scaleX = finalScale
+                    scaleY = finalScale
+                    rotationZ = if (hasDynamicTracks) trackRotation else 0f
+                    alpha = if (hasDynamicTracks) trackOpacity.coerceIn(0f, 1f) else 1f
+                    translationX = trackTranslateX * density
+                    translationY = (pressOffsetYAnim + trackTranslateY) * density
                     if (rgbFilter != null) {
                         colorFilter = rgbFilter
                     }
