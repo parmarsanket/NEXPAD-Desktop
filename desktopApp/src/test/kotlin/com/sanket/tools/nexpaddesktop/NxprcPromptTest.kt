@@ -100,4 +100,45 @@ class NxprcPromptTest {
             assertTrue(prompt.contains("REFERENCE ONLY"), "$tag missing REFERENCE ONLY label")
         }
     }
+
+    @Test
+    fun allCategoriesExposeTenOutOfTenEngineCapabilities() {
+        val categories = listOf(
+            "BUTTON" to "A",
+            "DPAD"   to "UP",
+            "TRIGGER" to "RT",
+            "BUMPER"  to "RB",
+            "JOYSTICK" to "LS",
+            "SYSTEM"  to "MENU"
+        )
+
+        categories.forEach { (category, control) ->
+            val prompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = control,
+                category = category,
+                widthDp = 96,
+                heightDp = 96
+            )
+            val tag = "[$category/$control]"
+
+            assertTrue(prompt.contains("--spring-damping"), "$tag missing spring-damping")
+            assertTrue(prompt.contains("--spring-stiffness"), "$tag missing spring-stiffness")
+            assertTrue(prompt.contains("<svg>"), "$tag missing SVG capability specification")
+            assertTrue(prompt.contains("10/10"), "$tag missing 10/10 specification badge")
+            assertTrue(prompt.contains("feGaussianBlur"), "$tag missing SVG filter graph specification")
+        }
+    }
+
+    @Test
+    fun starterTemplatesIncludeTactileSpringPhysics() {
+        val templateA = NxprcHtmlCssConverter.getReferenceTemplate("A", "BUTTON")
+        val templateDpad = NxprcHtmlCssConverter.getReferenceTemplate("DPAD", "DPAD")
+        val templateLT = NxprcHtmlCssConverter.getReferenceTemplate("LT", "TRIGGER")
+
+        assertTrue(templateA.contains("--spring-damping"))
+        assertTrue(templateA.contains("--spring-stiffness"))
+        assertTrue(templateDpad.contains("--spring-damping"))
+        assertTrue(templateLT.contains("--spring-damping"))
+    }
 }
+

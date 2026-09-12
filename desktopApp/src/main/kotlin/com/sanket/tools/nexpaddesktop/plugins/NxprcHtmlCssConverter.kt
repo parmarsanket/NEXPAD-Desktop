@@ -184,6 +184,9 @@ object NxprcHtmlCssConverter {
     --btn-size: 96px;
     --accent-glow: rgba(74, 222, 128, 0.7);
     --accent-core: #4ade80;
+    --spring-damping: 0.68;
+    --spring-stiffness: 440;
+    --press-scale: 0.92;
   }
 
   .nexpad-btn {
@@ -287,6 +290,9 @@ object NxprcHtmlCssConverter {
     --btn-size: 96px;
     --accent-glow: rgba(255, 51, 102, 0.7);
     --accent-core: #ff3366;
+    --spring-damping: 0.68;
+    --spring-stiffness: 440;
+    --press-scale: 0.92;
   }
 
   .nexpad-btn {
@@ -390,6 +396,9 @@ object NxprcHtmlCssConverter {
     --btn-size: 96px;
     --accent-glow: rgba(0, 176, 255, 0.7);
     --accent-core: #00b0ff;
+    --spring-damping: 0.68;
+    --spring-stiffness: 440;
+    --press-scale: 0.92;
   }
 
   .nexpad-btn {
@@ -493,6 +502,9 @@ object NxprcHtmlCssConverter {
     --btn-size: 96px;
     --accent-glow: rgba(255, 204, 0, 0.7);
     --accent-core: #ffcc00;
+    --spring-damping: 0.68;
+    --spring-stiffness: 440;
+    --press-scale: 0.92;
   }
 
   .nexpad-btn {
@@ -596,6 +608,9 @@ object NxprcHtmlCssConverter {
     --dpad-size: 80px;
     --accent: #00F0FF;
     --accent-glow: rgba(0, 240, 255, 0.5);
+    --spring-damping: 0.72;
+    --spring-stiffness: 480;
+    --press-scale: 0.92;
   }
   .dpad-btn {
     width: var(--dpad-size);
@@ -663,6 +678,9 @@ object NxprcHtmlCssConverter {
     --cross-size: 140px;
     --accent: #00F0FF;
     --accent-glow: rgba(0, 240, 255, 0.35);
+    --spring-damping: 0.72;
+    --spring-stiffness: 480;
+    --press-scale: 0.95;
   }
   .dpad-cross {
     width: var(--cross-size);
@@ -728,6 +746,9 @@ object NxprcHtmlCssConverter {
   :root {
     --accent: #FF3366;
     --accent-glow: rgba(255, 51, 102, 0.5);
+    --spring-damping: 0.65;
+    --spring-stiffness: 380;
+    --press-scale: 0.94;
   }
   .trigger-btn {
     width: 72px;
@@ -789,6 +810,9 @@ object NxprcHtmlCssConverter {
   :root {
     --accent: #00F0FF;
     --accent-glow: rgba(0, 240, 255, 0.35);
+    --spring-damping: 0.75;
+    --spring-stiffness: 520;
+    --press-scale: 0.96;
   }
   .bumper-btn {
     width: 120px;
@@ -841,6 +865,9 @@ object NxprcHtmlCssConverter {
     --stick-size: 100px;
     --accent: #4ADE80;
     --accent-glow: rgba(74, 222, 128, 0.25);
+    --spring-damping: 0.70;
+    --spring-stiffness: 420;
+    --press-scale: 0.92;
   }
   .stick-btn {
     width: var(--stick-size);
@@ -897,6 +924,11 @@ object NxprcHtmlCssConverter {
 <head>
 <meta charset="UTF-8">
 <style>
+  :root {
+    --spring-damping: 0.78;
+    --spring-stiffness: 500;
+    --press-scale: 0.92;
+  }
   .system-btn {
     width: 64px;
     height: 44px;
@@ -942,6 +974,9 @@ object NxprcHtmlCssConverter {
     --dpad-size: 80px;
     --accent: #00F0FF;
     --accent-glow: rgba(0, 240, 255, 0.5);
+    --spring-damping: 0.72;
+    --spring-stiffness: 480;
+    --press-scale: 0.92;
   }
   .dpad-btn {
     width: var(--dpad-size);
@@ -1009,6 +1044,9 @@ object NxprcHtmlCssConverter {
     --dpad-size: 80px;
     --accent: #00F0FF;
     --accent-glow: rgba(0, 240, 255, 0.5);
+    --spring-damping: 0.72;
+    --spring-stiffness: 480;
+    --press-scale: 0.92;
   }
   .dpad-btn {
     width: var(--dpad-size);
@@ -1076,6 +1114,9 @@ object NxprcHtmlCssConverter {
     --dpad-size: 80px;
     --accent: #00F0FF;
     --accent-glow: rgba(0, 240, 255, 0.5);
+    --spring-damping: 0.72;
+    --spring-stiffness: 480;
+    --press-scale: 0.92;
   }
   .dpad-btn {
     width: var(--dpad-size);
@@ -1142,6 +1183,9 @@ object NxprcHtmlCssConverter {
   :root {
     --accent: #FF3366;
     --accent-glow: rgba(255, 51, 102, 0.5);
+    --spring-damping: 0.65;
+    --spring-stiffness: 380;
+    --press-scale: 0.94;
   }
   .trigger-btn {
     width: 72px;
@@ -1203,6 +1247,9 @@ object NxprcHtmlCssConverter {
   :root {
     --accent: #00F0FF;
     --accent-glow: rgba(0, 240, 255, 0.35);
+    --spring-damping: 0.75;
+    --spring-stiffness: 520;
+    --press-scale: 0.96;
   }
   .bumper-btn {
     width: 120px;
@@ -1253,8 +1300,11 @@ object NxprcHtmlCssConverter {
 <style>
   :root {
     --stick-size: 100px;
-    --accent: #00F0FF;
-    --accent-glow: rgba(0, 240, 255, 0.25);
+    --accent: #00B0FF;
+    --accent-glow: rgba(0, 176, 255, 0.4);
+    --spring-damping: 0.70;
+    --spring-stiffness: 420;
+    --press-scale: 0.92;
   }
   .stick-btn {
     width: var(--stick-size);
@@ -1311,6 +1361,11 @@ object NxprcHtmlCssConverter {
 <head>
 <meta charset="UTF-8">
 <style>
+  :root {
+    --spring-damping: 0.78;
+    --spring-stiffness: 500;
+    --press-scale: 0.92;
+  }
   .system-btn {
     width: 64px;
     height: 44px;
@@ -1347,6 +1402,11 @@ object NxprcHtmlCssConverter {
 <head>
 <meta charset="UTF-8">
 <style>
+  :root {
+    --spring-damping: 0.78;
+    --spring-stiffness: 500;
+    --press-scale: 0.93;
+  }
   .system-home-btn {
     width: 70px;
     height: 70px;
@@ -1455,30 +1515,41 @@ object NxprcHtmlCssConverter {
     }
 
     private fun genAiHeader(): String = """
-# NEXPAD VIRTUAL CONTROLLER COMPONENT SPECIFICATION
-**Engineered & Tested for Frontier Generative AI Models:**
+# NEXPAD 10/10 VIRTUAL CONTROLLER COMPONENT SPECIFICATION
+**Engineered & Validated for Frontier Generative AI Models & NXPRC 10/10 Protocol Engine:**
 - OpenAI ChatGPT (GPT-4o, GPT-4, o1, o3-mini)
 - Anthropic Claude (Claude 3.5 Sonnet, Claude 3.7 Sonnet)
-- Google Gemini (Gemini 2.0 Flash / Pro, Gemini 1.5 Pro)
+- Google Gemini (Gemini 2.5 Flash / Pro, Gemini 2.0 Flash, Gemini 1.5 Pro)
 - DeepSeek (DeepSeek-V3, DeepSeek-R1)
 - xAI Grok (Grok 2, Grok 3)
-- Or any modern frontier LLM with HTML/CSS code generation capabilities
+- Or any modern frontier LLM with HTML/CSS/SVG code generation capabilities
 """.trimIndent()
 
 private fun engineBoundaries(rootClass: String): String = """
 ### STRICT NEXPAD COMPILER CONTRACT — FOLLOW THIS EXACTLY:
 1. **Single compiled component**: `<body>` must contain exactly one root `<button class="$rootClass" data-control="..." data-category="..." data-name="...">`. Keep every visual child inside it. The compiler selects this button and does not render a general web page.
-2. **Portable document**: Include one `<style>` block, one root button, and no JavaScript, `<canvas>`, `<iframe>`, `<img>`, `<svg>`, `<link>`, `@import`, external fonts, or external assets. Use system fonts only.
-3. **Use the supported paint primitives**: `background`/`background-color`, `linear-gradient`, `radial-gradient`, `conic-gradient`, explicit `border` (both `solid` and `dashed` are fully supported), `border-radius`, `box-shadow` (including multiple inset/outset shadows), `opacity`, `transform`, `transform-origin`, `overflow: hidden`, and `clip-path: polygon(...)`.
-4. **Safe geometry**: Use `px` dimensions for the root and visual children. Use `border-radius` or `clip-path: polygon(...)` for circles, capsules, stars, diamonds, hexagons, handmade, asymmetric, and organic silhouettes. Do not use CSS masks, `path()` Bézier geometry, `filter: blur()`, `backdrop-filter`, `mix-blend-mode`, 3D transforms, or layout-dependent geometry.
-5. **Explicit layers**: Set `position: relative` on the root. Set `position: absolute`, `left`, `top`, `width`, and `height` on every decorative child. Use `z-index` only for simple layer ordering. For grouped items (like menu bars, grip ribs, or stacked labels), Flexbox is fully supported: use `display: flex`, `flex-direction: row` or `column`, `gap: ...px`, `padding`, `justify-content`, and `align-items`. Do not use CSS grid, float, or multi-column layout.
-6. **Text must be real DOM text**: Put labels and decorative symbols in actual `<span>`/`<div>` text nodes. Multi-label layouts (such as 'LT' + 'BRAKE' or directional markers) are fully supported with flexbox alignment. Do not use `content: 'A'`, generated text icons, icon fonts, emoji, or pseudo-element text; pseudo-elements may use `content: ""` only for painted shapes.
-7. **Stable CSS only**: Do not use `@media`, `@supports`, `@keyframes`, `animation`, `transition`, `:hover`, `:focus`, `:focus-visible`, or `!important`. These are browser/page-state features and are not reliable in the NXPRC static button preview. Use `$rootClass:active` only for press feedback.
-8. **Interaction**: Always define `$rootClass:active { transform: scale(...) translateY(...); }` using the exact root class. Do not put the press transform on a child unless the design specifically requires it.
-9. **Colors and gradients**: Use explicit hex/rgb/rgba colors, CSS variables declared in `:root`, and explicit gradient stops. Never rely on `currentColor`, inherited colors, `color-mix()`, system theme colors, or uninitialized variables. Keep all colors inside the component so the desktop and Android previews match.
-10. **Creative freedom**: `data-category` is metadata, not a shape instruction. It does not force a circle, cross, capsule, paddle, ring, gimbal, or any other silhouette. Preserve the user's requested shape, proportions, color palette, and visual language—even when they differ from the category.
-11. **Self-check before output**: Confirm the document has exactly one compiled button, explicit px geometry, no unsupported features listed above, real text labels, a valid active rule, and only supported paint properties.
-12. **Output validity**: Return one complete HTML document inside one `html` code block and no explanation outside it.
+2. **Portable self-contained document**: Include one `<style>` block, one root button, and no external dependencies (no external `<link>`, `@import`, remote font files, or external web scripts). System fonts only.
+3. **Paint & vector primitives (10/10 Protocol Engine)**:
+   - Fills: `background`/`background-color`, multi-stop `linear-gradient`, `radial-gradient`, and `conic-gradient`.
+   - Modern CSS Colors: hex (`#rrggbbaa`), `rgb()`, `rgba()`, `hsl()`, `hwb()`, `oklch()`, and `color(display-p3 ...)`.
+   - Borders & Outlines: explicit `border` (both `solid` and `dashed` are fully supported), `border-radius` (uniform or 4-corner), and `outline`.
+   - Multi-tier Box Shadows: multiple inset and outset shadows (`box-shadow: 0 8px 24px rgba(0,0,0,0.65), inset 0 2px 4px rgba(255,255,255,0.4)`).
+   - Optical Filters: Use GPU `filter: blur()`, `brightness()`, `contrast()`, `saturate()`, `hue-rotate()`, or SVG `<filter>` graphs for optical effects. Do not use `backdrop-filter` or `mix-blend-mode`.
+   - SVG Graphics & Filter Nodes: Embedded `<svg>` with `<path d="...">`, `<circle>`, `<rect>`, `<polygon>`, `<g>`, and `<filter id="...">` graphs (`<feGaussianBlur>`, `<feColorMatrix>`, `<feDropShadow>`, `<feBlend>`) are fully compiled to native Compose vector and filter graphs.
+4. **Safe geometry & shapes**: Use `px` dimensions for the root and visual children. Use `border-radius` or `clip-path: polygon(...)` for circles, capsules, stars, diamonds, hexagons, handmade, asymmetric, and organic silhouettes. Preserve the user's requested shape, proportions, and aesthetic.
+5. **Layout & flexbox**:
+   - Relative root with absolute layered children: Set `position: relative` on the root. Set `position: absolute`, `left`, `top`, `width`, and `height` on decorative children as needed. Use `z-index` for layer ordering.
+   - Flexbox layouts: Fully supported for alignment, flow, and grouped components. Use `display: flex`, `flex-direction: row | column`, `flex-wrap: wrap | nowrap`, `gap: ...px`, `row-gap`, `column-gap`, `justify-content`, and `align-items`.
+6. **Typographic auto-wrapping & text**:
+   - Text must be real DOM text: Put labels, legends, and decorative symbols in actual `<span>`/`<div>` text nodes. Multi-label layouts (such as 'LT' + 'BRAKE' or directional markers) are fully supported.
+   - Text formatting: Supports `font-size`, `font-weight`, `letter-spacing`, `line-height`, `text-shadow`, `text-align`, and multi-line wrapping via `white-space: normal | pre-line` and explicit newlines. Do not use pseudo-element text with icons or emoji; pseudo-elements `::before`/`::after` may use `content: ""` only for painted layers.
+7. **Tactile micro-physics & animation**:
+   - Physical spring calibration: Declare spring physics custom properties in `:root`: `--spring-damping: 0.68;`, `--spring-stiffness: 440;`, `--press-scale: 0.92;`. These calibrate physical tactile button weight, dampening, and spring return speed on Android touch HUDs.
+   - Interaction state: Always define `.$rootClass:active { transform: scale(...) translateY(...); }` using the exact root class.
+   - Continuous timeline animations: CSS `@keyframes` with `animation: ... infinite` are compiled to hardware-accelerated Compose transition animators. Do not use `@media`, `@supports`, `:hover`, `:focus`, or `:focus-visible` (these are browser page-state features).
+8. **Creative freedom**: `data-category` is metadata, not a shape instruction. It does not force a circle, cross, capsule, paddle, ring, gimbal, or any other silhouette. Preserve the user's requested shape, proportions, color palette, and visual language—even when they differ from the category.
+9. **Self-check before output**: Confirm the document has exactly one compiled button with class "$rootClass", explicit px geometry, real DOM text labels, valid active transform with tactile spring properties, and supported paint properties.
+10. **Output contract**: Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block.
 """.trimIndent()
 
     private fun generateAbxyPrompt(control: String, widthDp: Int, heightDp: Int): String {
@@ -1503,22 +1574,26 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Design Intent (OPTIONAL INSPIRATION)**: Momentary tactile action feedback with readable labeling, layered depth, directional lighting, and physical spring depression. The silhouette is completely yours.
 
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
-The NEXPAD engine converts your HTML/CSS into native GPU Compose Canvas draw layers (.nxprc format):
+The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
 1. **Root Button Tag (`<button class="nexpad-btn" data-control="$control" data-category="BUTTON" data-name="Action $control">`)**:
-   - `border-radius: 50%`: Compiled to native `CanvasLayer.BoxLayer` with oval/circular geometry.
+   - `border-radius: 50%`: Compiled to native `CanvasLayer.BoxLayer` with oval/circular geometry (or use `clip-path: polygon(...)` for custom faceted geometries).
    - `background`: Stack multiple `radial-gradient` layers:
      - Top-left specular highlight: `radial-gradient(circle at 28% 20%, rgba(255,255,255,0.8) 0%, transparent 35%)`
      - Bottom-right occlusion shadow: `radial-gradient(circle at 72% 80%, rgba(0,0,0,0.4) 0%, transparent 60%)`
      - Main chromatic core: Multi-stop gradient for your button color ($hexCode).
+   - **Tactile Spring Micro-Physics**: Configure in `:root`:
+     `--spring-damping: 0.68; --spring-stiffness: 440; --press-scale: 0.92;`
 2. **Multi-Tier Box Shadows**:
    - Outset: `box-shadow: 0 8px 24px rgba(0,0,0,0.65), 0 0 0 3px rgba(20,22,30,0.9), 0 0 20px var(--accent-glow);` (creates physical socket elevation and neon ambient halo).
    - Inset: `box-shadow: inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -6px 12px rgba(0,0,0,0.7);` (creates 3D spherical bevel rim and recessed socket well).
-3. **Pseudo-Elements**:
+3. **Pseudo-Elements & SVG Layers**:
    - `::before`: Inner recessed core or metallic chamfered bezel ring (`conic-gradient` supported).
    - `::after`: Translucent elliptical gloss reflection arc (`radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.7) 0%, transparent 70%)` rotated by -12deg).
-4. **Center Typography Glyph**:
+   - Embedded `<svg>`: Full support for vector iconography, paths, and SVG `<filter>` graphs (`<feGaussianBlur>`, `<feColorMatrix>`).
+4. **Center Typography Glyph & Auto-Wrapping**:
    - `<span class="btn-label">$control</span>`: Font size 34-42px, weight 900.
    - Multi-layer `text-shadow`: `0 1px 0 rgba(255,255,255,0.8), 0 -1px 0 rgba(0,0,0,0.9), 0 3px 6px rgba(0,0,0,0.75), 0 0 12px var(--accent-core);` (renders as 3D extruded tactile letter).
+   - Auto-wrapping support: Supports `white-space: pre-line` or `normal`, with `line-height` and explicit newlines.
 5. **Tactile Active Physics**:
    - `.nexpad-btn:active { transform: scale(0.93) translateY(3px); }` (compiles into native Compose spring physics).
 
@@ -1560,17 +1635,19 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Design Intent (OPTIONAL INSPIRATION)**: Preserve directional meaning for $control with clear visual feedback and tactile actuation. A cross-pad, arrow, wedge, star, organic form, or any other silhouette is valid; do not force a conventional D-pad shape.
 
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
-The NEXPAD engine converts your HTML/CSS into native GPU Compose Canvas draw layers (.nxprc format):
+The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
 1. **Root Button Tag (`<button class="dpad-btn" data-control="$control" data-category="DPAD" data-name="D-Pad $control">`)**:
+   - **Tactile Spring Micro-Physics**: Configure in `:root`:
+     `--spring-damping: 0.72; --spring-stiffness: 480; --press-scale: 0.94;`
    ${if (control.uppercase() == "DPAD") """
-   - `border-radius: 28px`: Outer tactile cross housing.
+   - `border-radius: 28px`: Outer tactile cross housing (or `clip-path: polygon(...)` for a 12-point faceted cross).
    - `background`: Deep radial gradient with directional arm shading.
    - Central Pivot: Use `::before` to create a circular recessed pivot well (`width: 44px; height: 44px; border-radius: 50%`) with an inset drop shadow simulating the central rocker pivot.
-   - Direction Markers: Crisp vector/font glyphs or markings for UP, DOWN, LEFT, RIGHT.
+   - Direction Markers: Crisp vector/font glyphs, SVG directional arrows, or markings for UP, DOWN, LEFT, RIGHT.
    """ else """
    - `border-radius: 18px`: Directional wedge/button housing.
    - `background`: Directional linear gradient sloped along the direction of travel ($control) from raised outer rim to recessed inner base.
-   - Arrow Glyph: Directional indicator (<span class="dpad-arrow">$arrowGlyph</span>) with neon glow and drop shadow.
+   - Arrow Glyph: Directional indicator (<span class="dpad-arrow">$arrowGlyph</span>) or embedded `<svg>` chevron with neon glow and drop shadow.
    """}
 2. **Multi-Tier Box Shadows**:
    - Outset: `box-shadow: 0 10px 24px rgba(0,0,0,0.65), 0 0 0 2px rgba(35,40,55,0.8), 0 0 20px var(--accent-glow);`
@@ -1610,18 +1687,21 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Design Intent (OPTIONAL INSPIRATION)**: Represent analog pull, pressure, and release with clear travel feedback. A paddle, wedge, ring, vertical bar, star, or any original silhouette is valid.
 
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
-The NEXPAD engine converts your HTML/CSS into native GPU Compose Canvas draw layers (.nxprc format):
+The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
 1. **Root Button Tag (`<button class="trigger-btn" data-control="$control" data-category="TRIGGER" data-name="Trigger $control">`)**:
-   - `width: ${widthDp}px; height: ${heightDp}px; border-radius: 20px;` (ergonomic vertical capsule).
+   - `width: ${widthDp}px; height: ${heightDp}px; border-radius: 20px;` (ergonomic vertical capsule or angular wedge).
    - `background: linear-gradient(180deg, #282e3d 0%, #151822 45%, #0a0c10 100%)`: Simulates the curved rake angle of the trigger paddle receding into the gamepad shell.
-2. **Traction Grip Ribs via `::before`**:
-   - Use `::before` positioned at 45% top height with `box-shadow` to generate horizontal tactile grip ribs for thumb/finger friction:
+   - **Tactile Spring Micro-Physics**: Configure in `:root`:
+     `--spring-damping: 0.65; --spring-stiffness: 380; --press-scale: 0.94;`
+2. **Traction Grip Ribs via Flexbox or `::before`**:
+   - Grouped grip ribs: Use Flexbox (`display: flex`, `flex-direction: column`, `gap: 6px`) or `::before` with multi-tier `box-shadow` for horizontal friction ridges:
      `background: rgba(255,255,255,0.18); box-shadow: 0 8px 0 rgba(255,255,255,0.12), 0 16px 0 rgba(255,255,255,0.08);`
 3. **Multi-Tier Box Shadows**:
    - Outset: `box-shadow: 0 10px 24px rgba(0,0,0,0.65), 0 0 18px var(--accent-glow);`
    - Inset: `box-shadow: inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -8px 16px rgba(0,0,0,0.8);` (deep vertical pull socket well).
-4. **Stacked Typography**:
-   - Vertical flex column: `<span class="trigger-label">$control</span>` (font-size 26px, weight 900) + `<span class="trigger-sub">$subLabel</span>` (font-size 10px, letter-spacing 1.5px).
+4. **Stacked Typography & Typographic Wrapping**:
+   - Vertical flex column with real DOM text: `<span class="trigger-label">$control</span>` (font-size 26px, weight 900) + `<span class="trigger-sub">$subLabel</span>` (font-size 10px, letter-spacing 1.5px).
+   - Multi-line wrapping and `line-height` are natively calculated by the protocol engine.
 5. **Tactile Active Travel Physics**:
    - `.trigger-btn:active { transform: scaleY(0.94) translateY(4px); }` (simulates physical downward paddle pull stroke).
 
@@ -1653,18 +1733,21 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Design Intent (OPTIONAL INSPIRATION)**: Represent a shallow shoulder click with clear press feedback. A capsule, tile, shard, star, handmade polygon, or any original silhouette is valid.
 
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
-The NEXPAD engine converts your HTML/CSS into native GPU Compose Canvas draw layers (.nxprc format):
+The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
 1. **Root Button Tag (`<button class="bumper-btn" data-control="$control" data-category="BUMPER" data-name="Bumper $control">`)**:
-   - `width: ${widthDp}px; height: ${heightDp}px; border-radius: 18px;` (wide horizontal capsule).
+   - `width: ${widthDp}px; height: ${heightDp}px; border-radius: 18px;` (wide horizontal capsule or curved wedge).
    - `background: linear-gradient(180deg, #2b3240 0%, #161a22 65%, #0b0d12 100%)`: Convex curvature across the horizontal shoulder.
-2. **Horizontal Specular Sheen via `::after`**:
+   - **Tactile Spring Micro-Physics**: Configure in `:root`:
+     `--spring-damping: 0.75; --spring-stiffness: 520; --press-scale: 0.96;`
+2. **Horizontal Specular Sheen via `::after` or SVG**:
    - Positioned across the upper third (`top: 10%; left: 12%; width: 76%; height: 35%; border-radius: 10px;`):
      `background: radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.45) 0%, transparent 75%);`
 3. **Multi-Tier Box Shadows**:
    - Outset: `box-shadow: 0 8px 20px rgba(0,0,0,0.6), 0 0 16px var(--accent-glow);`
    - Inset: `box-shadow: inset 0 2px 4px rgba(255,255,255,0.35), inset 0 -4px 8px rgba(0,0,0,0.7);`
-4. **Typography**:
+4. **Typography & Layout**:
    - `<span class="bumper-label">$control</span>`: Font size 24px, weight 900, with horizontal specular highlight and dark drop shadow.
+   - Flexbox centering: `display: flex; align-items: center; justify-content: center;`
 5. **Tactile Active Click Physics**:
    - `.bumper-btn:active { transform: scale(0.96) translateY(2px); }` (simulates shallow micro-switch click).
 
@@ -1698,17 +1781,19 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Design Intent (OPTIONAL INSPIRATION)**: Represent analog movement and $clickLabel click actuation with readable state feedback. A gimbal, ring, square, abstract mark, organic form, or any original silhouette is valid.
 
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
-The NEXPAD engine converts your HTML/CSS into native GPU Compose Canvas draw layers (.nxprc format):
+The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
 1. **Outer Gimbal Housing (`<button class="stick-btn" data-control="$control" data-category="JOYSTICK" data-name="Stick $control">`)**:
    - `width: ${widthDp}px; height: ${heightDp}px; border-radius: 50%;`
    - `background: radial-gradient(circle at 45% 40%, #2b313d 0%, #14171e 65%, #08090c 100%)`
    - Inset deep well shadow: `box-shadow: inset 0 -8px 16px rgba(0,0,0,0.85), inset 0 3px 6px rgba(255,255,255,0.25);`
+   - **Tactile Spring Micro-Physics**: Configure in `:root`:
+     `--spring-damping: 0.70; --spring-stiffness: 420; --press-scale: 0.92;`
 2. **Inner Concave Thumb Dome via `::before`**:
    - Centered circular dome (`width: 66px; height: 66px; border-radius: 50%`):
      `background: radial-gradient(circle at 50% 50%, #1a1e26 0%, #0d0f14 100%)`
      `box-shadow: inset 0 0 10px rgba(0,0,0,0.9), 0 0 0 2px rgba(255,255,255,0.12);`
-3. **Concentric Knurled Grip Rings via `::after`**:
-   - Concentric dashed/knurled ring (`width: 44px; height: 44px; border-radius: 50%; border: 2px dashed rgba(74, 222, 128, 0.5);`) providing physical thumb grip texture.
+3. **Concentric Knurled Grip Rings via `::after` or SVG**:
+   - Concentric dashed/knurled ring (`width: 44px; height: 44px; border-radius: 50%; border: 2px dashed rgba(74, 222, 128, 0.5);`) or SVG radial tick pattern providing physical thumb grip traction.
 4. **Stick Click Typography**:
    - `<span class="stick-label">$clickLabel</span>`: Font size 22px, weight 900, with neon ambient backlighting.
 5. **Tactile Active Press Physics**:
@@ -1742,8 +1827,10 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Design Intent (OPTIONAL INSPIRATION)**: Compact utility control with clear iconography and tactile click feedback. A sphere, pill, tile, emblem, star, or any original silhouette is valid.
 
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
-The NEXPAD engine converts your HTML/CSS into native GPU Compose Canvas draw layers (.nxprc format):
+The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
 1. **Root Button Tag (`<button class="system-btn" data-control="$control" data-category="SYSTEM" data-name="System $control">`)**:
+   - **Tactile Spring Micro-Physics**: Configure in `:root`:
+     `--spring-damping: 0.78; --spring-stiffness: 500; --press-scale: 0.92;`
    ${if (control.uppercase() == "HOME") """
    - `width: ${widthDp}px; height: ${heightDp}px; border-radius: 50%;`
    - Multi-tiered radial ambient lighting with glowing nexus emblem and silver chamfered bezel.
@@ -1752,11 +1839,11 @@ The NEXPAD engine converts your HTML/CSS into native GPU Compose Canvas draw lay
    - Radial dark gradient: `background: radial-gradient(circle at 50% 30%, #242833 0%, #101217 100%);`
    - Inset bevel shadows: `box-shadow: inset 0 1px 3px rgba(255,255,255,0.25), inset 0 -3px 6px rgba(0,0,0,0.7);`
    """}
-2. **Iconography**:
+2. **Iconography & Grouped Elements**:
    ${when (control.uppercase()) {
-       "MENU" -> "- 3-line horizontal hamburger pause bars (`<div class=\"burger-bar\"></div>` with `width: 22px; height: 3px; border-radius: 1.5px; background: #E0E0E0;`)."
-       "VIEW" -> "- Overlapping dual-rectangle back/select icons (`<span class=\"view-icon\">⧉</span>`)."
-       else -> "- Central nexus/guide logo (`<span class=\"home-symbol\">⨂</span>`)."
+       "MENU" -> "- 3-line horizontal hamburger pause bars (`<div class=\"burger-bar\"></div>` with `width: 22px; height: 3px; border-radius: 1.5px; background: #E0E0E0;`) using flexbox vertical column (`display: flex; flex-direction: column; gap: 4px;`)."
+       "VIEW" -> "- Overlapping dual-rectangle back/select icons (`<span class=\"view-icon\">⧉</span>` or embedded `<svg>`)."
+       else -> "- Central nexus/guide logo (`<span class=\"home-symbol\">⨂</span>` or embedded `<svg>`)."
    }}
 3. **Tactile Active Click Physics**:
    - `.system-btn:active { transform: scale(0.92) translateY(2px); }`
