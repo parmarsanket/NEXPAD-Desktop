@@ -3,10 +3,18 @@ package com.sanket.tools.nexpaddesktop.ui.designer
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import kotlinx.coroutines.launch
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.hypot
+import kotlin.math.sin
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -109,9 +117,17 @@ fun NxprcCanvasPreview(
     modifier: Modifier = Modifier,
     sizeDp: Int = 140,
     activeLayersOnly: List<CanvasLayer>? = null,
-    backgroundColor: Color = Color.Transparent
+    backgroundColor: Color = Color.Transparent,
+    onStickDeflection: ((Float, Float) -> Unit)? = null
 ) {
     var isPressed by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    val isStick = document.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
+            document.manifest.defaultControl.uppercase() in listOf("LS", "RS")
+
+    val thumbOffsetX = remember { Animatable(0f) }
+    val thumbOffsetY = remember { Animatable(0f) }
 
     // Spring scale on touch press
     val scaleAnim by animateFloatAsState(
@@ -225,18 +241,61 @@ fun NxprcCanvasPreview(
         ColorFilter.colorMatrix(ColorMatrix(createHueRotateColorMatrix(activeHue)))
     } else null
 
+    val gestureModifier = if (isStick) {
+        Modifier.pointerInput(document.manifest.id) {
+            awaitEachGesture {
+                val down = awaitFirstDown(requireUnconsumed = false)
+                isPressed = true
+                val maxRadius = sizeDp * 0.28f * density
+                while (true) {
+                    val event = awaitPointerEvent()
+                    val change = event.changes.firstOrNull { it.id == down.id }
+                    if (change == null || !change.pressed) break
+                    val dragAmount = change.position - change.previousPosition
+                    if (dragAmount.x * dragAmount.x + dragAmount.y * dragAmount.y > 0.25f) {
+                        change.consume()
+                        val newX = thumbOffsetX.value + dragAmount.x
+                        val newY = thumbOffsetY.value + dragAmount.y
+                        val dist = hypot(newX, newY)
+                        val (clampedX, clampedY) = if (dist > maxRadius) {
+                            val angle = atan2(newY, newX)
+                            Pair(cos(angle) * maxRadius, sin(angle) * maxRadius)
+                        } else {
+                            Pair(newX, newY)
+                        }
+                        coroutineScope.launch {
+                            thumbOffsetX.snapTo(clampedX)
+                            thumbOffsetY.snapTo(clampedY)
+                        }
+                        val normX = (clampedX / maxRadius).coerceIn(-1f, 1f)
+                        val normY = (-clampedY / maxRadius).coerceIn(-1f, 1f)
+                        onStickDeflection?.invoke(normX, normY)
+                    }
+                }
+                isPressed = false
+                coroutineScope.launch {
+                    launch { thumbOffsetX.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
+                    launch { thumbOffsetY.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
+                }
+                onStickDeflection?.invoke(0f, 0f)
+            }
+        }
+    } else {
+        Modifier.pointerInput(document.manifest.id) {
+            detectTapGestures(
+                onPress = {
+                    isPressed = true
+                    tryAwaitRelease()
+                    isPressed = false
+                }
+            )
+        }
+    }
+
     Box(
         modifier = modifier
             .size(sizeDp.dp)
-            .pointerInput(document.manifest.id) {
-                detectTapGestures(
-                    onPress = {
-                        isPressed = true
-                        tryAwaitRelease()
-                        isPressed = false
-                    }
-                )
-            },
+            .then(gestureModifier),
         contentAlignment = Alignment.Center
     ) {
         Box(
@@ -248,8 +307,8 @@ fun NxprcCanvasPreview(
                     scaleY = finalScale
                     rotationZ = if (hasDynamicTracks) trackRotation else 0f
                     alpha = if (hasDynamicTracks) trackOpacity.coerceIn(0f, 1f) else 1f
-                    translationX = trackTranslateX * density
-                    translationY = (pressOffsetYAnim + trackTranslateY) * density
+                    translationX = (if (isStick) thumbOffsetX.value else 0f) + (trackTranslateX * density)
+                    translationY = (if (isStick) thumbOffsetY.value else 0f) + (pressOffsetYAnim + trackTranslateY) * density
                     if (rgbFilter != null) {
                         colorFilter = rgbFilter
                     }

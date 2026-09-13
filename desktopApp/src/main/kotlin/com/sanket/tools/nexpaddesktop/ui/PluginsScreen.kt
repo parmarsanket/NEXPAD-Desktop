@@ -951,6 +951,8 @@ private fun LiveSandboxPane(
     onExport: () -> Unit,
     onPushAdb: () -> Unit
 ) {
+    var stickDeflection by remember { mutableStateOf(Pair(0f, 0f)) }
+
     Column(
         modifier = modifier
             .glassCard()
@@ -1047,12 +1049,14 @@ private fun LiveSandboxPane(
                 NxprcCanvasPreview(
                     document = compiledDoc,
                     activeLayersOnly = previewLayers,
-                    sizeDp = previewDp
+                    sizeDp = previewDp,
+                    onStickDeflection = { x, y -> stickDeflection = Pair(x, y) }
                 )
             }
         }
 
         // Live Animation & Physics Stats Strip
+        val isStick = category.equals("JOYSTICK", ignoreCase = true) || defaultControl.uppercase() in listOf("LS", "RS")
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1065,8 +1069,21 @@ private fun LiveSandboxPane(
             } else {
                 Text("Layers: ${activeLayerIndices.size}/${compiledDoc.canvas.layers.size} active", color = NeonPalette.Cyan, fontWeight = FontWeight.Bold, fontSize = 10.5.sp)
             }
-            Text("Idle: ${compiledDoc.animations.idleType}", color = Color.White.copy(alpha = 0.8f), fontSize = 10.5.sp)
-            Text("Touch: ${compiledDoc.animations.pressFeedback}", color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp)
+            if (isStick) {
+                val dx = stickDeflection.first
+                val dy = stickDeflection.second
+                val xStr = if (dx >= 0f) "+${"%.2f".format(dx)}" else "%.2f".format(dx)
+                val yStr = if (dy >= 0f) "+${"%.2f".format(dy)}" else "%.2f".format(dy)
+                Text(
+                    "Stick: X:$xStr Y:$yStr",
+                    color = if (dx != 0f || dy != 0f) Color(0xFF10B981) else Color.White.copy(alpha = 0.7f),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 10.5.sp
+                )
+            } else {
+                Text("Idle: ${compiledDoc.animations.idleType}", color = Color.White.copy(alpha = 0.8f), fontSize = 10.5.sp)
+            }
+            Text("Touch: ${if (isStick) "360° Analog" else compiledDoc.animations.pressFeedback}", color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp)
         }
 
         // Compact Glass Metadata Strip (Responsive against line wrapping)
