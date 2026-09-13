@@ -1907,13 +1907,16 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. Gimbal ring, dish, square housing, or stylized silhouette. Preserve the user's requested shape.
 
 ### JOYSTICK TWO-ZONE PHYSICAL MECHANISM:
-Physical analog gamepads (Xbox, PlayStation, NEXPAD) use a two-zone mechanical architecture:
-1. **Stationary Gimbal Base (The Outer Socket)**:
-   - Fixed to the gamepad shell at full canvas bounds (${widthDp}px × ${heightDp}px).
-   - Contains: Outer bezel rim, deep recessed spherical socket well (`box-shadow: inset ...`), and directional markings or radial ticks.
+In physical gamepads (Xbox, PlayStation) and mobile gaming (CoD Mobile, Genshin, PUBG), an analog stick consists of TWO distinct physical parts:
+1. **Stationary Gimbal Base (The Fixed Socket Housing)**:
+   - Must remain 100% stationary at (0, 0) — never translates during thumb drag.
+   - Contains: Outer bezel rim, deep recessed spherical socket well (`box-shadow: inset ...`), directional tick marks, axis lines, and directional markers (▲, ▼, ◀, ▶).
+   - Use container `<div class="stick-base">` or element classes containing: `base`, `socket`, `bezel`, `outer-ring`, `ticks`, `marker`.
 2. **Movable Analog Thumb Cap (The Inner Dome)**:
-   - Centered inside the socket, sized at approximately 55%–65% of the base diameter (~${(widthDp * 0.58).toInt()}px to ${(widthDp * 0.65).toInt()}px) to provide realistic mechanical clearance inside the socket.
+   - Sized at approximately 55%–65% of the base diameter (~${(widthDp * 0.58).toInt()}px to ${(widthDp * 0.65).toInt()}px) to provide mechanical clearance inside the socket.
+   - **Only this part translates (x, y)** when the player drags their thumb, and springs back to center on release!
    - Contains: Concave thumb dish, knurled traction grip rings, custom vector emblems/graphics, and center $clickLabel marking.
+   - Use container `<div class="stick-cap">` or element classes containing: `stick-cap`, `thumb`, `grip`, `core`, `stick-label`.
 3. **Dual Mechanical Actuation**:
    - **360° Analog Deflection**: Handled dynamically at runtime by NEXPAD's touch vector engine with spring return physics when dragged.
    - **Axial $clickLabel Click**: Actuated via physical downward thumb depression, represented in CSS by `.stick-btn:active { transform: scale(0.92); }` with tactile spring damping micro-physics (`--spring-damping: 0.70; --spring-stiffness: 420;`).

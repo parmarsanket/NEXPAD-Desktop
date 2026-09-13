@@ -128,6 +128,7 @@ fun NxprcCanvasPreview(
 
     val thumbOffsetX = remember { Animatable(0f) }
     val thumbOffsetY = remember { Animatable(0f) }
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
 
     // Spring scale on touch press
     val scaleAnim by animateFloatAsState(
@@ -247,30 +248,38 @@ fun NxprcCanvasPreview(
                 val down = awaitFirstDown(requireUnconsumed = false)
                 isPressed = true
                 val maxRadius = sizeDp * 0.28f * density
+                val deadzoneRadius = 4f * density
+                val centerX = size.width / 2f
+                val centerY = size.height / 2f
+
+                fun updateDeflection(pos: Offset) {
+                    val vecX = pos.x - centerX
+                    val vecY = pos.y - centerY
+                    val dist = hypot(vecX, vecY)
+                    val (clampedX, clampedY) = if (dist > maxRadius) {
+                        val angle = atan2(vecY, vecX)
+                        Pair(cos(angle) * maxRadius, sin(angle) * maxRadius)
+                    } else {
+                        Pair(vecX, vecY)
+                    }
+                    coroutineScope.launch {
+                        thumbOffsetX.snapTo(clampedX)
+                        thumbOffsetY.snapTo(clampedY)
+                    }
+                    val normX = if (dist < deadzoneRadius) 0f else (clampedX / maxRadius).coerceIn(-1f, 1f)
+                    val normY = if (dist < deadzoneRadius) 0f else (-clampedY / maxRadius).coerceIn(-1f, 1f)
+                    onStickDeflection?.invoke(normX, normY)
+                }
+
+                // Initial touch/click down deflection
+                updateDeflection(down.position)
+
                 while (true) {
                     val event = awaitPointerEvent()
                     val change = event.changes.firstOrNull { it.id == down.id }
                     if (change == null || !change.pressed) break
-                    val dragAmount = change.position - change.previousPosition
-                    if (dragAmount.x * dragAmount.x + dragAmount.y * dragAmount.y > 0.25f) {
-                        change.consume()
-                        val newX = thumbOffsetX.value + dragAmount.x
-                        val newY = thumbOffsetY.value + dragAmount.y
-                        val dist = hypot(newX, newY)
-                        val (clampedX, clampedY) = if (dist > maxRadius) {
-                            val angle = atan2(newY, newX)
-                            Pair(cos(angle) * maxRadius, sin(angle) * maxRadius)
-                        } else {
-                            Pair(newX, newY)
-                        }
-                        coroutineScope.launch {
-                            thumbOffsetX.snapTo(clampedX)
-                            thumbOffsetY.snapTo(clampedY)
-                        }
-                        val normX = (clampedX / maxRadius).coerceIn(-1f, 1f)
-                        val normY = (-clampedY / maxRadius).coerceIn(-1f, 1f)
-                        onStickDeflection?.invoke(normX, normY)
-                    }
+                    change.consume()
+                    updateDeflection(change.position)
                 }
                 isPressed = false
                 coroutineScope.launch {
@@ -292,6 +301,9 @@ fun NxprcCanvasPreview(
         }
     }
 
+    val isTwoStageStick = isStick && document.canvas.capLayerIndices.isNotEmpty()
+    val capIndicesSet = remember(document) { document.canvas.capLayerIndices.toSet() }
+
     Box(
         modifier = modifier
             .size(sizeDp.dp)
@@ -303,12 +315,12 @@ fun NxprcCanvasPreview(
                 .size(sizeDp.dp)
                 .graphicsLayer {
                     val finalScale = scaleAnim * trackScale
-                    scaleX = finalScale
-                    scaleY = finalScale
+                    scaleX = if (isTwoStageStick) 1f else finalScale
+                    scaleY = if (isTwoStageStick) 1f else finalScale
                     rotationZ = if (hasDynamicTracks) trackRotation else 0f
                     alpha = if (hasDynamicTracks) trackOpacity.coerceIn(0f, 1f) else 1f
-                    translationX = (if (isStick) thumbOffsetX.value else 0f) + (trackTranslateX * density)
-                    translationY = (if (isStick) thumbOffsetY.value else 0f) + (pressOffsetYAnim + trackTranslateY) * density
+                    translationX = (if (isStick && !isTwoStageStick) thumbOffsetX.value else 0f) + (trackTranslateX * density)
+                    translationY = (if (isStick && !isTwoStageStick) thumbOffsetY.value else 0f) + (pressOffsetYAnim + trackTranslateY) * density
                     if (rgbFilter != null) {
                         colorFilter = rgbFilter
                     }
@@ -364,7 +376,8 @@ fun NxprcCanvasPreview(
                 }
 
                 val layersToRender = activeLayersOnly ?: document.canvas.layers
-                layersToRender.forEach { layer ->
+                val finalScale = scaleAnim * trackScale
+                val drawSingleLayer: androidx.compose.ui.graphics.drawscope.DrawScope.(CanvasLayer) -> Unit = { layer ->
                     when (layer) {
                         is CanvasLayer.BoxLayer -> {
                             val transform = layer.effectiveTransform
@@ -877,6 +890,21 @@ fun NxprcCanvasPreview(
                         }
                     }
                 }
+
+                layersToRender.forEachIndexed { layerIdx, layer ->
+                    val origIdx = if (activeLayersOnly != null) document.canvas.layers.indexOf(layer) else layerIdx
+                    val isCap = isTwoStageStick && origIdx != -1 && origIdx in capIndicesSet
+                    if (isCap) {
+                        withTransform({
+                            translate(left = thumbOffsetX.value, top = thumbOffsetY.value)
+                            scale(scaleX = finalScale, scaleY = finalScale, pivot = centerOffset)
+                        }) {
+                            drawSingleLayer(layer)
+                        }
+                    } else {
+                        drawSingleLayer(layer)
+                    }
+                }
             }
 
         // Center text glyph or multi-text layers with embossed 3D lighting and tactile synchronization
@@ -903,8 +931,12 @@ fun NxprcCanvasPreview(
                 textLayers.forEach { tl ->
                     val fontSp = (tl.fontSizeSp * scaleFactor).sp
                     val fontWeight = if (tl.fontWeight >= 900) FontWeight.Black else if (tl.fontWeight >= 700) FontWeight.Bold else FontWeight.Normal
-                    val offX = (tl.offsetXRatio * buttonW).dp
-                    val offY = (tl.offsetYRatio * buttonH).dp
+                    val origIdx = document.canvas.layers.indexOf(tl)
+                    val isLayerCap = isTwoStageStick && origIdx != -1 && origIdx in capIndicesSet
+                    val stickShiftX = if (isLayerCap) (thumbOffsetX.value / density).dp else 0.dp
+                    val stickShiftY = if (isLayerCap) (thumbOffsetY.value / density).dp else 0.dp
+                    val offX = (tl.offsetXRatio * buttonW).dp + stickShiftX
+                    val offY = (tl.offsetYRatio * buttonH).dp + stickShiftY
 
                     if (tl.textShadows.isNotEmpty()) {
                         tl.textShadows.forEach { ts ->
@@ -936,8 +968,10 @@ fun NxprcCanvasPreview(
             val fontSp = (baseFontSp * scaleFactor).sp
             val fontWeight = FontWeight.Bold
 
-            val offX = ((glyph?.offsetXRatio ?: 0f) * buttonW).dp
-            val offY = ((glyph?.offsetYRatio ?: 0f) * buttonH).dp
+            val stickShiftX = if (isTwoStageStick) (thumbOffsetX.value / density).dp else 0.dp
+            val stickShiftY = if (isTwoStageStick) (thumbOffsetY.value / density).dp else 0.dp
+            val offX = ((glyph?.offsetXRatio ?: 0f) * buttonW).dp + stickShiftX
+            val offY = ((glyph?.offsetYRatio ?: 0f) * buttonH).dp + stickShiftY
 
             Box(
                 contentAlignment = Alignment.Center,
@@ -945,6 +979,11 @@ fun NxprcCanvasPreview(
                     .offset(x = offX, y = offY)
                     .graphicsLayer {
                         rotationZ = rootBox?.effectiveTransform?.rotationDegrees ?: 0f
+                        if (isTwoStageStick) {
+                            val finalScale = scaleAnim * trackScale
+                            scaleX = finalScale
+                            scaleY = finalScale
+                        }
                     }
             ) {
                 val extraShadows = glyph?.textShadows ?: emptyList()
