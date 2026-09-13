@@ -133,7 +133,6 @@ fun PluginsScreen() {
     var compileError by remember { mutableStateOf<String?>(null) }
 
     // Layer Studio & Layer Manager States
-    var activeEditorTab by remember { mutableStateOf("SOURCE") } // "SOURCE" vs "LAYERS"
     var activeLayerIndices by remember(compiledDoc) { mutableStateOf((0 until compiledDoc.canvas.layers.size).toSet()) }
     var soloLayerIndex by remember(compiledDoc) { mutableStateOf<Int?>(null) }
     var selectedLayerIndex by remember(compiledDoc) { mutableStateOf(0) }
@@ -356,95 +355,45 @@ fun PluginsScreen() {
                     }
                 }
 
-                // 5. Editor Mode Switcher (Monolithic Source vs Decomposed Layer Studio)
+                // 5. Editor Header & Direct Layer Studio Button
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Text(
+                        "📝 HTML / CSS Source",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.5.sp
+                    )
+
                     Button(
-                        onClick = { activeEditorTab = "SOURCE" },
+                        onClick = { showFullScreenLayerStudio = true },
                         shape = RoundedCornerShape(6.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (activeEditorTab == "SOURCE") NeonPalette.Cyan else Color(0xFF131826)
-                        ),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                         modifier = Modifier.height(30.dp)
                     ) {
                         Text(
-                            "📝 HTML / CSS Source",
-                            fontSize = 11.sp,
-                            fontWeight = if (activeEditorTab == "SOURCE") FontWeight.Bold else FontWeight.Normal,
-                            color = if (activeEditorTab == "SOURCE") Color.Black else Color.White.copy(alpha = 0.8f)
+                            "🎛️ Layer Studio",
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
-                    }
-
-                    val activeCount = activeLayerIndices.size
-                    val totalCount = compiledDoc.canvas.layers.size
-                    Button(
-                        onClick = { activeEditorTab = "LAYERS" },
-                        shape = RoundedCornerShape(6.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (activeEditorTab == "LAYERS") NeonPalette.Cyan else Color(0xFF131826)
-                        ),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                        modifier = Modifier.height(30.dp)
-                    ) {
-                        Text(
-                            "🎛️ Layer Studio ($activeCount/$totalCount)",
-                            fontSize = 11.sp,
-                            fontWeight = if (activeEditorTab == "LAYERS") FontWeight.Bold else FontWeight.Normal,
-                            color = if (activeEditorTab == "LAYERS") Color.Black else Color.White.copy(alpha = 0.8f)
-                        )
-                    }
-
-                    if (activeEditorTab == "LAYERS") {
-                        Button(
-                            onClick = { showFullScreenLayerStudio = true },
-                            shape = RoundedCornerShape(6.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                            modifier = Modifier.height(30.dp)
-                        ) {
-                            Text(
-                                "⛶ Expand Full Screen",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        }
                     }
                 }
 
-                // 6. Active Editor Content: Monolithic Source vs Layer Studio Panel
-                if (activeEditorTab == "SOURCE") {
-                    OutlinedTextField(
-                        value = htmlSource,
-                        onValueChange = { htmlSource = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace, fontSize = 12.sp),
-                        placeholder = { Text("Paste your AI-generated HTML / CSS code here...") }
-                    )
-                } else {
-                    LayerStudioPanel(
-                        document = compiledDoc,
-                        activeLayerIndices = activeLayerIndices,
-                        onActiveLayersChange = { activeLayerIndices = it },
-                        soloLayerIndex = soloLayerIndex,
-                        onSoloLayerChange = { soloLayerIndex = it },
-                        selectedLayerIndex = selectedLayerIndex,
-                        onSelectedLayerChange = { selectedLayerIndex = it },
-                        onOpenFullScreen = { showFullScreenLayerStudio = true },
-                        onFeedback = { msg ->
-                            promptCopiedBanner = msg
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                    )
-                }
+                // 6. Full-Height HTML / CSS Source Editor
+                OutlinedTextField(
+                    value = htmlSource,
+                    onValueChange = { htmlSource = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace, fontSize = 12.sp),
+                    placeholder = { Text("Paste your AI-generated HTML / CSS code here...") }
+                )
             }
 
             // ==========================================
