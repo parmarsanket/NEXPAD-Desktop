@@ -1,8 +1,13 @@
 package com.sanket.tools.nexpaddesktop
 
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
+import androidx.compose.ui.window.rememberWindowState
 import com.sanket.tools.nexpaddesktop.connection.wifi.DsuServer
 import com.sanket.tools.nexpaddesktop.connection.wifi.UdpServer
 import com.sanket.tools.nexpaddesktop.driver.IGamepadDriver
@@ -339,9 +344,15 @@ fun main(args: Array<String>) {
         }
     }
 
+    val windowState = rememberWindowState(
+        size = DpSize(1280.dp, 820.dp),
+        position = WindowPosition.Aligned(Alignment.Center)
+    )
+
     Window(
         onCloseRequest = ::exitApplication,
-        title = "NEXPAD Desktop Server"
+        title = "NEXPAD Desktop Server",
+        state = windowState
     ) {
         NexpadDesktopTheme {
             MainApplicationWindow(

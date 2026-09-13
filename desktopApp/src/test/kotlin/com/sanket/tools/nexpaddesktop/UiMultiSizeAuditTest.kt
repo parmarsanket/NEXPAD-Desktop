@@ -23,6 +23,8 @@ class UiMultiSizeAuditTest {
     data class Resolution(val name: String, val width: Int, val height: Int)
 
     private val resolutions = listOf(
+        Resolution("880x580_compact", 880, 580),
+        Resolution("960x640_default", 960, 640),
         Resolution("1280x720", 1280, 720),
         Resolution("1440x900", 1440, 900),
         Resolution("1920x1080", 1920, 1080),
