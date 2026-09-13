@@ -355,7 +355,7 @@ fun PluginsScreen() {
                     }
                 }
 
-                // 5. Editor Header & Direct Layer Studio Button
+                // 5. Editor Header (Clean & Uncluttered)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -367,21 +367,11 @@ fun PluginsScreen() {
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.5.sp
                     )
-
-                    Button(
-                        onClick = { showFullScreenLayerStudio = true },
-                        shape = RoundedCornerShape(6.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                        modifier = Modifier.height(30.dp)
-                    ) {
-                        Text(
-                            "🎛️ Layer Studio",
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    }
+                    Text(
+                        "Native GPU Skia Compiler",
+                        color = Color.White.copy(alpha = 0.45f),
+                        fontSize = 10.5.sp
+                    )
                 }
 
                 // 6. Full-Height HTML / CSS Source Editor
@@ -440,7 +430,7 @@ fun PluginsScreen() {
                     }
                 }
 
-                // Dynamic Aspect-Ratio Preview Box
+                // Dynamic Adaptive Aspect-Ratio Preview Box
                 BoxWithConstraints(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -451,12 +441,13 @@ fun PluginsScreen() {
                     val maxBoxH = maxHeight * 0.96f
 
                     val aspect = targetWidthDp.toFloat() / targetHeightDp.toFloat()
+                    val idealDimension = (maxBoxH * 0.88f).coerceIn(240.dp, 460.dp)
                     val (boxW, boxH) = if (aspect >= 1.0f) {
-                        val w = minOf(maxBoxW, 260.dp)
+                        val w = minOf(maxBoxW, idealDimension * aspect, 460.dp)
                         val h = (w / aspect).coerceAtMost(maxBoxH)
                         Pair(w, h)
                     } else {
-                        val h = minOf(maxBoxH, 260.dp)
+                        val h = minOf(maxBoxH, idealDimension, 460.dp)
                         val w = (h * aspect).coerceAtMost(maxBoxW)
                         Pair(w, h)
                     }
@@ -473,7 +464,7 @@ fun PluginsScreen() {
                             .border(1.5.dp, NeonPalette.Cyan.copy(alpha = 0.35f), RoundedCornerShape(16.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        val previewDp = (minOf(boxW.value, boxH.value) * 0.85f).toInt().coerceAtLeast(60)
+                        val previewDp = (minOf(boxW.value, boxH.value) * 0.85f).toInt().coerceAtLeast(70)
                         val previewLayers = remember(compiledDoc, activeLayerIndices, soloLayerIndex) {
                             val soloIdx = soloLayerIndex
                             when {
@@ -514,49 +505,41 @@ fun PluginsScreen() {
                     Text("Touch: ${compiledDoc.animations.pressFeedback}", color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp)
                 }
 
-                // Metadata Inputs (ID, Name, Key, Category)
+                // Compact Glass Metadata Strip
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF090E18))
+                        .border(1.dp, Color(0xFF1E293B), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    OutlinedTextField(
-                        value = componentId,
-                        onValueChange = { componentId = it },
-                        label = { Text("ID") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        textStyle = LocalTextStyle.current.copy(fontSize = 12.sp)
-                    )
-                    OutlinedTextField(
-                        value = componentName,
-                        onValueChange = { componentName = it },
-                        label = { Text("Name") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        textStyle = LocalTextStyle.current.copy(fontSize = 12.sp)
-                    )
-                }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color(0xFF131D30))
+                                .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(text = componentId, color = NeonPalette.Cyan, fontSize = 10.5.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                        }
+                        Text(text = componentName, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = defaultControl,
-                        onValueChange = { defaultControl = it },
-                        label = { Text("Key") },
-                        modifier = Modifier.weight(0.42f),
-                        singleLine = true,
-                        textStyle = LocalTextStyle.current.copy(fontSize = 12.sp)
-                    )
-                    OutlinedTextField(
-                        value = category,
-                        onValueChange = { category = it },
-                        label = { Text("Category") },
-                        modifier = Modifier.weight(0.58f),
-                        singleLine = true,
-                        textStyle = LocalTextStyle.current.copy(fontSize = 12.sp)
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "Key: $defaultControl", color = Color(0xFF4ADE80), fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+                        Text(text = "•", color = Color.White.copy(alpha = 0.3f), fontSize = 10.sp)
+                        Text(text = category, color = Color.White.copy(alpha = 0.7f), fontSize = 10.5.sp)
+                    }
                 }
 
                 // Compile Warning (if any)
@@ -784,6 +767,10 @@ fun PluginsScreen() {
             FullAuditPreviewScreen(
                 document = compiledDoc,
                 htmlSource = htmlSource,
+                onOpenLayerStudio = {
+                    showFullAuditPreview = false
+                    showFullScreenLayerStudio = true
+                },
                 onClose = { showFullAuditPreview = false }
             )
         }

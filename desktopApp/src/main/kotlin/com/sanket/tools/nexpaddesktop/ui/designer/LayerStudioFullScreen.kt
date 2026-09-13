@@ -70,6 +70,7 @@ fun LayerStudioFullScreen(
 
     // Canvas Workspace State
     var zoomScale by remember { mutableStateOf(1.0f) }
+    var isAutoFit by remember { mutableStateOf(true) }
     var showGrid by remember { mutableStateOf(true) }
 
     // Surgical AI Copilot State
@@ -288,11 +289,11 @@ fun LayerStudioFullScreen(
             ) {
 
                 // =====================================================================
-                // ZONE 1 (LEFT ~32% width): LAYER STACK ORGANIZER
+                // ZONE 1 (LEFT): LAYER STACK ORGANIZER (Dedicated Sidebar)
                 // =====================================================================
                 Column(
                     modifier = Modifier
-                        .weight(0.95f)
+                        .width(310.dp)
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(10.dp))
                         .background(Color(0xFF090D18))
@@ -510,7 +511,7 @@ fun LayerStudioFullScreen(
                 // =====================================================================
                 Column(
                     modifier = Modifier
-                        .weight(1.15f)
+                        .weight(1f)
                         .fillMaxHeight(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -538,7 +539,10 @@ fun LayerStudioFullScreen(
                             horizontalArrangement = Arrangement.spacedBy(5.dp)
                         ) {
                             OutlinedButton(
-                                onClick = { zoomScale = (zoomScale - 0.25f).coerceAtLeast(0.5f) },
+                                onClick = {
+                                    isAutoFit = false
+                                    zoomScale = (zoomScale - 0.25f).coerceAtLeast(0.5f)
+                                },
                                 shape = RoundedCornerShape(4.dp),
                                 contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
                                 modifier = Modifier.height(24.dp)
@@ -547,14 +551,17 @@ fun LayerStudioFullScreen(
                             }
 
                             Text(
-                                text = "${(zoomScale * 100).toInt()}%",
+                                text = if (isAutoFit) "AUTO" else "${(zoomScale * 100).toInt()}%",
                                 color = Color.White,
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 10.5.sp
                             )
 
                             OutlinedButton(
-                                onClick = { zoomScale = (zoomScale + 0.25f).coerceAtMost(2.0f) },
+                                onClick = {
+                                    isAutoFit = false
+                                    zoomScale = (zoomScale + 0.25f).coerceAtMost(2.0f)
+                                },
                                 shape = RoundedCornerShape(4.dp),
                                 contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
                                 modifier = Modifier.height(24.dp)
@@ -563,12 +570,15 @@ fun LayerStudioFullScreen(
                             }
 
                             OutlinedButton(
-                                onClick = { zoomScale = 1.0f },
+                                onClick = {
+                                    isAutoFit = true
+                                    zoomScale = 1.0f
+                                },
                                 shape = RoundedCornerShape(4.dp),
                                 contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
                                 modifier = Modifier.height(24.dp)
                             ) {
-                                Text("Reset", fontSize = 10.sp, color = NeonPalette.Cyan)
+                                Text(if (isAutoFit) "Auto-Fit ✓" else "Auto-Fit", fontSize = 10.sp, color = if (isAutoFit) NeonPalette.Cyan else Color.White)
                             }
 
                             OutlinedButton(
@@ -583,7 +593,7 @@ fun LayerStudioFullScreen(
                     }
 
                     // Main Stage: Large Composite Button (Spring physics sandbox)
-                    Box(
+                    BoxWithConstraints(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1.2f)
@@ -598,8 +608,9 @@ fun LayerStudioFullScreen(
                             .border(1.5.dp, Color(0xFF1B263E), RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        val baseSize = 220
-                        val scaledSize = (baseSize * zoomScale).toInt()
+                        val availableDimension = minOf(maxWidth.value, maxHeight.value)
+                        val autoFitSize = (availableDimension * 0.72f).toInt().coerceIn(180, 440)
+                        val scaledSize = if (isAutoFit) autoFitSize else (220 * zoomScale).toInt()
 
                         NxprcCanvasPreview(
                             document = document,
@@ -719,11 +730,11 @@ fun LayerStudioFullScreen(
                 }
 
                 // =====================================================================
-                // ZONE 3 (RIGHT ~28% width): LAYER INSPECTOR & SURGICAL AI COPILOT
+                // ZONE 3 (RIGHT): LAYER INSPECTOR & SURGICAL AI COPILOT (Dedicated Sidebar)
                 // =====================================================================
                 Column(
                     modifier = Modifier
-                        .weight(0.9f)
+                        .width(350.dp)
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(10.dp))
                         .background(Color(0xFF090D18))
