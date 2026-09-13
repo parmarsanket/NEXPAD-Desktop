@@ -1906,6 +1906,18 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Optional Visual Language [OPTIONAL]**: Knurled dashed rings, radial tick marks, cross-hatch metal, rubberized stippling.
 - **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. Gimbal ring, dish, square housing, or stylized silhouette. Preserve the user's requested shape.
 
+### JOYSTICK TWO-ZONE PHYSICAL MECHANISM:
+Physical analog gamepads (Xbox, PlayStation, NEXPAD) use a two-zone mechanical architecture:
+1. **Stationary Gimbal Base (The Outer Socket)**:
+   - Fixed to the gamepad shell at full canvas bounds (${widthDp}px × ${heightDp}px).
+   - Contains: Outer bezel rim, deep recessed spherical socket well (`box-shadow: inset ...`), and directional markings or radial ticks.
+2. **Movable Analog Thumb Cap (The Inner Dome)**:
+   - Centered inside the socket, sized at approximately 55%–65% of the base diameter (~${(widthDp * 0.58).toInt()}px to ${(widthDp * 0.65).toInt()}px) to provide realistic mechanical clearance inside the socket.
+   - Contains: Concave thumb dish, knurled traction grip rings, custom vector emblems/graphics, and center $clickLabel marking.
+3. **Dual Mechanical Actuation**:
+   - **360° Analog Deflection**: Handled dynamically at runtime by NEXPAD's touch vector engine with spring return physics when dragged.
+   - **Axial $clickLabel Click**: Actuated via physical downward thumb depression, represented in CSS by `.stick-btn:active { transform: scale(0.92); }` with tactile spring damping micro-physics (`--spring-damping: 0.70; --spring-stiffness: 420;`).
+
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
 The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
 1. **Outer Gimbal Housing (`<button class="stick-btn" data-control="$control" data-category="JOYSTICK" data-name="Stick $control">`)**:

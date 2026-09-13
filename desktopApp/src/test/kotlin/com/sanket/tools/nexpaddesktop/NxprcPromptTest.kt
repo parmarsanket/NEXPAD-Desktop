@@ -201,6 +201,22 @@ class NxprcPromptTest {
             assertTrue(prompt.contains("This template demonstrates document syntax only"), "$tag missing anti-copy template warning")
         }
     }
+
+    @Test
+    fun joystickPromptExplicitlyInformsTwoZonePhysicalMechanism() {
+        val lsPrompt = NxprcHtmlCssConverter.generateAiPrompt("LS", "JOYSTICK", 130, 130)
+        val rsPrompt = NxprcHtmlCssConverter.generateAiPrompt("RS", "JOYSTICK", 130, 130)
+
+        listOf(lsPrompt to "L3", rsPrompt to "R3").forEach { (prompt, clickKey) ->
+            assertTrue(prompt.contains("JOYSTICK TWO-ZONE PHYSICAL MECHANISM:"), "Missing two-zone physical mechanism header")
+            assertTrue(prompt.contains("Stationary Gimbal Base"), "Missing stationary gimbal base description")
+            assertTrue(prompt.contains("Movable Analog Thumb Cap"), "Missing movable analog thumb cap description")
+            assertTrue(prompt.contains("360° Analog Deflection"), "Missing 360 analog deflection instruction")
+            assertTrue(prompt.contains("Axial $clickKey Click"), "Missing axial click instruction for $clickKey")
+            assertTrue(prompt.contains("--spring-damping"), "Missing spring-damping property")
+            assertTrue(prompt.contains("--spring-stiffness"), "Missing spring-stiffness property")
+        }
+    }
 }
 
 
