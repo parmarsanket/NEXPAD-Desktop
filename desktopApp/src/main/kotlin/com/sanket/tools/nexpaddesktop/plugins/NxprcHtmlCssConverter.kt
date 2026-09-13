@@ -1533,7 +1533,7 @@ object NxprcHtmlCssConverter {
 5. Preserve the component's interaction meaning (category semantics), not a mandatory shape.
 6. Make the design visually coherent with physically believable depth and lighting.
 7. Use creativity when details are unspecified — never default to a generic circle unless requested.
-8. Design with restraint: do not dump all effects at once; prefer minimal required layers.
+8. Design with restraint: avoid visual clutter; prefer the minimum number of layers required to achieve the requested aesthetic.
 9. Ensure the label/icon remains clearly readable with strong contrast.
 10. Return ONLY the complete, self-contained HTML/CSS inside one code block.
 """.trimIndent()
@@ -1551,8 +1551,8 @@ When instructions conflict, resolve them in this strict order of authority:
 8. **Starter-Template Examples** [SYNTAX ONLY] (Syntax structure only — never overrides intent).
 
 > **The Golden Rule**: The user's visual and artistic instructions always win over defaults and recommendations, provided they remain compatible with the required compiler contract and component semantics.
-> **Conflict Rule**: Never let an optional recommendation override a user instruction.
-> **Example Rule**: Never let a starter-template example override a requirement or user choice.
+> **Conflict Rule**: User instructions always take precedence over optional recommendations or category defaults.
+> **Template Rule**: Starter-template examples are illustrative syntax and should never override explicit user choices.
 
 ### 2. RULE CLASSIFICATION HIERARCHY
 - **[GLOBAL-REQUIRED] / [REQUIRED]**: Platform/engine constraints. Violation causes compiler rejection.
@@ -1568,6 +1568,10 @@ The NXPRC engine compiles HTML/CSS/SVG into hardware-accelerated Compose Canvas 
 - **`conic-gradient`**: Best for brushed metallic bezels, segmented rotary dials, directional sheen rings, and mechanical textures.
 - **`box-shadow`**: Outset shadows for physical socket elevation and ambient halos; Inset shadows for 3D spherical bevel rims and recessed sockets.
 - **Embedded `<svg>` & Vector Nodes**: Best for custom vector iconography, chevrons, emblems, and technical markings (`<path d="...">`, `<circle>`, `<rect>`, `<polygon>`, `<g>`). Supports `<defs>` paint servers (`<linearGradient id="...">`, `<radialGradient id="...">` with `<stop offset="..." stop-color="..." stop-opacity="...">`) referenced via `fill: url(#id)` or `stroke: url(#id)` in both direct attributes and CSS classes (`.my-shape { fill: url(#grad); }`).
+- **SVG Multi-Path & Feature Grouping [RECOMMENDED]**: When designing composite illustrations, emblems, or multi-element graphics (e.g. eyes, emblems, character features):
+  1. Combine shapes sharing the same coordinates into a **single unified `<path d="M...Z M...Z">`**, OR
+  2. Give each sub-feature its own explicitly sized and positioned `<svg>` element (`position: absolute; left: Xpx; top: Ypx; width: Wpx; height: Hpx; viewBox="0 0 W H"`).
+  Avoid placing multiple disconnected `<path>` elements inside a full-width container without explicit component bounds, as each path compiles into an independently scalable GPU vector layer.
 - **SVG `<filter>` Graphs**: Best for optical graph effects (`<feGaussianBlur>`, `<feColorMatrix>`, `<feDropShadow>`, `<feBlend>`).
 - **Flexbox Layout**: Best for grouped items (menu bars, grip ribs, multi-label stacks), flow, and alignment (`display: flex`, `flex-direction`, `flex-wrap: wrap`, `gap`, `row-gap`, `column-gap`, `justify-content`, `align-items`).
 - **Typographic Auto-Wrapping**: Real DOM text formatting with `font-size`, `font-weight`, `letter-spacing`, `line-height`, `text-shadow`, and multi-line wrapping via `white-space: normal | pre-line` and explicit newlines.
@@ -1597,8 +1601,8 @@ A successful virtual controller component optimizes for:
 5. *Material Coherence*: Shading, highlights, and borders reflect a consistent material (matte, metallic, neon, glass).
 6. *Appropriate Depth*: Multi-tier inset/outset shadows creating realistic tactile socket recess.
 
-**Design Restraint ("Don't Overdesign")**:
-- Do not use every supported effect. Prefer the minimum number of layers required to achieve the requested aesthetic.
+**DESIGN RESTRAINT & VISUAL BALANCE**:
+- Apply visual effects with deliberate purpose. Prefer the minimum number of layers required to achieve the requested aesthetic cleanly.
 - Avoid unnecessary glow, excessive shadows, or decorative elements that visually compete with the button label.
 
 ### 6. DESIGN DECISION RULES:
@@ -1621,7 +1625,7 @@ Self-check before output:
 - Does the final design match the user's requested aesthetic rather than the starter template?
 
 ### 8. AUTHORITATIVE OUTPUT CONTRACT:
-Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text outside it.
+To ensure reliable programmatic compilation, return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text outside it.
 """.trimIndent()
 
     private fun generateAbxyPrompt(control: String, widthDp: Int, heightDp: Int): String {

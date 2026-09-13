@@ -52,6 +52,19 @@ data class ControllerButtonSpec(
     val accentColor: Color
 )
 
+private fun safeCopyToClipboard(text: String): Boolean {
+    val selection = StringSelection(text)
+    for (attempt in 1..3) {
+        try {
+            Toolkit.getDefaultToolkit().systemClipboard.setContents(selection, null)
+            return true
+        } catch (_: Throwable) {
+            try { Thread.sleep(30) } catch (_: InterruptedException) {}
+        }
+    }
+    return false
+}
+
 @Composable
 fun PluginsScreen() {
     val scope = rememberCoroutineScope()
@@ -204,11 +217,8 @@ fun PluginsScreen() {
                             widthDp = targetWidthDp,
                             heightDp = targetHeightDp
                         )
-                        Toolkit.getDefaultToolkit().systemClipboard.setContents(
-                            StringSelection(prompt),
-                            null
-                        )
-                        promptCopiedBanner = "✓ AI Prompt for $defaultControl ($category) copied!"
+                        val ok = safeCopyToClipboard(prompt)
+                        promptCopiedBanner = if (ok) "✓ AI Prompt for $defaultControl ($category) copied!" else "⚠️ Clipboard busy — please try again"
                     },
                     onOpenPromptModal = { showAiPromptModal = true },
                     onLoadStarter = {
@@ -392,11 +402,8 @@ fun PluginsScreen() {
                                     widthDp = targetWidthDp,
                                     heightDp = targetHeightDp
                                 )
-                                Toolkit.getDefaultToolkit().systemClipboard.setContents(
-                                    StringSelection(prompt),
-                                    null
-                                )
-                                promptCopiedBanner = "✓ AI Prompt for $defaultControl ($category) copied!"
+                                val ok = safeCopyToClipboard(prompt)
+                                promptCopiedBanner = if (ok) "✓ AI Prompt for $defaultControl ($category) copied!" else "⚠️ Clipboard busy — please try again"
                             },
                             onOpenPromptModal = { showAiPromptModal = true },
                             onLoadStarter = {
@@ -559,11 +566,8 @@ fun PluginsScreen() {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(
                                     onClick = {
-                                        Toolkit.getDefaultToolkit().systemClipboard.setContents(
-                                            StringSelection(generatedPrompt),
-                                            null
-                                        )
-                                        promptCopiedBanner = "✓ AI Prompt for $defaultControl copied to clipboard!"
+                                        val ok = safeCopyToClipboard(generatedPrompt)
+                                        promptCopiedBanner = if (ok) "✓ AI Prompt for $defaultControl copied to clipboard!" else "⚠️ Clipboard busy — please try again"
                                         showAiPromptModal = false
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
