@@ -28,6 +28,7 @@ import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
 import com.sanket.tools.nexpaddesktop.ui.components.glassCard
 import com.sanket.tools.nexpaddesktop.ui.designer.NxprcCanvasPreview
 import com.sanket.tools.nexpaddesktop.ui.designer.FullAuditPreviewScreen
+import com.sanket.tools.nexpaddesktop.ui.designer.LayerStudioPanel
 import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -128,6 +129,12 @@ fun PluginsScreen() {
         )
     }
     var compileError by remember { mutableStateOf<String?>(null) }
+
+    // Layer Studio & Layer Manager States
+    var activeEditorTab by remember { mutableStateOf("SOURCE") } // "SOURCE" vs "LAYERS"
+    var activeLayerIndices by remember(compiledDoc) { mutableStateOf((0 until compiledDoc.canvas.layers.size).toSet()) }
+    var soloLayerIndex by remember(compiledDoc) { mutableStateOf<Int?>(null) }
+    var selectedLayerIndex by remember(compiledDoc) { mutableStateOf(0) }
 
     LaunchedEffect(htmlSource, componentId, componentName, category, defaultControl) {
         delay(350) // Debounce keystrokes
@@ -347,16 +354,86 @@ fun PluginsScreen() {
                     }
                 }
 
-                // 5. HTML / CSS Source Editor
-                OutlinedTextField(
-                    value = htmlSource,
-                    onValueChange = { htmlSource = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace, fontSize = 12.sp),
-                    placeholder = { Text("Paste your AI-generated HTML / CSS code here...") }
-                )
+                // 5. Editor Mode Switcher (Monolithic Source vs Decomposed Layer Studio)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = { activeEditorTab = "SOURCE" },
+                        shape = RoundedCornerShape(6.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (activeEditorTab == "SOURCE") NeonPalette.Cyan else Color(0xFF131826)
+                        ),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Text(
+                            "📝 HTML / CSS Source",
+                            fontSize = 11.sp,
+                            fontWeight = if (activeEditorTab == "SOURCE") FontWeight.Bold else FontWeight.Normal,
+                            color = if (activeEditorTab == "SOURCE") Color.Black else Color.White.copy(alpha = 0.8f)
+                        )
+                    }
+
+                    val activeCount = activeLayerIndices.size
+                    val totalCount = compiledDoc.canvas.layers.size
+                    Button(
+                        onClick = { activeEditorTab = "LAYERS" },
+                        shape = RoundedCornerShape(6.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (activeEditorTab == "LAYERS") NeonPalette.Cyan else Color(0xFF131826)
+                        ),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Text(
+                            "🎛️ Layer Studio ($activeCount/$totalCount)",
+                            fontSize = 11.sp,
+                            fontWeight = if (activeEditorTab == "LAYERS") FontWeight.Bold else FontWeight.Normal,
+                            color = if (activeEditorTab == "LAYERS") Color.Black else Color.White.copy(alpha = 0.8f)
+                        )
+                    }
+                }
+
+                // 6. Active Editor Content: Monolithic Source vs Layer Studio Panel
+                if (activeEditorTab == "SOURCE") {
+                    OutlinedTextField(
+                        value = htmlSource,
+                        onValueChange = { htmlSource = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace, fontSize = 12.sp),
+                        placeholder = { Text("Paste your AI-generated HTML / CSS code here...") }
+                    )
+                } else {
+                    LayerStudioPanel(
+                        document = compiledDoc,
+                        activeLayerIndices = activeLayerIndices,
+                        onActiveLayersChange = { activeLayerIndices = it },
+                        soloLayerIndex = soloLayerIndex,
+                        onSoloLayerChange = { soloLayerIndex = it },
+                        selectedLayerIndex = selectedLayerIndex,
+                        onSelectedLayerChange = { selectedLayerIndex = it },
+                        onPurgeDeactivated = {
+                            val survivingLayers = compiledDoc.canvas.layers.filterIndexed { idx, _ -> idx in activeLayerIndices }
+                            val purgedCount = compiledDoc.canvas.layers.size - survivingLayers.size
+                            compiledDoc = compiledDoc.copy(canvas = compiledDoc.canvas.copy(layers = survivingLayers))
+                            activeLayerIndices = (0 until survivingLayers.size).toSet()
+                            soloLayerIndex = null
+                            selectedLayerIndex = 0
+                            promptCopiedBanner = "✓ Purged $purgedCount inactive layer(s). Clean binary document updated."
+                        },
+                        onFeedback = { msg ->
+                            promptCopiedBanner = msg
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    )
+                }
             }
 
             // ==========================================
@@ -426,7 +503,24 @@ fun PluginsScreen() {
                         contentAlignment = Alignment.Center
                     ) {
                         val previewDp = (minOf(boxW.value, boxH.value) * 0.85f).toInt().coerceAtLeast(60)
-                        NxprcCanvasPreview(document = compiledDoc, sizeDp = previewDp)
+                        val previewLayers = remember(compiledDoc, activeLayerIndices, soloLayerIndex) {
+                            val soloIdx = soloLayerIndex
+                            when {
+                                soloIdx != null -> {
+                                    val solo = compiledDoc.canvas.layers.getOrNull(soloIdx)
+                                    if (solo != null) listOf(solo) else null
+                                }
+                                activeLayerIndices.size < compiledDoc.canvas.layers.size -> {
+                                    compiledDoc.canvas.layers.filterIndexed { idx, _ -> idx in activeLayerIndices }
+                                }
+                                else -> null
+                            }
+                        }
+                        NxprcCanvasPreview(
+                            document = compiledDoc,
+                            activeLayersOnly = previewLayers,
+                            sizeDp = previewDp
+                        )
                     }
                 }
 
@@ -440,7 +534,11 @@ fun PluginsScreen() {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Layers: ${compiledDoc.canvas.layers.size}", color = NeonPalette.Cyan, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    if (soloLayerIndex != null) {
+                        Text("SOLO: Layer #$soloLayerIndex", color = Color(0xFFF59E0B), fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    } else {
+                        Text("Layers: ${activeLayerIndices.size}/${compiledDoc.canvas.layers.size} active", color = NeonPalette.Cyan, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    }
                     Text("Idle: ${compiledDoc.animations.idleType}", color = Color.White.copy(alpha = 0.8f), fontSize = 11.sp)
                     Text("Touch: ${compiledDoc.animations.pressFeedback}", color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp)
                 }
@@ -524,6 +622,19 @@ fun PluginsScreen() {
                     }
                 }
 
+                // Filtered document for export with deactivated layers cleanly stripped
+                val exportDoc = remember(compiledDoc, activeLayerIndices) {
+                    if (activeLayerIndices.size == compiledDoc.canvas.layers.size) {
+                        compiledDoc
+                    } else {
+                        compiledDoc.copy(
+                            canvas = compiledDoc.canvas.copy(
+                                layers = compiledDoc.canvas.layers.filterIndexed { idx, _ -> idx in activeLayerIndices }
+                            )
+                        )
+                    }
+                }
+
                 // Action Buttons Row: Export & Push via ADB
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -534,10 +645,10 @@ fun PluginsScreen() {
                         onClick = {
                             scope.launch {
                                 isExporting = true
-                                val res = NxprcExporter.exportToFile(compiledDoc)
+                                val res = NxprcExporter.exportToFile(exportDoc)
                                 res.fold(
                                     onSuccess = { file ->
-                                        exportStatus = "Saved: ${file.name} (${file.length()} bytes)"
+                                        exportStatus = "Saved: ${file.name} (${file.length()} bytes • ${exportDoc.canvas.layers.size} layers)"
                                     },
                                     onFailure = { ex ->
                                         exportStatus = ex.message ?: "Export failed"
@@ -553,7 +664,12 @@ fun PluginsScreen() {
                     ) {
                         Icon(Icons.Default.Download, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Export File", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text(
+                            text = if (activeLayerIndices.size < compiledDoc.canvas.layers.size) "Export (${activeLayerIndices.size} L)" else "Export File",
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
                     }
 
                     // Push via ADB Button
@@ -561,8 +677,8 @@ fun PluginsScreen() {
                         onClick = {
                             scope.launch {
                                 isExporting = true
-                                exportStatus = "Pushing to phone via ADB..."
-                                val res = DesktopPluginManager.transferNxprcViaAdb(compiledDoc)
+                                exportStatus = "Pushing ${exportDoc.canvas.layers.size} layers to phone via ADB..."
+                                val res = DesktopPluginManager.transferNxprcViaAdb(exportDoc)
                                 res.fold(
                                     onSuccess = { msg ->
                                         exportStatus = msg
@@ -581,7 +697,12 @@ fun PluginsScreen() {
                     ) {
                         Icon(Icons.Default.Send, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Push to Phone (ADB)", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text(
+                            text = if (activeLayerIndices.size < compiledDoc.canvas.layers.size) "Push (${activeLayerIndices.size} L)" else "Push to Phone (ADB)",
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
                     }
                 }
             }
