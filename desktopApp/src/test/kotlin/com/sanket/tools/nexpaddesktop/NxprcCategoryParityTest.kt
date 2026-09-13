@@ -1234,4 +1234,212 @@ class NxprcCategoryParityTest {
         assertTrue("Specular arc heightRatio should be ~40%", specularArc.heightRatio in 0.38f..0.42f)
         assertEquals(-10.0f, specularArc.rotationDegrees, 0.01f)
     }
+
+    @Test
+    fun testHulkButtonParityAndCentering() {
+        val html = """
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+            <meta charset="UTF-8">
+            <style>
+              :root {
+                --btn-size: 96px;
+                --hulk-green: #72e02b;
+                --hulk-light: #a8ff59;
+                --hulk-deep: #246b18;
+                --hulk-shadow: #102f10;
+                --purple: #7b35b8;
+                --purple-dark: #32114f;
+                --accent-glow: rgba(114, 224, 43, 0.55);
+                --spring-damping: 0.68;
+                --spring-stiffness: 440;
+                --press-scale: 0.92;
+              }
+
+              .nexpad-btn {
+                position: relative;
+                width: var(--btn-size);
+                height: var(--btn-size);
+                clip-path: polygon(
+                  19% 3%, 46% 0%, 53% 5%, 81% 3%, 100% 25%, 94% 51%, 100% 76%, 78% 98%, 52% 94%, 46% 100%, 20% 96%, 0% 74%, 7% 48%, 0% 25%
+                );
+                border: 2px solid rgba(173, 255, 112, 0.88);
+                background:
+                  radial-gradient(
+                    circle at 50% 28%,
+                    rgba(168, 255, 89, 0.45) 0%,
+                    rgba(114, 224, 43, 0.18) 36%,
+                    transparent 65%
+                  ),
+                  linear-gradient(160deg, #1d5914 0%, #12380c 48%, #0b2107 100%);
+                box-shadow:
+                  0 10px 22px rgba(0, 0, 0, 0.65),
+                  0 0 24px var(--accent-glow),
+                  inset 0 2px 4px rgba(255, 255, 255, 0.45),
+                  inset 0 -4px 10px rgba(0, 0, 0, 0.7);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                user-select: none;
+                overflow: hidden;
+              }
+
+              .nexpad-btn::before {
+                content: "";
+                position: absolute;
+                inset: 4px;
+                clip-path: polygon(
+                  18% 4%, 45% 1%, 54% 6%, 80% 4%, 98% 26%, 93% 51%, 98% 75%, 77% 96%, 53% 93%, 45% 99%, 21% 95%, 2% 73%, 8% 48%, 2% 26%
+                );
+                border: 1px solid rgba(255, 255, 255, 0.22);
+                background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, transparent 45%);
+                pointer-events: none;
+              }
+
+              .nexpad-btn::after {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background: radial-gradient(circle at 50% 120%, rgba(123, 53, 184, 0.42) 0%, rgba(50, 17, 79, 0.28) 42%, transparent 70%);
+                mix-blend-mode: screen;
+                pointer-events: none;
+              }
+
+              .hulk-core {
+                position: relative;
+                width: 65px;
+                height: 65px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              }
+
+              .fist-mark {
+                position: absolute;
+                width: 34px;
+                height: 40px;
+                clip-path: polygon(
+                  28% 0%, 72% 0%, 84% 18%, 88% 42%, 80% 72%, 64% 96%, 36% 96%, 20% 72%, 12% 42%, 16% 18%
+                );
+                background: linear-gradient(180deg, #f5ffeb 0%, var(--hulk-light) 26%, var(--hulk-green) 68%, var(--hulk-deep) 100%);
+                box-shadow:
+                  0 0 16px rgba(168, 255, 89, 0.7),
+                  inset 0 2px 3px rgba(255, 255, 255, 0.75),
+                  inset 0 -3px 6px rgba(16, 47, 16, 0.85);
+                filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+              }
+
+              .gamma-vein {
+                position: absolute;
+                inset: 0;
+                pointer-events: none;
+                opacity: 0.75;
+              }
+
+              .gamma-vein::before {
+                content: "";
+                position: absolute;
+                left: 20%;
+                top: 16%;
+                width: 2px;
+                height: 24px;
+                background: linear-gradient(180deg, transparent, #b8ff7a, transparent);
+                transform: rotate(24deg);
+                filter: drop-shadow(0 0 4px #72e02b);
+              }
+
+              .gamma-vein::after {
+                content: "";
+                position: absolute;
+                right: 22%;
+                top: 18%;
+                width: 2px;
+                height: 22px;
+                background: linear-gradient(180deg, transparent, #d9ffa8, transparent);
+                transform: rotate(-28deg);
+                filter: drop-shadow(0 0 4px #72e02b);
+              }
+
+              .btn-label {
+                position: absolute;
+                bottom: 9px;
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                font-size: 11px;
+                font-weight: 900;
+                letter-spacing: 0.18em;
+                text-transform: uppercase;
+                color: #efffe3;
+                text-shadow:
+                  0 1px 2px #000,
+                  0 0 10px rgba(114, 224, 43, 0.85);
+                z-index: 3;
+              }
+            </style>
+            </head>
+            <body>
+            <button class="nexpad-btn" aria-label="Smash Attack">
+              <div class="hulk-core">
+                <div class="fist-mark"></div>
+                <div class="gamma-vein"></div>
+              </div>
+              <span class="btn-label">Smash</span>
+            </button>
+            </body>
+            </html>
+        """.trimIndent()
+
+        val doc = NxprcPackager.compile(
+            html = html,
+            id = "rc.hulk_smash",
+            name = "Hulk Smash Attack",
+            category = "BUTTON",
+            defaultControl = "A"
+        )
+
+        // 1. Verify fist-mark layer exists and is centered
+        val boxLayers = doc.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>()
+        val fistLayer = checkNotNull(boxLayers.firstOrNull { it.widthRatio in 0.30f..0.40f && it.heightRatio in 0.38f..0.45f }) {
+            "Must contain fist-mark BoxLayer (approx 34x40 on 96x96)"
+        }
+        // Verify BoxLayer top-left normalized position (31/96, 28/96) and exact 50% canvas centering
+        assertEquals(31f / 96f, fistLayer.offsetXRatio, 0.005f)
+        assertEquals(28f / 96f, fistLayer.offsetYRatio, 0.005f)
+        val fistCenterX = fistLayer.offsetXRatio + fistLayer.widthRatio / 2f
+        val fistCenterY = fistLayer.offsetYRatio + fistLayer.heightRatio / 2f
+        assertEquals("Fist mark center X must be exact canvas center (0.5)", 0.5f, fistCenterX, 0.005f)
+        assertEquals("Fist mark center Y must be exact canvas center (0.5)", 0.5f, fistCenterY, 0.005f)
+
+        // 2. Render Native Image & Capture Headless Chrome Screenshot
+        val canvasSize = 400
+        val nativeImg = renderNxprcToImage(doc, canvasSize, canvasSize)
+        val nativeOutFile = File(scratchDir, "hulk_native.png")
+        ImageIO.write(nativeImg, "PNG", nativeOutFile)
+
+        val htmlFile = File(scratchDir, "preview_hulk.html")
+        val styledHtml = wrapHtmlForPreview(html, canvasSize, canvasSize)
+        htmlFile.writeText(styledHtml)
+
+        val chromeImgFile = File(scratchDir, "hulk_chrome.png")
+        val chromeSuccess = captureChromeScreenshot(htmlFile, chromeImgFile, canvasSize, canvasSize)
+        assertTrue("Chrome screenshot must succeed", chromeSuccess)
+
+        val chromeImg = ImageIO.read(chromeImgFile)
+        val parityScore = computeVisualParity(chromeImg, nativeImg)
+        println("  -> Hulk Button Visual Parity Score: " + String.format("%.2f", parityScore) + "%")
+
+        val sideBySideCard = generateSideBySideCard(
+            category = "ABXY",
+            displayName = "Hulk Smash Attack (Generic Layout Fix)",
+            chromeImg = chromeImg,
+            nativeImg = nativeImg,
+            parityScore = parityScore
+        )
+        val cardOut = File(brainDir, "category_parity_hulk.png")
+        ImageIO.write(sideBySideCard, "PNG", cardOut)
+        println("  -> Saved Side-by-Side Card: " + cardOut.absolutePath)
+
+        assertTrue("Visual parity score must be >= 88.0%, was " + parityScore + "%", parityScore >= 88.0)
+    }
 }
