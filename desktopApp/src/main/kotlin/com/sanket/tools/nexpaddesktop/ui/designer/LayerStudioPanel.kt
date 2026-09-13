@@ -40,7 +40,7 @@ fun LayerStudioPanel(
     onSoloLayerChange: (Int?) -> Unit,
     selectedLayerIndex: Int,
     onSelectedLayerChange: (Int) -> Unit,
-    onPurgeDeactivated: () -> Unit,
+    onOpenFullScreen: () -> Unit = {},
     onFeedback: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -170,23 +170,21 @@ fun LayerStudioPanel(
                     Text("🔄 Invert", fontSize = 10.sp, color = Color.White)
                 }
 
-                // Purge Deactivated Layers Permanently
+                // Expand to Dedicated Full Screen Layer Studio
                 Button(
-                    onClick = onPurgeDeactivated,
-                    enabled = hasInactiveLayers,
+                    onClick = onOpenFullScreen,
                     shape = RoundedCornerShape(4.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (hasInactiveLayers) Color(0xFF7F1D1D) else Color(0xFF1E293B),
-                        disabledContainerColor = Color(0xFF131A26)
+                        containerColor = NeonPalette.Cyan
                     ),
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp),
                     modifier = Modifier.height(26.dp)
                 ) {
                     Text(
-                        "🗑️ Purge Inactive",
+                        "⛶ Full Screen",
                         fontSize = 10.sp,
-                        color = if (hasInactiveLayers) Color(0xFFFCA5A5) else Color.White.copy(alpha = 0.35f),
-                        fontWeight = FontWeight.SemiBold
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -282,6 +280,22 @@ fun LayerStudioPanel(
                             Text(
                                 text = "🎯",
                                 fontSize = 11.sp
+                            )
+                        }
+
+                        // Visual Isolated Skia Thumbnail
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color(0xFF04060B))
+                                .border(1.dp, Color(0xFF1B2336), RoundedCornerShape(4.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            NxprcCanvasPreview(
+                                document = document,
+                                activeLayersOnly = listOf(layer),
+                                sizeDp = 30
                             )
                         }
 

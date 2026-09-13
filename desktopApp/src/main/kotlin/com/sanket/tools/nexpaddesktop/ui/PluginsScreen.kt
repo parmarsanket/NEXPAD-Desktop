@@ -29,6 +29,7 @@ import com.sanket.tools.nexpaddesktop.ui.components.glassCard
 import com.sanket.tools.nexpaddesktop.ui.designer.NxprcCanvasPreview
 import com.sanket.tools.nexpaddesktop.ui.designer.FullAuditPreviewScreen
 import com.sanket.tools.nexpaddesktop.ui.designer.LayerStudioPanel
+import com.sanket.tools.nexpaddesktop.ui.designer.LayerStudioFullScreen
 import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -114,6 +115,7 @@ fun PluginsScreen() {
 
     var showAiPromptModal by remember { mutableStateOf(false) }
     var showFullAuditPreview by remember { mutableStateOf(false) }
+    var showFullScreenLayerStudio by remember { mutableStateOf(false) }
     var promptCopiedBanner by remember { mutableStateOf<String?>(null) }
 
     // Debounced async compilation — prevents UI jank on every keystroke
@@ -395,6 +397,23 @@ fun PluginsScreen() {
                             color = if (activeEditorTab == "LAYERS") Color.Black else Color.White.copy(alpha = 0.8f)
                         )
                     }
+
+                    if (activeEditorTab == "LAYERS") {
+                        Button(
+                            onClick = { showFullScreenLayerStudio = true },
+                            shape = RoundedCornerShape(6.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            modifier = Modifier.height(30.dp)
+                        ) {
+                            Text(
+                                "⛶ Expand Full Screen",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
                 }
 
                 // 6. Active Editor Content: Monolithic Source vs Layer Studio Panel
@@ -417,15 +436,7 @@ fun PluginsScreen() {
                         onSoloLayerChange = { soloLayerIndex = it },
                         selectedLayerIndex = selectedLayerIndex,
                         onSelectedLayerChange = { selectedLayerIndex = it },
-                        onPurgeDeactivated = {
-                            val survivingLayers = compiledDoc.canvas.layers.filterIndexed { idx, _ -> idx in activeLayerIndices }
-                            val purgedCount = compiledDoc.canvas.layers.size - survivingLayers.size
-                            compiledDoc = compiledDoc.copy(canvas = compiledDoc.canvas.copy(layers = survivingLayers))
-                            activeLayerIndices = (0 until survivingLayers.size).toSet()
-                            soloLayerIndex = null
-                            selectedLayerIndex = 0
-                            promptCopiedBanner = "✓ Purged $purgedCount inactive layer(s). Clean binary document updated."
-                        },
+                        onOpenFullScreen = { showFullScreenLayerStudio = true },
                         onFeedback = { msg ->
                             promptCopiedBanner = msg
                         },
@@ -458,14 +469,25 @@ fun PluginsScreen() {
                         Text("Tap to test tactile physics", color = NeonPalette.Cyan.copy(alpha = 0.7f), fontSize = 10.sp)
                     }
 
-                    Button(
-                        onClick = { showFullAuditPreview = true },
-                        shape = RoundedCornerShape(6.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F, 0x24, 0x36)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan)
-                    ) {
-                        Text("🔍 Full Audit Preview", color = NeonPalette.Cyan, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Button(
+                            onClick = { showFullScreenLayerStudio = true },
+                            shape = RoundedCornerShape(6.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
+                        ) {
+                            Text("🎛️ Layer Studio", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        }
+
+                        Button(
+                            onClick = { showFullAuditPreview = true },
+                            shape = RoundedCornerShape(6.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F, 0x24, 0x36)),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan)
+                        ) {
+                            Text("🔍 Full Audit", color = NeonPalette.Cyan, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        }
                     }
                 }
 
@@ -814,6 +836,53 @@ fun PluginsScreen() {
                 document = compiledDoc,
                 htmlSource = htmlSource,
                 onClose = { showFullAuditPreview = false }
+            )
+        }
+
+        // Dedicated Full-Screen Layer Studio & Layer Manager Workspace
+        if (showFullScreenLayerStudio) {
+            LayerStudioFullScreen(
+                document = compiledDoc,
+                htmlSource = htmlSource,
+                activeLayerIndices = activeLayerIndices,
+                onActiveLayersChange = { activeLayerIndices = it },
+                soloLayerIndex = soloLayerIndex,
+                onSoloLayerChange = { soloLayerIndex = it },
+                selectedLayerIndex = selectedLayerIndex,
+                onSelectedLayerChange = { selectedLayerIndex = it },
+                onExportDoc = { doc ->
+                    scope.launch {
+                        isExporting = true
+                        val res = NxprcExporter.exportToFile(doc)
+                        res.fold(
+                            onSuccess = { file ->
+                                exportStatus = "Saved: ${file.name} (${file.length()} bytes • ${doc.canvas.layers.size} layers)"
+                            },
+                            onFailure = { ex ->
+                                exportStatus = ex.message ?: "Export failed"
+                            }
+                        )
+                        isExporting = false
+                    }
+                },
+                onPushAdbDoc = { doc ->
+                    scope.launch {
+                        isExporting = true
+                        exportStatus = "Pushing ${doc.canvas.layers.size} layers to phone via ADB..."
+                        val res = DesktopPluginManager.transferNxprcViaAdb(doc)
+                        res.fold(
+                            onSuccess = { msg ->
+                                exportStatus = msg
+                            },
+                            onFailure = { ex ->
+                                exportStatus = "ADB Push Error: ${ex.message}"
+                            }
+                        )
+                        isExporting = false
+                    }
+                },
+                onFeedback = { promptCopiedBanner = it },
+                onClose = { showFullScreenLayerStudio = false }
             )
         }
     }
