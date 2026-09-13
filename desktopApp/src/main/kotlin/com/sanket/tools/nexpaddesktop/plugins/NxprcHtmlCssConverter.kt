@@ -872,47 +872,66 @@ object NxprcHtmlCssConverter {
   .stick-btn {
     width: var(--stick-size);
     height: var(--stick-size);
+    position: relative;
+    background: transparent;
+    border: none;
+    padding: 0;
+    outline: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .stick-base {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
     border-radius: 50%;
     background: radial-gradient(circle at 45% 40%, #2b313d 0%, #14171e 65%, #08090c 100%);
     border: 3px solid #3d4657;
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7), inset 0 3px 6px rgba(255, 255, 255, 0.25), inset 0 -8px 16px rgba(0, 0, 0, 0.8), 0 0 20px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
+    box-sizing: border-box;
   }
-  .stick-btn::before {
-    content: "";
+  .stick-cap {
     position: absolute;
     width: 66px;
     height: 66px;
     border-radius: 50%;
     background: radial-gradient(circle at 50% 50%, #1a1e26 0%, #0d0f14 100%);
     box-shadow: inset 0 0 10px rgba(0,0,0,0.9), 0 0 0 2px rgba(255, 255, 255, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
   }
-  .stick-btn::after {
-    content: "";
+  .knurled-ring {
     position: absolute;
     width: 44px;
     height: 44px;
     border-radius: 50%;
     border: 2px dashed rgba(74, 222, 128, 0.5);
+    box-sizing: border-box;
   }
   .stick-label {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 900;
     color: var(--accent);
     text-shadow: 0 0 8px var(--accent);
     z-index: 5;
   }
-  .stick-btn:active {
+  .stick-btn:active .stick-cap {
     transform: scale(0.92);
   }
 </style>
 </head>
 <body>
   <button class="stick-btn" data-control="LS" data-category="JOYSTICK" data-name="Analog Stick LS">
-    <span class="stick-label">L3</span>
+    <div class="stick-base"></div>
+    <div class="stick-cap">
+      <div class="knurled-ring"></div>
+      <span class="stick-label">L3</span>
+    </div>
   </button>
 </body>
 </html>
@@ -1309,47 +1328,66 @@ object NxprcHtmlCssConverter {
   .stick-btn {
     width: var(--stick-size);
     height: var(--stick-size);
+    position: relative;
+    background: transparent;
+    border: none;
+    padding: 0;
+    outline: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .stick-base {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
     border-radius: 50%;
     background: radial-gradient(circle at 45% 40%, #2b313d 0%, #14171e 65%, #08090c 100%);
     border: 3px solid #3d4657;
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7), inset 0 3px 6px rgba(255, 255, 255, 0.25), inset 0 -8px 16px rgba(0, 0, 0, 0.8), 0 0 20px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
+    box-sizing: border-box;
   }
-  .stick-btn::before {
-    content: "";
+  .stick-cap {
     position: absolute;
     width: 66px;
     height: 66px;
     border-radius: 50%;
     background: radial-gradient(circle at 50% 50%, #1a1e26 0%, #0d0f14 100%);
     box-shadow: inset 0 0 10px rgba(0,0,0,0.9), 0 0 0 2px rgba(255, 255, 255, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
   }
-  .stick-btn::after {
-    content: "";
+  .knurled-ring {
     position: absolute;
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    border: 2px dashed rgba(0, 240, 255, 0.5);
+    border: 2px dashed rgba(0, 176, 255, 0.5);
+    box-sizing: border-box;
   }
   .stick-label {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 900;
     color: var(--accent);
     text-shadow: 0 0 8px var(--accent);
     z-index: 5;
   }
-  .stick-btn:active {
+  .stick-btn:active .stick-cap {
     transform: scale(0.92);
   }
 </style>
 </head>
 <body>
   <button class="stick-btn" data-control="RS" data-category="JOYSTICK" data-name="Analog Stick RS">
-    <span class="stick-label">R3</span>
+    <div class="stick-base"></div>
+    <div class="stick-cap">
+      <div class="knurled-ring"></div>
+      <span class="stick-label">R3</span>
+    </div>
   </button>
 </body>
 </html>
@@ -1904,7 +1942,14 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Continuous 360-degree analog navigation and axial thumbstick click ($clickLabel actuation).
 - **Visual Affordance [RECOMMENDED]**: Outer gimbal socket well, concave thumb dome, concentric knurled grip texture for traction.
 - **Optional Visual Language [OPTIONAL]**: Knurled dashed rings, radial tick marks, cross-hatch metal, rubberized stippling.
-- **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. Gimbal ring, dish, square housing, or stylized silhouette. Preserve the user's requested shape.
+- **Geometry [USER-OVERRIDE]**: Circle geometry is natural and authentic for physical joystick gimbal, socket, and thumb cap. Do not make it look like a flat circular web button. `data-category` is metadata, not a shape instruction. Gimbal ring, dish, square housing, or stylized silhouette: preserve the user's requested shape.
+
+### VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
+Create an authentic console-grade hardware aesthetic (reminiscent of Xbox Series X, Elite Controller, or DualSense) with physical industrial realism:
+1. **Matte Charcoal & Polycarbonate Plastic**: Base chassis tones `#14171e`, `#1c202a`, `#08090c` with subtle surface specular rim highlights, NOT flat grey or pure `#000`.
+2. **Physical Material Contrast**: The outer gimbal socket is a deep, recessed cavity (`box-shadow: inset 0 -8px 16px rgba(0,0,0,0.85)`). The inner thumb cap is textured molded rubber/elastomer with knurled traction rings or micro-ribs.
+3. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic gamepads feature clean micro-textures, matte finishes, and crisp physical contact shadows.
+4. **Mechanical Clearance & Proportions**: The thumb cap diameter must be approximately 55%–65% of the total socket diameter (~${(widthDp * 0.60).toInt()}px for ${widthDp}px socket) to provide authentic travel clearance inside the housing well. A 1:1 cap-to-socket ratio looks like a broken button, not an analog stick!
 
 ### JOYSTICK TWO-ZONE PHYSICAL MECHANISM:
 In physical gamepads (Xbox, PlayStation) and mobile gaming (CoD Mobile, Genshin, PUBG), an analog stick consists of TWO distinct physical parts:
@@ -1916,31 +1961,54 @@ In physical gamepads (Xbox, PlayStation) and mobile gaming (CoD Mobile, Genshin,
    - Sized at approximately 55%–65% of the base diameter (~${(widthDp * 0.58).toInt()}px to ${(widthDp * 0.65).toInt()}px) to provide mechanical clearance inside the socket.
    - **Only this part translates (x, y)** when the player drags their thumb, and springs back to center on release!
    - Contains: Concave thumb dish, knurled traction grip rings, custom vector emblems/graphics, and center $clickLabel marking.
-   - Use container `<div class="stick-cap">` or element classes containing: `stick-cap`, `thumb`, `grip`, `core`, `stick-label`.
+   - **MANDATORY DOM PLACEMENT**: Put ALL cap elements (dome background, knurled rings, graphics, label) inside `<div class="stick-cap">` or element classes containing: `stick-cap`, `thumb`, `grip`, `core`, `stick-label`. Never attach thumb cap elements directly to the root `<button>` or use `.stick-btn::before`/`::after` for the moving cap, as that causes the cap to freeze to the stationary socket!
 3. **Dual Mechanical Actuation**:
-   - **360° Analog Deflection**: Handled dynamically at runtime by NEXPAD's touch vector engine with spring return physics when dragged.
-   - **Axial $clickLabel Click**: Actuated via physical downward thumb depression, represented in CSS by `.stick-btn:active { transform: scale(0.92); }` with tactile spring damping micro-physics (`--spring-damping: 0.70; --spring-stiffness: 420;`).
+   - **360° Analog Deflection**: Handled dynamically at runtime by NEXPAD's touch vector engine with spring return physics when dragged. **Do not write JavaScript, CSS transitions/animations, or hover/pointer events for analog movement.**
+   - **Axial $clickLabel Click**: Actuated via physical downward thumb depression, represented in CSS by `.stick-btn:active { transform: scale(0.92); }` or `.stick-btn:active .stick-cap { transform: scale(0.92); }` with tactile spring damping micro-physics (`--spring-damping: 0.70; --spring-stiffness: 420;`).
 
-### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
-The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
-1. **Outer Gimbal Housing (`<button class="stick-btn" data-control="$control" data-category="JOYSTICK" data-name="Stick $control">`)**:
-   - `width: ${widthDp}px; height: ${heightDp}px; border-radius: 50%;`
-   - `background: radial-gradient(circle at 45% 40%, #2b313d 0%, #14171e 65%, #08090c 100%)`
-   - Inset deep well shadow: `box-shadow: inset 0 -8px 16px rgba(0,0,0,0.85), inset 0 3px 6px rgba(255,255,255,0.25);`
+### NEXPAD COMPILER ARCHITECTURE & TWO-ZONE DOM CONTRACT:
+The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format) and partitions them into Base vs Cap layers:
+```html
+<button class="stick-btn" data-control="$control" data-category="JOYSTICK" data-name="Analog Stick $control">
+  <div class="stick-base">
+    <!-- Stationary Gimbal Base: socket cavity, outer rim, directional ticks, bezel -->
+  </div>
+  <div class="stick-cap">
+    <!-- Movable Thumb Cap: concave dish, knurled grip rings, custom vector art, click label -->
+    <div class="knurled-ring"></div>
+    <span class="stick-label">$clickLabel</span>
+  </div>
+</button>
+```
+1. **Outer Housing (`<button class="stick-btn">`)**:
+   - `width: ${widthDp}px; height: ${heightDp}px; position: relative; background: transparent; border: none; padding: 0; outline: none;`
    - **Tactile Spring Micro-Physics**: Configure in `:root`:
      `--spring-damping: 0.70; --spring-stiffness: 420; --press-scale: 0.92;`
-2. **Inner Concave Thumb Dome via `::before`**:
-   - Centered circular dome (`width: 66px; height: 66px; border-radius: 50%`):
-     `background: radial-gradient(circle at 50% 50%, #1a1e26 0%, #0d0f14 100%)`
-     `box-shadow: inset 0 0 10px rgba(0,0,0,0.9), 0 0 0 2px rgba(255,255,255,0.12);`
-3. **Concentric Knurled Grip Rings via `::after` or SVG**:
-   - Concentric dashed/knurled ring (`width: 44px; height: 44px; border-radius: 50%; border: 2px dashed rgba(74, 222, 128, 0.5);`) or SVG radial tick pattern providing physical thumb grip traction.
-4. **Stick Click Typography**:
-   - `<span class="stick-label">$clickLabel</span>`: Font size 22px, weight 900, with neon ambient backlighting.
-5. **Tactile Active Press Physics**:
-   - `.stick-btn:active { transform: scale(0.92); }` (simulates physical thumbstick button depression).
+2. **Stationary Gimbal Base (`<div class="stick-base">`)**:
+   - `position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 50%;`
+   - Background gradient: `radial-gradient(circle at 45% 40%, #2b313d 0%, #14171e 65%, #08090c 100%)`
+   - Inset socket well shadow: `box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7), inset 0 3px 6px rgba(255, 255, 255, 0.25), inset 0 -8px 16px rgba(0, 0, 0, 0.85);`
+3. **Movable Thumb Cap (`<div class="stick-cap">`)**:
+   - Centered inside button: `position: absolute; left: ${(widthDp * 0.18).toInt()}px; top: ${(heightDp * 0.18).toInt()}px; width: ${(widthDp * 0.64).toInt()}px; height: ${(heightDp * 0.64).toInt()}px; border-radius: 50%;`
+   - Background gradient: `radial-gradient(circle at 50% 50%, #1a1e26 0%, #0d0f14 100%)`
+   - Dish bevel & rim: `box-shadow: inset 0 0 10px rgba(0,0,0,0.9), 0 0 0 2px rgba(255, 255, 255, 0.12);`
+4. **Concentric Knurled Grip Rings (`<div class="knurled-ring">` or SVG)**:
+   - Placed inside `<div class="stick-cap">`: `position: absolute; width: ${(widthDp * 0.44).toInt()}px; height: ${(heightDp * 0.44).toInt()}px; border-radius: 50%; border: 2px dashed rgba(255, 255, 255, 0.35);`
+5. **Stick Click Typography**:
+   - `<span class="stick-label">$clickLabel</span>`: Font size 20px, weight 900, centered in cap. Real DOM text.
+6. **Tactile Active Press Physics**:
+   - `.stick-btn:active .stick-cap { transform: scale(0.92); }` or `.stick-btn:active { transform: scale(0.92); }` (simulates physical $clickLabel depression).
 
 ${engineBoundaries("stick-btn")}
+
+### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
+Before outputting, verify your component against this checklist:
+- [ ] Two-Zone DOM Structure: Stationary base enclosed in `<div class="stick-base">`, movable cap enclosed in `<div class="stick-cap">`.
+- [ ] Mechanical Clearance: Thumb cap diameter is ~55%–65% of socket diameter (~${(widthDp * 0.60).toInt()}px) for realistic travel clearance.
+- [ ] No Frozen Cap Elements: Knurled rings, traction ridges, emblems, and label are placed INSIDE `<div class="stick-cap">`.
+- [ ] Console Realism: Authentic industrial materials (matte charcoal, rubberized dish, physical shadows) rather than unsolicited neon glow.
+- [ ] No Scripts or Page CSS: Zero JavaScript, zero CSS keyframes animations, zero hover/pointer event handlers.
+- [ ] Compiler Safety: Exactly one root `<button class="stick-btn">` element; all px dimensions explicit.
 
 ### USER CUSTOMIZATION SCHEMA:
 The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:

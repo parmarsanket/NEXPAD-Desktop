@@ -107,7 +107,7 @@ class NxprcFlexLayoutTest {
     }
 
     @Test
-    fun centersLsThumbstickPseudoElementsLikeBrowserPreview() {
+    fun centersLsThumbstickLayersLikeBrowserPreview() {
         val doc = NxprcPackager.compile(
             NxprcHtmlCssConverter.PRESET_THUMBSTICK_LS,
             "rc.stick_ls",

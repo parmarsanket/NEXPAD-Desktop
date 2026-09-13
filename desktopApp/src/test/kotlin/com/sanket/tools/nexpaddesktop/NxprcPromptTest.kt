@@ -217,6 +217,108 @@ class NxprcPromptTest {
             assertTrue(prompt.contains("--spring-stiffness"), "Missing spring-stiffness property")
         }
     }
+
+    @Test
+    fun joystickPromptEnforcesConsoleIndustrialRealismAndVisualQa() {
+        val lsPrompt = NxprcHtmlCssConverter.generateAiPrompt("LS", "JOYSTICK", 130, 130)
+        val rsPrompt = NxprcHtmlCssConverter.generateAiPrompt("RS", "JOYSTICK", 130, 130)
+
+        listOf(lsPrompt, rsPrompt).forEach { prompt ->
+            assertTrue(prompt.contains("VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:"), "Missing console industrial realism section")
+            assertTrue(prompt.contains("Matte Charcoal & Polycarbonate Plastic"), "Missing matte plastic specification")
+            assertTrue(prompt.contains("Physical Material Contrast"), "Missing physical material contrast specification")
+            assertTrue(prompt.contains("Mechanical Clearance & Proportions"), "Missing mechanical clearance rule")
+            assertTrue(prompt.contains("VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):"), "Missing visual QA checklist")
+            assertTrue(prompt.contains("<div class=\"stick-base\">"), "Missing stick-base DOM instruction")
+            assertTrue(prompt.contains("<div class=\"stick-cap\">"), "Missing stick-cap DOM instruction")
+            assertTrue(prompt.contains("Do not write JavaScript"), "Missing JS prohibition in analog movement")
+            assertTrue(prompt.contains("Circle geometry is natural and authentic"), "Missing circle geometry nuance rule")
+        }
+    }
+
+    @Test
+    fun verifyPresetThumbstickLsTwoStagePartitioning() {
+        val doc = com.sanket.tools.nexpad.nxprc.NxprcPackager.compile(
+            NxprcHtmlCssConverter.PRESET_THUMBSTICK_LS,
+            "rc.stick_ls",
+            "Analog Stick LS",
+            "JOYSTICK",
+            "LS"
+        )
+        println("=== PRESET_THUMBSTICK_LS COMPILATION AUDIT ===")
+        println("Category: ${doc.manifest.category}, Control: ${doc.manifest.defaultControl}")
+        println("Dimensions: ${doc.manifest.widthDp}x${doc.manifest.heightDp}")
+        println("Cap Layer Indices: ${doc.canvas.capLayerIndices}")
+        doc.canvas.layers.forEachIndexed { i, layer ->
+            val isCap = i in doc.canvas.capLayerIndices
+            val typeStr = layer::class.simpleName
+            println("  Layer #$i [$typeStr] isCap=$isCap: $layer")
+        }
+
+        assertTrue(doc.canvas.capLayerIndices.isNotEmpty(), "Thumbstick must have movable cap layers")
+        assertFalse(0 in doc.canvas.capLayerIndices, "Base layer 0 must remain stationary")
+        assertTrue(doc.canvas.capLayerIndices.size >= 2, "Thumb cap must include cap container and children")
+    }
+
+    @Test
+    fun verifyPresetThumbstickRsTwoStagePartitioning() {
+        val doc = com.sanket.tools.nexpad.nxprc.NxprcPackager.compile(
+            NxprcHtmlCssConverter.PRESET_THUMBSTICK_RS,
+            "rc.stick_rs",
+            "Analog Stick RS",
+            "JOYSTICK",
+            "RS"
+        )
+        println("=== PRESET_THUMBSTICK_RS COMPILATION AUDIT ===")
+        println("Category: ${doc.manifest.category}, Control: ${doc.manifest.defaultControl}")
+        println("Dimensions: ${doc.manifest.widthDp}x${doc.manifest.heightDp}")
+        println("Cap Layer Indices: ${doc.canvas.capLayerIndices}")
+
+        assertTrue(doc.canvas.capLayerIndices.isNotEmpty(), "RS thumbstick must have movable cap layers")
+        assertFalse(0 in doc.canvas.capLayerIndices, "RS base layer 0 must remain stationary")
+        assertTrue(doc.canvas.capLayerIndices.size >= 2, "RS thumb cap must include cap container and children")
+    }
+
+    @Test
+    fun verifyTwoZoneDomThumbstickCompilation() {
+        val html = """
+            <!DOCTYPE html>
+            <html><head><style>
+              .stick-btn { width: 130px; height: 130px; position: relative; background: transparent; }
+              .stick-base { position: absolute; width: 130px; height: 130px; border-radius: 50%; background: #111; }
+              .socket-well { position: absolute; width: 110px; height: 110px; border-radius: 50%; background: #050505; }
+              .stick-cap { position: absolute; width: 78px; height: 78px; border-radius: 50%; background: #222; }
+              .knurled-ring { position: absolute; width: 56px; height: 56px; border-radius: 50%; border: 2px dashed #444; }
+              .stick-label { font-size: 16px; color: #fff; }
+            </style></head>
+            <body>
+              <button class="stick-btn" data-control="LS" data-category="JOYSTICK" data-name="Two Zone Stick">
+                <div class="stick-base">
+                  <div class="socket-well"></div>
+                </div>
+                <div class="stick-cap">
+                  <div class="knurled-ring"></div>
+                  <span class="stick-label">L3</span>
+                </div>
+              </button>
+            </body></html>
+        """.trimIndent()
+
+        val doc = com.sanket.tools.nexpad.nxprc.NxprcPackager.compile(
+            html, "rc.two_zone_stick", "Two Zone Stick", "JOYSTICK", "LS"
+        )
+        println("=== TWO ZONE DOM STICK AUDIT ===")
+        println("Cap Layer Indices: ${doc.canvas.capLayerIndices}")
+        doc.canvas.layers.forEachIndexed { i, layer ->
+            val isCap = i in doc.canvas.capLayerIndices
+            println("  Layer #$i [${layer::class.simpleName}] isCap=$isCap: $layer")
+        }
+
+        // Must have at least 2 cap layers (stick-cap container, knurled-ring, and text)
+        assertTrue(doc.canvas.capLayerIndices.size >= 2, "Thumb cap must contain multiple movable layers")
+        // Base elements (index 0, 1) must be false
+        assertFalse(0 in doc.canvas.capLayerIndices, "Base must not be in capLayerIndices")
+    }
 }
 
 
