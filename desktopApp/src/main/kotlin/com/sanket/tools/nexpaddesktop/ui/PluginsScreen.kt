@@ -76,6 +76,7 @@ fun PluginsScreen() {
                 ControllerButtonSpec("Y", "Y Button", "BUTTON", "Action Y Button", "rc.action_y", 96, 96, Color(0xFFFBBF24))
             ),
             "DPAD" to listOf(
+                ControllerButtonSpec("DPAD", "D-Pad Cross", "DPAD", "Directional 4-Way Cross", "rc.dpad_cross", 140, 140, Color(0xFF22D3EE)),
                 ControllerButtonSpec("UP", "D-Pad Up", "DPAD", "Directional Up", "rc.dpad_up", 80, 80, Color(0xFF22D3EE)),
                 ControllerButtonSpec("DOWN", "D-Pad Down", "DPAD", "Directional Down", "rc.dpad_down", 80, 80, Color(0xFF22D3EE)),
                 ControllerButtonSpec("LEFT", "D-Pad Left", "DPAD", "Directional Left", "rc.dpad_left", 80, 80, Color(0xFF22D3EE)),

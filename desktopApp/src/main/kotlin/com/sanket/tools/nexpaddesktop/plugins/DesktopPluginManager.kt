@@ -333,11 +333,12 @@ object DesktopPluginManager {
             val extDir = "/sdcard/Android/data/com.sanket.tools.nexpad/files/nxp_remote"
             ProcessBuilder(adbPath, "-s", serial, "shell", "mkdir -p $extDir && cp $tmpRemotePath $extDir/$remoteFileName").start().waitFor()
 
-            // 4. Send broadcasts to tell Android app to reload immediately
-            ProcessBuilder(adbPath, "-s", serial, "shell", "am broadcast -a com.sanket.tools.nexpad.RELOAD_REMOTE_COMPONENTS").start().waitFor()
-            ProcessBuilder(adbPath, "-s", serial, "shell", "am broadcast -a com.sanket.tools.nexpad.RELOAD_COMPONENTS").start().waitFor()
+            // 4. Send targeted broadcasts to tell Android app to reload immediately
+            ProcessBuilder(adbPath, "-s", serial, "shell", "am broadcast -a com.sanket.tools.nexpad.RELOAD_REMOTE_COMPONENTS -p com.sanket.tools.nexpad").start().waitFor()
+            ProcessBuilder(adbPath, "-s", serial, "shell", "am broadcast -a com.sanket.tools.nexpad.RELOAD_COMPONENTS -p com.sanket.tools.nexpad").start().waitFor()
 
-            // Cleanup temp file
+            // 5. Cleanup temp files on PC and device
+            ProcessBuilder(adbPath, "-s", serial, "shell", "rm -f $tmpRemotePath").start().waitFor()
             tempFile.delete()
 
             Result.success("Pushed ${doc.manifest.name} (.nxprc) to phone via ADB! (Hot-reloaded)")
