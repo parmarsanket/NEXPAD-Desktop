@@ -24,9 +24,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.nxprc.NxprcDocument
+import com.sanket.tools.nexpaddesktop.connection.ActiveTransport
 import com.sanket.tools.nexpaddesktop.plugins.DesktopPluginManager
 import com.sanket.tools.nexpaddesktop.plugins.NxprcExporter
 import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
+import com.sanket.tools.nexpaddesktop.plugins.UniversalPushManager
 import com.sanket.tools.nexpaddesktop.ui.components.glassCard
 import com.sanket.tools.nexpaddesktop.ui.designer.FullAuditPreviewScreen
 import com.sanket.tools.nexpaddesktop.ui.designer.LayerStudioFullScreen
@@ -66,7 +68,9 @@ private fun safeCopyToClipboard(text: String): Boolean {
 }
 
 @Composable
-fun PluginsScreen() {
+fun PluginsScreen(
+    activeTransport: ActiveTransport = UniversalPushManager.currentTransport
+) {
     val scope = rememberCoroutineScope()
 
     val categories = remember {
@@ -302,7 +306,8 @@ fun PluginsScreen() {
                             isExporting = false
                         }
                     },
-                    onPushAdb = {
+                    activeTransport = activeTransport,
+                    onPush = {
                         scope.launch {
                             isExporting = true
                             val exportDoc = if (activeLayerIndices.size == compiledDoc.canvas.layers.size) {
@@ -314,11 +319,11 @@ fun PluginsScreen() {
                                     )
                                 )
                             }
-                            exportStatus = "Pushing ${exportDoc.canvas.layers.size} layers to phone via ADB..."
-                            val res = DesktopPluginManager.transferNxprcViaAdb(exportDoc)
+                            exportStatus = "Pushing ${exportDoc.canvas.layers.size} layers to phone via ${activeTransport.displayName}..."
+                            val res = UniversalPushManager.pushComponent(exportDoc)
                             res.fold(
                                 onSuccess = { msg -> exportStatus = msg },
-                                onFailure = { ex -> exportStatus = "ADB Push Error: ${ex.message}" }
+                                onFailure = { ex -> exportStatus = "Push Error: ${ex.message}" }
                             )
                             isExporting = false
                         }
@@ -484,7 +489,8 @@ fun PluginsScreen() {
                                     isExporting = false
                                 }
                             },
-                            onPushAdb = {
+                            activeTransport = activeTransport,
+                            onPush = {
                                 scope.launch {
                                     isExporting = true
                                     val exportDoc = if (activeLayerIndices.size == compiledDoc.canvas.layers.size) {
@@ -496,11 +502,11 @@ fun PluginsScreen() {
                                             )
                                         )
                                     }
-                                    exportStatus = "Pushing ${exportDoc.canvas.layers.size} layers to phone via ADB..."
-                                    val res = DesktopPluginManager.transferNxprcViaAdb(exportDoc)
+                                    exportStatus = "Pushing ${exportDoc.canvas.layers.size} layers to phone via ${activeTransport.displayName}..."
+                                    val res = UniversalPushManager.pushComponent(exportDoc)
                                     res.fold(
                                         onSuccess = { msg -> exportStatus = msg },
-                                        onFailure = { ex -> exportStatus = "ADB Push Error: ${ex.message}" }
+                                        onFailure = { ex -> exportStatus = "Push Error: ${ex.message}" }
                                     )
                                     isExporting = false
                                 }
@@ -650,19 +656,21 @@ fun PluginsScreen() {
                 onPushAdbDoc = { doc ->
                     scope.launch {
                         isExporting = true
-                        exportStatus = "Pushing ${doc.canvas.layers.size} layers to phone via ADB..."
-                        val res = DesktopPluginManager.transferNxprcViaAdb(doc)
+                        exportStatus = "Pushing ${doc.canvas.layers.size} layers to phone via ${activeTransport.displayName}..."
+                        val res = UniversalPushManager.pushComponent(doc)
                         res.fold(
                             onSuccess = { msg ->
                                 exportStatus = msg
                             },
                             onFailure = { ex ->
-                                exportStatus = "ADB Push Error: ${ex.message}"
+                                exportStatus = "Push Error: ${ex.message}"
                             }
                         )
                         isExporting = false
                     }
                 },
+                isPushEnabled = activeTransport != ActiveTransport.NONE,
+                pushLabel = if (activeTransport != ActiveTransport.NONE) "Push via ${activeTransport.displayName} (${compiledDoc.canvas.layers.size} L)" else "No Phone Connected",
                 onFeedback = { promptCopiedBanner = it },
                 onClose = { showFullScreenLayerStudio = false }
             )
@@ -949,7 +957,8 @@ private fun LiveSandboxPane(
     onOpenLayerStudio: () -> Unit,
     onOpenFullAudit: () -> Unit,
     onExport: () -> Unit,
-    onPushAdb: () -> Unit
+    activeTransport: ActiveTransport = ActiveTransport.NONE,
+    onPush: () -> Unit
 ) {
     var stickDeflection by remember { mutableStateOf(Pair(0f, 0f)) }
 
@@ -1165,7 +1174,7 @@ private fun LiveSandboxPane(
             }
         }
 
-        // Action Buttons Row: Export & Push via ADB (Responsive labels to avoid text clipping)
+        // Action Buttons Row: Export & Push via Active Connection
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1175,10 +1184,33 @@ private fun LiveSandboxPane(
                 isNarrow -> "Export"
                 else -> "Export File"
             }
+            val isConnected = activeTransport != ActiveTransport.NONE
             val pushText = when {
-                activeLayerIndices.size < compiledDoc.canvas.layers.size -> "Push (${activeLayerIndices.size} L)"
-                isNarrow -> "Push ADB"
-                else -> "Push to Phone (ADB)"
+                !isConnected -> "No Phone Connected"
+                activeLayerIndices.size < compiledDoc.canvas.layers.size -> when (activeTransport) {
+                    ActiveTransport.WIFI -> "Push Wi-Fi (${activeLayerIndices.size} L)"
+                    ActiveTransport.USB_TETHERING -> "Push Tether (${activeLayerIndices.size} L)"
+                    ActiveTransport.USB_AOA -> "Push Direct (${activeLayerIndices.size} L)"
+                    ActiveTransport.USB_ADB -> "Push ADB (${activeLayerIndices.size} L)"
+                    ActiveTransport.BLUETOOTH -> "Push BT (${activeLayerIndices.size} L)"
+                    ActiveTransport.NONE -> "No Phone"
+                }
+                isNarrow -> when (activeTransport) {
+                    ActiveTransport.WIFI -> "Push Wi-Fi"
+                    ActiveTransport.USB_TETHERING -> "Push Tether"
+                    ActiveTransport.USB_AOA -> "Push Direct"
+                    ActiveTransport.USB_ADB -> "Push ADB"
+                    ActiveTransport.BLUETOOTH -> "Push BT"
+                    ActiveTransport.NONE -> "No Phone"
+                }
+                else -> when (activeTransport) {
+                    ActiveTransport.WIFI -> "Push via Wi-Fi"
+                    ActiveTransport.USB_TETHERING -> "Push via Tethering"
+                    ActiveTransport.USB_AOA -> "Push via USB Direct"
+                    ActiveTransport.USB_ADB -> "Push via ADB"
+                    ActiveTransport.BLUETOOTH -> "Push via Bluetooth"
+                    ActiveTransport.NONE -> "No Phone Connected"
+                }
             }
 
             // Export Button
@@ -1203,22 +1235,30 @@ private fun LiveSandboxPane(
                 )
             }
 
-            // Push via ADB Button
+            // Push via Active Transport Button (Enabled only when connected)
             Button(
-                onClick = onPushAdb,
-                enabled = !isExporting,
+                onClick = onPush,
+                enabled = !isExporting && isConnected,
                 modifier = Modifier
                     .weight(1f)
                     .height(if (isShort) 36.dp else 40.dp),
                 shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00FF99)),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF00FF99),
+                    disabledContainerColor = Color(0xFF1E293B)
+                ),
                 contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
             ) {
-                Icon(Icons.Default.Send, contentDescription = null, tint = Color.Black, modifier = Modifier.size(15.dp))
+                Icon(
+                    Icons.Default.Send,
+                    contentDescription = null,
+                    tint = if (isConnected) Color.Black else Color.White.copy(alpha = 0.35f),
+                    modifier = Modifier.size(15.dp)
+                )
                 Spacer(Modifier.width(4.dp))
                 Text(
                     text = pushText,
-                    color = Color.Black,
+                    color = if (isConnected) Color.Black else Color.White.copy(alpha = 0.35f),
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp,
                     maxLines = 1

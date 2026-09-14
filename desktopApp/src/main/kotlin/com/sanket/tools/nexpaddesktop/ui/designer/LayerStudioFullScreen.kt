@@ -49,6 +49,8 @@ fun LayerStudioFullScreen(
     onSelectedLayerChange: (Int) -> Unit,
     onExportDoc: (NxprcDocument) -> Unit,
     onPushAdbDoc: (NxprcDocument) -> Unit,
+    isPushEnabled: Boolean = true,
+    pushLabel: String? = null,
     onFeedback: (String) -> Unit,
     onClose: () -> Unit
 ) {
@@ -922,20 +924,29 @@ fun LayerStudioFullScreen(
                         )
                     }
 
-                    // Quick Push via ADB
+                    // Quick Push to Phone
                     Button(
                         onClick = { onPushAdbDoc(exportDoc) },
+                        enabled = isPushEnabled,
                         shape = RoundedCornerShape(6.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00FF99)),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF00FF99),
+                            disabledContainerColor = Color(0xFF1E293B)
+                        ),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                         modifier = Modifier.height(30.dp)
                     ) {
-                        Icon(Icons.Default.Send, contentDescription = null, tint = Color.Black, modifier = Modifier.size(13.dp))
+                        Icon(
+                            Icons.Default.Send,
+                            contentDescription = null,
+                            tint = if (isPushEnabled) Color.Black else Color.White.copy(alpha = 0.35f),
+                            modifier = Modifier.size(13.dp)
+                        )
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            text = "Push to Phone (${exportDoc.canvas.layers.size} L)",
+                            text = pushLabel ?: "Push to Phone (${exportDoc.canvas.layers.size} L)",
                             fontSize = 11.sp,
-                            color = Color.Black,
+                            color = if (isPushEnabled) Color.Black else Color.White.copy(alpha = 0.35f),
                             fontWeight = FontWeight.Bold
                         )
                     }

@@ -72,6 +72,12 @@ class UdpServer(
     // Single Active Transport Guard: drop incoming UDP packets if another transport is active
     var isExternalTransportActive: () -> Boolean = { false }
 
+    fun getConnectedClientHost(): String? {
+        val addr = clientAddress ?: return null
+        val javaSock = (addr as? InetSocketAddress)?.toJavaAddress() as? java.net.InetSocketAddress
+        return javaSock?.address?.hostAddress ?: javaSock?.hostString
+    }
+
     @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     private val dedicatedDispatcher = kotlinx.coroutines.newSingleThreadContext("UdpServerThread")
 

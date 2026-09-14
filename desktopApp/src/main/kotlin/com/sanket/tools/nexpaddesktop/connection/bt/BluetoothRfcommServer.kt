@@ -40,6 +40,7 @@ class BluetoothRfcommServer {
     private var assignedChannel: Int = 0
 
     private val feedbackChannel = Channel<GamepadFeedback>(Channel.CONFLATED)
+    private val fileSyncChannel = Channel<ByteArray>(Channel.UNLIMITED)
     private val latestEchoSequence = AtomicInteger(0)
     private val latestLossPctByte = AtomicInteger(0)
 
@@ -67,6 +68,14 @@ class BluetoothRfcommServer {
         if (isConnected.get()) {
             feedbackChannel.trySend(feedback)
         }
+    }
+
+    fun pushNxprc(componentId: String, bytes: ByteArray): Boolean {
+        if (!isConnected.get() || clientSocket == WinsockBluetooth.INVALID_SOCKET) return false
+        val checksum = NexpadProtocol.computeCrc32(bytes)
+        val header = NexpadProtocol.encodeFileSyncHeader(componentId, bytes.size, checksum)
+        val fullPayload = header + bytes
+        return fileSyncChannel.trySend(fullPayload).isSuccess
     }
 
     fun pause() {
@@ -320,6 +329,24 @@ class BluetoothRfcommServer {
             var lastTelemetrySent = 0L
 
             while (isActive && isConnected.get()) {
+                // Drain any pending file sync packets first
+                val syncData = fileSyncChannel.tryReceive().getOrNull()
+                if (syncData != null) {
+                    println("📦 [Bluetooth] Sending file sync packet (${syncData.size} bytes)...")
+                    var totalSent = 0
+                    while (totalSent < syncData.size && isActive && isConnected.get()) {
+                        val toSend = minOf(1024, syncData.size - totalSent)
+                        val chunk = syncData.copyOfRange(totalSent, totalSent + toSend)
+                        val sent = WinsockBluetooth.INSTANCE.send(socket, chunk, chunk.size, 0)
+                        if (sent <= 0) {
+                            println("❌ [Bluetooth] Failed to send file sync packet chunk")
+                            break
+                        }
+                        totalSent += sent
+                    }
+                    println("✅ [Bluetooth] File sync packet sent: $totalSent/${syncData.size} bytes")
+                }
+
                 // Event-driven rumble feedback or 20ms periodic telemetry keepalive
                 val fb = withTimeoutOrNull(20L) {
                     feedbackChannel.receive()

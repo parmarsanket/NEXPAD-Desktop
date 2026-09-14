@@ -32,9 +32,18 @@ class AoaManager {
     var lastDetectedPhoneName: String? = null
 
     private var activeFeedbackChannel: kotlinx.coroutines.channels.Channel<com.sanket.tools.nexpad.model.GamepadFeedback>? = null
+    private var activeFileSyncChannel: kotlinx.coroutines.channels.Channel<ByteArray>? = null
 
     fun sendFeedback(feedback: com.sanket.tools.nexpad.model.GamepadFeedback) {
         activeFeedbackChannel?.trySend(feedback)
+    }
+
+    fun pushNxprc(componentId: String, bytes: ByteArray): Boolean {
+        val ch = activeFileSyncChannel ?: return false
+        val checksum = com.sanket.tools.nexpad.protocol.NexpadProtocol.computeCrc32(bytes)
+        val header = com.sanket.tools.nexpad.protocol.NexpadProtocol.encodeFileSyncHeader(componentId, bytes.size, checksum)
+        val fullPayload = header + bytes
+        return ch.trySend(fullPayload).isSuccess
     }
 
     private var context: Context? = null
@@ -227,11 +236,14 @@ class AoaManager {
 
             try {
                 val feedbackChannel = kotlinx.coroutines.channels.Channel<com.sanket.tools.nexpad.model.GamepadFeedback>(kotlinx.coroutines.channels.Channel.CONFLATED)
+                val fileSyncChannel = kotlinx.coroutines.channels.Channel<ByteArray>(kotlinx.coroutines.channels.Channel.UNLIMITED)
                 activeFeedbackChannel = feedbackChannel
+                activeFileSyncChannel = fileSyncChannel
 
                 AoaTransport.startBulkStreaming(
                     handle = handle,
                     feedbackChannel = feedbackChannel,
+                    fileSyncChannel = fileSyncChannel,
                     onSessionStarted = {
                         currentState = AoaState.Connected
                         userDismissedElevation = false
@@ -249,6 +261,7 @@ class AoaManager {
                 )
             } finally {
                 activeFeedbackChannel = null
+                activeFileSyncChannel = null
                 LibUsb.close(handle)
                 if (currentState is AoaState.Connected) {
                     onAoaDisconnected?.invoke()

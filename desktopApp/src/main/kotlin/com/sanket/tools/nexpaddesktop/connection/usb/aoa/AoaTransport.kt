@@ -16,6 +16,7 @@ import org.usb4java.LibUsb
 import java.nio.ByteBuffer
 import java.nio.IntBuffer
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.time.Duration.Companion.milliseconds
 
 object AoaTransport {
 
@@ -34,6 +35,7 @@ object AoaTransport {
     suspend fun startBulkStreaming(
         handle: DeviceHandle,
         feedbackChannel: ReceiveChannel<GamepadFeedback>,
+        fileSyncChannel: ReceiveChannel<ByteArray>? = null,
         onSessionStarted: () -> Unit = {},
         onSessionEnded: () -> Unit = {},
         onInputReceived: (GamepadInput) -> Unit
@@ -60,32 +62,28 @@ object AoaTransport {
         // Conflated channel to trigger immediate feedback echo (RTT ping) without blocking IN loop
         val triggerOutChannel = Channel<Unit>(Channel.CONFLATED)
 
-        // Launch concurrent OUT loop to stream rumble and latency echoes back to phone
-        val outJob = launch(Dispatchers.IO) {
-            runOutLoop(
-                handle = handle,
-                bulkOutEndpoint = endpoints.bulkOut,
-                feedbackChannel = feedbackChannel,
-                triggerOutChannel = triggerOutChannel,
-                latestEchoSequence = latestEchoSequence,
-                latestLossPctByte = latestLossPctByte
-            )
-        }
-
         try {
-            runInLoop(
-                handle = handle,
-                bulkInEndpoint = endpoints.bulkIn,
-                triggerOutChannel = triggerOutChannel,
-                latestEchoSequence = latestEchoSequence,
-                latestLossPctByte = latestLossPctByte,
-                onSessionStarted = onSessionStarted,
-                onSessionEnded = onSessionEnded,
-                onInputReceived = onInputReceived
-            )
-        } finally {
-            // Cancel OUT loop immediately so coroutineScope doesn't hang indefinitely on disconnect
+            // Launch parallel IN/OUT coroutines
+            val inJob = launch(Dispatchers.IO) {
+                runInLoop(
+                    handle = handle,
+                    bulkInEndpoint = endpoints.bulkIn,
+                    triggerOutChannel = triggerOutChannel,
+                    latestEchoSequence = latestEchoSequence,
+                    latestLossPctByte = latestLossPctByte,
+                    onSessionStarted = onSessionStarted,
+                    onSessionEnded = onSessionEnded,
+                    onInputReceived = onInputReceived
+                )
+            }
+            val outJob = launch(Dispatchers.IO) {
+                runOutLoop(handle, endpoints.bulkOut, feedbackChannel, fileSyncChannel, triggerOutChannel, latestEchoSequence, latestLossPctByte)
+            }
+
+            // Wait until either stream fails or is cancelled
+            inJob.join()
             outJob.cancel()
+        } finally {
             LibUsb.releaseInterface(handle, interfaceNum)
             println("[AOA/Transport] Released interface $interfaceNum. Stream closed.")
             // NOTE: We do NOT LibUsb.close(handle) here! AoaManager is the owner!
@@ -96,6 +94,7 @@ object AoaTransport {
         handle: DeviceHandle,
         bulkOutEndpoint: Byte,
         feedbackChannel: ReceiveChannel<GamepadFeedback>,
+        fileSyncChannel: ReceiveChannel<ByteArray>?,
         triggerOutChannel: Channel<Unit>,
         latestEchoSequence: AtomicInteger,
         latestLossPctByte: AtomicInteger
@@ -107,9 +106,20 @@ object AoaTransport {
 
         try {
             while (isActive) {
+                // Drain and send any pending file sync packets over the bulk OUT pipe
+                val syncData = fileSyncChannel?.tryReceive()?.getOrNull()
+                if (syncData != null) {
+                    val fileBuffer = ByteBuffer.allocateDirect(syncData.size)
+                    fileBuffer.put(syncData)
+                    fileBuffer.flip()
+                    val fileTransferred = IntBuffer.allocate(1)
+                    val syncRes = LibUsb.bulkTransfer(handle, bulkOutEndpoint, fileBuffer, fileTransferred, 5000L)
+                    println("[AOA/Transport] Pushed file payload (${syncData.size} bytes, transferred=${fileTransferred.get(0)}, result=$syncRes)")
+                }
+
                 // Wait for either an immediate trigger from the IN loop,
                 // or the fallback timeout to send heartbeats/rumble if inputs cease.
-                withTimeoutOrNull(HEARTBEAT_FALLBACK_MS) {
+                withTimeoutOrNull(HEARTBEAT_FALLBACK_MS.milliseconds) {
                     triggerOutChannel.receive()
                 }
 

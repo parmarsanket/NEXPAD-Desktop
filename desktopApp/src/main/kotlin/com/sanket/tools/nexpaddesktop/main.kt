@@ -16,6 +16,7 @@ import com.sanket.tools.nexpaddesktop.connection.ActiveTransport
 import com.sanket.tools.nexpaddesktop.connection.DriverInstallState
 import com.sanket.tools.nexpad.model.GamepadFeedback
 import com.sanket.tools.nexpaddesktop.ui.ControllerType
+import com.sanket.tools.nexpaddesktop.plugins.UniversalPushManager
 import com.sun.jna.platform.win32.Kernel32
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -337,6 +338,13 @@ fun main(args: Array<String>) {
             discoveryServer.stop()
             dsuServer.stop()
         }
+    }
+
+    LaunchedEffect(activeTransport, server) {
+        UniversalPushManager.currentTransport = activeTransport
+        UniversalPushManager.udpServer = server
+        UniversalPushManager.aoaManager = aoaManager
+        UniversalPushManager.btServer = btServer
     }
 
     Window(

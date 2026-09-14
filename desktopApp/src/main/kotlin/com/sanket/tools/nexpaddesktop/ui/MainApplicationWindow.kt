@@ -94,7 +94,7 @@ fun MainApplicationWindow(
                     processedPitch = processedPitch,
                     onRecalibrate = onRecalibrate
                 )
-                Screen.PLUGINS -> PluginsScreen()
+                Screen.PLUGINS -> PluginsScreen(activeTransport = activeTransport)
                 Screen.OUTPUT -> OutputScreen()
                 else -> {
                     // Placeholder for NODE, CONVERTER, KBM
