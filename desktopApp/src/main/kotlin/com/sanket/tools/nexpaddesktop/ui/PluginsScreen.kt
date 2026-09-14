@@ -43,16 +43,10 @@ import kotlinx.coroutines.withContext
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 
-data class ControllerButtonSpec(
-    val key: String,
-    val label: String,
-    val category: String,
-    val defaultName: String,
-    val defaultId: String,
-    val widthDp: Int,
-    val heightDp: Int,
-    val accentColor: Color
-)
+import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.category.SubCategoryDefinition
+
+val SubCategoryDefinition.accentColor: Color get() = Color(accentColorArgb)
 
 private fun safeCopyToClipboard(text: String): Boolean {
     val selection = StringSelection(text)
@@ -74,49 +68,13 @@ fun PluginsScreen(
     val scope = rememberCoroutineScope()
 
     val categories = remember {
-        listOf(
-            "ABXY" to "🎮 ABXY",
-            "DPAD" to "🧭 D-Pad",
-            "TRIGGERS" to "🎯 Triggers",
-            "BUMPERS" to "🛡️ Bumpers",
-            "STICKS" to "🕹️ Sticks",
-            "SYSTEM" to "⚙️ System"
-        )
+        CategoryManager.getAllCategories().map { it.id to "${it.emoji} ${it.title}" }
     }
 
     val buttonsByCategory = remember {
-        mapOf(
-            "ABXY" to listOf(
-                ControllerButtonSpec("A", "A Button", "BUTTON", "Action A Button", "rc.action_a", 96, 96, Color(0xFF4ADE80)),
-                ControllerButtonSpec("B", "B Button", "BUTTON", "Action B Button", "rc.action_b", 96, 96, Color(0xFFF87171)),
-                ControllerButtonSpec("X", "X Button", "BUTTON", "Action X Button", "rc.action_x", 96, 96, Color(0xFF60A5FA)),
-                ControllerButtonSpec("Y", "Y Button", "BUTTON", "Action Y Button", "rc.action_y", 96, 96, Color(0xFFFBBF24))
-            ),
-            "DPAD" to listOf(
-                ControllerButtonSpec("DPAD", "D-Pad Cross", "DPAD", "Directional 4-Way Cross", "rc.dpad_cross", 140, 140, Color(0xFF22D3EE)),
-                ControllerButtonSpec("UP", "D-Pad Up", "DPAD", "Directional Up", "rc.dpad_up", 80, 80, Color(0xFF22D3EE)),
-                ControllerButtonSpec("DOWN", "D-Pad Down", "DPAD", "Directional Down", "rc.dpad_down", 80, 80, Color(0xFF22D3EE)),
-                ControllerButtonSpec("LEFT", "D-Pad Left", "DPAD", "Directional Left", "rc.dpad_left", 80, 80, Color(0xFF22D3EE)),
-                ControllerButtonSpec("RIGHT", "D-Pad Right", "DPAD", "Directional Right", "rc.dpad_right", 80, 80, Color(0xFF22D3EE))
-            ),
-            "TRIGGERS" to listOf(
-                ControllerButtonSpec("LT", "Left Trigger", "TRIGGER", "Analog Left Trigger", "rc.trigger_lt", 110, 140, Color(0xFFA855F7)),
-                ControllerButtonSpec("RT", "Right Trigger", "TRIGGER", "Analog Right Trigger", "rc.trigger_rt", 110, 140, Color(0xFFA855F7))
-            ),
-            "BUMPERS" to listOf(
-                ControllerButtonSpec("LB", "Left Bumper", "BUMPER", "Shoulder Left Bumper", "rc.bumper_lb", 120, 60, Color(0xFF38BDF8)),
-                ControllerButtonSpec("RB", "Right Bumper", "BUMPER", "Shoulder Right Bumper", "rc.bumper_rb", 120, 60, Color(0xFF38BDF8))
-            ),
-            "STICKS" to listOf(
-                ControllerButtonSpec("LS", "Left Stick", "JOYSTICK", "Left Analog Thumbstick", "rc.stick_ls", 130, 130, Color(0xFF34D399)),
-                ControllerButtonSpec("RS", "Right Stick", "JOYSTICK", "Right Analog Thumbstick", "rc.stick_rs", 130, 130, Color(0xFF34D399))
-            ),
-            "SYSTEM" to listOf(
-                ControllerButtonSpec("START", "Menu / Start", "SYSTEM", "System Menu Button", "rc.sys_start", 70, 70, Color(0xFF94A3B8)),
-                ControllerButtonSpec("BACK", "View / Back", "SYSTEM", "System View Button", "rc.sys_back", 70, 70, Color(0xFF94A3B8)),
-                ControllerButtonSpec("GUIDE", "Nexus Guide", "SYSTEM", "Controller Center Guide", "rc.sys_guide", 84, 84, Color(0xFFF59E0B))
-            )
-        )
+        CategoryManager.getAllCategories().associate { cat ->
+            cat.id to cat.controls
+        }
     }
 
     var selectedCategory by remember { mutableStateOf("ABXY") }
@@ -236,12 +194,12 @@ fun PluginsScreen(
                         if (firstButton != null) {
                             selectedButtonKey = firstButton.key
                             defaultControl = firstButton.key
-                            category = firstButton.category
+                            category = firstButton.componentType.name
                             componentId = firstButton.defaultId
                             componentName = firstButton.defaultName
-                            targetWidthDp = firstButton.widthDp
-                            targetHeightDp = firstButton.heightDp
-                            htmlSource = NxprcHtmlCssConverter.getReferenceTemplate(firstButton.key, firstButton.category)
+                            targetWidthDp = firstButton.defaultWidthDp
+                            targetHeightDp = firstButton.defaultHeightDp
+                            htmlSource = firstButton.starterHtmlPreset ?: NxprcHtmlCssConverter.getReferenceTemplate(firstButton.key, firstButton.componentType.name)
                         }
                     },
                     categories = categories,
@@ -250,12 +208,12 @@ fun PluginsScreen(
                     onSelectButton = { btn ->
                         selectedButtonKey = btn.key
                         defaultControl = btn.key
-                        category = btn.category
+                        category = btn.componentType.name
                         componentId = btn.defaultId
                         componentName = btn.defaultName
-                        targetWidthDp = btn.widthDp
-                        targetHeightDp = btn.heightDp
-                        htmlSource = NxprcHtmlCssConverter.getReferenceTemplate(btn.key, btn.category)
+                        targetWidthDp = btn.defaultWidthDp
+                        targetHeightDp = btn.defaultHeightDp
+                        htmlSource = btn.starterHtmlPreset ?: NxprcHtmlCssConverter.getReferenceTemplate(btn.key, btn.componentType.name)
                     },
                     htmlSource = htmlSource,
                     onHtmlSourceChange = { htmlSource = it }
@@ -422,12 +380,12 @@ fun PluginsScreen(
                                 if (firstButton != null) {
                                     selectedButtonKey = firstButton.key
                                     defaultControl = firstButton.key
-                                    category = firstButton.category
+                                    category = firstButton.componentType.name
                                     componentId = firstButton.defaultId
                                     componentName = firstButton.defaultName
-                                    targetWidthDp = firstButton.widthDp
-                                    targetHeightDp = firstButton.heightDp
-                                    htmlSource = NxprcHtmlCssConverter.getReferenceTemplate(firstButton.key, firstButton.category)
+                                    targetWidthDp = firstButton.defaultWidthDp
+                                    targetHeightDp = firstButton.defaultHeightDp
+                                    htmlSource = firstButton.starterHtmlPreset ?: NxprcHtmlCssConverter.getReferenceTemplate(firstButton.key, firstButton.componentType.name)
                                 }
                             },
                             categories = categories,
@@ -436,12 +394,12 @@ fun PluginsScreen(
                             onSelectButton = { btn ->
                                 selectedButtonKey = btn.key
                                 defaultControl = btn.key
-                                category = btn.category
+                                category = btn.componentType.name
                                 componentId = btn.defaultId
                                 componentName = btn.defaultName
-                                targetWidthDp = btn.widthDp
-                                targetHeightDp = btn.heightDp
-                                htmlSource = NxprcHtmlCssConverter.getReferenceTemplate(btn.key, btn.category)
+                                targetWidthDp = btn.defaultWidthDp
+                                targetHeightDp = btn.defaultHeightDp
+                                htmlSource = btn.starterHtmlPreset ?: NxprcHtmlCssConverter.getReferenceTemplate(btn.key, btn.componentType.name)
                             },
                             htmlSource = htmlSource,
                             onHtmlSourceChange = { htmlSource = it }
@@ -697,9 +655,9 @@ private fun ComponentEditorPane(
     selectedCategory: String,
     onSelectCategory: (String) -> Unit,
     categories: List<Pair<String, String>>,
-    buttonsByCategory: Map<String, List<ControllerButtonSpec>>,
+    buttonsByCategory: Map<String, List<SubCategoryDefinition>>,
     selectedButtonKey: String,
-    onSelectButton: (ControllerButtonSpec) -> Unit,
+    onSelectButton: (SubCategoryDefinition) -> Unit,
     htmlSource: String,
     onHtmlSourceChange: (String) -> Unit
 ) {
