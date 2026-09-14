@@ -854,7 +854,7 @@ private fun ComponentEditorPane(
                     modifier = Modifier.height(28.dp)
                 ) {
                     Text(
-                        text = btn.label,
+                        text = if (btn.emoji.isNotBlank()) "${btn.emoji} ${btn.label}" else btn.label,
                         color = if (isSelected) btn.accentColor else Color.White.copy(alpha = 0.7f),
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                         fontSize = 11.sp
