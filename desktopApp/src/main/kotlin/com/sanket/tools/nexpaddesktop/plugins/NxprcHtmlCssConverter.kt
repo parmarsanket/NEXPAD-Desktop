@@ -1716,7 +1716,22 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
 5. **Tactile Active Physics**:
    - `.nexpad-btn:active { transform: scale(0.93) translateY(3px); }` (compiles into native Compose spring physics).
 
+### VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
+Create an authentic console-grade hardware aesthetic (reminiscent of Xbox Series X, Elite Controller, or DualSense) with physical industrial realism:
+1. **Matte Polycarbonate Body & Optical Depth**: Rich dual-cast molding — deep chassis base tones (`#14171e`, `#1c202a`, `#08090c`) with crisp perimeter chamfer highlights, NOT flat monochrome or pure `#000`.
+2. **Physical Contact Shadows & Recessed Socket**: Elevated dome seated inside a subtle recessed socket well (`box-shadow: 0 8px 24px rgba(0,0,0,0.65), inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -6px 12px rgba(0,0,0,0.7)`).
+3. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic face buttons feature crisp embossed letterforms, restrained subsurface luminance, and authentic optical gloss arcs.
+4. **Legible High-Contrast Letterform**: Prominent, highly legible center glyph ($control) with multi-stop 3D text shadow that remains clear at handheld phone touch scales.
+
 ${engineBoundaries("nexpad-btn")}
+
+### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
+Before outputting, verify your component against this checklist:
+- [ ] Console Realism: Authentic industrial materials (matte polycarbonate dome, subtle socket recess, physical contact shadows) rather than unsolicited neon glow.
+- [ ] Center Glyph Legibility: High-contrast "$control" label with embossed 3D text shadow readable at handheld touch scale.
+- [ ] Optical Gloss Arc: Subtle specular reflection (`::after`) communicating convex molded plastic.
+- [ ] Tactile Active Physics: Spring micro-physics (`--spring-damping: 0.68; --spring-stiffness: 440; --press-scale: 0.92;`) and `.nexpad-btn:active { transform: scale(0.93) translateY(3px); }`.
+- [ ] Compiler Safety: Exactly one root `<button class="nexpad-btn">` element; all px dimensions explicit.
 
 ### USER CUSTOMIZATION SCHEMA:
 The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
@@ -1766,6 +1781,13 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Optional Visual Language [OPTIONAL]**: Recessed pivot well, laser-etched chevron markings, sloped directional gradients, tactile nubs.
 - **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. Cross, wedge, arrow, star, disc, or organic form are all valid. Preserve the user's requested shape.
 
+### VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
+Create an authentic console-grade hardware aesthetic (reminiscent of Xbox Series X, Elite Controller, or DualSense) with physical industrial realism:
+1. **Textured Matte ABS Plastic**: Deep chassis body tones (`#14171e`, `#1c202a`, `#08090c`) with subtle perimeter bevels, NOT flat grey or pure `#000`.
+2. **Central Rocker Pivot Mechanics**: Authentic console D-pads rock around a central spherical pivot. When designing a 4-way cross or dish, include a recessed central pivot well (`::before` circular indent) simulating the physical rocker mechanism. When designing an individual directional button, slope the gradient along the direction of travel to communicate tactile inward tilt.
+3. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic directional pads prioritize tactile finger purchase, molded cardinal bevels, and crisp physical contact shadows.
+4. **High-Contrast Cardinal Directional Affordance**: Crisp directional indicators (arrow glyph $arrowGlyph, chevron, or vector path) with high contrast against the dark textured housing.
+
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
 The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
 1. **Root Button Tag (`<button class="dpad-btn" data-control="$control" data-category="DPAD" data-name="D-Pad $control">`)**:
@@ -1788,6 +1810,15 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
    - `.dpad-btn:active { transform: ${if (control.uppercase() == "DPAD") "scale(0.95)" else "scale(0.92) translateY(2px)"}; }`
 
 ${engineBoundaries("dpad-btn")}
+
+### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
+Before outputting, verify your component against this checklist:
+- [ ] Directional Affordance: Distinct cardinal touch zones (or 4-way cross) with clear directional orientation.
+- [ ] Rocker Pivot Affordance: Central pivot well or sloped directional gradient communicating physical rocker mechanism.
+- [ ] High-Contrast Glyph: Crisp directional glyph ($arrowGlyph) or vector chevron readable at small touch scales.
+- [ ] Console Realism: Authentic industrial materials (textured matte ABS, subtle contact shadows) rather than unsolicited neon glow.
+- [ ] Tactile Active Physics: Spring micro-physics (`--spring-damping: 0.72; --spring-stiffness: 480;`) and `.dpad-btn:active` transform.
+- [ ] Compiler Safety: Exactly one root `<button class="dpad-btn">` element; all px dimensions explicit.
 
 ### USER CUSTOMIZATION SCHEMA:
 The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
@@ -1829,6 +1860,13 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Optional Visual Language [OPTIONAL]**: Horizontal friction ribs, stippling, curved rake paddle angle, digital pressure telemetry.
 - **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. Ergonomic curved paddle, angular wedge, minimal capsule, or custom silhouette. Preserve the user's requested shape.
 
+### VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
+Create an authentic console-grade hardware aesthetic (reminiscent of Xbox Series X, Elite Controller, or DualSense) with physical industrial realism:
+1. **Curved Paddle Rake & Analog Travel**: Authentic analog triggers feature an elongated vertical paddle (width: ${widthDp}px, height: ${heightDp}px) with a 180-degree gradient receding into the controller housing cavity, communicating analog travel and finger placement.
+2. **Molded Traction Ribs**: Physical molded horizontal friction ridges (via Flexbox column or `::before` layered shadows) providing authentic fingertip grip for throttling, braking, or aiming.
+3. **Hierarchical Dual Typography**: Prominent primary key indicator ("$control", font-size 26px, weight 900) paired with functional sub-label ("$subLabel", font-size 11px, letter-spacing 1px).
+4. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic triggers focus on ergonomic paddle curvature, molded grip traction, and deep socket shadow wells.
+
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
 The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
 1. **Root Button Tag (`<button class="trigger-btn" data-control="$control" data-category="TRIGGER" data-name="Trigger $control">`)**:
@@ -1849,6 +1887,14 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
    - `.trigger-btn:active { transform: scaleY(0.94) translateY(4px); }` (simulates physical downward paddle pull stroke).
 
 ${engineBoundaries("trigger-btn")}
+
+### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
+Before outputting, verify your component against this checklist:
+- [ ] Analog Travel Affordance: Elongated vertical paddle silhouette with progressive light slope receding into socket.
+- [ ] Traction Grip: Molded horizontal ribs or grip ridges for authentic tactile purchase.
+- [ ] Hierarchical Typography: Clear primary label ("$control") and sub-label ("$subLabel") with strong contrast.
+- [ ] Progressive Stroke Physics: Paddle stroke displacement (`.trigger-btn:active { transform: scaleY(0.94) translateY(4px); }`) with spring micro-physics (`--spring-damping: 0.65; --spring-stiffness: 380;`).
+- [ ] Compiler Safety: Exactly one root `<button class="trigger-btn">` element; all px dimensions explicit.
 
 ### USER CUSTOMIZATION SCHEMA:
 The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
@@ -1886,11 +1932,18 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Optional Visual Language [OPTIONAL]**: Horizontal specular sheen arc, brushed metal texture, chamfered edge bevels.
 - **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. Wide curved capsule, angled faceted shoulder, or minimal tile. Preserve the user's requested shape.
 
+### VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
+Create an authentic console-grade hardware aesthetic (reminiscent of Xbox Series X, Elite Controller, or DualSense) with physical industrial realism:
+1. **Wide Ergonomic Shoulder Profile**: Authentic gamepad bumpers feature a wide wrap-around horizontal profile (aspect ratio ~2:1 to 2.5:1, e.g. ${widthDp}px x ${heightDp}px) following the shoulder curvature of the controller chassis.
+2. **Convex Curvature Specular Sheen**: Horizontal specular highlight arc across the upper third (`top: 10%; left: 12%; width: 76%; height: 35%; border-radius: 10px; background: radial-gradient(...)`) communicating convex molded polycarbonate catching studio light.
+3. **Microswitch Click Actuation**: Unlike analog triggers, shoulder bumpers use crisp tactile microswitches with shallow travel displacement (`scale(0.96) translateY(2px)`) and snappy spring return (`--spring-damping: 0.75; --spring-stiffness: 520; --press-scale: 0.96;`).
+4. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic bumpers feature clean industrial dark tones (`#2c3342` to `#0c0e13`), subtle perimeter chamfers, and crisp high-contrast labels.
+
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
 The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
 1. **Root Button Tag (`<button class="bumper-btn" data-control="$control" data-category="BUMPER" data-name="Bumper $control">`)**:
    - `width: ${widthDp}px; height: ${heightDp}px; border-radius: 18px;` (wide horizontal capsule or curved wedge).
-   - `background: linear-gradient(180deg, #2b3240 0%, #161a22 65%, #0b0d12 100%)`: Convex curvature across the horizontal shoulder.
+   - `background: linear-gradient(180deg, #2c3342 0%, #171a23 60%, #0c0e13 100%)`: Convex curvature across the horizontal shoulder.
    - **Tactile Spring Micro-Physics**: Configure in `:root`:
      `--spring-damping: 0.75; --spring-stiffness: 520; --press-scale: 0.96;`
 2. **Horizontal Specular Sheen via `::after` or SVG**:
@@ -1906,6 +1959,14 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
    - `.bumper-btn:active { transform: scale(0.96) translateY(2px); }` (simulates shallow micro-switch click).
 
 ${engineBoundaries("bumper-btn")}
+
+### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
+Before outputting, verify your component against this checklist:
+- [ ] Wide Shoulder Profile: Horizontal aspect ratio (~2:1 to 2.5:1) matching ergonomic gamepad shoulder contour.
+- [ ] Specular Sheen Arc: Upper curvature highlight communicating convex physical plastic molding.
+- [ ] Microswitch Actuation: Shallow crisp click feedback (`scale(0.96) translateY(2px)`).
+- [ ] High-Contrast Label: Crisp "$control" text with embossed 3D shadows.
+- [ ] Compiler Safety: Exactly one root `<button class="bumper-btn">` element; all px dimensions explicit.
 
 ### USER CUSTOMIZATION SCHEMA:
 The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
@@ -2045,6 +2106,16 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Optional Visual Language [OPTIONAL]**: Flexbox hamburger pause bars, overlapping dual rectangles, glowing nexus guide emblem.
 - **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. Pill, sphere, tile, emblem, or custom form are all valid. Preserve the user's requested shape.
 
+### VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
+Create an authentic console-grade hardware aesthetic (reminiscent of Xbox Series X, Elite Controller, or DualSense) with physical industrial realism:
+1. **Flush Low-Profile Utility Ergonomics**: System buttons (MENU, VIEW, HOME, SHARE) on authentic gamepads are secondary utility controls. They feature a compact, flush or slightly recessed profile to prevent accidental presses during intense gameplay.
+2. **Crisp Authentic Iconography**:
+   - `MENU`: 3 horizontal hamburger bars with clean vertical flexbox column spacing (`gap: 4px`), rounded pill ends, and clean white/silver contrast.
+   - `VIEW`: Overlapping dual windows/rectangles symbol (`⧉`) or vector path.
+   - `HOME` / `GUIDE`: Central nexus orb / emblem with subtle radial glow and chamfered bezel ring.
+3. **Zero Text Collision on Graphic Buttons**: Iconographic system buttons (such as MENU hamburger bars or VIEW windows) must NEVER have automatic text stamped over their icons. The icon itself is the visual identity.
+4. **Restrained Lighting & Tactile Click**: Subtle recessed socket well (`box-shadow: inset 0 1px 3px rgba(255,255,255,0.25), inset 0 -3px 6px rgba(0,0,0,0.75)`), matte chassis darks, and shallow tactile micro-travel (`scale(0.92) translateY(2px)`).
+
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
 The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
 1. **Root Button Tag (`<button class="system-btn" data-control="$control" data-category="SYSTEM" data-name="System $control">`)**:
@@ -2068,6 +2139,14 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
    - `.system-btn:active { transform: scale(0.92) translateY(2px); }`
 
 ${engineBoundaries("system-btn")}
+
+### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
+Before outputting, verify your component against this checklist:
+- [ ] Low-Profile Footprint: Compact dimensions with recessed socket well.
+- [ ] Crisp Iconography: Clean, instantly recognizable symbol (hamburger bars, dual windows, nexus emblem) with ZERO conflicting fallback text stamped over it.
+- [ ] Micro-Travel Physics: Subtle tactile click feedback (`scale(0.92) translateY(2px)`).
+- [ ] Console Realism: Authentic industrial utility finish rather than unsolicited neon halos.
+- [ ] Compiler Safety: Exactly one root `<button class="system-btn">` (or `<button class="system-home-btn">`); all px dimensions explicit.
 
 ### USER CUSTOMIZATION SCHEMA:
 The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:

@@ -520,6 +520,96 @@ class NxprcPromptTest {
         assertTrue(10 in doc.canvas.capLayerIndices, "Layer #10 (.knurled-ring-inner) must move")
         assertTrue(13 in doc.canvas.capLayerIndices, "Layer #13 (CenterGlyph) must move")
     }
+
+    @Test
+    fun allCategoriesContainConsoleIndustrialRealismAndVisualQaChecklist() {
+        val categories = listOf(
+            "BUTTON" to "A",
+            "DPAD" to "UP",
+            "TRIGGER" to "LT",
+            "BUMPER" to "LB",
+            "JOYSTICK" to "LS",
+            "SYSTEM" to "MENU"
+        )
+
+        categories.forEach { (category, control) ->
+            val prompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = control,
+                category = category,
+                widthDp = 96,
+                heightDp = 96
+            )
+            val tag = "[$category/$control]"
+
+            assertTrue(
+                prompt.contains("VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM"),
+                "$tag missing VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM"
+            )
+            assertTrue(
+                prompt.contains("VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT)"),
+                "$tag missing VISUAL QA CHECKLIST"
+            )
+            assertTrue(
+                prompt.contains("Compiler Safety"),
+                "$tag missing Compiler Safety checklist item"
+            )
+        }
+    }
+
+    @Test
+    fun systemMenuCompilesWithoutUnwantedCenterGlyphOverlay() {
+        val doc = com.sanket.tools.nexpad.nxprc.NxprcPackager.compile(
+            NxprcHtmlCssConverter.PRESET_SYSTEM_MENU,
+            "rc.menu",
+            "System Menu",
+            "SYSTEM",
+            "MENU"
+        )
+
+        val glyphs = doc.canvas.layers.filterIsInstance<com.sanket.tools.nexpad.nxprc.CanvasLayer.CenterGlyph>()
+        val textLayers = doc.canvas.layers.filterIsInstance<com.sanket.tools.nexpad.nxprc.CanvasLayer.TextLayer>()
+        val boxLayers = doc.canvas.layers.filterIsInstance<com.sanket.tools.nexpad.nxprc.CanvasLayer.BoxLayer>()
+
+        // Must NOT stamp an automatic "MENU" glyph over the hamburger bars
+        assertTrue(
+            glyphs.none { it.text.equals("MENU", ignoreCase = true) },
+            "System Menu should NOT have an automatic CenterGlyph MENU stamped over burger bars"
+        )
+        assertTrue(
+            textLayers.none { it.text.equals("MENU", ignoreCase = true) },
+            "System Menu should NOT have an automatic TextLayer MENU stamped over burger bars"
+        )
+
+        // Must contain at least 3 distinct hamburger bar layers
+        val bars = boxLayers.filter { it.heightRatio in 0.04f..0.15f }
+        assertTrue(bars.size >= 3, "System Menu must contain 3 distinct burger bars, found: ${bars.size}")
+    }
+
+    @Test
+    fun allPresetCategoriesCompileCleanly() {
+        val presets = listOf(
+            Triple("DPAD", "UP", NxprcHtmlCssConverter.PRESET_DPAD_UP),
+            Triple("DPAD", "DOWN", NxprcHtmlCssConverter.PRESET_DPAD_DOWN),
+            Triple("DPAD", "LEFT", NxprcHtmlCssConverter.PRESET_DPAD_LEFT),
+            Triple("DPAD", "RIGHT", NxprcHtmlCssConverter.PRESET_DPAD_RIGHT),
+            Triple("DPAD", "DPAD", NxprcHtmlCssConverter.PRESET_DPAD_CROSS),
+            Triple("TRIGGER", "LT", NxprcHtmlCssConverter.PRESET_TRIGGER_LT),
+            Triple("TRIGGER", "RT", NxprcHtmlCssConverter.PRESET_TRIGGER_RT),
+            Triple("BUMPER", "LB", NxprcHtmlCssConverter.PRESET_BUMPER_LB),
+            Triple("BUMPER", "RB", NxprcHtmlCssConverter.PRESET_BUMPER_RB),
+            Triple("SYSTEM", "VIEW", NxprcHtmlCssConverter.PRESET_SYSTEM_VIEW),
+            Triple("SYSTEM", "HOME", NxprcHtmlCssConverter.PRESET_SYSTEM_HOME)
+        )
+
+        presets.forEach { (cat, ctrl, html) ->
+            val doc = com.sanket.tools.nexpad.nxprc.NxprcPackager.compile(
+                html, "rc.${ctrl.lowercase()}", "$cat $ctrl", cat, ctrl
+            )
+            assertTrue(doc.canvas.layers.isNotEmpty(), "Preset [$cat/$ctrl] must produce canvas layers")
+            assertTrue(doc.canvas.viewBoxWidth > 0, "Preset [$cat/$ctrl] viewBoxWidth must be > 0")
+            assertTrue(doc.canvas.viewBoxHeight > 0, "Preset [$cat/$ctrl] viewBoxHeight must be > 0")
+        }
+    }
 }
 
 
