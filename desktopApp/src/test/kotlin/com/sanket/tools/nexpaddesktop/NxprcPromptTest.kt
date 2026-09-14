@@ -319,6 +319,207 @@ class NxprcPromptTest {
         // Base elements (index 0, 1) must be false
         assertFalse(0 in doc.canvas.capLayerIndices, "Base must not be in capLayerIndices")
     }
+
+    @Test
+    fun verifyUserAnimeStickLayers() {
+        val html = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --spring-damping: 0.68;
+    --spring-stiffness: 440;
+    --press-scale: 0.92;
+    --accent-pink: #ff5cc8;
+    --accent-purple: #9b5cff;
+    --accent-cyan: #5ce1ff;
+    --accent-yellow: #ffe45c;
+  }
+
+  .stick-btn {
+    width: 130px;
+    height: 130px;
+    position: relative;
+    background: transparent;
+    border: none;
+    padding: 0;
+    outline: none;
+  }
+
+  /* ---- Stationary Gimbal Base ---- */
+  .stick-base {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 32%, #4a2f7a 0%, #2a1a4a 55%, #170f2b 100%);
+    box-shadow:
+      0 12px 26px rgba(0,0,0,0.55),
+      inset 0 3px 8px rgba(255,255,255,0.18),
+      inset 0 -10px 18px rgba(0,0,0,0.75),
+      0 0 22px rgba(155, 92, 255, 0.45);
+  }
+
+  /* rainbow rim ring painted with conic-gradient */
+  .rim-ring {
+    position: absolute;
+    left: 4px;
+    top: 4px;
+    width: 122px;
+    height: 122px;
+    border-radius: 50%;
+    background: conic-gradient(
+      var(--accent-pink) 0deg,
+      var(--accent-purple) 90deg,
+      var(--accent-cyan) 180deg,
+      var(--accent-yellow) 270deg,
+      var(--accent-pink) 360deg
+    );
+    -webkit-mask: radial-gradient(circle, transparent 55px, #000 57px, #000 61px, transparent 63px);
+    mask: radial-gradient(circle, transparent 55px, #000 57px, #000 61px, transparent 63px);
+    opacity: 0.9;
+  }
+
+  /* directional tick marks on the base */
+  .tick {
+    position: absolute;
+    width: 4px;
+    height: 10px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.55);
+  }
+  .tick-n { left: 63px; top: 8px; }
+  .tick-e { left: 112px; top: 61px; transform: rotate(90deg); }
+  .tick-s { left: 63px; top: 112px; }
+  .tick-w { left: 8px; top: 61px; transform: rotate(90deg); }
+
+  /* sparkle accents (anime flair), real SVG, purely decorative, stationary on base */
+  .sparkle {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+  }
+  .sparkle-a { left: 12px; top: 18px; }
+  .sparkle-b { left: 100px; top: 92px; width: 10px; height: 10px; }
+
+  /* ---- Movable Analog Thumb Cap ---- */
+  .stick-cap {
+    position: absolute;
+    left: 23px;
+    top: 23px;
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 38% 30%, #ff8ee0 0%, #ff5cc8 30%, #b13fef 65%, #6a2bd9 100%);
+    box-shadow:
+      inset 0 0 10px rgba(0,0,0,0.35),
+      inset 0 4px 8px rgba(255,255,255,0.45),
+      0 0 0 3px rgba(255,255,255,0.25),
+      0 0 16px rgba(255, 92, 200, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* glossy highlight blob for anime "shiny plastic" look */
+  .cap-shine {
+    position: absolute;
+    left: 14px;
+    top: 10px;
+    width: 30px;
+    height: 18px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0) 70%);
+  }
+
+  /* concentric knurled traction ring inside cap */
+  .knurled-ring {
+    position: absolute;
+    width: 57px;
+    height: 57px;
+    border-radius: 50%;
+    border: 2px dashed rgba(255, 255, 255, 0.65);
+  }
+  .knurled-ring-inner {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px dashed rgba(255, 255, 255, 0.4);
+  }
+
+  .stick-label {
+    position: relative;
+    z-index: 5;
+    font-family: -apple-system, "Segoe UI", sans-serif;
+    font-size: 20px;
+    font-weight: 900;
+    color: #ffffff;
+    text-shadow: 0 0 6px rgba(155,92,255,0.9), 0 2px 2px rgba(0,0,0,0.35);
+  }
+
+  .stick-btn:active .stick-cap {
+    transform: scale(0.92);
+  }
+</style>
+</head>
+<body>
+  <button class="stick-btn" data-control="LS" data-category="JOYSTICK" data-name="Analog Stick LS">
+    <div class="stick-base">
+      <div class="rim-ring"></div>
+      <div class="tick tick-n"></div>
+      <div class="tick tick-e"></div>
+      <div class="tick tick-s"></div>
+      <div class="tick tick-w"></div>
+      <svg class="sparkle sparkle-a" viewBox="0 0 24 24">
+        <path d="M12 0 L14 10 L24 12 L14 14 L12 24 L10 14 L0 12 L10 10 Z" fill="#ffe45c"/>
+      </svg>
+      <svg class="sparkle sparkle-b" viewBox="0 0 24 24">
+        <path d="M12 0 L14 10 L24 12 L14 14 L12 24 L10 14 L0 12 L10 10 Z" fill="#5ce1ff"/>
+      </svg>
+    </div>
+    <div class="stick-cap">
+      <div class="cap-shine"></div>
+      <div class="knurled-ring"></div>
+      <div class="knurled-ring-inner"></div>
+      <span class="stick-label">L3</span>
+    </div>
+  </button>
+</body>
+</html>
+        """.trimIndent()
+
+        val doc = com.sanket.tools.nexpad.nxprc.NxprcPackager.compile(
+            html, "rc.anime_stick", "Anime Stick", "JOYSTICK", "LS"
+        )
+        println("=== USER ANIME STICK AUDIT ===")
+        println("Cap Layer Indices: ${doc.canvas.capLayerIndices}")
+        doc.canvas.layers.forEachIndexed { i, layer ->
+            val isCap = i in doc.canvas.capLayerIndices
+            println("  Layer #$i [${layer::class.simpleName}] isCap=$isCap: $layer")
+        }
+
+        // Base tick marks (layers 4, 5, 6, 7) must remain 100% stationary on base!
+        assertFalse(4 in doc.canvas.capLayerIndices, "Layer #4 (.tick-n) must be stationary on base")
+        assertFalse(5 in doc.canvas.capLayerIndices, "Layer #5 (.tick-e) must be stationary on base")
+        assertFalse(6 in doc.canvas.capLayerIndices, "Layer #6 (.tick-s) must be stationary on base")
+        assertFalse(7 in doc.canvas.capLayerIndices, "Layer #7 (.tick-w) must be stationary on base")
+
+        // Sparkles (layers 11, 12) must remain stationary on base
+        assertFalse(11 in doc.canvas.capLayerIndices, "Layer #11 (.sparkle-a) must be stationary on base")
+        assertFalse(12 in doc.canvas.capLayerIndices, "Layer #12 (.sparkle-b) must be stationary on base")
+
+        // Thumb cap elements (layers 2, 8, 9, 10, 13) must be in capLayerIndices
+        assertTrue(2 in doc.canvas.capLayerIndices, "Layer #2 (.stick-cap) must move")
+        assertTrue(8 in doc.canvas.capLayerIndices, "Layer #8 (.cap-shine) must move")
+        assertTrue(9 in doc.canvas.capLayerIndices, "Layer #9 (.knurled-ring) must move")
+        assertTrue(10 in doc.canvas.capLayerIndices, "Layer #10 (.knurled-ring-inner) must move")
+        assertTrue(13 in doc.canvas.capLayerIndices, "Layer #13 (CenterGlyph) must move")
+    }
 }
 
 
