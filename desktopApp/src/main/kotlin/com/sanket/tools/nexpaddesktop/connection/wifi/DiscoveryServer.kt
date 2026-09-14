@@ -1,6 +1,6 @@
-package com.sanket.tools.nexpaddesktop.network
+package com.sanket.tools.nexpaddesktop.connection.wifi
 
-import com.sanket.tools.nexpaddesktop.protocol.NexpadProtocol
+import com.sanket.tools.nexpad.protocol.NexpadProtocol
 import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.BoundDatagramSocket
 import io.ktor.network.sockets.Datagram
@@ -11,12 +11,16 @@ import io.ktor.utils.io.core.readBytes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
+import kotlinx.io.readByteArray
 import java.net.InetAddress
 import java.nio.ByteBuffer
 
 class DiscoveryServer(private val port: Int = 9998) {
     private var serverSocket: BoundDatagramSocket? = null
     private var selectorManager: SelectorManager? = null
+
+    // Single Active Transport Guard: do not advertise if a client is already connected
+    var isPaused: () -> Boolean = { false }
 
     suspend fun start() = withContext(Dispatchers.IO) {
         selectorManager = SelectorManager(Dispatchers.IO)
@@ -32,7 +36,7 @@ class DiscoveryServer(private val port: Int = 9998) {
             try {
                 val socket = serverSocket ?: break
                 val datagram = socket.receive()
-                val data = datagram.packet.readBytes()
+                val data = datagram.packet.readByteArray()
                 
                 if (data.isNotEmpty() && data[0] == NexpadProtocol.PACKET_TYPE_DISCOVER) {
                     println("🔍 Received DISCOVER packet from ${datagram.address}")

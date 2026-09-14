@@ -1,0 +1,15 @@
+<service>
+  <id>NexpadDriverBroker</id>
+  <name>NEXPAD Driver Service</name>
+  <description>Manages USB driver switching for NEXPAD AOA connections silently in the background.</description>
+  
+  <executable>%BASE%\com.sanket.tools.nexpaddesktop.exe</executable>
+  <arguments>--service</arguments>
+  
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>3</keepFiles>
+  </log>
+  
+  <onfailure action="restart" delay="5 sec"/>
+</service>

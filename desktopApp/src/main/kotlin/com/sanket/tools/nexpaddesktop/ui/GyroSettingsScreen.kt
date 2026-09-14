@@ -1,4 +1,4 @@
-package com.sanket.tools.nexpaddesktop.ui
+﻿package com.sanket.tools.nexpaddesktop.ui
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpaddesktop.model.*
 import com.sanket.tools.nexpaddesktop.ui.visualizers.*
+import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 
 /**
  * Dedicated 6-Axis Motion Settings screen.
@@ -24,7 +25,7 @@ import com.sanket.tools.nexpaddesktop.ui.visualizers.*
  *   PS4 sensitivity is controlled by the PC game, not NEXPAD.
  */
 @Composable
-fun GyroSettingsScreen(
+fun GyroSettingsSection(
     settings: GyroSettings,
     onSettingsChange: (GyroSettings) -> Unit,
     activeController: ControllerType,
@@ -36,29 +37,24 @@ fun GyroSettingsScreen(
     rawAccelZ: Float,
     processedYaw: Float,
     processedPitch: Float,
-    onRecalibrate: () -> Unit,
-    onNavigate: (Screen) -> Unit,
+    onRecalibrate: () -> Unit
 ) {
-    val scrollState = rememberScrollState()
     val isXbox = activeController == ControllerType.XBOX_360
 
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp)
-            .verticalScroll(scrollState),
+            .fillMaxWidth()
+            .padding(16.dp),
         horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.Top,
     ) {
-        // ── Navigation ──
+        // ── Settings Header ──
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Button(onClick = { onNavigate(Screen.HOME) }) {
-                Text("< Back to Home")
-            }
+            Text("GYRO Active", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NeonPalette.CardIdleText)
             Switch(
                 checked = settings.enabled,
                 onCheckedChange = { onSettingsChange(settings.copy(enabled = it)) },

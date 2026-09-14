@@ -1,4 +1,4 @@
-package com.sanket.tools.nexpaddesktop.ui.visualizers
+﻿package com.sanket.tools.nexpaddesktop.ui.visualizers
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas

@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlinJvm)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 dependencies {
@@ -14,14 +15,22 @@ dependencies {
 
     implementation(libs.compose.uiToolingPreview)
     implementation(libs.compose.material3)
+    implementation(compose.materialIconsExtended)
 
     // Networking & Serialization
     implementation(libs.ktor.network)
     implementation(libs.kotlinx.serialization.json)
+    implementation("com.sanket.tools.nexpad:protocol:1.0.0")
 
     // Driver Integration
     implementation(libs.jna)
     implementation(libs.jna.platform)
+
+    // AOA Proof-of-Concept Test — libusb JVM bindings
+    implementation("org.usb4java:usb4java:1.3.0")
+
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlin.test)
 }
 
 compose.desktop {

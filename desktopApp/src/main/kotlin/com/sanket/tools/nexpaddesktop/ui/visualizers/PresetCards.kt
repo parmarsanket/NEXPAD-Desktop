@@ -1,4 +1,4 @@
-package com.sanket.tools.nexpaddesktop.ui.visualizers
+﻿package com.sanket.tools.nexpaddesktop.ui.visualizers
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*

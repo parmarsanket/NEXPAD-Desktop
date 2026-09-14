@@ -1,7 +1,7 @@
-package com.sanket.tools.nexpaddesktop.driver
+﻿package com.sanket.tools.nexpaddesktop.driver
 
-import com.sanket.tools.nexpaddesktop.model.GamepadInput
-import com.sanket.tools.nexpaddesktop.model.GamepadFeedback
+import com.sanket.tools.nexpad.model.GamepadInput
+import com.sanket.tools.nexpad.model.GamepadFeedback
 import com.sun.jna.Pointer
 import com.sanket.tools.nexpaddesktop.driver.jna.ViGEmClientLibrary
 
