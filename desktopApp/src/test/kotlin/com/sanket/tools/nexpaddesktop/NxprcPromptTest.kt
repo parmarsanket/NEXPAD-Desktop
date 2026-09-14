@@ -610,6 +610,64 @@ class NxprcPromptTest {
             assertTrue(doc.canvas.viewBoxHeight > 0, "Preset [$cat/$ctrl] viewBoxHeight must be > 0")
         }
     }
+
+    @Test
+    fun promptsUseNonBindingSyntaxSkeleton() {
+        val categories = listOf(
+            "BUTTON" to "A",
+            "DPAD" to "UP",
+            "TRIGGER" to "RT",
+            "BUMPER" to "RB",
+            "JOYSTICK" to "LS",
+            "SYSTEM" to "MENU"
+        )
+
+        categories.forEach { (category, control) ->
+            val prompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = control,
+                category = category,
+                widthDp = 96,
+                heightDp = 96
+            )
+            val tag = "[$category/$control]"
+
+            assertTrue(prompt.contains("NON-BINDING SYNTAX REFERENCE"), "$tag missing NON-BINDING SYNTAX REFERENCE label")
+            assertTrue(prompt.contains("OPTIONAL STARTER TEMPLATE"), "$tag missing starter template heading")
+            assertTrue(prompt.contains("REFERENCE ONLY"), "$tag missing REFERENCE ONLY heading label")
+
+            // The template inside the prompt must be a clean syntax skeleton, not a pre-baked aesthetic design
+            val templateSection = prompt.substringAfter("### OPTIONAL STARTER TEMPLATE")
+            assertFalse(templateSection.contains("radial-gradient(circle at 40% 32%"), "$tag template leaked preset colors")
+            assertFalse(templateSection.contains("linear-gradient(145deg"), "$tag template leaked preset colors")
+        }
+    }
+
+    @Test
+    fun bumperPromptEnforcesShoulderRockerSemanticsWithoutPrescribedAspectRatio() {
+        val prompt = NxprcHtmlCssConverter.generateAiPrompt("LB", "BUMPER", 120, 50)
+
+        assertTrue(prompt.contains("Physical Shoulder Lever/Rocker Architecture"), "Missing shoulder lever/rocker architecture")
+        assertTrue(prompt.contains("chassis housing socket or seam"), "Missing chassis seam/socket specification")
+        assertTrue(prompt.contains("Shallow tactile shoulder lever/rocker actuation"), "Missing shoulder lever semantics")
+
+        // De-biased: Must NOT enforce aspect ratio ~2:1 to 2.5:1 or fixed border-radius: 18px
+        assertFalse(prompt.contains("aspect ratio ~2:1 to 2.5:1"), "Prescriptive aspect ratio leaked into bumper prompt")
+        assertFalse(prompt.contains("border-radius: 18px"), "Prescriptive border-radius leaked into bumper prompt")
+    }
+
+    @Test
+    fun triggerPromptAllowsFreeformGeometryWithoutFixedBorderRadius() {
+        val prompt = NxprcHtmlCssConverter.generateAiPrompt("RT", "TRIGGER", 110, 140)
+
+        assertTrue(prompt.contains("Progressive Analog Travel Mechanics"), "Missing progressive analog travel mechanics")
+        assertTrue(prompt.contains("Analog Travel Affordance"), "Missing analog travel affordance in QA checklist")
+
+        // De-biased: Must NOT mandate border-radius: 20px or mandate elongated vertical paddle in QA checklist
+        assertFalse(prompt.contains("border-radius: 20px"), "Prescriptive border-radius leaked into trigger prompt")
+        assertFalse(prompt.contains("Elongated vertical paddle silhouette"), "Prescriptive elongated paddle leaked into QA checklist")
+        assertFalse(prompt.contains("PULL"), "Prescriptive PULL sub-label leaked into trigger prompt")
+        assertFalse(prompt.contains("BRAKE"), "Prescriptive BRAKE sub-label leaked into trigger prompt")
+    }
 }
 
 

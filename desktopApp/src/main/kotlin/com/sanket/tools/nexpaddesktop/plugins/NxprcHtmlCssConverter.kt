@@ -1519,6 +1519,267 @@ object NxprcHtmlCssConverter {
     }
 
     /**
+     * Returns an unstyled, non-binding syntax skeleton illustrating the minimal compiler contract
+     * for a given category. Intentionally free of pre-baked colors, gradients, and border-radii
+     * to eliminate visual imitation bias in generative AI models.
+     */
+    fun getSyntaxSkeleton(control: String, category: String, widthDp: Int, heightDp: Int): String {
+        return when (category.uppercase()) {
+            "JOYSTICK" -> """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --spring-damping: 0.70;
+    --spring-stiffness: 420;
+    --press-scale: 0.92;
+  }
+  .stick-btn {
+    width: ${widthDp}px;
+    height: ${heightDp}px;
+    position: relative;
+    background: transparent;
+    border: none;
+    padding: 0;
+    outline: none;
+  }
+  /* Stationary Gimbal Base (remains at 0, 0) */
+  .stick-base {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    /* Visually design the stationary socket, bezel, and directional tick markers here */
+  }
+  /* Movable Analog Thumb Cap (translates on thumb drag) */
+  .stick-cap {
+    position: absolute;
+    left: ${(widthDp * 0.18).toInt()}px;
+    top: ${(heightDp * 0.18).toInt()}px;
+    width: ${(widthDp * 0.64).toInt()}px;
+    height: ${(heightDp * 0.64).toInt()}px;
+    /* Visually design the thumb dish, knurled traction rings, vector art, and label here */
+  }
+  .stick-btn:active .stick-cap {
+    transform: scale(0.92);
+  }
+</style>
+</head>
+<body>
+  <button class="stick-btn" data-control="$control" data-category="JOYSTICK" data-name="Analog Stick $control">
+    <div class="stick-base">
+      <!-- Stationary socket layers -->
+    </div>
+    <div class="stick-cap">
+      <!-- Movable thumb cap layers -->
+      <span class="stick-label">${if (control.uppercase() == "RS") "R3" else "L3"}</span>
+    </div>
+  </button>
+</body>
+</html>
+            """.trimIndent()
+
+            "TRIGGER" -> """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --spring-damping: 0.65;
+    --spring-stiffness: 380;
+    --press-scale: 0.94;
+  }
+  .trigger-btn {
+    width: ${widthDp}px;
+    height: ${heightDp}px;
+    position: relative;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding-top: 18px;
+    /* Visually design the trigger paddle body, curvature gradient, bevels, and shadows here */
+  }
+  .trigger-label {
+    font-size: 28px;
+    font-weight: 900;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    /* Visually design the label typography and embossed shadows here */
+  }
+  .trigger-btn:active {
+    transform: scaleY(0.94) translateY(4px);
+  }
+</style>
+</head>
+<body>
+  <button class="trigger-btn" data-control="$control" data-category="TRIGGER" data-name="Trigger $control">
+    <span class="trigger-label">$control</span>
+  </button>
+</body>
+</html>
+            """.trimIndent()
+
+            "BUMPER" -> """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --spring-damping: 0.75;
+    --spring-stiffness: 520;
+    --press-scale: 0.96;
+  }
+  .bumper-btn {
+    width: ${widthDp}px;
+    height: ${heightDp}px;
+    position: relative;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Visually design the shoulder lever rocker, curvature specular highlight, and socket recess here */
+  }
+  .bumper-label {
+    font-size: 24px;
+    font-weight: 900;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    /* Visually design the bumper label typography and embossed shadows here */
+  }
+  .bumper-btn:active {
+    transform: scale(0.96) translateY(2px);
+  }
+</style>
+</head>
+<body>
+  <button class="bumper-btn" data-control="$control" data-category="BUMPER" data-name="Bumper $control">
+    <span class="bumper-label">$control</span>
+  </button>
+</body>
+</html>
+            """.trimIndent()
+
+            "DPAD" -> """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --spring-damping: 0.72;
+    --spring-stiffness: 480;
+    --press-scale: ${if (control.uppercase() == "DPAD") "0.95" else "0.92"};
+  }
+  .dpad-btn {
+    width: ${widthDp}px;
+    height: ${heightDp}px;
+    position: relative;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Visually design the directional pad geometry, rocker pivot well, and shading here */
+  }
+  .dpad-glyph {
+    font-size: 28px;
+    font-weight: 900;
+    /* Visually design the directional indicator (or embedded SVG chevron/arrow) here */
+  }
+  .dpad-btn:active {
+    transform: ${if (control.uppercase() == "DPAD") "scale(0.95)" else "scale(0.92) translateY(2px)"};
+  }
+</style>
+</head>
+<body>
+  <button class="dpad-btn" data-control="$control" data-category="DPAD" data-name="D-Pad $control">
+    <span class="dpad-glyph">${when (control.uppercase()) { "DOWN" -> "▼"; "LEFT" -> "◀"; "RIGHT" -> "▶"; "DPAD" -> "❖"; else -> "▲" }}</span>
+  </button>
+</body>
+</html>
+            """.trimIndent()
+
+            "SYSTEM" -> """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --spring-damping: 0.78;
+    --spring-stiffness: 500;
+    --press-scale: 0.92;
+  }
+  .system-btn {
+    width: ${widthDp}px;
+    height: ${heightDp}px;
+    position: relative;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Visually design the low-profile utility switch body, socket bevels, and lighting here */
+  }
+  .system-btn:active {
+    transform: scale(0.92) translateY(2px);
+  }
+</style>
+</head>
+<body>
+  <button class="system-btn" data-control="$control" data-category="SYSTEM" data-name="System $control">
+    <!-- Visually design vector iconography (e.g. flex hamburger bars, overlapping windows, or emblem) here -->
+  </button>
+</body>
+</html>
+            """.trimIndent()
+
+            else -> """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --spring-damping: 0.68;
+    --spring-stiffness: 440;
+    --press-scale: 0.92;
+  }
+  .nexpad-btn {
+    width: ${widthDp}px;
+    height: ${heightDp}px;
+    position: relative;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Visually design the face button silhouette, physical material, depth, and socket recess here */
+  }
+  .btn-label {
+    font-size: 34px;
+    font-weight: 900;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    /* Visually design the extruded 3D typography and text shadows here */
+  }
+  .nexpad-btn:active {
+    transform: scale(0.93) translateY(3px);
+  }
+</style>
+</head>
+<body>
+  <button class="nexpad-btn" data-control="$control" data-category="BUTTON" data-name="Action $control">
+    <span class="btn-label">$control</span>
+  </button>
+</body>
+</html>
+            """.trimIndent()
+        }
+    }
+
+    /**
      * Generates an in-depth, specialized AI Prompt tailored specifically to the target button type.
      * Delegates to dedicated generators for ABXY, D-PAD, TRIGGERS, BUMPERS, JOYSTICKS, and SYSTEM buttons.
      */
@@ -1572,11 +1833,11 @@ When instructions conflict, resolve them in this strict order of authority:
 5. **Design Quality Principles** [RECOMMENDED] (Physical coherence, balanced hierarchy, believable depth).
 6. **Category Defaults** [RECOMMENDED] (Color palette suggestions, default glyphs used when user specifies none).
 7. **Optional Inspiration** [OPTIONAL] (Theme suggestions, optional decorative flair).
-8. **Starter-Template Examples** [SYNTAX ONLY] (Syntax structure only — never overrides intent).
+8. **Starter-Template Examples [NON-BINDING SYNTAX REFERENCE]** (Syntax structure only — never copy its geometry, proportions, colors, materials, layer count, visual hierarchy, or silhouette unless those properties are independently required by the component contract or explicitly requested by the user).
 
 > **The Golden Rule**: The user's visual and artistic instructions always win over defaults and recommendations, provided they remain compatible with the required compiler contract and component semantics.
 > **Conflict Rule**: User instructions always take precedence over optional recommendations or category defaults.
-> **Template Rule**: Starter-template examples are illustrative syntax and should never override explicit user choices.
+> **Template Rule**: Starter-template examples are illustrative syntax only and should never override explicit user choices. Never imitate their colors, shapes, gradients, or materials when fulfilling user requests.
 
 ### 2. RULE CLASSIFICATION HIERARCHY
 - **[GLOBAL-REQUIRED] / [REQUIRED]**: Platform/engine constraints. Violation causes compiler rejection.
@@ -1584,6 +1845,7 @@ When instructions conflict, resolve them in this strict order of authority:
 - **[USER-OVERRIDE] / [USER OVERRIDE]**: User's explicit aesthetic requests. Highest design authority within compiler boundaries.
 - **[RECOMMENDED]**: Proven design patterns for quality, depth, and touch affordance. Use unless the user's concept calls for another approach.
 - **[OPTIONAL]**: Primitives and effects (SVG paths, conic gradients, filter nodes) to use only when they enhance the requested aesthetic.
+- **[NON-BINDING SYNTAX REFERENCE]**: Architectural syntax example only. Never use its aesthetic properties as design anchors.
 
 ### 3. COMPILER CAPABILITIES — WHAT PRIMITIVES ARE BEST FOR:
 The NXPRC engine compiles HTML/CSS/SVG into hardware-accelerated Compose Canvas layers. Use capabilities for their visual strengths:
@@ -1730,10 +1992,10 @@ The schema is a convenience, not a limitation. Users may describe any additional
 - **TACTILE PHYSICS**: [e.g. Snappy micro-switch / Heavy spring depression / Soft fluid damping]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
 
-### OPTIONAL STARTER TEMPLATE (REFERENCE ONLY):
+### OPTIONAL STARTER TEMPLATE — SYNTAX SKELETON [NON-BINDING SYNTAX REFERENCE ONLY]:
 This template demonstrates document syntax only. Do NOT treat its colors, geometry, gradients, shadows, layer arrangement, typography, or proportions as design defaults. Build the visual design independently from the user's request:
 ```html
-${getReferenceTemplate(control, "BUTTON")}
+${getSyntaxSkeleton(control, "BUTTON", widthDp, heightDp)}
 ```
 
 ### OUTPUT FORMAT CONTRACT:
@@ -1780,12 +2042,12 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
    - **Tactile Spring Micro-Physics**: Configure in `:root`:
      `--spring-damping: 0.72; --spring-stiffness: 480; --press-scale: 0.94;`
    ${if (control.uppercase() == "DPAD") """
-   - `border-radius: 28px`: Outer tactile cross housing (or `clip-path: polygon(...)` for a 12-point faceted cross).
+   - Geometry: Shape the 4-way cross or directional dish via `border-radius`, `clip-path: polygon(...)` (e.g. 12-point faceted cross), or SVG vector paths.
    - `background`: Deep radial gradient with directional arm shading.
    - Central Pivot: Use `::before` to create a circular recessed pivot well (`width: 44px; height: 44px; border-radius: 50%`) with an inset drop shadow simulating the central rocker pivot.
    - Direction Markers: Crisp vector/font glyphs, SVG directional arrows, or markings for UP, DOWN, LEFT, RIGHT.
    """ else """
-   - `border-radius: 18px`: Directional wedge/button housing.
+   - Geometry: Shape the directional wedge, chevron, arrow, or button housing via `border-radius`, `clip-path`, or SVG vector paths.
    - `background`: Directional linear gradient sloped along the direction of travel ($control) from raised outer rim to recessed inner base.
    - Arrow Glyph: Directional indicator (<span class="dpad-arrow">$arrowGlyph</span>) or embedded `<svg>` chevron with neon glow and drop shadow.
    """}
@@ -1815,10 +2077,10 @@ The schema is a convenience, not a limitation. Users may describe any additional
 - **MATERIAL / TEXTURE**: [e.g. Textured ABS plastic / Brushed gunmetal / Rubberized grip]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
 
-### OPTIONAL STARTER TEMPLATE (REFERENCE ONLY):
+### OPTIONAL STARTER TEMPLATE — SYNTAX SKELETON [NON-BINDING SYNTAX REFERENCE ONLY]:
 This template demonstrates document syntax only. Do NOT treat its colors, geometry, gradients, shadows, layer arrangement, typography, or proportions as design defaults. Build the visual design independently from the user's request:
 ```html
-${getReferenceTemplate(control, "DPAD")}
+${getSyntaxSkeleton(control, "DPAD", widthDp, heightDp)}
 ```
 
 ### OUTPUT FORMAT CONTRACT:
@@ -1846,7 +2108,7 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 
 ### VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
 Create an authentic console-grade hardware aesthetic (reminiscent of Xbox Series X, Elite Controller, or DualSense) with physical industrial realism:
-1. **Curved Paddle Rake & Analog Travel**: Authentic analog triggers feature an elongated vertical paddle (width: ${widthDp}px, height: ${heightDp}px) with a 180-degree gradient receding into the controller housing cavity, communicating analog travel and finger placement.
+1. **Progressive Analog Travel Mechanics**: Authentic analog triggers communicate progressive depth and travel within the bounding box (${widthDp}px x ${heightDp}px) with a gradient receding into the controller housing cavity, communicating analog travel and finger placement.
 2. **Molded Traction Ribs**: Physical molded horizontal friction ridges (via Flexbox column or `::before` layered shadows) providing authentic fingertip grip for throttling, braking, or aiming.
 3. **High-Contrast Clean Typography**: Prominent primary key indicator ("$control", font-size 26-30px, weight 900). Keep the typography clean and authentic to real console gamepads without artificial secondary sub-labels.
 4. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic triggers focus on ergonomic paddle curvature, molded grip traction, and deep socket shadow wells.
@@ -1854,8 +2116,8 @@ Create an authentic console-grade hardware aesthetic (reminiscent of Xbox Series
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
 The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
 1. **Root Button Tag (`<button class="trigger-btn" data-control="$control" data-category="TRIGGER" data-name="Trigger $control">`)**:
-   - `width: ${widthDp}px; height: ${heightDp}px; border-radius: 20px;` (ergonomic vertical capsule or angular wedge).
-   - `background: linear-gradient(180deg, #282e3d 0%, #151822 45%, #0a0c10 100%)`: Simulates the curved rake angle of the trigger paddle receding into the gamepad shell.
+   - `width: ${widthDp}px; height: ${heightDp}px;` (canvas bounding box). Silhouette can be sculpted via `border-radius`, `clip-path: polygon(...)`, or layered structural elements.
+   - `background`: Shading that communicates progressive slope or rake angle receding into the gamepad shell (e.g. `linear-gradient(180deg, #282e3d 0%, #151822 45%, #0a0c10 100%)`).
    - **Tactile Spring Micro-Physics**: Configure in `:root`:
      `--spring-damping: 0.65; --spring-stiffness: 380; --press-scale: 0.94;`
 2. **Traction Grip Ribs via Flexbox or `::before`**:
@@ -1873,7 +2135,7 @@ ${engineBoundaries("trigger-btn")}
 
 ### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
 Before outputting, verify your component against this checklist:
-- [ ] Analog Travel Affordance: Elongated vertical paddle silhouette with progressive light slope receding into socket.
+- [ ] Analog Travel Affordance: Progressive depth and light slope communicating analog travel into socket.
 - [ ] Traction Grip: Molded horizontal ribs or grip ridges for authentic tactile purchase.
 - [ ] Clear Primary Typography: Clear high-contrast "$control" label readable at handheld touch scale.
 - [ ] Progressive Stroke Physics: Paddle stroke displacement (`.trigger-btn:active { transform: scaleY(0.94) translateY(4px); }`) with spring micro-physics (`--spring-damping: 0.65; --spring-stiffness: 380;`).
@@ -1883,15 +2145,15 @@ Before outputting, verify your component against this checklist:
 The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
 - **STYLE**: [e.g. Carbon Fiber Racing / Brembo Red Performance / Cyberpunk Neon Telemetry / Tactical Military]
 - **COLOR / ACCENT**: [e.g. Racing Red / Neon Magenta / Titanium Gray / Custom palette]
-- **SHAPE / SILHOUETTE**: [e.g. Ergonomic curved paddle / Angular wedge / Minimal capsule]
+- **SHAPE / SILHOUETTE**: [e.g. Ergonomic curved paddle / Angular wedge / Modern capsule / Asymmetric blade / Custom contour]
 - **TRACTION GRIP**: [e.g. Horizontal rubberized ribs / Stippled texture / Slotted heat vents]
 - **LABELS**: [e.g. "$control" / Custom text / Icon only (Default: "$control")]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
 
-### OPTIONAL STARTER TEMPLATE (REFERENCE ONLY):
+### OPTIONAL STARTER TEMPLATE — SYNTAX SKELETON [NON-BINDING SYNTAX REFERENCE ONLY]:
 This template demonstrates document syntax only. Do NOT treat its colors, geometry, gradients, shadows, layer arrangement, typography, or proportions as design defaults. Build the visual design independently from the user's request:
 ```html
-${getReferenceTemplate(control, "TRIGGER")}
+${getSyntaxSkeleton(control, "TRIGGER", widthDp, heightDp)}
 ```
 
 ### OUTPUT FORMAT CONTRACT:
@@ -1910,31 +2172,31 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
-- **Interaction Meaning [COMPONENT-REQUIRED]**: Shallow tactile shoulder actuation with crisp microswitch click feedback.
-- **Visual Affordance [RECOMMENDED]**: Wide horizontal or wrap-around shoulder profile, specular sheen highlight, shallow press displacement.
-- **Optional Visual Language [OPTIONAL]**: Horizontal specular sheen arc, brushed metal texture, chamfered edge bevels.
-- **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. Wide curved capsule, angled faceted shoulder, or minimal tile. Preserve the user's requested shape.
+- **Interaction Meaning [COMPONENT-REQUIRED]**: Shallow tactile shoulder lever/rocker actuation with crisp microswitch click feedback.
+- **Visual Affordance [RECOMMENDED]**: Physical shoulder lever profile seated in a chassis housing socket or seam, specular sheen highlight, shallow press displacement.
+- **Optional Visual Language [OPTIONAL]**: Specular sheen arc, brushed metallic texture, chamfered housing seam, tactile ridge.
+- **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. The silhouette is completely yours: curved shoulder lever, angular stealth wedge, faceted cyber wing, horizontal blade, or organic contour. Preserve the user's requested shape.
 
 ### VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
 Create an authentic console-grade hardware aesthetic (reminiscent of Xbox Series X, Elite Controller, or DualSense) with physical industrial realism:
-1. **Wide Ergonomic Shoulder Profile**: Authentic gamepad bumpers feature a wide wrap-around horizontal profile (aspect ratio ~2:1 to 2.5:1, e.g. ${widthDp}px x ${heightDp}px) following the shoulder curvature of the controller chassis.
-2. **Convex Curvature Specular Sheen**: Horizontal specular highlight arc across the upper third (`top: 10%; left: 12%; width: 76%; height: 35%; border-radius: 10px; background: radial-gradient(...)`) communicating convex molded polycarbonate catching studio light.
+1. **Physical Shoulder Lever/Rocker Architecture**: Authentic gamepad bumpers are physical shoulder levers seated directly in a recessed chassis housing seam or socket on the controller shell, rather than floating abstract pills. The lever surface catches ambient light along its top shoulder contour.
+2. **Convex Curvature Specular Sheen**: Specular highlight arc communicating convex molded polycarbonate catching studio light.
 3. **Microswitch Click Actuation**: Unlike analog triggers, shoulder bumpers use crisp tactile microswitches with shallow travel displacement (`scale(0.96) translateY(2px)`) and snappy spring return (`--spring-damping: 0.75; --spring-stiffness: 520; --press-scale: 0.96;`).
-4. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic bumpers feature clean industrial dark tones (`#2c3342` to `#0c0e13`), subtle perimeter chamfers, and crisp high-contrast labels.
+4. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic bumpers feature clean industrial dark tones (`#2c3342` to `#0c0e13`), chassis seam contact shadows, and crisp high-contrast labels.
 
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
 The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
 1. **Root Button Tag (`<button class="bumper-btn" data-control="$control" data-category="BUMPER" data-name="Bumper $control">`)**:
-   - `width: ${widthDp}px; height: ${heightDp}px; border-radius: 18px;` (wide horizontal capsule or curved wedge).
-   - `background: linear-gradient(180deg, #2c3342 0%, #171a23 60%, #0c0e13 100%)`: Convex curvature across the horizontal shoulder.
+   - `width: ${widthDp}px; height: ${heightDp}px;` (canvas bounding box). Silhouette can be sculpted via `border-radius`, `clip-path: polygon(...)`, or layered structural elements.
+   - Background & lighting: Simulates the physical shoulder lever surface seated in a chassis socket (e.g. `linear-gradient(180deg, #2c3342 0%, #171a23 60%, #0c0e13 100%)`).
    - **Tactile Spring Micro-Physics**: Configure in `:root`:
      `--spring-damping: 0.75; --spring-stiffness: 520; --press-scale: 0.96;`
 2. **Horizontal Specular Sheen via `::after` or SVG**:
-   - Positioned across the upper third (`top: 10%; left: 12%; width: 76%; height: 35%; border-radius: 10px;`):
+   - Positioned across the upper contour (e.g. `top: 10%; left: 12%; width: 76%; height: 35%;`):
      `background: radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.45) 0%, transparent 75%);`
 3. **Multi-Tier Box Shadows**:
-   - Outset: `box-shadow: 0 8px 20px rgba(0,0,0,0.6), 0 0 16px var(--accent-glow);`
-   - Inset: `box-shadow: inset 0 2px 4px rgba(255,255,255,0.35), inset 0 -4px 8px rgba(0,0,0,0.7);`
+   - Outset: `box-shadow: 0 8px 20px rgba(0,0,0,0.6), 0 0 16px var(--accent-glow);` (chassis seam shadow and socket depth).
+   - Inset: `box-shadow: inset 0 2px 4px rgba(255,255,255,0.35), inset 0 -4px 8px rgba(0,0,0,0.7);` (shoulder bevel and housing recess).
 4. **Typography & Layout**:
    - `<span class="bumper-label">$control</span>`: Font size 24px, weight 900, with horizontal specular highlight and dark drop shadow.
    - Flexbox centering: `display: flex; align-items: center; justify-content: center;`
@@ -1945,7 +2207,7 @@ ${engineBoundaries("bumper-btn")}
 
 ### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
 Before outputting, verify your component against this checklist:
-- [ ] Wide Shoulder Profile: Horizontal aspect ratio (~2:1 to 2.5:1) matching ergonomic gamepad shoulder contour.
+- [ ] Shoulder Lever Mechanics: Physical shoulder lever/rocker seated in a housing socket or chassis seam rather than a generic floating button.
 - [ ] Specular Sheen Arc: Upper curvature highlight communicating convex physical plastic molding.
 - [ ] Microswitch Actuation: Shallow crisp click feedback (`scale(0.96) translateY(2px)`).
 - [ ] High-Contrast Label: Crisp "$control" text with embossed 3D shadows.
@@ -1955,14 +2217,14 @@ Before outputting, verify your component against this checklist:
 The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
 - **STYLE**: [e.g. Brushed Gunmetal Aluminum / Matte Stealth Carbon / Sci-Fi Thruster / Minimalist]
 - **COLOR / ACCENT**: [e.g. Electric Blue / Cyberpunk Yellow / Gunmetal / Custom palette]
-- **SHAPE / SILHOUETTE**: [e.g. Wide curved capsule / Angled faceted shoulder / Minimal tile]
+- **SHAPE / SILHOUETTE**: [e.g. Ergonomic curved shoulder / Angled stealth wedge / Faceted cyber wing / Horizontal blade / Custom contour]
 - **FINISH & SHEEN**: [e.g. Horizontal specular arc / Frosted matte / Edge illumination]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
 
-### OPTIONAL STARTER TEMPLATE (REFERENCE ONLY):
+### OPTIONAL STARTER TEMPLATE — SYNTAX SKELETON [NON-BINDING SYNTAX REFERENCE ONLY]:
 This template demonstrates document syntax only. Do NOT treat its colors, geometry, gradients, shadows, layer arrangement, typography, or proportions as design defaults. Build the visual design independently from the user's request:
 ```html
-${getReferenceTemplate(control, "BUMPER")}
+${getSyntaxSkeleton(control, "BUMPER", widthDp, heightDp)}
 ```
 
 ### OUTPUT FORMAT CONTRACT:
@@ -2062,10 +2324,10 @@ The schema is a convenience, not a limitation. Users may describe any additional
 - **KNURLING & TRACTION**: [e.g. Concentric dashed rings / Radial tick marks / Diamond knurl texture]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
 
-### OPTIONAL STARTER TEMPLATE (REFERENCE ONLY):
+### OPTIONAL STARTER TEMPLATE — SYNTAX SKELETON [NON-BINDING SYNTAX REFERENCE ONLY]:
 This template demonstrates document syntax only. Do NOT treat its colors, geometry, gradients, shadows, layer arrangement, typography, or proportions as design defaults. Build the visual design independently from the user's request:
 ```html
-${getReferenceTemplate(control, "JOYSTICK")}
+${getSyntaxSkeleton(control, "JOYSTICK", widthDp, heightDp)}
 ```
 
 ### OUTPUT FORMAT CONTRACT:
@@ -2105,10 +2367,10 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
    - **Tactile Spring Micro-Physics**: Configure in `:root`:
      `--spring-damping: 0.78; --spring-stiffness: 500; --press-scale: 0.92;`
    ${if (control.uppercase() == "HOME") """
-   - `width: ${widthDp}px; height: ${heightDp}px; border-radius: 50%;`
+   - `width: ${widthDp}px; height: ${heightDp}px; border-radius: 50%;` (or custom emblem silhouette).
    - Multi-tiered radial ambient lighting with glowing nexus emblem and silver chamfered bezel.
    """ else """
-   - `width: ${widthDp}px; height: ${heightDp}px; border-radius: 14px;`
+   - `width: ${widthDp}px; height: ${heightDp}px;` (canvas bounding box, e.g. `border-radius: 14px` or custom pill/tile geometry).
    - Radial dark gradient: `background: radial-gradient(circle at 50% 30%, #242833 0%, #101217 100%);`
    - Inset bevel shadows: `box-shadow: inset 0 1px 3px rgba(255,255,255,0.25), inset 0 -3px 6px rgba(0,0,0,0.7);`
    """}
@@ -2139,10 +2401,10 @@ The schema is a convenience, not a limitation. Users may describe any additional
 - **ICONOGRAPHY**: [e.g. Hamburger bars / Dual overlapping rectangles / Nexus sphere emblem]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
 
-### OPTIONAL STARTER TEMPLATE (REFERENCE ONLY):
+### OPTIONAL STARTER TEMPLATE — SYNTAX SKELETON [NON-BINDING SYNTAX REFERENCE ONLY]:
 This template demonstrates document syntax only. Do NOT treat its colors, geometry, gradients, shadows, layer arrangement, typography, or proportions as design defaults. Build the visual design independently from the user's request:
 ```html
-${getReferenceTemplate(control, "SYSTEM")}
+${getSyntaxSkeleton(control, "SYSTEM", widthDp, heightDp)}
 ```
 
 ### OUTPUT FORMAT CONTRACT:
