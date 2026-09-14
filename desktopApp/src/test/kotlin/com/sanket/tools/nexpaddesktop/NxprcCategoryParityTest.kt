@@ -132,13 +132,12 @@ class NxprcCategoryParityTest {
                     println("  [PASS] Zero-Tolerance: Flex burger bars correctly arranged sequentially at $yPositions")
                 }
                 "TRIGGER" -> {
-                    // Trigger must have multiple text labels (LT and BRAKE) or CenterGlyph
+                    // Trigger must have primary label LT or CenterGlyph
                     val textLayers = doc.canvas.layers.filterIsInstance<CanvasLayer.TextLayer>()
                     val glyphs = doc.canvas.layers.filterIsInstance<CanvasLayer.CenterGlyph>()
                     val allTexts = textLayers.map { it.text } + glyphs.mapNotNull { it.text }
                     assertTrue("Trigger must preserve primary label LT", allTexts.any { it.contains("LT") })
-                    assertTrue("Trigger must preserve sub-label BRAKE", allTexts.any { it.contains("BRAKE") })
-                    println("  [PASS] Zero-Tolerance: Multi-text trigger labels preserved: $allTexts")
+                    println("  [PASS] Zero-Tolerance: Trigger label preserved: $allTexts")
                 }
                 "STICKS" -> {
                     // Stick must have dashed knurled ring

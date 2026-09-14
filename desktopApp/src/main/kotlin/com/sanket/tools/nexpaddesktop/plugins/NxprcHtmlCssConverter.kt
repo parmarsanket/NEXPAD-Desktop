@@ -760,15 +760,15 @@ object NxprcHtmlCssConverter {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: space-between;
-    padding: 12px 0;
+    justify-content: flex-start;
+    padding-top: 18px;
     box-sizing: border-box;
     position: relative;
   }
   .trigger-btn::before {
     content: "";
     position: absolute;
-    top: 45%;
+    top: 55%;
     width: 44px;
     height: 4px;
     border-radius: 2px;
@@ -776,16 +776,10 @@ object NxprcHtmlCssConverter {
     box-shadow: 0 8px 0 rgba(255, 255, 255, 0.12), 0 16px 0 rgba(255, 255, 255, 0.08);
   }
   .trigger-label {
-    font-size: 26px;
+    font-size: 28px;
     font-weight: 900;
     color: #FFFFFF;
     text-shadow: 0 2px 4px rgba(0,0,0,0.8), 0 0 12px var(--accent);
-  }
-  .trigger-sub {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--accent);
-    letter-spacing: 1px;
   }
   .trigger-btn:active {
     transform: scaleY(0.94) translateY(4px);
@@ -795,7 +789,6 @@ object NxprcHtmlCssConverter {
 <body>
   <button class="trigger-btn" data-control="RT" data-category="TRIGGER" data-name="Tactile Trigger RT">
     <span class="trigger-label">RT</span>
-    <span class="trigger-sub">PULL</span>
   </button>
 </body>
 </html>
@@ -1216,15 +1209,15 @@ object NxprcHtmlCssConverter {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: space-between;
-    padding: 12px 0;
+    justify-content: flex-start;
+    padding-top: 18px;
     box-sizing: border-box;
     position: relative;
   }
   .trigger-btn::before {
     content: "";
     position: absolute;
-    top: 45%;
+    top: 55%;
     width: 44px;
     height: 4px;
     border-radius: 2px;
@@ -1232,16 +1225,10 @@ object NxprcHtmlCssConverter {
     box-shadow: 0 8px 0 rgba(255, 255, 255, 0.12), 0 16px 0 rgba(255, 255, 255, 0.08);
   }
   .trigger-label {
-    font-size: 26px;
+    font-size: 28px;
     font-weight: 900;
     color: #FFFFFF;
     text-shadow: 0 2px 4px rgba(0,0,0,0.8), 0 0 12px var(--accent);
-  }
-  .trigger-sub {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--accent);
-    letter-spacing: 1px;
   }
   .trigger-btn:active {
     transform: scaleY(0.94) translateY(4px);
@@ -1251,7 +1238,6 @@ object NxprcHtmlCssConverter {
 <body>
   <button class="trigger-btn" data-control="LT" data-category="TRIGGER" data-name="Tactile Trigger LT">
     <span class="trigger-label">LT</span>
-    <span class="trigger-sub">BRAKE</span>
   </button>
 </body>
 </html>
@@ -1841,18 +1827,16 @@ Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``
     }
 
     private fun generateTriggerPrompt(control: String, widthDp: Int, heightDp: Int): String {
-        val subLabel = if (control.uppercase() == "LT") "BRAKE" else "PULL"
-
         return """
 ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Analog Trigger for NEXPAD.
 
 ### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control (${if (control.uppercase() == "LT") "Left Trigger / Brake / Aim" else "Right Trigger / Throttle / Fire"})
+- **Button Key [COMPONENT-REQUIRED]**: $control (${if (control.uppercase() == "LT") "Left Trigger" else "Right Trigger"})
 - **Category [GLOBAL-REQUIRED]**: TRIGGER
 - **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
-- **Labels [RECOMMENDED]**: Primary "$control" with sub-label "$subLabel"
+- **Labels [RECOMMENDED]**: Primary "$control"
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Analog progressive pull, pressure, and travel communication (throttle, brake, aim, fire).
@@ -1864,7 +1848,7 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 Create an authentic console-grade hardware aesthetic (reminiscent of Xbox Series X, Elite Controller, or DualSense) with physical industrial realism:
 1. **Curved Paddle Rake & Analog Travel**: Authentic analog triggers feature an elongated vertical paddle (width: ${widthDp}px, height: ${heightDp}px) with a 180-degree gradient receding into the controller housing cavity, communicating analog travel and finger placement.
 2. **Molded Traction Ribs**: Physical molded horizontal friction ridges (via Flexbox column or `::before` layered shadows) providing authentic fingertip grip for throttling, braking, or aiming.
-3. **Hierarchical Dual Typography**: Prominent primary key indicator ("$control", font-size 26px, weight 900) paired with functional sub-label ("$subLabel", font-size 11px, letter-spacing 1px).
+3. **High-Contrast Clean Typography**: Prominent primary key indicator ("$control", font-size 26-30px, weight 900). Keep the typography clean and authentic to real console gamepads without artificial secondary sub-labels.
 4. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic triggers focus on ergonomic paddle curvature, molded grip traction, and deep socket shadow wells.
 
 ### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
@@ -1880,9 +1864,8 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
 3. **Multi-Tier Box Shadows**:
    - Outset: `box-shadow: 0 10px 24px rgba(0,0,0,0.65), 0 0 18px var(--accent-glow);`
    - Inset: `box-shadow: inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -8px 16px rgba(0,0,0,0.8);` (deep vertical pull socket well).
-4. **Stacked Typography & Typographic Wrapping**:
-   - Vertical flex column with real DOM text: `<span class="trigger-label">$control</span>` (font-size 26px, weight 900) + `<span class="trigger-sub">$subLabel</span>` (font-size 10px, letter-spacing 1.5px).
-   - Multi-line wrapping and `line-height` are natively calculated by the protocol engine.
+4. **Primary Typography & Layout**:
+   - Real DOM text: `<span class="trigger-label">$control</span>` (font-size 28px, weight 900) positioned on the upper portion of the paddle with vertical flexbox layout (`display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 18px;`).
 5. **Tactile Active Travel Physics**:
    - `.trigger-btn:active { transform: scaleY(0.94) translateY(4px); }` (simulates physical downward paddle pull stroke).
 
@@ -1892,7 +1875,7 @@ ${engineBoundaries("trigger-btn")}
 Before outputting, verify your component against this checklist:
 - [ ] Analog Travel Affordance: Elongated vertical paddle silhouette with progressive light slope receding into socket.
 - [ ] Traction Grip: Molded horizontal ribs or grip ridges for authentic tactile purchase.
-- [ ] Hierarchical Typography: Clear primary label ("$control") and sub-label ("$subLabel") with strong contrast.
+- [ ] Clear Primary Typography: Clear high-contrast "$control" label readable at handheld touch scale.
 - [ ] Progressive Stroke Physics: Paddle stroke displacement (`.trigger-btn:active { transform: scaleY(0.94) translateY(4px); }`) with spring micro-physics (`--spring-damping: 0.65; --spring-stiffness: 380;`).
 - [ ] Compiler Safety: Exactly one root `<button class="trigger-btn">` element; all px dimensions explicit.
 
@@ -1902,7 +1885,7 @@ The schema is a convenience, not a limitation. Users may describe any additional
 - **COLOR / ACCENT**: [e.g. Racing Red / Neon Magenta / Titanium Gray / Custom palette]
 - **SHAPE / SILHOUETTE**: [e.g. Ergonomic curved paddle / Angular wedge / Minimal capsule]
 - **TRACTION GRIP**: [e.g. Horizontal rubberized ribs / Stippled texture / Slotted heat vents]
-- **LABELS**: [e.g. "$control" + "$subLabel" / Icon only / Minimal single label]
+- **LABELS**: [e.g. "$control" / Custom text / Icon only (Default: "$control")]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
 
 ### OPTIONAL STARTER TEMPLATE (REFERENCE ONLY):
