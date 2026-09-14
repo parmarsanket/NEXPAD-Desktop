@@ -329,9 +329,9 @@ class BluetoothRfcommServer {
             var lastTelemetrySent = 0L
 
             while (isActive && isConnected.get()) {
-                // Drain any pending file sync packets first
-                val syncData = fileSyncChannel.tryReceive().getOrNull()
-                if (syncData != null) {
+                // Drain all pending file sync packets first
+                var syncData = fileSyncChannel.tryReceive().getOrNull()
+                while (syncData != null && isActive && isConnected.get()) {
                     println("📦 [Bluetooth] Sending file sync packet (${syncData.size} bytes)...")
                     var totalSent = 0
                     while (totalSent < syncData.size && isActive && isConnected.get()) {
@@ -345,6 +345,7 @@ class BluetoothRfcommServer {
                         totalSent += sent
                     }
                     println("✅ [Bluetooth] File sync packet sent: $totalSent/${syncData.size} bytes")
+                    syncData = fileSyncChannel.tryReceive().getOrNull()
                 }
 
                 // Event-driven rumble feedback or 20ms periodic telemetry keepalive

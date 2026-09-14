@@ -107,14 +107,25 @@ object AoaTransport {
         try {
             while (isActive) {
                 // Drain and send any pending file sync packets over the bulk OUT pipe
-                val syncData = fileSyncChannel?.tryReceive()?.getOrNull()
-                if (syncData != null) {
+                var syncData = fileSyncChannel?.tryReceive()?.getOrNull()
+                while (syncData != null && isActive) {
                     val fileBuffer = ByteBuffer.allocateDirect(syncData.size)
                     fileBuffer.put(syncData)
                     fileBuffer.flip()
                     val fileTransferred = IntBuffer.allocate(1)
-                    val syncRes = LibUsb.bulkTransfer(handle, bulkOutEndpoint, fileBuffer, fileTransferred, 5000L)
-                    println("[AOA/Transport] Pushed file payload (${syncData.size} bytes, transferred=${fileTransferred.get(0)}, result=$syncRes)")
+                    var totalSent = 0
+                    while (totalSent < syncData.size && isActive) {
+                        fileBuffer.position(totalSent)
+                        val syncRes = LibUsb.bulkTransfer(handle, bulkOutEndpoint, fileBuffer, fileTransferred, 5000L)
+                        val sent = fileTransferred.get(0)
+                        if (syncRes < 0 || sent <= 0) {
+                            println("❌ [AOA/Transport] Failed to send file sync packet: ${LibUsb.errorName(syncRes)}")
+                            break
+                        }
+                        totalSent += sent
+                    }
+                    println("✅ [AOA/Transport] Pushed file payload ($totalSent/${syncData.size} bytes)")
+                    syncData = fileSyncChannel?.tryReceive()?.getOrNull()
                 }
 
                 // Wait for either an immediate trigger from the IN loop,
