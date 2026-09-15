@@ -596,6 +596,22 @@ fun PluginsScreen(
                 onSoloLayerChange = { soloLayerIndex = it },
                 selectedLayerIndex = selectedLayerIndex,
                 onSelectedLayerChange = { selectedLayerIndex = it },
+                onHtmlChange = { newHtml ->
+                    htmlSource = newHtml
+                    try {
+                        val immediateDoc = NxprcHtmlCssConverter.convert(
+                            source = newHtml,
+                            id = componentId,
+                            name = componentName,
+                            category = category,
+                            defaultControl = defaultControl
+                        )
+                        compiledDoc = immediateDoc
+                        compileError = null
+                    } catch (e: Exception) {
+                        compileError = e.message ?: "Compilation error"
+                    }
+                },
                 onExportDoc = { doc ->
                     scope.launch {
                         isExporting = true

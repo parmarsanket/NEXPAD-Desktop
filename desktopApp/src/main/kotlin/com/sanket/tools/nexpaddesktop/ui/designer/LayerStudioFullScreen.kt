@@ -25,8 +25,10 @@ import com.sanket.tools.nexpad.nxprc.CanvasLayer
 import com.sanket.tools.nexpad.nxprc.NxprcDocument
 import com.sanket.tools.nexpaddesktop.plugins.LayerDetails
 import com.sanket.tools.nexpaddesktop.plugins.NxprcLayerCodeGenerator
+import com.sanket.tools.nexpaddesktop.plugins.NxprcSurgicalReplacer
 import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 import java.awt.Toolkit
+import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
 
 /**
@@ -47,6 +49,7 @@ fun LayerStudioFullScreen(
     onSoloLayerChange: (Int?) -> Unit,
     selectedLayerIndex: Int,
     onSelectedLayerChange: (Int) -> Unit,
+    onHtmlChange: ((String) -> Unit)? = null,
     onExportDoc: (NxprcDocument) -> Unit,
     onPushAdbDoc: (NxprcDocument) -> Unit,
     isPushEnabled: Boolean = true,
@@ -77,6 +80,7 @@ fun LayerStudioFullScreen(
 
     // Surgical AI Copilot State
     var userAiPrompt by remember(safeSelectedIndex) { mutableStateOf("") }
+    var replacementCode by remember(safeSelectedIndex) { mutableStateOf("") }
 
     // Pre-computed filtered export doc (non-destructive exclusion)
     val exportDoc = remember(document, activeLayerIndices) {
@@ -736,12 +740,13 @@ fun LayerStudioFullScreen(
                 // =====================================================================
                 Column(
                     modifier = Modifier
-                        .width(350.dp)
+                        .width(360.dp)
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(10.dp))
                         .background(Color(0xFF090D18))
                         .border(1.dp, Color(0xFF1B2438), RoundedCornerShape(10.dp))
-                        .padding(10.dp),
+                        .padding(10.dp)
+                        .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     if (selectedDetails != null && selectedLayer != null) {
@@ -787,7 +792,7 @@ fun LayerStudioFullScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(1f)
+                                .heightIn(min = 90.dp, max = 130.dp)
                                 .clip(RoundedCornerShape(6.dp))
                                 .background(Color(0xFF030509))
                                 .border(1.dp, Color(0xFF151E2E), RoundedCornerShape(6.dp))
@@ -797,8 +802,8 @@ fun LayerStudioFullScreen(
                                 text = selectedDetails.codeSnippet,
                                 color = Color(0xFFCBD5E1),
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = 11.sp,
-                                lineHeight = 15.sp,
+                                fontSize = 10.5.sp,
+                                lineHeight = 14.sp,
                                 modifier = Modifier.verticalScroll(rememberScrollState())
                             )
                         }
@@ -815,10 +820,17 @@ fun LayerStudioFullScreen(
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("🤖 SURGICAL AI COPILOT", color = Color(0xFFC4B5FD), fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                                Text("🔒 Scope: Layer #$safeSelectedIndex Only", color = Color.White.copy(alpha = 0.5f), fontSize = 9.5.sp)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text("🤖 SURGICAL AI COPILOT", color = Color(0xFFC4B5FD), fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                    Text("🔒 Layer #$safeSelectedIndex Only", color = Color.White.copy(alpha = 0.5f), fontSize = 9.5.sp)
+                                }
+                                Text("Live Sandbox", color = Color(0xFF10B981), fontSize = 9.sp, fontWeight = FontWeight.Bold)
                             }
 
                             OutlinedTextField(
@@ -837,30 +849,141 @@ fun LayerStudioFullScreen(
                                 textStyle = LocalTextStyle.current.copy(fontSize = 11.sp, color = Color.White)
                             )
 
+                            // Action Toolbar: Copy Prompt, Edit Directly, Paste Clipboard
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        val surgicalPrompt = NxprcLayerCodeGenerator.generateLayerAiPrompt(
+                                            layerIndex = safeSelectedIndex,
+                                            layer = selectedLayer,
+                                            doc = document,
+                                            userInstruction = userAiPrompt
+                                        )
+                                        Toolkit.getDefaultToolkit().systemClipboard.setContents(
+                                            StringSelection(surgicalPrompt),
+                                            null
+                                        )
+                                        onFeedback("✓ Surgical prompt for Layer #$safeSelectedIndex copied!")
+                                    },
+                                    shape = RoundedCornerShape(6.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
+                                    modifier = Modifier.weight(1f).height(30.dp),
+                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text("🤖 Copy Prompt", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                }
+
+                                Button(
+                                    onClick = {
+                                        replacementCode = selectedDetails.codeSnippet
+                                        onFeedback("Loaded Layer #$safeSelectedIndex snippet for manual editing.")
+                                    },
+                                    shape = RoundedCornerShape(6.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                                    modifier = Modifier.height(30.dp),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                ) {
+                                    Text("✏️ Edit Direct", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = NeonPalette.Cyan)
+                                }
+
+                                Button(
+                                    onClick = {
+                                        try {
+                                            val clipboard = Toolkit.getDefaultToolkit().systemClipboard
+                                            val contents = clipboard.getContents(null)
+                                            if (contents != null && contents.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+                                                val text = contents.getTransferData(DataFlavor.stringFlavor) as? String
+                                                if (!text.isNullOrBlank()) {
+                                                    replacementCode = text
+                                                    onFeedback("Pasted code from clipboard into Layer #$safeSelectedIndex.")
+                                                } else {
+                                                    onFeedback("Clipboard is empty.")
+                                                }
+                                            }
+                                        } catch (e: Exception) {
+                                            onFeedback("Could not read clipboard: ${e.message}")
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(6.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                                    modifier = Modifier.height(30.dp),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                ) {
+                                    Text("📋 Paste", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFBBF24))
+                                }
+                            }
+
+                            // Replacement Code Text Area
+                            Text(
+                                text = "Modified Code to Inject (Layer #$safeSelectedIndex):",
+                                color = Color(0xFFCBD5E1),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+
+                            OutlinedTextField(
+                                value = replacementCode,
+                                onValueChange = { replacementCode = it },
+                                placeholder = {
+                                    Text(
+                                        "Paste AI response (e.g. .layer-$safeSelectedIndex { ... }, SVG <path .../>, or CSS properties)...",
+                                        fontSize = 10.sp,
+                                        color = Color.White.copy(alpha = 0.35f)
+                                    )
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(100.dp),
+                                textStyle = LocalTextStyle.current.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 10.5.sp,
+                                    color = Color(0xFFE2E8F0)
+                                )
+                            )
+
+                            // Apply & Update Live Preview Button
                             Button(
                                 onClick = {
-                                    val surgicalPrompt = NxprcLayerCodeGenerator.generateLayerAiPrompt(
+                                    if (replacementCode.isBlank()) {
+                                        onFeedback("⚠️ Please paste or type replacement code first.")
+                                        return@Button
+                                    }
+                                    val result = NxprcSurgicalReplacer.applySurgicalChange(
+                                        originalHtml = htmlSource,
                                         layerIndex = safeSelectedIndex,
                                         layer = selectedLayer,
                                         doc = document,
-                                        userInstruction = userAiPrompt
+                                        replacementInput = replacementCode
                                     )
-                                    Toolkit.getDefaultToolkit().systemClipboard.setContents(
-                                        StringSelection(surgicalPrompt),
-                                        null
-                                    )
-                                    onFeedback("✓ Surgical prompt for Layer #$safeSelectedIndex copied! Paste into Claude/GPT/Gemini.")
+                                    if (result.success) {
+                                        onHtmlChange?.invoke(result.updatedHtml)
+                                        onFeedback("✓ ${result.message} Live preview updated!")
+                                    } else {
+                                        onFeedback("⚠️ ${result.message}")
+                                    }
                                 },
+                                enabled = replacementCode.isNotBlank(),
                                 shape = RoundedCornerShape(6.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
-                                modifier = Modifier.fillMaxWidth().height(32.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF10B981),
+                                    disabledContainerColor = Color(0xFF1E293B)
+                                ),
+                                modifier = Modifier.fillMaxWidth().height(34.dp),
                                 contentPadding = PaddingValues(vertical = 4.dp)
                             ) {
-                                Text("🤖 Copy Single-Layer AI Prompt", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                Text(
+                                    text = "⚡ Apply Code & Update Live Preview",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (replacementCode.isNotBlank()) Color.Black else Color.White.copy(alpha = 0.35f)
+                                )
                             }
 
                             Text(
-                                text = "Strict contract: AI modifies ONLY Layer #$safeSelectedIndex, never touching or breaking other layers.",
+                                text = "Strict contract: AI modifies ONLY Layer #$safeSelectedIndex. Spliced into source and re-rendered in real-time.",
                                 color = Color(0xFFA78BFA),
                                 fontSize = 9.sp
                             )

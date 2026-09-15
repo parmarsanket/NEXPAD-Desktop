@@ -17,8 +17,10 @@ import com.sanket.tools.nexpad.nxprc.CanvasLayer
 import com.sanket.tools.nexpad.nxprc.NxprcDocument
 import com.sanket.tools.nexpaddesktop.plugins.LayerDetails
 import com.sanket.tools.nexpaddesktop.plugins.NxprcLayerCodeGenerator
+import com.sanket.tools.nexpaddesktop.plugins.NxprcSurgicalReplacer
 import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 import java.awt.Toolkit
+import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
 
 /**
@@ -34,12 +36,14 @@ import java.awt.datatransfer.StringSelection
 @Composable
 fun LayerStudioPanel(
     document: NxprcDocument,
+    htmlSource: String = "",
     activeLayerIndices: Set<Int>,
     onActiveLayersChange: (Set<Int>) -> Unit,
     soloLayerIndex: Int?,
     onSoloLayerChange: (Int?) -> Unit,
     selectedLayerIndex: Int,
     onSelectedLayerChange: (Int) -> Unit,
+    onHtmlChange: ((String) -> Unit)? = null,
     onOpenFullScreen: () -> Unit = {},
     onFeedback: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -73,6 +77,7 @@ fun LayerStudioPanel(
     }
 
     var userAiPrompt by remember(safeSelectedIndex) { mutableStateOf("") }
+    var replacementCode by remember(safeSelectedIndex) { mutableStateOf("") }
     val hasInactiveLayers = activeLayerIndices.size < totalLayers
 
     Column(
@@ -444,7 +449,7 @@ fun LayerStudioPanel(
             // Surgical AI Prompt Copilot
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -480,18 +485,109 @@ fun LayerStudioPanel(
                                 StringSelection(surgicalPrompt),
                                 null
                             )
-                            onFeedback("✓ Surgical AI prompt for Layer #$safeSelectedIndex copied! Paste into Claude/GPT/Gemini.")
+                            onFeedback("✓ Surgical AI prompt for Layer #$safeSelectedIndex copied!")
                         },
                         shape = RoundedCornerShape(6.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                         modifier = Modifier.height(38.dp)
                     ) {
                         Text(
-                            "🤖 Copy Layer AI Prompt",
-                            fontSize = 11.sp,
+                            "🤖 Copy Prompt",
+                            fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
+                        )
+                    }
+
+                    Button(
+                        onClick = {
+                            replacementCode = selectedDetails.codeSnippet
+                            onFeedback("Loaded Layer #$safeSelectedIndex code for editing.")
+                        },
+                        shape = RoundedCornerShape(6.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.height(38.dp)
+                    ) {
+                        Text(
+                            "✏️ Edit",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = NeonPalette.Cyan
+                        )
+                    }
+
+                    Button(
+                        onClick = {
+                            try {
+                                val clipboard = Toolkit.getDefaultToolkit().systemClipboard
+                                val contents = clipboard.getContents(null)
+                                if (contents != null && contents.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+                                    val text = contents.getTransferData(DataFlavor.stringFlavor) as? String
+                                    if (!text.isNullOrBlank()) {
+                                        replacementCode = text
+                                        onFeedback("Pasted from clipboard.")
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                onFeedback("Could not paste: ${e.message}")
+                            }
+                        },
+                        shape = RoundedCornerShape(6.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.height(38.dp)
+                    ) {
+                        Text(
+                            "📋 Paste",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFBBF24)
+                        )
+                    }
+                }
+
+                if (replacementCode.isNotBlank()) {
+                    OutlinedTextField(
+                        value = replacementCode,
+                        onValueChange = { replacementCode = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(70.dp),
+                        textStyle = LocalTextStyle.current.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 10.sp,
+                            color = Color(0xFFE2E8F0)
+                        )
+                    )
+
+                    Button(
+                        onClick = {
+                            val result = NxprcSurgicalReplacer.applySurgicalChange(
+                                originalHtml = htmlSource,
+                                layerIndex = safeSelectedIndex,
+                                layer = selectedLayer,
+                                doc = document,
+                                replacementInput = replacementCode
+                            )
+                            if (result.success) {
+                                onHtmlChange?.invoke(result.updatedHtml)
+                                onFeedback("✓ ${result.message}")
+                            } else {
+                                onFeedback("⚠️ ${result.message}")
+                            }
+                        },
+                        shape = RoundedCornerShape(6.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                        modifier = Modifier.fillMaxWidth().height(32.dp),
+                        contentPadding = PaddingValues(vertical = 4.dp)
+                    ) {
+                        Text(
+                            "⚡ Apply Code & Update Live Preview",
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
                         )
                     }
                 }
