@@ -668,6 +668,61 @@ class NxprcPromptTest {
         assertFalse(prompt.contains("PULL"), "Prescriptive PULL sub-label leaked into trigger prompt")
         assertFalse(prompt.contains("BRAKE"), "Prescriptive BRAKE sub-label leaked into trigger prompt")
     }
+
+    @Test
+    fun allCategoriesExposeEmbeddedSvgVectorEmblemArchitecture() {
+        val categories = listOf(
+            "BUTTON" to "A",
+            "DPAD" to "UP",
+            "TRIGGER" to "RT",
+            "BUMPER" to "RB",
+            "JOYSTICK" to "LS",
+            "SYSTEM" to "MENU"
+        )
+
+        categories.forEach { (category, control) ->
+            val prompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = control,
+                category = category,
+                widthDp = 96,
+                heightDp = 96
+            )
+            val tag = "[$category/$control]"
+
+            assertTrue(
+                prompt.contains("ARCHITECTURAL PATTERN: HTML/CSS BUTTON SHELL + EMBEDDED SVG VECTOR EMBLEM"),
+                "$tag missing embedded SVG vector emblem architectural pattern header"
+            )
+            assertTrue(
+                prompt.contains("FORBIDDEN ANTI-PATTERN (NEVER DO THIS)"),
+                "$tag missing forbidden anti-pattern warning"
+            )
+            assertTrue(
+                prompt.contains("MANDATORY DUAL-ENGINE ARCHITECTURE (ALWAYS DO THIS)"),
+                "$tag missing mandatory dual-engine architecture instruction"
+            )
+            assertTrue(
+                prompt.contains("The Outer HTML/CSS Button Shell"),
+                "$tag missing outer button shell instruction"
+            )
+            assertTrue(
+                prompt.contains("The Embedded `<svg class=\"button-emblem\" viewBox=\"0 0 100 100\">` Vector Emblem"),
+                "$tag missing embedded SVG vector emblem instruction"
+            )
+            assertTrue(
+                prompt.contains("The High-Contrast Control Typography"),
+                "$tag missing high-contrast control typography instruction"
+            )
+            assertTrue(
+                prompt.contains("EMBLEM / GRAPHIC (OPTIONAL)"),
+                "$tag missing EMBLEM / GRAPHIC in customization schema"
+            )
+            assertTrue(
+                prompt.contains("Complex Graphics Architecture"),
+                "$tag missing Complex Graphics Architecture in visual QA checklist"
+            )
+        }
+    }
 }
 
 

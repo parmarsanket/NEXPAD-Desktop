@@ -1779,6 +1779,13 @@ object NxprcHtmlCssConverter {
     justify-content: center;
     /* Visually design the face button silhouette, physical material, depth, and socket recess here */
   }
+  /* Optional: embedded SVG emblem for complex characters or icons */
+  .btn-emblem {
+    width: ${(widthDp * 0.58).toInt()}px;
+    height: ${(heightDp * 0.58).toInt()}px;
+    position: absolute;
+    pointer-events: none;
+  }
   .btn-label {
     font-size: 34px;
     font-weight: 900;
@@ -1792,6 +1799,7 @@ object NxprcHtmlCssConverter {
 </head>
 <body>
   <button class="nexpad-btn" data-control="$control" data-category="BUTTON" data-name="Action $control">
+    <!-- If designing a character, hero emblem, or custom icon, embed an <svg class="btn-emblem" viewBox="0 0 100 100"><path d="..."/></svg> here -->
     <span class="btn-label">$control</span>
   </button>
 </body>
@@ -1907,7 +1915,27 @@ The NXPRC engine compiles HTML/CSS/SVG into hardware-accelerated Compose Canvas 
 - **`@media`, `@supports`, `:hover`, `:focus`**: Browser page-state features — not compiled. Use `.$rootClass:active` for press feedback only.
 - **External assets**: No `@import`, no `<link>`, no remote fonts. System fonts only (`-apple-system`, `BlinkMacSystemFont`, `Segoe UI`, `Roboto`, `sans-serif`).
 
-### 4. STRICT NEXPAD COMPILER BOUNDARIES — FOLLOW THIS EXACTLY:
+### 4. ARCHITECTURAL PATTERN: HTML/CSS BUTTON SHELL + EMBEDDED SVG VECTOR EMBLEM
+**The Standard Architecture for Complex Characters, Logos, Insignias & Thematic Buttons:**
+When the user requests a character, hero, creature, vehicle, weapon, insignia, or intricate graphic (e.g. Iron Man helmet / Arc Reactor, Ben 10 Omnitrix badge, Batman crest, Dragon / Skull emblem, Sports Car silhouette, Cyberpunk crosshair, Anime insignia, Tribal crest):
+
+⚠️ **FORBIDDEN ANTI-PATTERN (NEVER DO THIS)**:
+- Never try to sculpt complex characters, organic anatomy, faces, or intricate logos out of 30–50 nested HTML `<div>`s with fragile `clip-path: polygon(...)` hacks or stacked CSS box-shadows! This produces distorted geometry, fails at different scales, and severely bloats compiler layers.
+- Never omit the `<button>` shell to output a naked standalone `<svg>` (violates Rule #1: single button root).
+
+✅ **MANDATORY DUAL-ENGINE ARCHITECTURE (ALWAYS DO THIS)**:
+Always combine the native strengths of CSS styling and SVG vector paths:
+1. **The Outer HTML/CSS Button Shell (`<button class="$rootClass" ...>`)**:
+   - Handles the 3D physical tactile housing, surface material, perimeter bevel, specular curvature arc (`::after`), recessed socket shadows (`box-shadow`), and tactile active spring micro-physics (`--spring-damping: 0.68; --spring-stiffness: 440;` with `.$rootClass:active`).
+2. **The Embedded `<svg class="button-emblem" viewBox="0 0 100 100">` Vector Emblem**:
+   - Embedded directly inside the `<button>`.
+   - Uses clean SVG vector paths (`<path d="...">`, `<polygon points="...">`, `<circle>`, `<ellipse>`, `<line>`, `<g>`) to draw the exact character, emblem, or insignia.
+   - Sized appropriately to sit centered or docked on the button face (e.g., `width: 50px; height: 50px; position: absolute;` or flexbox child).
+   - Supports `<defs>` gradient paint servers (`<linearGradient id="...">` with `<stop>`) or solid vector fills and strokes.
+3. **The High-Contrast Control Typography (`<span class="btn-label">`)**:
+   - Real DOM text for the gamepad key ensuring instantaneous legibility during high-speed gaming.
+
+### 5. STRICT NEXPAD COMPILER BOUNDARIES — FOLLOW THIS EXACTLY:
 1. **Single compiled component [GLOBAL-REQUIRED]**: `<body>` must contain exactly one root `<button class="$rootClass" data-control="..." data-category="..." data-name="...">`. Keep every visual child inside it. The compiler selects this button and does not render a general web page.
 2. **Portable self-contained document [GLOBAL-REQUIRED]**: Include one `<style>` block, one root button, and no external dependencies (no external `<link>`, `@import`, remote font files, or external web scripts). System fonts only.
 3. **Safe geometry & shapes [GLOBAL-REQUIRED]**: Use `px` dimensions for the root and visual children. Use `border-radius` or `clip-path: polygon(...)` for circles, capsules, stars, diamonds, hexagons, handmade, asymmetric, and organic silhouettes. Preserve the user's requested shape, proportions, and aesthetic.
@@ -1921,7 +1949,7 @@ The NXPRC engine compiles HTML/CSS/SVG into hardware-accelerated Compose Canvas 
    These calibrate physical tactile button weight, dampening, and spring return speed on mobile touch HUDs.
 10. **Creative freedom [GLOBAL-REQUIRED]**: `data-category` is metadata, not a shape instruction. It does not force a circle, cross, capsule, paddle, ring, gimbal, or any other silhouette. Preserve the user's requested shape, proportions, color palette, and visual language—even when they differ from the category.
 
-### 5. DESIGN QUALITY CRITERIA & DESIGN RESTRAINT
+### 6. DESIGN QUALITY CRITERIA & DESIGN RESTRAINT
 **Design Quality Criteria**:
 A successful virtual controller component optimizes for:
 1. *Recognizability*: Instantly identifiable key identity during gameplay.
@@ -1935,14 +1963,14 @@ A successful virtual controller component optimizes for:
 - Apply visual effects with deliberate purpose. Prefer the minimum number of layers required to achieve the requested aesthetic cleanly.
 - Avoid unnecessary glow, excessive shadows, or decorative elements that visually compete with the button label.
 
-### 6. DESIGN DECISION RULES:
+### 7. DESIGN DECISION RULES:
 The model operates as an autonomous designer inside the compiler boundary:
 - Choose geometry that fits the concept (do not default to a circle unless the requested concept benefits from it).
 - Choose lighting that supports the material (specular highlights for metal/glass, soft ambient for matte plastic).
 - Choose depth that supports the interaction.
 - If user customization details are unspecified, exercise creative judgment aligned with the overall theme.
 
-### 7. SELF-CHECK CHECKLIST:
+### 8. SELF-CHECK CHECKLIST:
 Self-check before output:
 - Exactly one root `<button class="$rootClass"` with matching `data-control`, `data-category`, and `data-name`.
 - Real DOM text labels with strong contrast and readable font size.
@@ -1953,8 +1981,9 @@ Self-check before output:
 - Does the visual hierarchy make the control identity immediately obvious?
 - Does every decorative layer have a clear design purpose?
 - Does the final design match the user's requested aesthetic rather than the starter template?
+- If a character, hero, creature, vehicle, weapon, emblem, or intricate graphic is requested, does it use an embedded `<svg>` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks?
 
-### 8. AUTHORITATIVE OUTPUT CONTRACT:
+### 9. AUTHORITATIVE OUTPUT CONTRACT:
 To ensure reliable programmatic compilation, return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text outside it.
 """.trimIndent()
 
@@ -2023,6 +2052,7 @@ Before outputting, verify your component against this checklist:
 - [ ] Center Glyph Legibility: High-contrast "$control" label with embossed 3D text shadow readable at handheld touch scale.
 - [ ] Optical Gloss Arc: Subtle specular reflection (`::after`) communicating convex molded plastic.
 - [ ] Tactile Active Physics: Spring micro-physics (`--spring-damping: 0.68; --spring-stiffness: 440; --press-scale: 0.92;`) and `.nexpad-btn:active { transform: scale(0.93) translateY(3px); }`.
+- [ ] Complex Graphics Architecture: If a character, emblem, insignia, or complex graphic is requested, uses an embedded `<svg>` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks.
 - [ ] Compiler Safety: Exactly one root `<button class="nexpad-btn">` element; all px dimensions explicit.
 
 ### USER CUSTOMIZATION SCHEMA:
@@ -2030,6 +2060,7 @@ The schema is a convenience, not a limitation. Users may describe any additional
 - **STYLE**: [e.g. Cyberpunk 2077 / Glassmorphism / Brushed Gunmetal / Retro Arcade / Minimal Flat / Anime Mecha / Custom]
 - **COLOR / ACCENT**: [e.g. Neon cyan & dark obsidian / Crimson & carbon / Custom palette (Default: $hexCode)]
 - **SHAPE / SILHOUETTE**: [e.g. Faceted octagon / Smooth capsule / Organic shield / Asymmetric shard (Default: Circular)]
+- **EMBLEM / GRAPHIC (OPTIONAL)**: [e.g. Embedded SVG vector emblem (`<svg viewBox="0 0 100 100"><path d="..."/></svg>`) for character art, hero logos, vehicle silhouettes, or intricate crests]
 - **LABEL / GLYPH**: [e.g. "$control" / Custom text / SVG icon emblem (Default: "$control")]
 - **MATERIAL / TEXTURE**: [e.g. Matte polycarbonate / Anodized aluminum / Smoked translucent glass / Stippled rubber]
 - **LIGHTING & DEPTH**: [e.g. Top-left specular directional / Under-glow neon edge / Deep recessed socket]
@@ -2108,6 +2139,7 @@ Before outputting, verify your component against this checklist:
 - [ ] Directional Affordance: Distinct cardinal touch zones (or 4-way cross) with clear directional orientation.
 - [ ] Rocker Pivot Affordance: Central pivot well or sloped directional gradient communicating physical rocker mechanism.
 - [ ] High-Contrast Glyph: Crisp directional glyph ($arrowGlyph) or vector chevron readable at small touch scales.
+- [ ] Complex Graphics Architecture: If custom directional arrows, emblems, or complex graphics are requested, uses an embedded `<svg>` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks.
 - [ ] Console Realism: Authentic industrial materials (textured matte ABS, subtle contact shadows) rather than unsolicited neon glow.
 - [ ] Tactile Active Physics: Spring micro-physics (`--spring-damping: 0.72; --spring-stiffness: 480;`) and `.dpad-btn:active` transform.
 - [ ] Compiler Safety: Exactly one root `<button class="dpad-btn">` element; all px dimensions explicit.
@@ -2118,6 +2150,7 @@ The schema is a convenience, not a limitation. Users may describe any additional
 - **COLOR / ACCENT**: [e.g. Electric Cyan / Neon Amber / Stealth Dark / Custom palette]
 - **SHAPE / SILHOUETTE**: [e.g. 12-point faceted cross / Segmented arrows / Radial disc / Wedge]
 - **DIRECTIONAL MARKINGS**: [e.g. Laser-etched arrows / Glowing chevrons / Raised tactile nubs]
+- **EMBLEM / GRAPHIC (OPTIONAL)**: [e.g. Embedded SVG vector emblem (`<svg viewBox="0 0 100 100"><path d="..."/></svg>`) for custom center emblems, directional arrows, or intricate crests]
 - **MATERIAL / TEXTURE**: [e.g. Textured ABS plastic / Brushed gunmetal / Rubberized grip]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
 
@@ -2183,6 +2216,7 @@ Before outputting, verify your component against this checklist:
 - [ ] Traction Grip: Molded horizontal ribs or grip ridges for authentic tactile purchase.
 - [ ] Clear Primary Typography: Clear high-contrast "$control" label readable at handheld touch scale.
 - [ ] Progressive Stroke Physics: Paddle stroke displacement (`.trigger-btn:active { transform: scaleY(0.94) translateY(4px); }`) with spring micro-physics (`--spring-damping: 0.65; --spring-stiffness: 380;`).
+- [ ] Complex Graphics Architecture: If custom weapon markings, manufacturer logos, or telemetry graphics are requested, uses an embedded `<svg>` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks.
 - [ ] Compiler Safety: Exactly one root `<button class="trigger-btn">` element; all px dimensions explicit.
 
 ### USER CUSTOMIZATION SCHEMA:
@@ -2191,6 +2225,7 @@ The schema is a convenience, not a limitation. Users may describe any additional
 - **COLOR / ACCENT**: [e.g. Racing Red / Neon Magenta / Titanium Gray / Custom palette]
 - **SHAPE / SILHOUETTE**: [e.g. Ergonomic curved paddle / Angular wedge / Modern capsule / Asymmetric blade / Custom contour]
 - **TRACTION GRIP**: [e.g. Horizontal rubberized ribs / Stippled texture / Slotted heat vents]
+- **EMBLEM / GRAPHIC (OPTIONAL)**: [e.g. Embedded SVG vector emblem (`<svg viewBox="0 0 100 100"><path d="..."/></svg>`) for weapon branding, team logos, vehicle silhouettes, or telemetry graphics]
 - **LABELS**: [e.g. "$control" / Custom text / Icon only (Default: "$control")]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
 
@@ -2255,6 +2290,7 @@ Before outputting, verify your component against this checklist:
 - [ ] Specular Sheen Arc: Upper curvature highlight communicating convex physical plastic molding.
 - [ ] Microswitch Actuation: Shallow crisp click feedback (`scale(0.96) translateY(2px)`).
 - [ ] High-Contrast Label: Crisp "$control" text with embossed 3D shadows.
+- [ ] Complex Graphics Architecture: If faction crests, wing markings, or complex graphics are requested, uses an embedded `<svg>` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks.
 - [ ] Compiler Safety: Exactly one root `<button class="bumper-btn">` element; all px dimensions explicit.
 
 ### USER CUSTOMIZATION SCHEMA:
@@ -2263,6 +2299,7 @@ The schema is a convenience, not a limitation. Users may describe any additional
 - **COLOR / ACCENT**: [e.g. Electric Blue / Cyberpunk Yellow / Gunmetal / Custom palette]
 - **SHAPE / SILHOUETTE**: [e.g. Ergonomic curved shoulder / Angled stealth wedge / Faceted cyber wing / Horizontal blade / Custom contour]
 - **FINISH & SHEEN**: [e.g. Horizontal specular arc / Frosted matte / Edge illumination]
+- **EMBLEM / GRAPHIC (OPTIONAL)**: [e.g. Embedded SVG vector emblem (`<svg viewBox="0 0 100 100"><path d="..."/></svg>`) for faction crests, wing markings, hero logos, or intricate insignias]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
 
 ### OPTIONAL STARTER TEMPLATE — SYNTAX SKELETON [NON-BINDING SYNTAX REFERENCE ONLY]:
@@ -2356,6 +2393,7 @@ Before outputting, verify your component against this checklist:
 - [ ] Two-Zone DOM Structure: Stationary base enclosed in `<div class="stick-base">`, movable cap enclosed in `<div class="stick-cap">`.
 - [ ] Mechanical Clearance: Thumb cap diameter is ~55%–65% of socket diameter (~${(widthDp * 0.60).toInt()}px) for realistic travel clearance.
 - [ ] No Frozen Cap Elements: Knurled rings, traction ridges, emblems, and label are placed INSIDE `<div class="stick-cap">`.
+- [ ] Complex Graphics Architecture: If a character, emblem, or complex graphic is requested on the thumb cap, uses an embedded `<svg>` vector element inside `<div class="stick-cap">` with clean `<path d="...">` rather than brittle CSS `<div>` hacks.
 - [ ] Console Realism: Authentic industrial materials (matte charcoal, rubberized dish, physical shadows) rather than unsolicited neon glow.
 - [ ] No Scripts or Page CSS: Zero JavaScript, zero CSS keyframes animations, zero hover/pointer event handlers.
 - [ ] Compiler Safety: Exactly one root `<button class="stick-btn">` element; all px dimensions explicit.
@@ -2366,6 +2404,7 @@ The schema is a convenience, not a limitation. Users may describe any additional
 - **COLOR / ACCENT**: [e.g. Neon Emerald Green / Cyberpunk Cyan / Stealth Black / Custom palette]
 - **THUMB DOME**: [e.g. Deep concave dish / Convex textured dome / Cross-hatch metallic surface]
 - **KNURLING & TRACTION**: [e.g. Concentric dashed rings / Radial tick marks / Diamond knurl texture]
+- **EMBLEM / GRAPHIC (OPTIONAL)**: [e.g. Embedded SVG vector emblem (`<svg viewBox="0 0 100 100"><path d="..."/></svg>`) placed inside `<div class="stick-cap">` for anime icons, hero crests, or custom emblems]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
 
 ### OPTIONAL STARTER TEMPLATE — SYNTAX SKELETON [NON-BINDING SYNTAX REFERENCE ONLY]:
@@ -2433,6 +2472,7 @@ ${engineBoundaries("system-btn")}
 Before outputting, verify your component against this checklist:
 - [ ] Low-Profile Footprint: Compact dimensions with recessed socket well.
 - [ ] Crisp Iconography: Clean, instantly recognizable symbol (hamburger bars, dual windows, nexus emblem) with ZERO conflicting fallback text stamped over it.
+- [ ] Complex Graphics Architecture: If a custom system emblem, guide logo, or complex graphic is requested, uses an embedded `<svg>` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks.
 - [ ] Micro-Travel Physics: Subtle tactile click feedback (`scale(0.92) translateY(2px)`).
 - [ ] Console Realism: Authentic industrial utility finish rather than unsolicited neon halos.
 - [ ] Compiler Safety: Exactly one root `<button class="system-btn">` (or `<button class="system-home-btn">`); all px dimensions explicit.
@@ -2443,6 +2483,7 @@ The schema is a convenience, not a limitation. Users may describe any additional
 - **COLOR / ACCENT**: [e.g. Subtle Cool White / Neon Yellow / Amber / Custom palette]
 - **SHAPE / SILHOUETTE**: [e.g. Compact pill / Circular guide emblem / Rounded tile]
 - **ICONOGRAPHY**: [e.g. Hamburger bars / Dual overlapping rectangles / Nexus sphere emblem]
+- **EMBLEM / GRAPHIC (OPTIONAL)**: [e.g. Embedded SVG vector emblem (`<svg viewBox="0 0 100 100"><path d="..."/></svg>`) for custom guide logos, nexus crests, or game symbols]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
 
 ### OPTIONAL STARTER TEMPLATE — SYNTAX SKELETON [NON-BINDING SYNTAX REFERENCE ONLY]:
