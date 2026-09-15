@@ -1,5 +1,6 @@
 package com.sanket.tools.nexpaddesktop.plugins
 
+import com.sanket.tools.nexpad.nxprc.CompileResult
 import com.sanket.tools.nexpad.nxprc.NxprcDocument
 import com.sanket.tools.nexpad.nxprc.NxprcPackager
 
@@ -20,6 +21,26 @@ object NxprcHtmlCssConverter {
         defaultControl: String = "A"
     ): NxprcDocument {
         return NxprcPackager.compile(
+            html = source,
+            id = id,
+            name = name,
+            category = category,
+            defaultControl = defaultControl
+        )
+    }
+
+    /**
+     * Converts raw HTML/CSS/SVG text into a [CompileResult] containing the [NxprcDocument]
+     * and any compiler warnings for CSS properties that were dropped or approximated.
+     */
+    fun convertWithWarnings(
+        source: String,
+        id: String,
+        name: String,
+        category: String = "BUTTON",
+        defaultControl: String = "A"
+    ): CompileResult {
+        return NxprcPackager.compileWithWarnings(
             html = source,
             id = id,
             name = name,
@@ -1847,21 +1868,45 @@ When instructions conflict, resolve them in this strict order of authority:
 - **[OPTIONAL]**: Primitives and effects (SVG paths, conic gradients, filter nodes) to use only when they enhance the requested aesthetic.
 - **[NON-BINDING SYNTAX REFERENCE]**: Architectural syntax example only. Never use its aesthetic properties as design anchors.
 
-### 3. COMPILER CAPABILITIES — WHAT PRIMITIVES ARE BEST FOR:
-The NXPRC engine compiles HTML/CSS/SVG into hardware-accelerated Compose Canvas layers. Use capabilities for their visual strengths:
-- **`radial-gradient`**: Best for spherical/concave shading, directional specular highlights, ambient glow, and radial illumination wells.
-- **`linear-gradient`**: Best for rake angles, directional light slope, horizontal specular sheen, and chamfer bevels.
-- **`conic-gradient`**: Best for brushed metallic bezels, segmented rotary dials, directional sheen rings, and mechanical textures.
-- **`box-shadow`**: Outset shadows for physical socket elevation and ambient halos; Inset shadows for 3D spherical bevel rims and recessed sockets.
-- **Embedded `<svg>` & Vector Nodes**: Best for custom vector iconography, chevrons, emblems, and technical markings (`<path d="...">`, `<circle>`, `<rect>`, `<polygon>`, `<g>`). Supports `<defs>` paint servers (`<linearGradient id="...">`, `<radialGradient id="...">` with `<stop offset="..." stop-color="..." stop-opacity="...">`) referenced via `fill: url(#id)` or `stroke: url(#id)` in both direct attributes and CSS classes (`.my-shape { fill: url(#grad); }`).
-- **SVG Multi-Path & Feature Grouping [RECOMMENDED]**: When designing composite illustrations, emblems, or multi-element graphics (e.g. eyes, emblems, character features):
-  1. Combine shapes sharing the same coordinates into a **single unified `<path d="M...Z M...Z">`**, OR
-  2. Give each sub-feature its own explicitly sized and positioned `<svg>` element (`position: absolute; left: Xpx; top: Ypx; width: Wpx; height: Hpx; viewBox="0 0 W H"`).
-  Avoid placing multiple disconnected `<path>` elements inside a full-width container without explicit component bounds, as each path compiles into an independently scalable GPU vector layer.
-- **SVG `<filter>` Graphs**: Best for optical graph effects (`<feGaussianBlur>`, `<feColorMatrix>`, `<feDropShadow>`, `<feBlend>`).
-- **Flexbox Layout**: Best for grouped items (menu bars, grip ribs, multi-label stacks), flow, and alignment (`display: flex`, `flex-direction`, `flex-wrap: wrap`, `gap`, `row-gap`, `column-gap`, `justify-content`, `align-items`).
-- **Typographic Auto-Wrapping**: Real DOM text formatting with `font-size`, `font-weight`, `letter-spacing`, `line-height`, `text-shadow`, and multi-line wrapping via `white-space: normal | pre-line` and explicit newlines.
-- **Modern CSS Colors**: Hex (`#rrggbbaa`), `rgb()`, `rgba()`, `hsl()`, `hwb()`, `oklch()`, and `color(display-p3 ...)`.
+### 3. COMPILER CAPABILITIES — SUPPORTED, PARTIAL, AND UNSUPPORTED CSS:
+The NXPRC engine compiles HTML/CSS/SVG into hardware-accelerated Compose Canvas layers.
+
+#### ✅ FULLY SUPPORTED — Use freely:
+- **`radial-gradient`**: Spherical shading, specular highlights, ambient glow, focal illumination. Supports `circle at X% Y%`, `ellipse`, `closest-side`, `farthest-corner`, explicit `px`/`%` radii, and multi-stop color arrays.
+- **`linear-gradient`**: Directional light slope, specular sheen, chamfer bevels. Supports angle (`135deg`), direction keywords (`to right`, `to bottom left`), turns and radians.
+- **`conic-gradient`**: Brushed metallic bezels, segmented rotary dials, directional sheen rings. Supports `from Ndeg at X% Y%` syntax and degree-position color stops.
+- **`box-shadow`**: Unlimited outset (elevation, ambient halo) and inset (recessed socket, bevel rim) shadows with blur, spread, and color.
+- **`border-radius`**: Full per-corner control (`border-radius: 50%`, `border-radius: 14px 8px 20px 8px`). Use for circles, capsules, squircles, rounded rects.
+- **`clip-path: polygon(...)`**: Custom silhouettes — stars, hexagons, diamonds, arrows, organic shields.
+- **`opacity`**: Full layer opacity (0.0–1.0).
+- **`transform`**: `rotate()`, `scale()`, `translate()`, `skew()` — on root and child layers.
+- **`filter: blur(Npx)`**: GPU Gaussian blur on individual elements. ⚠️ Single function only (see PARTIAL below).
+- **`filter: brightness(N)` / `saturate(N)` / `hue-rotate(Ndeg)`**: Color adjustments. ⚠️ Single function only.
+- **SVG `<path>`, `<circle>`, `<rect>`, `<polygon>`, `<g>`**: Full vector iconography and emblems.
+- **SVG `<defs>` paint servers**: `<linearGradient id="...">`, `<radialGradient id="...">` with `<stop>` elements, referenced via `fill: url(#id)`.
+- **SVG `<filter>` graphs**: `<feGaussianBlur>`, `<feColorMatrix>`, `<feDropShadow>`, `<feBlend>` — **use SVG filters for compound optical effects** instead of multi-function CSS filter.
+- **`::before` / `::after`**: Painted decoration layers (`content: ""` only — no pseudo-element text).
+- **`display: flex`**: Alignment and grouping — `flex-direction`, `gap`, `justify-content`, `align-items`, `flex-wrap`.
+- **`position: absolute`** with `left`, `top`, `width`, `height` in `px`: Explicit layer stacking.
+- **`z-index`**: Layer draw order.
+- **`text-shadow`**: Multi-layer 3D embossed typography.
+- **Modern CSS colors**: Hex (`#rrggbbaa`), `rgb()`, `rgba()`, `hsl()`, `hwb()`, `oklch()`, and `color(display-p3 ...)`.
+
+#### ⚠️ PARTIALLY SUPPORTED — Use with care:
+- **`filter:` with multiple functions** (`filter: blur(4px) brightness(1.2)`): **Only the first function is compiled.** For compound optical effects use an SVG `<filter>` graph with `<feGaussianBlur>` + `<feColorMatrix>` nodes instead.
+- **`conic-gradient` with >8 color stops**: Compiles correctly but may reduce GPU rendering performance. Prefer an SVG `<radialGradient>` paint server for very complex sweep gradients.
+- **CSS custom properties (`var(--color)`) inside gradient stops**: Not reliably interpolated. Use **literal hex values** inside gradient color stops. `var()` is supported at the `:root` declaration level for spring physics only.
+
+#### ❌ NOT SUPPORTED — Do NOT use (will be silently dropped):
+- **`mix-blend-mode`**: Not supported. Use SVG `<feBlend>` inside a `<filter>` graph for blending effects.
+- **`backdrop-filter`**: Not supported. Use `filter:` or SVG `<filter>` applied to the element itself.
+- **`@keyframes` / `animation:`**: Not supported. Use `--spring-stiffness` / `--spring-damping` for physics-based press animation; use SVG animations for decorative motion.
+- **`transition:`**: Not supported. Press interactions use spring micro-physics compiled from `:active` + `--spring-*` variables.
+- **`mask` / `mask-image`**: Not supported. Use `clip-path: polygon(...)` or `border-radius` for shape masking.
+- **`perspective` / `rotateX()` / `rotateZ()` / 3D transforms**: Not supported. Use 2D `transform` only.
+- **`display: grid`**: Not supported. Use `position: absolute` with explicit `px` coordinates for child layers.
+- **`@media`, `@supports`, `:hover`, `:focus`**: Browser page-state features — not compiled. Use `.$rootClass:active` for press feedback only.
+- **External assets**: No `@import`, no `<link>`, no remote fonts. System fonts only (`-apple-system`, `BlinkMacSystemFont`, `Segoe UI`, `Roboto`, `sans-serif`).
 
 ### 4. STRICT NEXPAD COMPILER BOUNDARIES — FOLLOW THIS EXACTLY:
 1. **Single compiled component [GLOBAL-REQUIRED]**: `<body>` must contain exactly one root `<button class="$rootClass" data-control="..." data-category="..." data-name="...">`. Keep every visual child inside it. The compiler selects this button and does not render a general web page.
