@@ -428,8 +428,12 @@ fun NxprcCanvasPreview(
                                     if (rotAngle != 0f) rotate(rotAngle, pivot = pivot)
                                     if (transform.scaleX != 1f || transform.scaleY != 1f) scale(scaleX = transform.scaleX, scaleY = transform.scaleY, pivot = pivot)
                                 }) {
-                                    // 1. Outset box shadows
-                                    layer.boxShadows.filter { !it.isInset }.forEach { shadow ->
+                                    val ovalClipPath = Path().apply {
+                                        addOval(Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight))
+                                    }
+
+                                    // 1. Outset box shadows (drawn bottom-to-top per CSS spec)
+                                    layer.boxShadows.filter { !it.isInset }.reversed().forEach { shadow ->
                                         val shadowOffset = Offset(shadow.offsetX * pxPerUnit, shadow.offsetY * pxPerUnit)
                                         val sColor = Color(shadow.color)
                                         val spreadPx = shadow.spreadRadius * pxPerUnit
@@ -443,7 +447,15 @@ fun NxprcCanvasPreview(
                                             val extent = spreadPx + blurPx * t
                                             val alpha = sColor.alpha * subAlpha * (if (blurPx > 0f) (1f - t) * 0.22f else 1f)
                                             val shadowColor = sColor.copy(alpha = alpha.coerceIn(0f, 1f))
-                                            if (isPolygon) {
+                                            if (isPolygon && isOval) {
+                                                clipPath(ovalClipPath) {
+                                                    drawPath(polygonPath, color = shadowColor)
+                                                }
+                                            } else if (isPolygon && hasVariableCorners) {
+                                                clipPath(variablePath) {
+                                                    drawPath(polygonPath, color = shadowColor)
+                                                }
+                                            } else if (isPolygon) {
                                                 drawPath(polygonPath, color = shadowColor)
                                             } else if (isOval) {
                                                 drawOval(color = shadowColor,
@@ -469,15 +481,23 @@ fun NxprcCanvasPreview(
                                         }
                                     }
 
-                                    // 2. Main surface fills (stacked bottom-to-top)
+                                    // 2. Main surface fills (stacked bottom-to-top per CSS painter's algorithm)
                                     val allBrushes = if (layer.fills.isNotEmpty()) {
-                                        layer.fills.map { createBrush(it, Size(boxWidth, boxHeight), Offset(boxLeft, boxTop)) }
+                                        layer.fills.reversed().map { createBrush(it, Size(boxWidth, boxHeight), Offset(boxLeft, boxTop)) }
                                     } else {
                                         listOf(createBrush(layer.fill, Size(boxWidth, boxHeight), Offset(boxLeft, boxTop)))
                                     }
 
                                     allBrushes.forEach { b ->
-                                        if (isPolygon) {
+                                        if (isPolygon && isOval) {
+                                            clipPath(ovalClipPath) {
+                                                drawPath(polygonPath, brush = b, alpha = subAlpha)
+                                            }
+                                        } else if (isPolygon && hasVariableCorners) {
+                                            clipPath(variablePath) {
+                                                drawPath(polygonPath, brush = b, alpha = subAlpha)
+                                            }
+                                        } else if (isPolygon) {
                                             drawPath(polygonPath, brush = b, alpha = subAlpha)
                                         } else if (isOval) {
                                             drawOval(
@@ -508,7 +528,15 @@ fun NxprcCanvasPreview(
                                         } else {
                                             Stroke(width = stWidth)
                                         }
-                                        if (isPolygon) {
+                                        if (isPolygon && isOval) {
+                                            clipPath(ovalClipPath) {
+                                                drawPath(polygonPath, color = stColor.copy(alpha = stColor.alpha * subAlpha), style = strokeStyle)
+                                            }
+                                        } else if (isPolygon && hasVariableCorners) {
+                                            clipPath(variablePath) {
+                                                drawPath(polygonPath, color = stColor.copy(alpha = stColor.alpha * subAlpha), style = strokeStyle)
+                                            }
+                                        } else if (isPolygon) {
                                             drawPath(polygonPath, color = stColor.copy(alpha = stColor.alpha * subAlpha), style = strokeStyle)
                                         } else if (isOval) {
                                             if (st.isTopOnly) {
@@ -1140,12 +1168,16 @@ internal fun buildScaledPath(svgData: String, targetRect: Rect): Path {
             val bounds = skiaPath.bounds
             val composePath = skiaPath.asComposePath()
             if (bounds.width > 0.001f && bounds.height > 0.001f) {
-                val scaleX = targetRect.width / bounds.width
-                val scaleY = targetRect.height / bounds.height
+                val isNormalized100 = bounds.left >= -0.01f && bounds.top >= -0.01f && bounds.right <= 100.5f && bounds.bottom <= 100.5f
                 val matrix = Matrix().apply {
-                    translate(x = targetRect.left, y = targetRect.top)
-                    scale(x = scaleX, y = scaleY)
-                    translate(x = -bounds.left, y = -bounds.top)
+                    if (isNormalized100) {
+                        translate(x = targetRect.left, y = targetRect.top)
+                        scale(x = targetRect.width / 100f, y = targetRect.height / 100f)
+                    } else {
+                        translate(x = targetRect.left, y = targetRect.top)
+                        scale(x = targetRect.width / bounds.width, y = targetRect.height / bounds.height)
+                        translate(x = -bounds.left, y = -bounds.top)
+                    }
                 }
                 composePath.transform(matrix)
                 return composePath

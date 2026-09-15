@@ -284,8 +284,8 @@ object NxprcAuditService {
                         if (layer.scaleX != 1f || layer.scaleY != 1f) gLayer.scale(layer.scaleX.toDouble(), layer.scaleY.toDouble())
                         gLayer.translate(-pivotX.toDouble(), -pivotY.toDouble())
 
-                        // Outset Shadows
-                        layer.boxShadows.filter { !it.isInset }.forEach { shadow ->
+                        // Outset Shadows (drawn bottom-to-top per CSS spec)
+                        layer.boxShadows.filter { !it.isInset }.reversed().forEach { shadow ->
                             val sp = shadow.spreadRadius * density
                             val sx = shadow.offsetX * density
                             val sy = shadow.offsetY * density
@@ -297,12 +297,12 @@ object NxprcAuditService {
                                 alpha
                             )
                             gLayer.color = c
-                            val sShape = getBoxShape(boxX + sx - sp, boxY + sy - sp, boxW + sp * 2, boxH + sp * 2, tl + sp, tr + sp, br + sp, bl + sp, isOval)
+                            val sShape = getBoxShape(boxX + sx - sp, boxY + sy - sp, boxW + sp * 2, boxH + sp * 2, tl + sp, tr + sp, br + sp, bl + sp, isOval, layer.pathData)
                             gLayer.fill(sShape)
                         }
 
-                        // Fills
-                        val fills = if (layer.fills.isNotEmpty()) layer.fills else listOf(layer.fill)
+                        // Fills (stacked bottom-to-top per CSS painter's algorithm)
+                        val fills = if (layer.fills.isNotEmpty()) layer.fills.reversed() else listOf(layer.fill)
                         fills.forEach { fill ->
                             when (fill) {
                                 is FillBrush.Solid -> {
@@ -313,7 +313,7 @@ object NxprcAuditService {
                                         (fill.color and 0xFF).toInt(),
                                         alpha
                                     )
-                                    val shape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval)
+                                    val shape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval, layer.pathData)
                                     gLayer.fill(shape)
                                 }
                                 is FillBrush.LinearGradient -> {
@@ -329,7 +329,7 @@ object NxprcAuditService {
                                     val y2 = gcy + sin * r
                                     val (fractions, colors) = sanitizeFractionsAndColors(fill.stops, fill.colors, layer.opacity)
                                     gLayer.paint = LinearGradientPaint(x1, y1, x2, y2, fractions, colors)
-                                    val shape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval)
+                                    val shape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval, layer.pathData)
                                     gLayer.fill(shape)
                                 }
                                 is FillBrush.RadialGradient -> {
@@ -347,7 +347,7 @@ object NxprcAuditService {
                                     } else AffineTransform()
 
                                     gLayer.paint = RadialGradientPaint(Point2D.Float(gcx, gcy), gradRad, Point2D.Float(gcx, gcy), fractions, colors, MultipleGradientPaint.CycleMethod.NO_CYCLE, MultipleGradientPaint.ColorSpaceType.SRGB, xform)
-                                    val shape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval)
+                                    val shape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval, layer.pathData)
                                     gLayer.fill(shape)
                                 }
                                 is FillBrush.SweepGradient -> {
@@ -356,7 +356,7 @@ object NxprcAuditService {
                                     val (fractions, colors) = sanitizeFractionsAndColors(fill.stops, fill.colors, layer.opacity)
                                     val startAngleRad = Math.toRadians((fill.startAngleDegrees).toDouble()).toFloat()
                                     gLayer.paint = ConicGradientPaint(gcx, gcy, startAngleRad, colors, fractions)
-                                    val shape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval)
+                                    val shape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval, layer.pathData)
                                     gLayer.fill(shape)
                                 }
                             }
@@ -377,7 +377,7 @@ object NxprcAuditService {
                             gLayer.color = c
                             val strokeW = (sp * 1.5f).coerceAtLeast(2f)
                             gLayer.stroke = BasicStroke(strokeW)
-                            val shape = getBoxShape(boxX + sx + strokeW / 2, boxY + sy + strokeW / 2, boxW - strokeW, boxH - strokeW, tl, tr, br, bl, isOval)
+                            val shape = getBoxShape(boxX + sx + strokeW / 2, boxY + sy + strokeW / 2, boxW - strokeW, boxH - strokeW, tl, tr, br, bl, isOval, layer.pathData)
                             gLayer.draw(shape)
                         }
 
@@ -397,7 +397,7 @@ object NxprcAuditService {
                                 BasicStroke(strokeW)
                             }
                             gLayer.stroke = strokeObj
-                            val shape = getBoxShape(boxX + strokeW / 2, boxY + strokeW / 2, boxW - strokeW, boxH - strokeW, (tl - strokeW / 2).coerceAtLeast(0f), (tr - strokeW / 2).coerceAtLeast(0f), (br - strokeW / 2).coerceAtLeast(0f), (bl - strokeW / 2).coerceAtLeast(0f), isOval)
+                            val shape = getBoxShape(boxX + strokeW / 2, boxY + strokeW / 2, boxW - strokeW, boxH - strokeW, (tl - strokeW / 2).coerceAtLeast(0f), (tr - strokeW / 2).coerceAtLeast(0f), (br - strokeW / 2).coerceAtLeast(0f), (bl - strokeW / 2).coerceAtLeast(0f), isOval, layer.pathData)
                             gLayer.draw(shape)
                         }
                     }
@@ -432,8 +432,15 @@ object NxprcAuditService {
         return img
     }
 
-    private fun getBoxShape(x: Float, y: Float, w: Float, h: Float, tl: Float, tr: Float, br: Float, bl: Float, isOval: Boolean): Shape {
-        return if (isOval) {
+    private fun getBoxShape(
+        x: Float, y: Float, w: Float, h: Float,
+        tl: Float, tr: Float, br: Float, bl: Float,
+        isOval: Boolean,
+        pathData: String = ""
+    ): Shape {
+        val baseShape: Shape = if (pathData.isNotBlank()) {
+            parsePathDataToShape(pathData, x, y, w, h)
+        } else if (isOval) {
             Ellipse2D.Float(x, y, w, h)
         } else {
             val path = Path2D.Float()
@@ -449,6 +456,104 @@ object NxprcAuditService {
             path.closePath()
             path
         }
+
+        if (pathData.isNotBlank() && isOval) {
+            val area = java.awt.geom.Area(baseShape)
+            area.intersect(java.awt.geom.Area(Ellipse2D.Float(x, y, w, h)))
+            return area
+        } else if (pathData.isNotBlank() && (tl > 0f || tr > 0f || br > 0f || bl > 0f)) {
+            val outerPath = Path2D.Float().apply {
+                moveTo(x + tl, y)
+                lineTo(x + w - tr, y)
+                quadTo(x + w, y, x + w, y + tr)
+                lineTo(x + w, y + h - br)
+                quadTo(x + w, y + h, x + w - br, y + h)
+                lineTo(x + bl, y + h)
+                quadTo(x, y + h, x, y + h - bl)
+                lineTo(x, y + tl)
+                quadTo(x, y, x + tl, y)
+                closePath()
+            }
+            val area = java.awt.geom.Area(baseShape)
+            area.intersect(java.awt.geom.Area(outerPath))
+            return area
+        }
+
+        return baseShape
+    }
+
+    private fun parsePathDataToShape(pathData: String, boxX: Float, boxY: Float, boxW: Float, boxH: Float): Shape {
+        val path = Path2D.Float()
+        val tokens = pathData.trim().split(java.util.regex.Pattern.compile("[,\\s]+")).filter { it.isNotEmpty() }
+        var i = 0
+        var curX = 0f
+        var curY = 0f
+
+        var isNormalized = true
+        for (idx in tokens.indices) {
+            val f = tokens[idx].toFloatOrNull()
+            if (f != null && (f < -1f || f > 105f)) {
+                isNormalized = false
+                break
+            }
+        }
+
+        fun toScreenX(px: Float): Float = if (isNormalized) boxX + (px / 100f) * boxW else boxX + px
+        fun toScreenY(py: Float): Float = if (isNormalized) boxY + (py / 100f) * boxH else boxY + py
+
+        while (i < tokens.size) {
+            val cmd = tokens[i].uppercase()
+            when (cmd) {
+                "M" -> {
+                    if (i + 2 < tokens.size) {
+                        val px = tokens[i + 1].toFloatOrNull() ?: 0f
+                        val py = tokens[i + 2].toFloatOrNull() ?: 0f
+                        curX = toScreenX(px)
+                        curY = toScreenY(py)
+                        path.moveTo(curX, curY)
+                        i += 3
+                    } else i++
+                }
+                "L" -> {
+                    if (i + 2 < tokens.size) {
+                        val px = tokens[i + 1].toFloatOrNull() ?: 0f
+                        val py = tokens[i + 2].toFloatOrNull() ?: 0f
+                        curX = toScreenX(px)
+                        curY = toScreenY(py)
+                        path.lineTo(curX, curY)
+                        i += 3
+                    } else i++
+                }
+                "C" -> {
+                    if (i + 6 < tokens.size) {
+                        val x1 = toScreenX(tokens[i + 1].toFloatOrNull() ?: 0f)
+                        val y1 = toScreenY(tokens[i + 2].toFloatOrNull() ?: 0f)
+                        val x2 = toScreenX(tokens[i + 3].toFloatOrNull() ?: 0f)
+                        val y2 = toScreenY(tokens[i + 4].toFloatOrNull() ?: 0f)
+                        curX = toScreenX(tokens[i + 5].toFloatOrNull() ?: 0f)
+                        curY = toScreenY(tokens[i + 6].toFloatOrNull() ?: 0f)
+                        path.curveTo(x1, y1, x2, y2, curX, curY)
+                        i += 7
+                    } else i++
+                }
+                "Q" -> {
+                    if (i + 4 < tokens.size) {
+                        val x1 = toScreenX(tokens[i + 1].toFloatOrNull() ?: 0f)
+                        val y1 = toScreenY(tokens[i + 2].toFloatOrNull() ?: 0f)
+                        curX = toScreenX(tokens[i + 3].toFloatOrNull() ?: 0f)
+                        curY = toScreenY(tokens[i + 4].toFloatOrNull() ?: 0f)
+                        path.quadTo(x1, y1, curX, curY)
+                        i += 5
+                    } else i++
+                }
+                "Z" -> {
+                    path.closePath()
+                    i++
+                }
+                else -> i++
+            }
+        }
+        return path
     }
 
     /**

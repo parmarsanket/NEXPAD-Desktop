@@ -2395,11 +2395,21 @@ body { margin: 0; }
             println("  Warning: [${it.severity}] ${it.code}: ${it.message}")
         }
 
-        // Test rendering via NxprcAuditService - this must NOT throw IllegalArgumentException: Keyframe fractions must be increasing!
+        compileResult.document.canvas.layers.forEachIndexed { idx, layer ->
+            if (layer is CanvasLayer.BoxLayer) {
+                println("Layer #$idx: shapeType=${layer.shapeType}, polygonSides=${layer.polygonSides}, pathData='${layer.pathData}', w=${layer.widthRatio}, h=${layer.heightRatio}")
+            } else {
+                println("Layer #$idx: ${layer::class.simpleName}")
+            }
+        }
         val img = NxprcAuditService.renderNxprcToImage(compileResult.document, 400, 400)
         assertNotNull(img)
         assertEquals(400, img.width)
         assertEquals(400, img.height)
+        val artifactFile = java.io.File("C:/Users/parma/.gemini/antigravity/brain/988b000e-5aeb-432b-aa81-d784a06545f7/scratch/ben10_preview.png")
+        artifactFile.parentFile.mkdirs()
+        javax.imageio.ImageIO.write(img, "PNG", artifactFile)
+        println("Saved Ben 10 preview to: ${artifactFile.absolutePath}")
         println("NxprcAuditService successfully rendered Ben 10 Omnitrix button into 400x400 image without throwing!")
     }
 }
