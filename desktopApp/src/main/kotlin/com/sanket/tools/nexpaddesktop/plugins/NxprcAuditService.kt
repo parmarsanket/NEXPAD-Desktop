@@ -327,17 +327,7 @@ object NxprcAuditService {
                                     val y1 = gcy - sin * r
                                     val x2 = gcx + cos * r
                                     val y2 = gcy + sin * r
-                                    val fractions = fill.stops.takeIf { it.size == fill.colors.size && it.size >= 2 }?.toFloatArray()
-                                        ?: FloatArray(fill.colors.size) { it.toFloat() / (fill.colors.size - 1).coerceAtLeast(1) }
-                                    val colors = fill.colors.map { col ->
-                                        val alpha = (((col shr 24) and 0xFF) * layer.opacity).toInt().coerceIn(0, 255)
-                                        Color(
-                                            ((col shr 16) and 0xFF).toInt(),
-                                            ((col shr 8) and 0xFF).toInt(),
-                                            (col and 0xFF).toInt(),
-                                            alpha
-                                        )
-                                    }.toTypedArray()
+                                    val (fractions, colors) = sanitizeFractionsAndColors(fill.stops, fill.colors, layer.opacity)
                                     gLayer.paint = LinearGradientPaint(x1, y1, x2, y2, fractions, colors)
                                     val shape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval)
                                     gLayer.fill(shape)
@@ -346,17 +336,7 @@ object NxprcAuditService {
                                     val gcx = boxX + boxW * fill.centerXRatio
                                     val gcy = boxY + boxH * fill.centerYRatio
                                     val gradRad = (boxW * fill.radiusRatio).coerceAtLeast(1f)
-                                    val fractions = fill.stops.takeIf { it.size == fill.colors.size && it.size >= 2 }?.toFloatArray()
-                                        ?: FloatArray(fill.colors.size) { it.toFloat() / (fill.colors.size - 1).coerceAtLeast(1) }
-                                    val colors = fill.colors.map { col ->
-                                        val alpha = (((col shr 24) and 0xFF) * layer.opacity).toInt().coerceIn(0, 255)
-                                        Color(
-                                            ((col shr 16) and 0xFF).toInt(),
-                                            ((col shr 8) and 0xFF).toInt(),
-                                            (col and 0xFF).toInt(),
-                                            alpha
-                                        )
-                                    }.toTypedArray()
+                                    val (fractions, colors) = sanitizeFractionsAndColors(fill.stops, fill.colors, layer.opacity)
 
                                     val xform = if (fill.aspectRatio != 1.0f && fill.aspectRatio > 0f) {
                                         AffineTransform().apply {
@@ -373,17 +353,7 @@ object NxprcAuditService {
                                 is FillBrush.SweepGradient -> {
                                     val gcx = boxX + boxW / 2f
                                     val gcy = boxY + boxH / 2f
-                                    val colors = fill.colors.map { col ->
-                                        val alpha = (((col shr 24) and 0xFF) * layer.opacity).toInt().coerceIn(0, 255)
-                                        Color(
-                                            ((col shr 16) and 0xFF).toInt(),
-                                            ((col shr 8) and 0xFF).toInt(),
-                                            (col and 0xFF).toInt(),
-                                            alpha
-                                        )
-                                    }.toTypedArray()
-                                    val fractions = fill.stops.takeIf { it.size == fill.colors.size && it.size >= 2 }?.toFloatArray()
-                                        ?: FloatArray(fill.colors.size) { it.toFloat() / (fill.colors.size - 1).coerceAtLeast(1) }
+                                    val (fractions, colors) = sanitizeFractionsAndColors(fill.stops, fill.colors, layer.opacity)
                                     val startAngleRad = Math.toRadians((fill.startAngleDegrees).toDouble()).toFloat()
                                     gLayer.paint = ConicGradientPaint(gcx, gcy, startAngleRad, colors, fractions)
                                     val shape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval)
@@ -588,5 +558,66 @@ object NxprcAuditService {
                 return raster
             }
         }
+    }
+
+    /**
+     * Sanitizes stops and colors for Java AWT LinearGradientPaint and RadialGradientPaint:
+     * 1. Guarantees stops starts with 0.0f
+     * 2. Guarantees stops ends with 1.0f
+     * 3. Guarantees strictly increasing order (fractions[i] > fractions[i-1]) so
+     *    IllegalArgumentException: Keyframe fractions must be increasing is never thrown.
+     */
+    private fun sanitizeFractionsAndColors(
+        rawStops: List<Float>?,
+        rawColors: List<Long>,
+        layerOpacity: Float
+    ): Pair<FloatArray, Array<Color>> {
+        if (rawColors.isEmpty()) {
+            return Pair(floatArrayOf(0f, 1f), arrayOf(Color(0, 0, 0, 0), Color(0, 0, 0, 0)))
+        }
+
+        val colorsList = rawColors.map { col ->
+            val alpha = (((col shr 24) and 0xFF) * layerOpacity).toInt().coerceIn(0, 255)
+            Color(
+                ((col shr 16) and 0xFF).toInt(),
+                ((col shr 8) and 0xFF).toInt(),
+                (col and 0xFF).toInt(),
+                alpha
+            )
+        }.toMutableList()
+
+        val stopsList = (rawStops?.takeIf { it.size == rawColors.size && it.size >= 2 }
+            ?: List(rawColors.size) { it.toFloat() / (rawColors.size - 1).coerceAtLeast(1) }).toMutableList()
+
+        // 1. Ensure starts at 0f (required by java.awt.MultipleGradientPaint)
+        if (stopsList.first() > 0.0001f) {
+            stopsList.add(0, 0f)
+            colorsList.add(0, colorsList.first())
+        } else {
+            stopsList[0] = 0f
+        }
+
+        // 2. Ensure ends at 1f (required by java.awt.MultipleGradientPaint)
+        if (stopsList.last() < 0.9999f) {
+            stopsList.add(1f)
+            colorsList.add(colorsList.last())
+        } else {
+            stopsList[stopsList.lastIndex] = 1f
+        }
+
+        // 3. Ensure strictly increasing (required by java.awt.MultipleGradientPaint: fractions[i] > fractions[i-1])
+        val epsilon = 0.0002f
+        for (i in 1 until stopsList.size) {
+            if (stopsList[i] <= stopsList[i - 1]) {
+                stopsList[i] = (stopsList[i - 1] + epsilon).coerceAtMost(1f)
+            }
+        }
+        for (i in stopsList.size - 2 downTo 0) {
+            if (stopsList[i] >= stopsList[i + 1]) {
+                stopsList[i] = (stopsList[i + 1] - epsilon).coerceAtLeast(0f)
+            }
+        }
+
+        return Pair(stopsList.toFloatArray(), colorsList.toTypedArray())
     }
 }

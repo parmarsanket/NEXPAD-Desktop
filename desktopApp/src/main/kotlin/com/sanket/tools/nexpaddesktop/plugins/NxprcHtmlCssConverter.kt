@@ -1868,29 +1868,28 @@ When instructions conflict, resolve them in this strict order of authority:
 - **[OPTIONAL]**: Primitives and effects (SVG paths, conic gradients, filter nodes) to use only when they enhance the requested aesthetic.
 - **[NON-BINDING SYNTAX REFERENCE]**: Architectural syntax example only. Never use its aesthetic properties as design anchors.
 
-### 3. COMPILER CAPABILITIES — SUPPORTED, PARTIAL, AND UNSUPPORTED CSS:
+### 3. COMPILER CAPABILITIES — WHAT PRIMITIVES ARE BEST FOR:
 The NXPRC engine compiles HTML/CSS/SVG into hardware-accelerated Compose Canvas layers.
 
 #### ✅ FULLY SUPPORTED — Use freely:
-- **`radial-gradient`**: Spherical shading, specular highlights, ambient glow, focal illumination. Supports `circle at X% Y%`, `ellipse`, `closest-side`, `farthest-corner`, explicit `px`/`%` radii, and multi-stop color arrays.
-- **`linear-gradient`**: Directional light slope, specular sheen, chamfer bevels. Supports angle (`135deg`), direction keywords (`to right`, `to bottom left`), turns and radians.
-- **`conic-gradient`**: Brushed metallic bezels, segmented rotary dials, directional sheen rings. Supports `from Ndeg at X% Y%` syntax and degree-position color stops.
-- **`box-shadow`**: Unlimited outset (elevation, ambient halo) and inset (recessed socket, bevel rim) shadows with blur, spread, and color.
+- **`radial-gradient`**: Best for spherical/concave shading, directional specular highlights, ambient glow, and radial illumination wells. Supports `circle at X% Y%`, `ellipse`, `closest-side`, `farthest-corner`, explicit `px`/`%` radii, and multi-stop color arrays.
+- **`linear-gradient`**: Best for rake angles, directional light slope, horizontal specular sheen, and chamfer bevels. Supports angle (`135deg`), direction keywords (`to right`, `to bottom left`), turns and radians.
+- **`conic-gradient`**: Best for brushed metallic bezels, segmented rotary dials, directional sheen rings, and mechanical textures. Supports `from Ndeg at X% Y%` syntax and degree-position color stops.
+- **`box-shadow`**: Outset shadows for physical socket elevation and ambient halos; Inset shadows for 3D spherical bevel rims and recessed sockets.
 - **`border-radius`**: Full per-corner control (`border-radius: 50%`, `border-radius: 14px 8px 20px 8px`). Use for circles, capsules, squircles, rounded rects.
 - **`clip-path: polygon(...)`**: Custom silhouettes — stars, hexagons, diamonds, arrows, organic shields.
 - **`opacity`**: Full layer opacity (0.0–1.0).
 - **`transform`**: `rotate()`, `scale()`, `translate()`, `skew()` — on root and child layers.
 - **`filter: blur(Npx)`**: GPU Gaussian blur on individual elements. ⚠️ Single function only (see PARTIAL below).
 - **`filter: brightness(N)` / `saturate(N)` / `hue-rotate(Ndeg)`**: Color adjustments. ⚠️ Single function only.
-- **SVG `<path>`, `<circle>`, `<rect>`, `<polygon>`, `<g>`**: Full vector iconography and emblems.
-- **SVG `<defs>` paint servers**: `<linearGradient id="...">`, `<radialGradient id="...">` with `<stop>` elements, referenced via `fill: url(#id)`.
-- **SVG `<filter>` graphs**: `<feGaussianBlur>`, `<feColorMatrix>`, `<feDropShadow>`, `<feBlend>` — **use SVG filters for compound optical effects** instead of multi-function CSS filter.
+- **Embedded `<svg>` & Vector Nodes**: Best for custom vector iconography, chevrons, emblems, and technical markings (`<path d="...">`, `<circle>`, `<rect>`, `<polygon>`, `<g>`). Supports `<defs>` paint servers (`<linearGradient id="...">`, `<radialGradient id="...">` with `<stop offset="..." stop-color="..." stop-opacity="...">`) referenced via `fill: url(#id)` or `stroke: url(#id)` in both direct attributes and CSS classes (`.my-shape { fill: url(#grad); }`).
+- **SVG `<filter>` Graphs**: Best for optical graph effects (`<feGaussianBlur>`, `<feColorMatrix>`, `<feDropShadow>`, `<feBlend>`) — **use SVG filters for compound optical effects** instead of multi-function CSS filter.
 - **`::before` / `::after`**: Painted decoration layers (`content: ""` only — no pseudo-element text).
-- **`display: flex`**: Alignment and grouping — `flex-direction`, `gap`, `justify-content`, `align-items`, `flex-wrap`.
+- **Flexbox Layout**: Best for grouped items (menu bars, grip ribs, multi-label stacks), flow, and alignment (`display: flex`, `flex-direction`, `flex-wrap: wrap`, `gap`, `row-gap`, `column-gap`, `justify-content`, `align-items`).
 - **`position: absolute`** with `left`, `top`, `width`, `height` in `px`: Explicit layer stacking.
 - **`z-index`**: Layer draw order.
-- **`text-shadow`**: Multi-layer 3D embossed typography.
-- **Modern CSS colors**: Hex (`#rrggbbaa`), `rgb()`, `rgba()`, `hsl()`, `hwb()`, `oklch()`, and `color(display-p3 ...)`.
+- **Typographic Auto-Wrapping**: Real DOM text formatting with `font-size`, `font-weight`, `letter-spacing`, `line-height`, `text-shadow`, and multi-line wrapping via `white-space: normal | pre-line` and explicit newlines.
+- **Modern CSS Colors**: Hex (`#rrggbbaa`), `rgb()`, `rgba()`, `hsl()`, `hwb()`, `oklch()`, and `color(display-p3 ...)`.
 
 #### ⚠️ PARTIALLY SUPPORTED — Use with care:
 - **`filter:` with multiple functions** (`filter: blur(4px) brightness(1.2)`): **Only the first function is compiled.** For compound optical effects use an SVG `<filter>` graph with `<feGaussianBlur>` + `<feColorMatrix>` nodes instead.
