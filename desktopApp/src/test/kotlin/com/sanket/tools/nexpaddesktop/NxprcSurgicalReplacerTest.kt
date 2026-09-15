@@ -244,4 +244,77 @@ box-shadow: 0 4px 8px black;
         assertTrue(merged.contains("box-shadow: 0 4px 8px black;"))
         assertFalse(merged.contains("background: #111;"))
     }
+
+    @Test
+    fun testUserExactCenterGlyphModification() {
+        val neoTactileHtml = NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A
+        val initialDoc = NxprcHtmlCssConverter.convert(neoTactileHtml, "rc.action_a", "Action A")
+
+        // Find the initial CenterGlyph layer
+        val initialGlyph = initialDoc.canvas.layers.filterIsInstance<CanvasLayer.CenterGlyph>().firstOrNull()
+        assertNotNull(initialGlyph, "PRESET_NEO_TACTILE_A must have a CenterGlyph")
+        assertEquals(34.0f, initialGlyph.fontSizeSp)
+
+        // Exact input user provided:
+        val userModifiedCode = """
+/* Layer #14: Center Glyph */
+.layer-14-glyph {
+  font-size: 50.0px;
+  color: #FFFAFF;
+  text-shadow: 0px 1px 0px rgba(255, 255, 255, 0.82), 0px -1px 0px rgba(92, 36, 122, 0.82), 0px 2px 5px rgba(55, 20, 89, 0.78), 0px 0px 8px rgba(255, 217, 255, 0.58);
 }
+<span>A</span>
+""".trimIndent()
+
+        val result = NxprcSurgicalReplacer.applySurgicalChange(
+            originalHtml = neoTactileHtml,
+            layerIndex = 14,
+            layer = initialGlyph,
+            doc = initialDoc,
+            replacementInput = userModifiedCode
+        )
+
+        assertTrue(result.success, "Surgical change should succeed: ${result.message}")
+        println("=== UPDATED HTML ===")
+        println(result.updatedHtml)
+        println("====================")
+        assertTrue(result.updatedHtml.contains("font-size: 50.0px"))
+
+        // Recompile and assert CenterGlyph was updated to 50.0f
+        val updatedDoc = NxprcHtmlCssConverter.convert(result.updatedHtml, "rc.action_a", "Action A")
+        val updatedGlyph = updatedDoc.canvas.layers.filterIsInstance<CanvasLayer.CenterGlyph>().firstOrNull()
+        println("=== UPDATED GLYPH fontSizeSp: ${updatedGlyph?.fontSizeSp} ===")
+        assertNotNull(updatedGlyph, "Updated doc must retain CenterGlyph")
+        assertEquals(50.0f, updatedGlyph.fontSizeSp, "CenterGlyph font-size must be updated to 50.0sp!")
+        assertEquals("A", updatedGlyph.text)
+    }
+
+    @Test
+    fun testCenterGlyphTextChange() {
+        val neoTactileHtml = NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A
+        val initialDoc = NxprcHtmlCssConverter.convert(neoTactileHtml, "rc.action_a", "Action A")
+        val glyphLayer = initialDoc.canvas.layers.filterIsInstance<CanvasLayer.CenterGlyph>().first()
+
+        val userTextChange = """
+.layer-14-glyph {
+  font-size: 44px;
+}
+<span>X</span>
+""".trimIndent()
+
+        val result = NxprcSurgicalReplacer.applySurgicalChange(
+            originalHtml = neoTactileHtml,
+            layerIndex = 14,
+            layer = glyphLayer,
+            doc = initialDoc,
+            replacementInput = userTextChange
+        )
+
+        assertTrue(result.success)
+        val updatedDoc = NxprcHtmlCssConverter.convert(result.updatedHtml, "rc.action_a", "Action A")
+        val updatedGlyph = updatedDoc.canvas.layers.filterIsInstance<CanvasLayer.CenterGlyph>().first()
+        assertEquals("X", updatedGlyph.text, "CenterGlyph text must update from 'A' to 'X'")
+        assertEquals(44.0f, updatedGlyph.fontSizeSp)
+    }
+}
+

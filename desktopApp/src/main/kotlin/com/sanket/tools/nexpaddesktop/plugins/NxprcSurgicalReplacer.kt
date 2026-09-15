@@ -17,15 +17,17 @@ data class SurgicalResult(
  * Intelligent surgical code replacement engine for NEXPAD Layer Studio.
  *
  * Enables targeted modification of an individual button layer (e.g. Socket, Gloss reflection,
- * Cavity shadow, SVG emblem, Bezel, or Gradient shape) by safely splicing AI-generated
+ * Cavity shadow, SVG emblem, Bezel, or Center Glyph / Text) by safely splicing AI-generated
  * or hand-edited code snippets into the parent HTML/CSS document.
  *
  * Guarantees:
  * 1. Non-destructive: Does not destroy or reformat working layers.
  * 2. Multi-format tolerant: Accepts full HTML documents, SVG elements (<svg>, <path>, <circle>),
- *    full CSS rules (.class { ... }, ::before { ... }), or bare CSS declarations (background: ...).
- * 3. Selector mapping: Maps synthetic studio layer selectors (e.g. `.layer-1-gloss::before`) to the
- *    actual DOM element selectors in the user's template.
+ *    full CSS rules (.class { ... }, ::before { ... }, .layer-X-glyph { ... }),
+ *    bare CSS declarations (font-size: ...; color: ...; background: ...),
+ *    and decomposed markup snippets (e.g. <span>A</span>).
+ * 3. Selector mapping: Maps synthetic studio layer selectors (e.g. `.layer-14-glyph`, `.layer-1-gloss::before`)
+ *    to the actual DOM element selectors in the user's template (e.g. `.nexpad-btn .btn-label`, `.nexpad-btn::before`).
  */
 object NxprcSurgicalReplacer {
 
@@ -101,7 +103,7 @@ object NxprcSurgicalReplacer {
         }
 
         // Case 2: SVG Emblem / Vector Shape replacement
-        if (isSvg(clean) || layer is CanvasLayer.VectorPath) {
+        if ((isSvg(clean) && !clean.contains("<span")) || layer is CanvasLayer.VectorPath) {
             val result = applySvgReplacement(originalHtml, clean)
             return if (result != null) {
                 SurgicalResult(true, result, "Vector emblem (Layer #$layerIndex) surgically updated.", layerIndex)
@@ -110,13 +112,63 @@ object NxprcSurgicalReplacer {
             }
         }
 
-        // Case 3: CSS Rules or CSS Declarations
-        val updatedHtml = applyCssReplacement(originalHtml, clean, layerIndex, layer)
-        return if (updatedHtml != null) {
-            SurgicalResult(true, updatedHtml, "CSS layer rules (Layer #$layerIndex) surgically updated.", layerIndex)
+        // Case 3: CSS Rules, CSS Declarations, and/or DOM Markup (e.g. <span>A</span>)
+        // Step 3A: Apply any markup changes (e.g. changing <span> text content)
+        val htmlWithMarkup = applyMarkupUpdates(originalHtml, clean, layerIndex, layer)
+
+        // Strip HTML markup and comments from the CSS input so no <span> or HTML tags enter <style>
+        val cssOnly = clean
+            .replace(Regex("""<!--[\s\S]*?-->"""), "")
+            .replace(Regex("""<[^>]+>[\s\S]*?<\/[^>]+>"""), "")
+            .replace(Regex("""<[^>]+>"""), "")
+            .trim()
+
+        // Step 3B: Apply CSS rules or declarations
+        val updatedHtml = if (cssOnly.isNotBlank()) {
+            applyCssReplacement(htmlWithMarkup, cssOnly, layerIndex, layer)
         } else {
-            SurgicalResult(false, originalHtml, "Could not apply CSS modification to Layer #$layerIndex.", layerIndex)
+            htmlWithMarkup
         }
+
+        if (updatedHtml != null) {
+            return try {
+                NxprcHtmlCssConverter.convert(updatedHtml, doc.manifest.id, doc.manifest.name)
+                SurgicalResult(true, updatedHtml, "Layer #$layerIndex surgically updated and recompiled.", layerIndex)
+            } catch (e: Exception) {
+                SurgicalResult(true, updatedHtml, "CSS updated (Warning: ${e.message})", layerIndex)
+            }
+        }
+
+        return SurgicalResult(false, originalHtml, "Could not apply modification to Layer #$layerIndex.", layerIndex)
+    }
+
+    // =========================================================================
+    // DOM MARKUP UPDATES (e.g. <span>Text</span>)
+    // =========================================================================
+
+    private fun applyMarkupUpdates(
+        html: String,
+        input: String,
+        layerIndex: Int,
+        layer: CanvasLayer?
+    ): String {
+        val spanMatch = Regex("""<span[^>]*>([\s\S]*?)<\/span>""", RegexOption.IGNORE_CASE).find(input)
+        if (spanMatch != null) {
+            val newText = spanMatch.groupValues[1].trim()
+            if (newText.isNotBlank()) {
+                // If HTML already has a <span>...</span> inside the button, replace its text content
+                val existingSpanRegex = Regex("""(<span[^>]*>)([\s\S]*?)(<\/span>)""", RegexOption.IGNORE_CASE)
+                val existingMatch = existingSpanRegex.find(html)
+                if (existingMatch != null) {
+                    val replacement = "${existingMatch.groupValues[1]}$newText${existingMatch.groupValues[3]}"
+                    return html.replaceRange(existingMatch.range, replacement)
+                } else {
+                    // Button has no <span>: insert <span class="btn-label">$newText</span>
+                    return insertInsideButton(html, "<span class=\"btn-label\">$newText</span>")
+                }
+            }
+        }
+        return html
     }
 
     // =========================================================================
@@ -138,7 +190,6 @@ object NxprcSurgicalReplacer {
 
         // Bare SVG shape(s) provided, e.g. <path .../> or <circle .../>
         if (svgRegex.containsMatchIn(html)) {
-            // Replace inner contents of existing <svg>
             val innerSvgRegex = Regex("""(<svg[^>]*>)([\s\S]*?)(<\/svg>)""", RegexOption.IGNORE_CASE)
             return innerSvgRegex.replace(html) { match ->
                 "${match.groupValues[1]}\n        $trimmed\n    ${match.groupValues[3]}"
@@ -185,10 +236,10 @@ object NxprcSurgicalReplacer {
         val primaryButtonSelector = findPrimaryButtonSelector(html)
 
         val updatedCss = if (isInputBlockRule) {
-            applyCssBlockRules(originalCss, cssInput, layerIndex, layer, primaryButtonSelector)
+            applyCssBlockRules(originalCss, cssInput, layerIndex, layer, primaryButtonSelector, html)
         } else {
             // Bare declarations, e.g. "background: #ff0055; border: 2px solid white;"
-            applyBareCssDeclarations(originalCss, cssInput, layerIndex, layer, primaryButtonSelector)
+            applyBareCssDeclarations(originalCss, cssInput, layerIndex, layer, primaryButtonSelector, html)
         }
 
         return if (styleMatch != null) {
@@ -228,6 +279,40 @@ object NxprcSurgicalReplacer {
     }
 
     /**
+     * Resolves the CSS selector for text/glyph elements (e.g. `.nexpad-btn .btn-label`).
+     */
+    fun findTextSelector(existingCss: String, html: String, primaryButtonSelector: String): String {
+        // 1. Check if HTML has a <span> with a class
+        val spanClassMatch = Regex("""<span[^>]*class=["']([^"']+)["']""", RegexOption.IGNORE_CASE).find(html)
+        if (spanClassMatch != null) {
+            val cls = spanClassMatch.groupValues[1].trim().split(Regex("""\s+""")).firstOrNull { it.isNotBlank() }
+            if (cls != null) {
+                // Check if this class is styled in CSS
+                val ruleMatch = Regex("""([^\r\n{}]*\.$cls[^\r\n{}]*)\s*\{""").find(existingCss)
+                if (ruleMatch != null) {
+                    return ruleMatch.groupValues[1].trim()
+                }
+                return "$primaryButtonSelector .$cls"
+            }
+        }
+
+        // 2. Check existing CSS for common text/glyph selectors
+        val cssMatch = Regex("""([^\r\n{}]*(?:btn-label|label|glyph|text)[^\r\n{}]*)\s*\{""", RegexOption.IGNORE_CASE).find(existingCss)
+        if (cssMatch != null) {
+            return cssMatch.groupValues[1].trim()
+        }
+
+        // 3. Check for span rule in CSS
+        val spanMatch = Regex("""([^\r\n{}]*span[^\r\n{}]*)\s*\{""", RegexOption.IGNORE_CASE).find(existingCss)
+        if (spanMatch != null) {
+            return spanMatch.groupValues[1].trim()
+        }
+
+        // 4. Default to child .btn-label on primary button
+        return "$primaryButtonSelector .btn-label"
+    }
+
+    /**
      * Handles CSS input formatted as full rules: `selector { ... }`.
      */
     private fun applyCssBlockRules(
@@ -235,33 +320,55 @@ object NxprcSurgicalReplacer {
         rulesInput: String,
         layerIndex: Int,
         layer: CanvasLayer?,
-        primaryButtonSelector: String
+        primaryButtonSelector: String,
+        html: String
     ): String {
         val parsedRules = parseCssRules(rulesInput)
         if (parsedRules.isEmpty()) {
-            return "$css\n\n$rulesInput"
+            return applyBareCssDeclarations(css, rulesInput, layerIndex, layer, primaryButtonSelector, html)
         }
 
         var workingCss = css
         for ((rawSelector, ruleBody) in parsedRules) {
-            val targetSelector = resolveTargetSelector(rawSelector, layerIndex, layer, primaryButtonSelector, workingCss)
+            val targetSelector = resolveTargetSelector(rawSelector, layerIndex, layer, primaryButtonSelector, workingCss, html)
 
-            val existingRuleRegex = Regex("""(${Regex.escape(targetSelector)}\s*\{)([\s\S]*?)(\})""")
+            // Flexible regex matching the selector even if whitespace / indentation differs
+            val escapedParts = targetSelector.trim().split(Regex("""\s+""")).map { Regex.escape(it) }
+            val selectorPattern = escapedParts.joinToString("""\s+""")
+            val existingRuleRegex = Regex("""([^\r\n{}]*$selectorPattern\s*\{)([\s\S]*?)(\})""")
+
+            var matchedRegex: Regex? = null
             if (existingRuleRegex.containsMatchIn(workingCss)) {
-                // Rule with this selector exists: replace its declarations cleanly
-                workingCss = existingRuleRegex.replace(workingCss) { m ->
-                    "${m.groupValues[1]}\n  ${ruleBody.trim()}\n${m.groupValues[3]}"
+                matchedRegex = existingRuleRegex
+            } else {
+                // Try matching just the last segment of the selector, e.g. ".btn-label" inside ".nexpad-btn .btn-label"
+                val lastSegment = targetSelector.trim().split(Regex("""\s+""")).lastOrNull()
+                if (lastSegment != null && lastSegment.isNotBlank() && (lastSegment.startsWith(".") || lastSegment.startsWith("#") || lastSegment.startsWith("::"))) {
+                    val fallbackPattern = Regex("""([^\r\n{}]*${Regex.escape(lastSegment)}\s*\{)([\s\S]*?)(\})""")
+                    if (fallbackPattern.containsMatchIn(workingCss)) {
+                        matchedRegex = fallbackPattern
+                    }
+                }
+            }
+
+            if (matchedRegex != null) {
+                // Rule with this selector exists: merge declarations cleanly
+                workingCss = matchedRegex.replace(workingCss) { m ->
+                    val existingBody = m.groupValues[2]
+                    val mergedBody = mergeDeclarations(existingBody, ruleBody)
+                    "${m.groupValues[1]}\n$mergedBody\n${m.groupValues[3]}"
                 }
             } else {
                 // Append the new rule cleanly
-                workingCss = workingCss.trimEnd() + "\n\n$targetSelector {\n  ${ruleBody.trim()}\n}\n"
+                val formattedBody = mergeDeclarations("", ruleBody)
+                workingCss = workingCss.trimEnd() + "\n\n$targetSelector {\n$formattedBody\n}\n"
             }
         }
         return workingCss
     }
 
     /**
-     * Maps user/AI provided selector (which might be synthetic like `.layer-1-gloss::before` or `.layer-0-SOCKET`)
+     * Maps user/AI provided selector (which might be synthetic like `.layer-14-glyph` or `.layer-0-SOCKET`)
      * to the actual selector that exists in the CSS stylesheet.
      */
     private fun resolveTargetSelector(
@@ -269,7 +376,8 @@ object NxprcSurgicalReplacer {
         layerIndex: Int,
         layer: CanvasLayer?,
         primaryButtonSelector: String,
-        existingCss: String
+        existingCss: String,
+        html: String
     ): String {
         val trimmed = rawSelector.trim()
 
@@ -278,25 +386,56 @@ object NxprcSurgicalReplacer {
             return trimmed
         }
 
-        // Check for pseudo-elements (::before or ::after)
-        if (trimmed.contains("::before")) {
-            val beforeMatch = Regex("""([^\s{]+)::before""").find(existingCss)
+        val lower = trimmed.lowercase()
+
+        // Pseudo-elements (::before or ::after)
+        if (lower.contains("::before") || lower.contains("gloss")) {
+            val beforeMatch = Regex("""([^\r\n{}]*::before[^\r\n{}]*)\s*\{""").find(existingCss)
             if (beforeMatch != null) {
-                return beforeMatch.value
+                return beforeMatch.groupValues[1].trim()
             }
             return "$primaryButtonSelector::before"
         }
-        if (trimmed.contains("::after")) {
-            val afterMatch = Regex("""([^\s{]+)::after""").find(existingCss)
+        if (lower.contains("::after")) {
+            val afterMatch = Regex("""([^\r\n{}]*::after[^\r\n{}]*)\s*\{""").find(existingCss)
             if (afterMatch != null) {
-                return afterMatch.value
+                return afterMatch.groupValues[1].trim()
             }
             return "$primaryButtonSelector::after"
+        }
+
+        // Text / Glyph layer
+        if (lower.contains("glyph") || lower.contains("text") || layer is CanvasLayer.CenterGlyph || layer is CanvasLayer.TextLayer) {
+            return findTextSelector(existingCss, html, primaryButtonSelector)
+        }
+
+        // Keycap / Core child elements
+        if (lower.contains("keycap") || lower.contains("core") || lower.contains("cap") || lower.contains("surface")) {
+            val coreMatch = Regex("""([^\r\n{}]*(?:btn-core|core|keycap|cap|surface)[^\r\n{}]*)\s*\{""", RegexOption.IGNORE_CASE).find(existingCss)
+            if (coreMatch != null) {
+                return coreMatch.groupValues[1].trim()
+            }
+            return "$primaryButtonSelector .btn-core"
+        }
+
+        // Glow ring layer -> usually attached to primary button or ::before/::after
+        if (lower.contains("glow") || layer is CanvasLayer.GlowRing) {
+            val glowMatch = Regex("""([^\r\n{}]*(?:btn-glow|glow)[^\r\n{}]*)\s*\{""", RegexOption.IGNORE_CASE).find(existingCss)
+            if (glowMatch != null) {
+                return glowMatch.groupValues[1].trim()
+            }
+            return primaryButtonSelector
         }
 
         // Synthetic studio selectors like `.layer-0-SOCKET`, `.layer-0-bezel`, `.layer-X`
         if (trimmed.startsWith(".layer-")) {
             if (layerIndex == 0 || layer is CanvasLayer.BezelSocket || layer is CanvasLayer.BoxLayer) {
+                if (layerIndex > 0) {
+                    val coreMatch = Regex("""([^\r\n{}]*(?:btn-core|core|keycap|cap|surface)[^\r\n{}]*)\s*\{""", RegexOption.IGNORE_CASE).find(existingCss)
+                    if (coreMatch != null) {
+                        return coreMatch.groupValues[1].trim()
+                    }
+                }
                 return primaryButtonSelector
             }
         }
@@ -305,7 +444,7 @@ object NxprcSurgicalReplacer {
     }
 
     /**
-     * Handles bare CSS declarations (e.g. `background: radial-gradient(...); border: 2px solid cyan;`).
+     * Handles bare CSS declarations (e.g. `font-size: 50px; color: #FFF;` or `background: radial-gradient(...);`).
      * Merges these declarations into the target layer's CSS rule without disturbing other declarations.
      */
     private fun applyBareCssDeclarations(
@@ -313,79 +452,82 @@ object NxprcSurgicalReplacer {
         declarationsInput: String,
         layerIndex: Int,
         layer: CanvasLayer?,
-        primaryButtonSelector: String
+        primaryButtonSelector: String,
+        html: String
     ): String {
         val targetSelector = when {
             layer is CanvasLayer.GlossReflection || layer?.javaClass?.simpleName?.contains("Gloss") == true -> {
-                val beforeMatch = Regex("""([^\s{]+)::before""").find(css)
-                beforeMatch?.value ?: "$primaryButtonSelector::before"
+                val beforeMatch = Regex("""([^\r\n{}]*::before[^\r\n{}]*)\s*\{""").find(css)
+                beforeMatch?.groupValues?.get(1)?.trim() ?: "$primaryButtonSelector::before"
             }
             layer is CanvasLayer.InnerShadow || layer?.javaClass?.simpleName?.contains("Shadow") == true -> {
-                val afterMatch = Regex("""([^\s{]+)::after""").find(css)
-                afterMatch?.value ?: primaryButtonSelector
+                val afterMatch = Regex("""([^\r\n{}]*::after[^\r\n{}]*)\s*\{""").find(css)
+                afterMatch?.groupValues?.get(1)?.trim() ?: primaryButtonSelector
+            }
+            layer is CanvasLayer.CenterGlyph || layer is CanvasLayer.TextLayer || layer?.javaClass?.simpleName?.contains("Glyph") == true || layer?.javaClass?.simpleName?.contains("Text") == true -> {
+                findTextSelector(css, html, primaryButtonSelector)
+            }
+            layer is CanvasLayer.BoxLayer && layerIndex > 0 -> {
+                val coreMatch = Regex("""([^\r\n{}]*(?:btn-core|core|keycap|cap|surface)[^\r\n{}]*)\s*\{""", RegexOption.IGNORE_CASE).find(css)
+                coreMatch?.groupValues?.get(1)?.trim() ?: "$primaryButtonSelector .btn-core"
             }
             else -> primaryButtonSelector
         }
 
-        val ruleRegex = Regex("""(${Regex.escape(targetSelector)}\s*\{)([\s\S]*?)(\})""")
-        val match = ruleRegex.find(css)
+        val escapedParts = targetSelector.trim().split(Regex("""\s+""")).map { Regex.escape(it) }
+        val selectorPattern = escapedParts.joinToString("""\s+""")
+        val ruleRegex = Regex("""([^\r\n{}]*$selectorPattern\s*\{)([\s\S]*?)(\})""")
+
+        var finalRegex = ruleRegex
+        var match = ruleRegex.find(css)
+        if (match == null) {
+            val lastSegment = targetSelector.trim().split(Regex("""\s+""")).lastOrNull()
+            if (lastSegment != null && lastSegment.isNotBlank() && (lastSegment.startsWith(".") || lastSegment.startsWith("#") || lastSegment.startsWith("::"))) {
+                val fallbackRegex = Regex("""([^\r\n{}]*${Regex.escape(lastSegment)}\s*\{)([\s\S]*?)(\})""")
+                val fallbackMatch = fallbackRegex.find(css)
+                if (fallbackMatch != null) {
+                    finalRegex = fallbackRegex
+                    match = fallbackMatch
+                }
+            }
+        }
 
         if (match != null) {
             val existingBody = match.groupValues[2]
             val mergedBody = mergeDeclarations(existingBody, declarationsInput)
-            return ruleRegex.replaceFirst(css, "${match.groupValues[1]}\n$mergedBody\n${match.groupValues[3]}")
+            return finalRegex.replaceFirst(css, "${match.groupValues[1]}\n$mergedBody\n${match.groupValues[3]}")
         }
 
         // Rule does not exist yet: create it
+        val mergedBody = mergeDeclarations("", declarationsInput)
         val newRule = buildString {
             append("\n\n").append(targetSelector).append(" {\n")
             if (targetSelector.contains("::")) {
                 append("  content: \"\";\n  position: absolute;\n")
             }
-            for (line in declarationsInput.lines()) {
-                if (line.isNotBlank()) append("  ").append(line.trim()).append("\n")
-            }
-            append("}\n")
+            append(mergedBody).append("\n}\n")
         }
         return css.trimEnd() + newRule
     }
 
     /**
-     * Merges new CSS declarations into existing CSS declarations.
-     * Overwrites matching properties (e.g. `background`, `border`, `box-shadow`) while
-     * preserving untouched properties (e.g. `width`, `height`, `border-radius`).
+     * Merges incoming CSS declarations into existing CSS declarations.
+     * Overwrites matching properties (e.g. `font-size`, `color`, `background`, `text-shadow`)
+     * while preserving untouched properties (e.g. `font-weight`, `width`, `height`).
+     *
+     * Handles multi-line statements (like complex text-shadows or gradients) safely without syntax corruption.
      */
     fun mergeDeclarations(existingBody: String, newDeclarations: String): String {
-        val newProps = parseDeclarations(newDeclarations)
-        val existingLines = existingBody.lines().toMutableList()
-        val processedKeys = mutableSetOf<String>()
+        val existingMap = parseDeclarations(existingBody)
+        val newMap = parseDeclarations(newDeclarations)
 
-        val resultLines = mutableListOf<String>()
-
-        for (line in existingLines) {
-            val trimmed = line.trim()
-            val colonIdx = trimmed.indexOf(':')
-            if (colonIdx != -1 && !trimmed.startsWith("/*")) {
-                val propName = trimmed.substring(0, colonIdx).trim()
-                if (newProps.containsKey(propName)) {
-                    resultLines.add("  $propName: ${newProps[propName]};")
-                    processedKeys.add(propName)
-                    continue
-                }
-            }
-            if (trimmed.isNotBlank()) {
-                resultLines.add(line)
-            }
+        for ((prop, value) in newMap) {
+            existingMap[prop] = value
         }
 
-        // Append any brand new properties that were not present in existingBody
-        for ((prop, value) in newProps) {
-            if (prop !in processedKeys) {
-                resultLines.add("  $prop: $value;")
-            }
+        return existingMap.entries.joinToString("\n") { (prop, value) ->
+            "    $prop: $value;"
         }
-
-        return resultLines.joinToString("\n")
     }
 
     /**
@@ -401,8 +543,9 @@ object NxprcSurgicalReplacer {
             val braceClose = findMatchingCloseBrace(cssText, braceOpen)
             if (braceClose == -1) break
             val body = cssText.substring(braceOpen + 1, braceClose).trim()
-            if (selector.isNotBlank() && !selector.startsWith("/*")) {
-                rules.add(selector to body)
+            val cleanSelector = selector.replace(Regex("""/\*[\s\S]*?\*/"""), "").trim()
+            if (cleanSelector.isNotBlank()) {
+                rules.add(cleanSelector to body)
             }
             i = braceClose + 1
         }
@@ -422,17 +565,19 @@ object NxprcSurgicalReplacer {
     }
 
     /**
-     * Parses key-value declarations into a map.
+     * Parses semicolon-separated key-value declarations into a LinkedHashMap.
+     * Safely handles multi-line property values (e.g. multi-line text-shadows or multi-tier gradients).
      */
-    private fun parseDeclarations(declarationsText: String): Map<String, String> {
+    fun parseDeclarations(declarationsText: String): LinkedHashMap<String, String> {
         val map = linkedMapOf<String, String>()
-        val statements = declarationsText.split(';')
+        val clean = declarationsText.replace(Regex("""/\*[\s\S]*?\*/"""), "")
+        val statements = clean.split(';')
         for (statement in statements) {
             val trimmed = statement.trim()
-            if (trimmed.isBlank() || trimmed.startsWith("/*")) continue
+            if (trimmed.isBlank()) continue
             val colonIdx = trimmed.indexOf(':')
             if (colonIdx != -1) {
-                val key = trimmed.substring(0, colonIdx).trim()
+                val key = trimmed.substring(0, colonIdx).trim().lowercase()
                 val value = trimmed.substring(colonIdx + 1).trim()
                 map[key] = value
             }

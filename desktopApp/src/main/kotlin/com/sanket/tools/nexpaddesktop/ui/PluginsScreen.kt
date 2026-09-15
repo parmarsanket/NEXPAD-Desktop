@@ -113,10 +113,22 @@ fun PluginsScreen(
     }
     var compileError by remember { mutableStateOf<String?>(null) }
 
-    // Layer Studio & Layer Manager States
-    var activeLayerIndices by remember(compiledDoc) { mutableStateOf((0 until compiledDoc.canvas.layers.size).toSet()) }
-    var soloLayerIndex by remember(compiledDoc) { mutableStateOf<Int?>(null) }
-    var selectedLayerIndex by remember(compiledDoc) { mutableStateOf(0) }
+    // Layer Studio & Layer Manager States - Preserved across surgical modifications
+    var activeLayerIndices by remember { mutableStateOf((0 until compiledDoc.canvas.layers.size).toSet()) }
+    var soloLayerIndex by remember { mutableStateOf<Int?>(null) }
+    var selectedLayerIndex by remember { mutableStateOf(0) }
+
+    // Keep indices in sync when document layer count changes
+    LaunchedEffect(compiledDoc.canvas.layers.size) {
+        val total = compiledDoc.canvas.layers.size
+        if (total > 0) {
+            selectedLayerIndex = selectedLayerIndex.coerceIn(0, total - 1)
+            activeLayerIndices = activeLayerIndices.filter { it < total }.toSet().ifEmpty { (0 until total).toSet() }
+            if (soloLayerIndex != null && soloLayerIndex!! >= total) {
+                soloLayerIndex = null
+            }
+        }
+    }
 
     LaunchedEffect(htmlSource, componentId, componentName, category, defaultControl) {
         delay(350) // Debounce keystrokes
