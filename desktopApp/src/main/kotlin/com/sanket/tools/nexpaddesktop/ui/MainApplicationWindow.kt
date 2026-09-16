@@ -1,5 +1,9 @@
 package com.sanket.tools.nexpaddesktop.ui
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
@@ -74,7 +78,13 @@ fun MainApplicationWindow(
         Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
             NavDisplay(
                 backStack = backStack,
-                onBack = { navigator.popBackStack() }
+                onBack = { navigator.popBackStack() },
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(220)) togetherWith fadeOut(animationSpec = tween(150))
+                },
+                popTransitionSpec = {
+                    fadeIn(animationSpec = tween(220)) togetherWith fadeOut(animationSpec = tween(150))
+                }
             ) { key ->
                 NavEntry(key) {
                     when (key) {
