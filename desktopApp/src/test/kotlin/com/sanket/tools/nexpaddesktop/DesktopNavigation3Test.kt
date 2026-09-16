@@ -79,4 +79,42 @@ class DesktopNavigation3Test {
             assertEquals(screen, key.toScreen())
         }
     }
+
+    @Test
+    fun testDesktopViewModelInitialState() {
+        val vm = com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel()
+        assertFalse(vm.isDriverConnected)
+        assertNull(vm.connectedDeviceName)
+        assertEquals(com.sanket.tools.nexpaddesktop.connection.ActiveTransport.NONE, vm.activeTransport)
+        assertFalse(vm.isAoaDriverNeeded)
+        assertEquals(com.sanket.tools.nexpaddesktop.ui.ControllerType.XBOX_360, vm.activeController)
+    }
+
+    @Test
+    fun testDesktopViewModelUpdateConnectedDevice() {
+        val vm = com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel()
+        vm.isAoaDriverNeeded = true
+
+        vm.updateConnectedDevice("moto g85 5G", com.sanket.tools.nexpaddesktop.connection.ActiveTransport.USB_ADB)
+        assertEquals("moto g85 5G", vm.connectedDeviceName)
+        assertEquals(com.sanket.tools.nexpaddesktop.connection.ActiveTransport.USB_ADB, vm.activeTransport)
+        // Establishing active transport automatically clears isAoaDriverNeeded
+        assertFalse(vm.isAoaDriverNeeded)
+    }
+
+    @Test
+    fun testDesktopViewModelUpdateDisconnectedDevice() {
+        val vm = com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel()
+        vm.updateConnectedDevice("moto g85 5G", com.sanket.tools.nexpaddesktop.connection.ActiveTransport.USB_ADB)
+
+        // Disconnecting a DIFFERENT transport should not clear the active USB_ADB connection
+        vm.updateDisconnectedDevice(com.sanket.tools.nexpaddesktop.connection.ActiveTransport.BLUETOOTH)
+        assertEquals("moto g85 5G", vm.connectedDeviceName)
+        assertEquals(com.sanket.tools.nexpaddesktop.connection.ActiveTransport.USB_ADB, vm.activeTransport)
+
+        // Disconnecting the ACTIVE transport clears the device state
+        vm.updateDisconnectedDevice(com.sanket.tools.nexpaddesktop.connection.ActiveTransport.USB_ADB)
+        assertNull(vm.connectedDeviceName)
+        assertEquals(com.sanket.tools.nexpaddesktop.connection.ActiveTransport.NONE, vm.activeTransport)
+    }
 }

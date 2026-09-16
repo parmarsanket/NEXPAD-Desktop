@@ -41,6 +41,21 @@ import com.sanket.tools.nexpaddesktop.ui.components.drawCyberGrid
 import com.sanket.tools.nexpaddesktop.ui.components.glassCard
 import com.sanket.tools.nexpaddesktop.ui.components.selectedGlow
 import com.sanket.tools.nexpaddesktop.ui.components.statusPillGlow
+import com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel
+
+@Composable
+fun HomeScreen(
+    viewModel: DesktopViewModel
+) {
+    HomeScreen(
+        isDriverConnected = viewModel.isDriverConnected,
+        connectedDeviceName = viewModel.connectedDeviceName,
+        activeTransport = viewModel.activeTransport,
+        isAoaDriverNeeded = viewModel.isAoaDriverNeeded,
+        driverInstallState = viewModel.driverInstallState,
+        onInstallAoaDriver = viewModel.onInstallAoaDriver
+    )
+}
 
 @Composable
 fun HomeScreen(

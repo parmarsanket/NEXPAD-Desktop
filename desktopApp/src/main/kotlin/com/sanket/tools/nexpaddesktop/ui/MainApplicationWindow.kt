@@ -21,6 +21,7 @@ import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpaddesktop.model.GyroSettings
 import com.sanket.tools.nexpaddesktop.ui.components.drawCyberGrid
 import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
+import com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel
 
 enum class Screen { HOME, CONTROLLER, PLUGINS, NODE, CONVERTER, OUTPUT, KBM }
 enum class ControllerType(val displayName: String) { 
@@ -30,30 +31,7 @@ enum class ControllerType(val displayName: String) {
 
 @Composable
 fun MainApplicationWindow(
-    driver: IGamepadDriver,
-    latestInput: GamepadInput,
-    dsuClientCount: Int,
-    activeController: ControllerType,
-    lsSensitivityX: Float,
-    lsSensitivityY: Float,
-    rsSensitivityX: Float,
-    rsSensitivityY: Float,
-    onLsSensitivityXChange: (Float) -> Unit,
-    onLsSensitivityYChange: (Float) -> Unit,
-    onRsSensitivityXChange: (Float) -> Unit,
-    onRsSensitivityYChange: (Float) -> Unit,
-    isDriverConnected: Boolean,
-    connectedDeviceName: String?,
-    activeTransport: com.sanket.tools.nexpaddesktop.connection.ActiveTransport = com.sanket.tools.nexpaddesktop.connection.ActiveTransport.NONE,
-    isAoaDriverNeeded: Boolean = false,
-    driverInstallState: com.sanket.tools.nexpaddesktop.connection.DriverInstallState = com.sanket.tools.nexpaddesktop.connection.DriverInstallState.IDLE,
-    onInstallAoaDriver: () -> Unit = {},
-    gyroSettings: GyroSettings,
-    onGyroSettingsChange: (GyroSettings) -> Unit,
-    processedYaw: Float,
-    processedPitch: Float,
-    onRecalibrate: () -> Unit,
-    onControllerChange: (ControllerType) -> Unit
+    viewModel: DesktopViewModel
 ) {
     val backStack = remember { mutableStateListOf<NavKey>(DesktopScreenKey.Home) }
     val navigator = remember(backStack) { DesktopNav3Navigator(backStack) }
@@ -88,33 +66,9 @@ fun MainApplicationWindow(
             ) { key ->
                 NavEntry(key) {
                     when (key) {
-                        is DesktopScreenKey.Home -> HomeScreen(
-                            isDriverConnected = isDriverConnected,
-                            connectedDeviceName = connectedDeviceName,
-                            activeTransport = activeTransport,
-                            isAoaDriverNeeded = isAoaDriverNeeded,
-                            driverInstallState = driverInstallState,
-                            onInstallAoaDriver = onInstallAoaDriver
-                        )
-                        is DesktopScreenKey.Controller -> ControllerScreen(
-                            latestInput = latestInput,
-                            activeController = activeController,
-                            lsSensitivityX = lsSensitivityX,
-                            lsSensitivityY = lsSensitivityY,
-                            rsSensitivityX = rsSensitivityX,
-                            rsSensitivityY = rsSensitivityY,
-                            onLsSensitivityXChange = onLsSensitivityXChange,
-                            onLsSensitivityYChange = onLsSensitivityYChange,
-                            onRsSensitivityXChange = onRsSensitivityXChange,
-                            onRsSensitivityYChange = onRsSensitivityYChange,
-                            onSaveController = onControllerChange,
-                            gyroSettings = gyroSettings,
-                            onGyroSettingsChange = onGyroSettingsChange,
-                            processedYaw = processedYaw,
-                            processedPitch = processedPitch,
-                            onRecalibrate = onRecalibrate
-                        )
-                        is DesktopScreenKey.Plugins -> PluginsScreen(activeTransport = activeTransport)
+                        is DesktopScreenKey.Home -> HomeScreen(viewModel = viewModel)
+                        is DesktopScreenKey.Controller -> ControllerScreen(viewModel = viewModel)
+                        is DesktopScreenKey.Plugins -> PluginsScreen(viewModel = viewModel)
                         is DesktopScreenKey.Output -> OutputScreen()
                         else -> {
                             val screenName = (key as? DesktopScreenKey)?.toScreen()?.name ?: "UNKNOWN"
@@ -127,4 +81,54 @@ fun MainApplicationWindow(
             }
         }
     }
+}
+
+@Composable
+fun MainApplicationWindow(
+    driver: IGamepadDriver,
+    latestInput: GamepadInput,
+    dsuClientCount: Int,
+    activeController: ControllerType,
+    lsSensitivityX: Float,
+    lsSensitivityY: Float,
+    rsSensitivityX: Float,
+    rsSensitivityY: Float,
+    onLsSensitivityXChange: (Float) -> Unit,
+    onLsSensitivityYChange: (Float) -> Unit,
+    onRsSensitivityXChange: (Float) -> Unit,
+    onRsSensitivityYChange: (Float) -> Unit,
+    isDriverConnected: Boolean,
+    connectedDeviceName: String?,
+    activeTransport: com.sanket.tools.nexpaddesktop.connection.ActiveTransport = com.sanket.tools.nexpaddesktop.connection.ActiveTransport.NONE,
+    isAoaDriverNeeded: Boolean = false,
+    driverInstallState: com.sanket.tools.nexpaddesktop.connection.DriverInstallState = com.sanket.tools.nexpaddesktop.connection.DriverInstallState.IDLE,
+    onInstallAoaDriver: () -> Unit = {},
+    gyroSettings: GyroSettings,
+    onGyroSettingsChange: (GyroSettings) -> Unit,
+    processedYaw: Float,
+    processedPitch: Float,
+    onRecalibrate: () -> Unit,
+    onControllerChange: (ControllerType) -> Unit
+) {
+    val viewModel = remember { DesktopViewModel() }
+    viewModel.isDriverConnected = isDriverConnected
+    viewModel.connectedDeviceName = connectedDeviceName
+    viewModel.activeTransport = activeTransport
+    viewModel.isAoaDriverNeeded = isAoaDriverNeeded
+    viewModel.driverInstallState = driverInstallState
+    viewModel.onInstallAoaDriver = onInstallAoaDriver
+    viewModel.activeController = activeController
+    viewModel.latestInput = latestInput
+    viewModel.dsuClientCount = dsuClientCount
+    viewModel.lsSensitivityX = lsSensitivityX
+    viewModel.lsSensitivityY = lsSensitivityY
+    viewModel.rsSensitivityX = rsSensitivityX
+    viewModel.rsSensitivityY = rsSensitivityY
+    viewModel.gyroSettings = gyroSettings
+    viewModel.processedYaw = processedYaw
+    viewModel.processedPitch = processedPitch
+    viewModel.onRecalibrate = onRecalibrate
+    viewModel.onControllerChange = onControllerChange
+
+    MainApplicationWindow(viewModel = viewModel)
 }

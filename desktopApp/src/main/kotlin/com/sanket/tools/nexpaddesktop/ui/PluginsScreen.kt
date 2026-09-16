@@ -45,6 +45,7 @@ import java.awt.datatransfer.StringSelection
 
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.SubCategoryDefinition
+import com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel
 
 val SubCategoryDefinition.accentColor: Color get() = Color(accentColorArgb)
 
@@ -59,6 +60,13 @@ private fun safeCopyToClipboard(text: String): Boolean {
         }
     }
     return false
+}
+
+@Composable
+fun PluginsScreen(
+    viewModel: DesktopViewModel
+) {
+    PluginsScreen(activeTransport = viewModel.activeTransport)
 }
 
 @Composable
