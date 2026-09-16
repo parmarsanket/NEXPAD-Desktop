@@ -9,6 +9,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.navigation3.runtime.NavEntry
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.ui.NavDisplay
 import com.sanket.tools.nexpaddesktop.driver.IGamepadDriver
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpaddesktop.model.GyroSettings
@@ -48,7 +51,9 @@ fun MainApplicationWindow(
     onRecalibrate: () -> Unit,
     onControllerChange: (ControllerType) -> Unit
 ) {
-    var currentScreen by remember { mutableStateOf(Screen.HOME) }
+    val backStack = remember { mutableStateListOf<NavKey>(DesktopScreenKey.Home) }
+    val navigator = remember(backStack) { DesktopNav3Navigator(backStack) }
+    val currentScreen = navigator.currentKey.toScreen()
 
     Row(
         modifier = Modifier
@@ -59,47 +64,54 @@ fun MainApplicationWindow(
         // Left Sidebar Navigation
         Sidebar(
             currentScreen = currentScreen,
-            onNavigate = { currentScreen = it }
+            onNavigate = { screen -> navigator.navigate(screen) }
         )
         
         // Vertical Divider
         Box(modifier = Modifier.fillMaxHeight().width(1.dp).background(NeonPalette.CardIdleBorder))
         
-        // Main Content Area
+        // Main Content Area (Navigation 3 NavDisplay)
         Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-            when (currentScreen) {
-                Screen.HOME -> HomeScreen(
-                    isDriverConnected = isDriverConnected,
-                    connectedDeviceName = connectedDeviceName,
-                    activeTransport = activeTransport,
-                    isAoaDriverNeeded = isAoaDriverNeeded,
-                    driverInstallState = driverInstallState,
-                    onInstallAoaDriver = onInstallAoaDriver
-                )
-                Screen.CONTROLLER -> ControllerScreen(
-                    latestInput = latestInput,
-                    activeController = activeController,
-                    lsSensitivityX = lsSensitivityX,
-                    lsSensitivityY = lsSensitivityY,
-                    rsSensitivityX = rsSensitivityX,
-                    rsSensitivityY = rsSensitivityY,
-                    onLsSensitivityXChange = onLsSensitivityXChange,
-                    onLsSensitivityYChange = onLsSensitivityYChange,
-                    onRsSensitivityXChange = onRsSensitivityXChange,
-                    onRsSensitivityYChange = onRsSensitivityYChange,
-                    onSaveController = onControllerChange,
-                    gyroSettings = gyroSettings,
-                    onGyroSettingsChange = onGyroSettingsChange,
-                    processedYaw = processedYaw,
-                    processedPitch = processedPitch,
-                    onRecalibrate = onRecalibrate
-                )
-                Screen.PLUGINS -> PluginsScreen(activeTransport = activeTransport)
-                Screen.OUTPUT -> OutputScreen()
-                else -> {
-                    // Placeholder for NODE, CONVERTER, KBM
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("${currentScreen.name} SCREEN - Coming Soon", color = NeonPalette.CardIdleText)
+            NavDisplay(
+                backStack = backStack,
+                onBack = { navigator.popBackStack() }
+            ) { key ->
+                NavEntry(key) {
+                    when (key) {
+                        is DesktopScreenKey.Home -> HomeScreen(
+                            isDriverConnected = isDriverConnected,
+                            connectedDeviceName = connectedDeviceName,
+                            activeTransport = activeTransport,
+                            isAoaDriverNeeded = isAoaDriverNeeded,
+                            driverInstallState = driverInstallState,
+                            onInstallAoaDriver = onInstallAoaDriver
+                        )
+                        is DesktopScreenKey.Controller -> ControllerScreen(
+                            latestInput = latestInput,
+                            activeController = activeController,
+                            lsSensitivityX = lsSensitivityX,
+                            lsSensitivityY = lsSensitivityY,
+                            rsSensitivityX = rsSensitivityX,
+                            rsSensitivityY = rsSensitivityY,
+                            onLsSensitivityXChange = onLsSensitivityXChange,
+                            onLsSensitivityYChange = onLsSensitivityYChange,
+                            onRsSensitivityXChange = onRsSensitivityXChange,
+                            onRsSensitivityYChange = onRsSensitivityYChange,
+                            onSaveController = onControllerChange,
+                            gyroSettings = gyroSettings,
+                            onGyroSettingsChange = onGyroSettingsChange,
+                            processedYaw = processedYaw,
+                            processedPitch = processedPitch,
+                            onRecalibrate = onRecalibrate
+                        )
+                        is DesktopScreenKey.Plugins -> PluginsScreen(activeTransport = activeTransport)
+                        is DesktopScreenKey.Output -> OutputScreen()
+                        else -> {
+                            val screenName = (key as? DesktopScreenKey)?.toScreen()?.name ?: "UNKNOWN"
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("$screenName SCREEN - Coming Soon", color = NeonPalette.CardIdleText)
+                            }
+                        }
                     }
                 }
             }

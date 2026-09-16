@@ -29,6 +29,10 @@ dependencies {
     // AOA Proof-of-Concept Test — libusb JVM bindings
     implementation("org.usb4java:usb4java:1.3.0")
 
+    // Navigation 3
+    implementation("androidx.navigation3:navigation3-runtime:1.1.0")
+    implementation("androidx.navigation3:navigation3-ui:1.1.0")
+
     testImplementation(libs.junit)
     testImplementation(libs.kotlin.test)
 }
