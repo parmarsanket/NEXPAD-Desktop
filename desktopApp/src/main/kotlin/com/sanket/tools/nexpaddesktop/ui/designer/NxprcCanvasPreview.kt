@@ -124,7 +124,10 @@ fun NxprcCanvasPreview(
     val coroutineScope = rememberCoroutineScope()
 
     val isStick = document.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
-            document.manifest.defaultControl.uppercase() in listOf("LS", "RS")
+            document.manifest.defaultControl.uppercase() in listOf(
+                com.sanket.tools.nexpad.category.ControlKey.LS.key,
+                com.sanket.tools.nexpad.category.ControlKey.RS.key
+            )
 
     val thumbOffsetX = remember { Animatable(0f) }
     val thumbOffsetY = remember { Animatable(0f) }

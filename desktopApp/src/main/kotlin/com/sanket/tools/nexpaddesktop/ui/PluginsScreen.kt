@@ -86,13 +86,13 @@ fun PluginsScreen(
     }
 
     var selectedCategory by remember { mutableStateOf("ABXY") }
-    var selectedButtonKey by remember { mutableStateOf("A") }
+    var selectedButtonKey by remember { mutableStateOf(com.sanket.tools.nexpad.category.ControlKey.A.key) }
 
     var htmlSource by remember { mutableStateOf(NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A) }
     var componentId by remember { mutableStateOf("rc.action_a") }
     var componentName by remember { mutableStateOf("Action A Button") }
     var category by remember { mutableStateOf("BUTTON") }
-    var defaultControl by remember { mutableStateOf("A") }
+    var defaultControl by remember { mutableStateOf(com.sanket.tools.nexpad.category.ControlKey.A.key) }
     var targetWidthDp by remember { mutableStateOf(96) }
     var targetHeightDp by remember { mutableStateOf(96) }
 
@@ -115,7 +115,7 @@ fun PluginsScreen(
                 id = "rc.action_a",
                 name = "Action A Button",
                 category = "BUTTON",
-                defaultControl = "A"
+                defaultControl = com.sanket.tools.nexpad.category.ControlKey.A.key
             )
         )
     }
@@ -1059,7 +1059,11 @@ private fun LiveSandboxPane(
         }
 
         // Live Animation & Physics Stats Strip
-        val isStick = category.equals("JOYSTICK", ignoreCase = true) || defaultControl.uppercase() in listOf("LS", "RS")
+        val isStick = category.equals("JOYSTICK", ignoreCase = true) ||
+                defaultControl.uppercase() in listOf(
+                    com.sanket.tools.nexpad.category.ControlKey.LS.key,
+                    com.sanket.tools.nexpad.category.ControlKey.RS.key
+                )
         Row(
             modifier = Modifier
                 .fillMaxWidth()

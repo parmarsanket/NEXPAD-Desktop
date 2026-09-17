@@ -1,4 +1,14 @@
-﻿package com.sanket.tools.nexpaddesktop.plugins
+package com.sanket.tools.nexpaddesktop.plugins
+
+import com.sanket.tools.nexpad.category.ControlKey
+
+private fun dpadGlyph(control: String): String = when (control.uppercase()) {
+    ControlKey.DOWN.key  -> "▼"
+    ControlKey.LEFT.key  -> "◀"
+    ControlKey.RIGHT.key -> "▶"
+    ControlKey.DPAD.key  -> "❖"
+    else                 -> "▲"
+}
 
 /**
  * Pre-built hardware button templates and syntax skeletons for the NXPRC ecosystem.
@@ -1451,46 +1461,47 @@ object NxprcPresets {
     fun getReferenceTemplate(control: String, category: String): String = getReferenceTemplateInternal(control, category)
 
     private fun getReferenceTemplateInternal(control: String, category: String): String {
+        val ctrl = ControlKey.fromIdentifier(control)
         if (category.uppercase() != "BUTTON") {
             return when (category.uppercase()) {
-                "DPAD" -> when (control.uppercase()) {
-                    "DOWN" -> PRESET_DPAD_DOWN
-                    "LEFT" -> PRESET_DPAD_LEFT
-                    "RIGHT" -> PRESET_DPAD_RIGHT
-                    "DPAD" -> PRESET_DPAD_CROSS
+                "DPAD" -> when (ctrl) {
+                    ControlKey.DOWN -> PRESET_DPAD_DOWN
+                    ControlKey.LEFT -> PRESET_DPAD_LEFT
+                    ControlKey.RIGHT -> PRESET_DPAD_RIGHT
+                    ControlKey.DPAD -> PRESET_DPAD_CROSS
                     else -> PRESET_DPAD_UP
                 }
-                "TRIGGER" -> if (control.uppercase() == "LT") PRESET_TRIGGER_LT else PRESET_TRIGGER_RT
-                "BUMPER" -> if (control.uppercase() == "LB") PRESET_BUMPER_LB else PRESET_BUMPER_RB
-                "JOYSTICK" -> if (control.uppercase() == "RS") PRESET_THUMBSTICK_RS else PRESET_THUMBSTICK_LS
-                "SYSTEM" -> when (control.uppercase()) {
-                    "VIEW" -> PRESET_SYSTEM_VIEW
-                    "HOME" -> PRESET_SYSTEM_HOME
+                "TRIGGER" -> if (ctrl == ControlKey.LT) PRESET_TRIGGER_LT else PRESET_TRIGGER_RT
+                "BUMPER" -> if (ctrl == ControlKey.LB) PRESET_BUMPER_LB else PRESET_BUMPER_RB
+                "JOYSTICK" -> if (ctrl == ControlKey.RS) PRESET_THUMBSTICK_RS else PRESET_THUMBSTICK_LS
+                "SYSTEM" -> when (ctrl) {
+                    ControlKey.BACK -> PRESET_SYSTEM_VIEW
+                    ControlKey.GUIDE -> PRESET_SYSTEM_HOME
                     else -> PRESET_SYSTEM_MENU
                 }
                 else -> getReferenceTemplateInternal(control, "BUTTON")
             }
         }
 
-        return when (control.uppercase()) {
-            "A" -> PRESET_NEO_TACTILE_A
-            "B" -> PRESET_NEO_TACTILE_B
-            "X" -> PRESET_NEO_TACTILE_X
-            "Y" -> PRESET_NEO_TACTILE_Y
-            "UP" -> PRESET_DPAD_UP
-            "DOWN" -> PRESET_DPAD_DOWN
-            "LEFT" -> PRESET_DPAD_LEFT
-            "RIGHT" -> PRESET_DPAD_RIGHT
-            "DPAD" -> PRESET_DPAD_CROSS
-            "LT" -> PRESET_TRIGGER_LT
-            "RT" -> PRESET_TRIGGER_RT
-            "LB" -> PRESET_BUMPER_LB
-            "RB" -> PRESET_BUMPER_RB
-            "LS" -> PRESET_THUMBSTICK_LS
-            "RS" -> PRESET_THUMBSTICK_RS
-            "MENU" -> PRESET_SYSTEM_MENU
-            "VIEW" -> PRESET_SYSTEM_VIEW
-            "HOME" -> PRESET_SYSTEM_HOME
+        return when (ctrl) {
+            ControlKey.A -> PRESET_NEO_TACTILE_A
+            ControlKey.B -> PRESET_NEO_TACTILE_B
+            ControlKey.X -> PRESET_NEO_TACTILE_X
+            ControlKey.Y -> PRESET_NEO_TACTILE_Y
+            ControlKey.UP -> PRESET_DPAD_UP
+            ControlKey.DOWN -> PRESET_DPAD_DOWN
+            ControlKey.LEFT -> PRESET_DPAD_LEFT
+            ControlKey.RIGHT -> PRESET_DPAD_RIGHT
+            ControlKey.DPAD -> PRESET_DPAD_CROSS
+            ControlKey.LT -> PRESET_TRIGGER_LT
+            ControlKey.RT -> PRESET_TRIGGER_RT
+            ControlKey.LB -> PRESET_BUMPER_LB
+            ControlKey.RB -> PRESET_BUMPER_RB
+            ControlKey.LS -> PRESET_THUMBSTICK_LS
+            ControlKey.RS -> PRESET_THUMBSTICK_RS
+            ControlKey.START -> PRESET_SYSTEM_MENU
+            ControlKey.BACK -> PRESET_SYSTEM_VIEW
+            ControlKey.GUIDE -> PRESET_SYSTEM_HOME
             else -> PRESET_NEO_TACTILE_A
         }
     }
@@ -1552,7 +1563,7 @@ object NxprcPresets {
     </div>
     <div class="stick-cap">
       <!-- Movable thumb cap layers -->
-      <span class="stick-label">${if (control.uppercase() == "RS") "R3" else "L3"}</span>
+      <span class="stick-label">${if (control.uppercase() == ControlKey.RS.key) "R3" else "L3"}</span>
     </div>
   </button>
 </body>
@@ -1650,7 +1661,7 @@ object NxprcPresets {
   :root {
     --spring-damping: 0.72;
     --spring-stiffness: 480;
-    --press-scale: ${if (control.uppercase() == "DPAD") "0.95" else "0.92"};
+    --press-scale: ${if (control.uppercase() == ControlKey.DPAD.key) "0.95" else "0.92"};
   }
   .dpad-btn {
     width: ${widthDp}px;
@@ -1668,13 +1679,13 @@ object NxprcPresets {
     /* Visually design the directional indicator (or embedded SVG chevron/arrow) here */
   }
   .dpad-btn:active {
-    transform: ${if (control.uppercase() == "DPAD") "scale(0.95)" else "scale(0.92) translateY(2px)"};
+    transform: ${if (control.uppercase() == ControlKey.DPAD.key) "scale(0.95)" else "scale(0.92) translateY(2px)"};
   }
 </style>
 </head>
 <body>
   <button class="dpad-btn" data-control="$control" data-category="DPAD" data-name="D-Pad $control">
-    <span class="dpad-glyph">${when (control.uppercase()) { "DOWN" -> "▼"; "LEFT" -> "◀"; "RIGHT" -> "▶"; "DPAD" -> "❖"; else -> "▲" }}</span>
+    <span class="dpad-glyph">${dpadGlyph(control)}</span>
   </button>
 </body>
 </html>
