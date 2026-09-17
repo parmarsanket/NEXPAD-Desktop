@@ -1,5 +1,6 @@
-﻿package com.sanket.tools.nexpaddesktop.plugins
+package com.sanket.tools.nexpaddesktop.plugins
 
+import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpad.nxprc.CompileResult
 import com.sanket.tools.nexpad.nxprc.NxprcDocument
 import com.sanket.tools.nexpad.nxprc.NxprcPackager
@@ -18,7 +19,7 @@ object NxprcHtmlCssConverter {
         id: String,
         name: String,
         category: String = "BUTTON",
-        defaultControl: String = "A"
+        defaultControl: String = NexpadKeys.A
     ): NxprcDocument {
         return NxprcPackager.compile(
             html = source,
@@ -38,7 +39,7 @@ object NxprcHtmlCssConverter {
         id: String,
         name: String,
         category: String = "BUTTON",
-        defaultControl: String = "A"
+        defaultControl: String = NexpadKeys.A
     ): CompileResult {
         return NxprcPackager.compileWithWarnings(
             html = source,
@@ -262,9 +263,9 @@ To ensure reliable programmatic compilation, return ONLY the complete, self-cont
 
     private fun generateAbxyPrompt(control: String, widthDp: Int, heightDp: Int): String {
         val (colorName, hexCode, rgbGlow, coreGrad) = when (control.uppercase()) {
-            "X" -> Quadruple("Vibrant Sapphire Blue", "#00B0FF", "rgba(0, 176, 255, 0.6)", "linear-gradient(145deg, #0284c7 0%, #0369a1 50%, #0c4a6e 100%)")
-            "Y" -> Quadruple("Radiant Solar Yellow", "#FFCC00", "rgba(255, 204, 0, 0.6)", "linear-gradient(145deg, #eab308 0%, #ca8a04 50%, #713f12 100%)")
-            "B" -> Quadruple("Vibrant Crimson Red", "#FF3366", "rgba(255, 51, 102, 0.6)", "linear-gradient(145deg, #f43f5e 0%, #e11d48 50%, #881337 100%)")
+            NexpadKeys.X -> Quadruple("Vibrant Sapphire Blue", "#00B0FF", "rgba(0, 176, 255, 0.6)", "linear-gradient(145deg, #0284c7 0%, #0369a1 50%, #0c4a6e 100%)")
+            NexpadKeys.Y -> Quadruple("Radiant Solar Yellow", "#FFCC00", "rgba(255, 204, 0, 0.6)", "linear-gradient(145deg, #eab308 0%, #ca8a04 50%, #713f12 100%)")
+            NexpadKeys.B -> Quadruple("Vibrant Crimson Red", "#FF3366", "rgba(255, 51, 102, 0.6)", "linear-gradient(145deg, #f43f5e 0%, #e11d48 50%, #881337 100%)")
             else -> Quadruple("Vibrant Emerald Green", "#4ADE80", "rgba(74, 222, 128, 0.6)", "linear-gradient(145deg, #10b981 0%, #059669 50%, #047857 100%)")
         }
 
@@ -353,10 +354,10 @@ Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``
 
     private fun generateDpadPrompt(control: String, widthDp: Int, heightDp: Int): String {
         val arrowGlyph = when (control.uppercase()) {
-            "DOWN" -> "▼"
-            "LEFT" -> "◀"
-            "RIGHT" -> "▶"
-            "DPAD" -> "❖"
+            NexpadKeys.DOWN -> "▼"
+            NexpadKeys.LEFT -> "◀"
+            NexpadKeys.RIGHT -> "▶"
+            NexpadKeys.DPAD -> "❖"
             else -> "▲"
         }
 
@@ -366,7 +367,7 @@ ${genAiHeader()}
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller D-Pad Component for NEXPAD.
 
 ### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control (${if (control.uppercase() == "DPAD") "Unified 4-Way Cross Pad" else "Directional Arrow Button"})
+- **Button Key [COMPONENT-REQUIRED]**: $control (${if (control.uppercase() == NexpadKeys.DPAD) "Unified 4-Way Cross Pad" else "Directional Arrow Button"})
 - **Category [GLOBAL-REQUIRED]**: DPAD
 - **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px;
 - **Directional Glyph [RECOMMENDED]**: $arrowGlyph
@@ -389,7 +390,7 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
 1. **Root Button Tag (`<button class="dpad-btn" data-control="$control" data-category="DPAD" data-name="D-Pad $control">`)**:
    - **Tactile Spring Micro-Physics**: Configure in `:root`:
      `--spring-damping: 0.72; --spring-stiffness: 480; --press-scale: 0.94;`
-   ${if (control.uppercase() == "DPAD") """
+   ${if (control.uppercase() == NexpadKeys.DPAD) """
    - Geometry: Shape the 4-way cross or directional dish via `border-radius`, `clip-path: polygon(...)` (e.g. 12-point faceted cross), or SVG vector paths.
    - `background`: Deep radial gradient with directional arm shading.
    - Central Pivot: Use `::before` to create a circular recessed pivot well (`width: 44px; height: 44px; border-radius: 50%`) with an inset drop shadow simulating the central rocker pivot.
@@ -403,7 +404,7 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
    - Outset: `box-shadow: 0 10px 24px rgba(0,0,0,0.65), 0 0 0 2px rgba(35,40,55,0.8), 0 0 20px var(--accent-glow);`
    - Inset: `box-shadow: inset 0 2px 4px rgba(255,255,255,0.25), inset 0 -5px 10px rgba(0,0,0,0.7);`
 3. **Tactile Active Physics**:
-   - `.dpad-btn:active { transform: ${if (control.uppercase() == "DPAD") "scale(0.95)" else "scale(0.92) translateY(2px)"}; }`
+   - `.dpad-btn:active { transform: ${if (control.uppercase() == NexpadKeys.DPAD) "scale(0.95)" else "scale(0.92) translateY(2px)"}; }`
 
 ${engineBoundaries("dpad-btn")}
 
@@ -445,7 +446,7 @@ ${genAiHeader()}
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Analog Trigger for NEXPAD.
 
 ### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control (${if (control.uppercase() == "LT") "Left Trigger" else "Right Trigger"})
+- **Button Key [COMPONENT-REQUIRED]**: $control (${if (control.uppercase() == NexpadKeys.LT) "Left Trigger" else "Right Trigger"})
 - **Category [GLOBAL-REQUIRED]**: TRIGGER
 - **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
 - **Labels [RECOMMENDED]**: Primary "$control"
@@ -519,7 +520,7 @@ ${genAiHeader()}
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Shoulder Bumper for NEXPAD.
 
 ### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control (${if (control.uppercase() == "LB") "Left Bumper / Secondary Weapon" else "Right Bumper / Primary Weapon"})
+- **Button Key [COMPONENT-REQUIRED]**: $control (${if (control.uppercase() == NexpadKeys.LB) "Left Bumper / Secondary Weapon" else "Right Bumper / Primary Weapon"})
 - **Category [GLOBAL-REQUIRED]**: BUMPER
 - **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
 
@@ -586,7 +587,7 @@ Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``
 """.trimIndent()
 
     private fun generateStickPrompt(control: String, widthDp: Int, heightDp: Int): String {
-        val clickLabel = if (control.uppercase() == "RS") "R3" else "L3"
+        val clickLabel = if (control.uppercase() == NexpadKeys.RS) "R3" else "L3"
 
         return """
 ${genAiHeader()}
@@ -697,7 +698,7 @@ ${genAiHeader()}
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller System/Utility Button for NEXPAD.
 
 ### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control (${when(control.uppercase()) { "MENU" -> "Menu / Pause / Start"; "VIEW" -> "View / Back / Select"; else -> "Home / Guide / Nexus" }})
+- **Button Key [COMPONENT-REQUIRED]**: $control (${when(control.uppercase()) { NexpadKeys.MENU, NexpadKeys.START -> "Menu / Pause / Start"; NexpadKeys.VIEW, NexpadKeys.BACK -> "View / Back / Select"; else -> "Home / Guide / Nexus" }})
 - **Category [GLOBAL-REQUIRED]**: SYSTEM
 - **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px;
 
@@ -722,7 +723,7 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
 1. **Root Button Tag (`<button class="system-btn" data-control="$control" data-category="SYSTEM" data-name="System $control">`)**:
    - **Tactile Spring Micro-Physics**: Configure in `:root`:
      `--spring-damping: 0.78; --spring-stiffness: 500; --press-scale: 0.92;`
-   ${if (control.uppercase() == "HOME") """
+   ${if (control.uppercase() == NexpadKeys.HOME || control.uppercase() == NexpadKeys.GUIDE || control.uppercase() == NexpadKeys.XBOX) """
    - `width: ${widthDp}px; height: ${heightDp}px; border-radius: 50%;` (or custom emblem silhouette).
    - Multi-tiered radial ambient lighting with glowing nexus emblem and silver chamfered bezel.
    """ else """
@@ -732,8 +733,8 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
    """}
 2. **Iconography & Grouped Elements**:
    ${when (control.uppercase()) {
-       "MENU" -> "- 3-line horizontal hamburger pause bars (`<div class=\"burger-bar\"></div>` with `width: 22px; height: 3px; border-radius: 1.5px; background: #E0E0E0;`) using flexbox vertical column (`display: flex; flex-direction: column; gap: 4px;`)."
-       "VIEW" -> "- Overlapping dual-rectangle back/select icons (`<span class=\"view-icon\">⧉</span>` or embedded `<svg>`)."
+       NexpadKeys.MENU, NexpadKeys.START -> "- 3-line horizontal hamburger pause bars (`<div class=\"burger-bar\"></div>` with `width: 22px; height: 3px; border-radius: 1.5px; background: #E0E0E0;`) using flexbox vertical column (`display: flex; flex-direction: column; gap: 4px;`)."
+       NexpadKeys.VIEW, NexpadKeys.BACK -> "- Overlapping dual-rectangle back/select icons (`<span class=\"view-icon\">⧉</span>` or embedded `<svg>`)."
        else -> "- Central nexus/guide logo (`<span class=\"home-symbol\">⨂</span>` or embedded `<svg>`)."
    }}
 3. **Tactile Active Click Physics**:
