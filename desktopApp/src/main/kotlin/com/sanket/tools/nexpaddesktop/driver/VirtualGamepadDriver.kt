@@ -2,7 +2,7 @@ package com.sanket.tools.nexpaddesktop.driver
 
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpad.model.GamepadFeedback
-import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sun.jna.Pointer
 import com.sanket.tools.nexpaddesktop.driver.jna.ViGEmClientLibrary
 import com.sanket.tools.nexpaddesktop.driver.jna.XUSBReport
@@ -121,9 +121,9 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
         if (!isConnected || client == null || target == null) {
             // Fallback mock logic for testing without driver installation
             val active = mutableListOf<String>()
-            if (input.btnA) active.add(ControlKey.A.key)
-            if (input.btnB) active.add(ControlKey.B.key)
-            if (input.dpadUp) active.add(ControlKey.UP.key)
+            if (input.btnA) active.add(NexpadKeys.A)
+            if (input.btnB) active.add(NexpadKeys.B)
+            if (input.dpadUp) active.add(NexpadKeys.UP)
             if (active.isNotEmpty()) println("MOCK -> $active")
             return
         }

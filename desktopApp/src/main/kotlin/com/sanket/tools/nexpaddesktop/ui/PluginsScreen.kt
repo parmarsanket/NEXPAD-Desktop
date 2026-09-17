@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.nxprc.NxprcDocument
+import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpaddesktop.connection.ActiveTransport
 import com.sanket.tools.nexpaddesktop.plugins.DesktopPluginManager
 import com.sanket.tools.nexpaddesktop.plugins.NxprcExporter
@@ -86,13 +87,13 @@ fun PluginsScreen(
     }
 
     var selectedCategory by remember { mutableStateOf("ABXY") }
-    var selectedButtonKey by remember { mutableStateOf(com.sanket.tools.nexpad.category.ControlKey.A.key) }
+    var selectedButtonKey by remember { mutableStateOf(NexpadKeys.A) }
 
     var htmlSource by remember { mutableStateOf(NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A) }
     var componentId by remember { mutableStateOf("rc.action_a") }
     var componentName by remember { mutableStateOf("Action A Button") }
     var category by remember { mutableStateOf("BUTTON") }
-    var defaultControl by remember { mutableStateOf(com.sanket.tools.nexpad.category.ControlKey.A.key) }
+    var defaultControl by remember { mutableStateOf(NexpadKeys.A) }
     var targetWidthDp by remember { mutableStateOf(96) }
     var targetHeightDp by remember { mutableStateOf(96) }
 

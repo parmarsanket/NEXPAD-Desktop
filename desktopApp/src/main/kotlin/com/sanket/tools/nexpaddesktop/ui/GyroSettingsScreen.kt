@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpaddesktop.model.*
 import com.sanket.tools.nexpaddesktop.ui.visualizers.*
 import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
-import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.model.NexpadKeys
 
 /**
  * Dedicated 6-Axis Motion Settings screen.
@@ -180,7 +180,7 @@ fun GyroSettingsSection(
                     Switch(
                         checked = settings.activationButtons.isNotEmpty(),
                         onCheckedChange = { 
-                            if (it) onSettingsChange(settings.copy(activationButtons = setOf(ControlKey.LT.key)))
+                            if (it) onSettingsChange(settings.copy(activationButtons = setOf(NexpadKeys.LT)))
                             else onSettingsChange(settings.copy(activationButtons = emptySet()))
                         },
                     )
@@ -188,10 +188,10 @@ fun GyroSettingsSection(
                 if (settings.activationButtons.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(8.dp))
                     val buttons = listOf(
-                        ControlKey.LT.key, ControlKey.RT.key,
-                        ControlKey.LB.key, ControlKey.RB.key,
-                        ControlKey.A.key, ControlKey.B.key,
-                        ControlKey.X.key, ControlKey.Y.key
+                        NexpadKeys.LT, NexpadKeys.RT,
+                        NexpadKeys.LB, NexpadKeys.RB,
+                        NexpadKeys.A, NexpadKeys.B,
+                        NexpadKeys.X, NexpadKeys.Y
                     )
                     @OptIn(ExperimentalLayoutApi::class)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
