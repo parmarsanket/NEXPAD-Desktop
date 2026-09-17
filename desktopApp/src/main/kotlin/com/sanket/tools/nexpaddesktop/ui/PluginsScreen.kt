@@ -23,6 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.category.CategoryType
+import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.nxprc.NxprcDocument
 import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpaddesktop.connection.ActiveTransport
@@ -86,16 +88,17 @@ fun PluginsScreen(
         }
     }
 
-    var selectedCategory by remember { mutableStateOf("ABXY") }
-    var selectedButtonKey by remember { mutableStateOf(NexpadKeys.A) }
+    val defaultCtrl = ControlKey.A
+    var selectedCategory by remember { mutableStateOf(defaultCtrl.categoryType.id) }
+    var selectedButtonKey by remember { mutableStateOf(defaultCtrl.key) }
 
     var htmlSource by remember { mutableStateOf(NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A) }
-    var componentId by remember { mutableStateOf("rc.action_a") }
-    var componentName by remember { mutableStateOf("Action A Button") }
-    var category by remember { mutableStateOf("BUTTON") }
-    var defaultControl by remember { mutableStateOf(NexpadKeys.A) }
-    var targetWidthDp by remember { mutableStateOf(96) }
-    var targetHeightDp by remember { mutableStateOf(96) }
+    var componentId by remember { mutableStateOf(defaultCtrl.defaultId) }
+    var componentName by remember { mutableStateOf(defaultCtrl.defaultName) }
+    var category by remember { mutableStateOf(defaultCtrl.componentType.name) }
+    var defaultControl by remember { mutableStateOf(defaultCtrl.key) }
+    var targetWidthDp by remember { mutableStateOf(defaultCtrl.defaultWidthDp) }
+    var targetHeightDp by remember { mutableStateOf(defaultCtrl.defaultHeightDp) }
 
     var exportStatus by remember { mutableStateOf<String?>(null) }
     var isExporting by remember { mutableStateOf(false) }
@@ -113,10 +116,10 @@ fun PluginsScreen(
         mutableStateOf(
             NxprcHtmlCssConverter.convert(
                 source = NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A,
-                id = "rc.action_a",
-                name = "Action A Button",
-                category = "BUTTON",
-                defaultControl = com.sanket.tools.nexpad.category.ControlKey.A.key
+                id = defaultCtrl.defaultId,
+                name = defaultCtrl.defaultName,
+                category = defaultCtrl.componentType.name,
+                defaultControl = defaultCtrl.key
             )
         )
     }

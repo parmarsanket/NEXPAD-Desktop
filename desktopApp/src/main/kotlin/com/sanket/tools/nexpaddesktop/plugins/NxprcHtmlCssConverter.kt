@@ -1,7 +1,10 @@
 package com.sanket.tools.nexpaddesktop.plugins
 
+import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.category.CategoryType
 import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpad.nxprc.CompileResult
+import com.sanket.tools.nexpad.nxprc.NxprcCategory
 import com.sanket.tools.nexpad.nxprc.NxprcDocument
 import com.sanket.tools.nexpad.nxprc.NxprcPackager
 
@@ -18,7 +21,7 @@ object NxprcHtmlCssConverter {
         source: String,
         id: String,
         name: String,
-        category: String = "BUTTON",
+        category: String = NxprcCategory.BUTTON.id,
         defaultControl: String = NexpadKeys.A
     ): NxprcDocument {
         return NxprcPackager.compile(
@@ -92,13 +95,17 @@ object NxprcHtmlCssConverter {
         widthDp: Int,
         heightDp: Int
     ): String {
-        return when (category.uppercase()) {
-            "TRIGGER" -> generateTriggerPrompt(control, widthDp, heightDp)
-            "BUMPER" -> generateBumperPrompt(control, widthDp, heightDp)
-            "DPAD" -> generateDpadPrompt(control, widthDp, heightDp)
-            "JOYSTICK" -> generateStickPrompt(control, widthDp, heightDp)
-            "SYSTEM" -> generateSystemPrompt(control, widthDp, heightDp)
-            else -> generateAbxyPrompt(control, widthDp, heightDp)
+        val catType = CategoryType.fromIdentifier(category)
+            ?: CategoryManager.findCategoryForControl(control)?.type
+        return when (catType) {
+            CategoryType.TRIGGERS -> generateTriggerPrompt(control, widthDp, heightDp)
+            CategoryType.BUMPERS -> generateBumperPrompt(control, widthDp, heightDp)
+            CategoryType.DPAD -> generateDpadPrompt(control, widthDp, heightDp)
+            CategoryType.STICKS -> generateStickPrompt(control, widthDp, heightDp)
+            CategoryType.SYSTEM,
+            CategoryType.MACROS -> generateSystemPrompt(control, widthDp, heightDp)
+            CategoryType.ABXY,
+            null -> generateAbxyPrompt(control, widthDp, heightDp)
         }
     }
 

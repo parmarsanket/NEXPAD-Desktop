@@ -1,5 +1,7 @@
 package com.sanket.tools.nexpaddesktop.plugins
 
+import com.sanket.tools.nexpad.category.CategoryManager
+import com.sanket.tools.nexpad.category.CategoryType
 import com.sanket.tools.nexpad.category.ControlKey
 
 private fun dpadGlyph(control: String): String = when (control.uppercase()) {
@@ -1462,24 +1464,28 @@ object NxprcPresets {
 
     private fun getReferenceTemplateInternal(control: String, category: String): String {
         val ctrl = ControlKey.fromIdentifier(control)
-        if (category.uppercase() != "BUTTON") {
-            return when (category.uppercase()) {
-                "DPAD" -> when (ctrl) {
+        val catType = CategoryType.fromIdentifier(category)
+            ?: ctrl?.categoryType
+            ?: CategoryManager.findCategoryForControl(control)?.type
+
+        if (catType != null && catType != CategoryType.ABXY) {
+            return when (catType) {
+                CategoryType.DPAD -> when (ctrl) {
                     ControlKey.DOWN -> PRESET_DPAD_DOWN
                     ControlKey.LEFT -> PRESET_DPAD_LEFT
                     ControlKey.RIGHT -> PRESET_DPAD_RIGHT
                     ControlKey.DPAD -> PRESET_DPAD_CROSS
                     else -> PRESET_DPAD_UP
                 }
-                "TRIGGER" -> if (ctrl == ControlKey.LT) PRESET_TRIGGER_LT else PRESET_TRIGGER_RT
-                "BUMPER" -> if (ctrl == ControlKey.LB) PRESET_BUMPER_LB else PRESET_BUMPER_RB
-                "JOYSTICK" -> if (ctrl == ControlKey.RS) PRESET_THUMBSTICK_RS else PRESET_THUMBSTICK_LS
-                "SYSTEM" -> when (ctrl) {
+                CategoryType.TRIGGERS -> if (ctrl == ControlKey.LT) PRESET_TRIGGER_LT else PRESET_TRIGGER_RT
+                CategoryType.BUMPERS -> if (ctrl == ControlKey.LB) PRESET_BUMPER_LB else PRESET_BUMPER_RB
+                CategoryType.STICKS -> if (ctrl == ControlKey.RS) PRESET_THUMBSTICK_RS else PRESET_THUMBSTICK_LS
+                CategoryType.SYSTEM, CategoryType.MACROS -> when (ctrl) {
                     ControlKey.BACK -> PRESET_SYSTEM_VIEW
                     ControlKey.GUIDE -> PRESET_SYSTEM_HOME
                     else -> PRESET_SYSTEM_MENU
                 }
-                else -> getReferenceTemplateInternal(control, "BUTTON")
+                CategoryType.ABXY -> getReferenceTemplateInternal(control, "BUTTON")
             }
         }
 
@@ -1512,8 +1518,12 @@ object NxprcPresets {
      * to eliminate visual imitation bias in generative AI models.
      */
     fun getSyntaxSkeleton(control: String, category: String, widthDp: Int, heightDp: Int): String {
-        return when (category.uppercase()) {
-            "JOYSTICK" -> """
+        val catType = CategoryType.fromIdentifier(category)
+            ?: ControlKey.fromIdentifier(control)?.categoryType
+            ?: CategoryManager.findCategoryForControl(control)?.type
+
+        return when (catType) {
+            CategoryType.STICKS -> """
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1570,7 +1580,7 @@ object NxprcPresets {
 </html>
             """.trimIndent()
 
-            "TRIGGER" -> """
+            CategoryType.TRIGGERS -> """
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1612,7 +1622,7 @@ object NxprcPresets {
 </html>
             """.trimIndent()
 
-            "BUMPER" -> """
+            CategoryType.BUMPERS -> """
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1652,7 +1662,7 @@ object NxprcPresets {
 </html>
             """.trimIndent()
 
-            "DPAD" -> """
+            CategoryType.DPAD -> """
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1691,7 +1701,7 @@ object NxprcPresets {
 </html>
             """.trimIndent()
 
-            "SYSTEM" -> """
+            CategoryType.SYSTEM, CategoryType.MACROS -> """
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1725,7 +1735,7 @@ object NxprcPresets {
 </html>
             """.trimIndent()
 
-            else -> """
+            CategoryType.ABXY, null -> """
 <!DOCTYPE html>
 <html lang="en">
 <head>
