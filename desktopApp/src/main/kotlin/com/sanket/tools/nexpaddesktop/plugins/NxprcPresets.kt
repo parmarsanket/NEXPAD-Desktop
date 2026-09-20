@@ -913,7 +913,7 @@ object NxprcPresets {
     <div class="stick-base"></div>
     <div class="stick-cap">
       <div class="knurled-ring"></div>
-      <span class="stick-label">L3</span>
+      <span class="stick-label">LS</span>
     </div>
   </button>
 </body>
@@ -1127,7 +1127,7 @@ object NxprcPresets {
     <span class="touchpad-title">Touch Move • LTP</span>
     <div class="touchpad-ring"></div>
     <div class="touchpad-center-dot"></div>
-    <span class="touchpad-sub">TAP: L3</span>
+    <span class="touchpad-sub">2.0X BALLISTICS</span>
   </div>
 </body>
 </html>
@@ -1202,7 +1202,7 @@ object NxprcPresets {
     <span class="touchpad-title">Touch Look • RTP</span>
     <div class="touchpad-ring"></div>
     <div class="touchpad-center-dot"></div>
-    <span class="touchpad-sub">TAP: R3</span>
+    <span class="touchpad-sub">2.0X BALLISTICS</span>
   </div>
 </body>
 </html>
@@ -1650,7 +1650,7 @@ object NxprcPresets {
     <div class="stick-base"></div>
     <div class="stick-cap">
       <div class="knurled-ring"></div>
-      <span class="stick-label">R3</span>
+      <span class="stick-label">RS</span>
     </div>
   </button>
 </body>
@@ -1833,7 +1833,8 @@ object NxprcPresets {
     border-radius: 26px;
     position: relative;
     box-sizing: border-box;
-    /* Visually design the touchpad surface, laser-etched guide rings, and center anchor */
+    /* Visually design the touchpad surface, laser-etched guide rings, and center crosshair */
+    /* Continuous speed-to-distance touch surface (2.0x default). NO center button and NO tap-to-click. */
   }
 </style>
 </head>
@@ -1931,11 +1932,11 @@ object NxprcPresets {
 <body>
   <button class="stick-btn" data-control="$control" data-category="JOYSTICK" data-name="Analog Stick $control">
     <div class="stick-base">
-      <!-- Stationary socket layers -->
+      <!-- Stationary socket layers: bezel, well cavity, directional ticks -->
     </div>
     <div class="stick-cap">
-      <!-- Movable thumb cap layers -->
-      <span class="stick-label">${if (control.uppercase() == ControlKey.RS.key) "R3" else "L3"}</span>
+      <!-- Movable thumb cap layers: 360° analog stick navigation with NO center button -->
+      <span class="stick-label">$control</span>
     </div>
   </button>
 </body>

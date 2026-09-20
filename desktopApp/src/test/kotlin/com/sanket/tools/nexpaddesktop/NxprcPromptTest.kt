@@ -207,12 +207,13 @@ class NxprcPromptTest {
         val lsPrompt = NxprcHtmlCssConverter.generateAiPrompt("LS", "JOYSTICK", 130, 130)
         val rsPrompt = NxprcHtmlCssConverter.generateAiPrompt("RS", "JOYSTICK", 130, 130)
 
-        listOf(lsPrompt to "L3", rsPrompt to "R3").forEach { (prompt, clickKey) ->
+        listOf(lsPrompt to "LS", rsPrompt to "RS").forEach { (prompt, key) ->
             assertTrue(prompt.contains("JOYSTICK TWO-ZONE PHYSICAL MECHANISM:"), "Missing two-zone physical mechanism header")
             assertTrue(prompt.contains("Stationary Gimbal Base"), "Missing stationary gimbal base description")
             assertTrue(prompt.contains("Movable Analog Thumb Cap"), "Missing movable analog thumb cap description")
             assertTrue(prompt.contains("360° Analog Deflection"), "Missing 360 analog deflection instruction")
-            assertTrue(prompt.contains("Axial $clickKey Click"), "Missing axial click instruction for $clickKey")
+            assertTrue(prompt.contains("Continuous Analog Navigation (NO Center Button)"), "Missing NO center button instruction for $key")
+            assertTrue(prompt.contains("<span class=\"stick-label\">$key</span>"), "Cap must be labeled with $key")
             assertTrue(prompt.contains("--spring-damping"), "Missing spring-damping property")
             assertTrue(prompt.contains("--spring-stiffness"), "Missing spring-stiffness property")
         }
@@ -763,25 +764,52 @@ class NxprcPromptTest {
         assertTrue(ltpPrompt.contains("Left Touch Movement Pad"), "Missing Left Touch Movement Pad in LTP prompt")
         assertTrue(ltpPrompt.contains("data-category=\"JOYSTICK\""), "Missing JOYSTICK category attribute in LTP prompt")
         assertTrue(ltpPrompt.contains("<div class=\"touchpad-ctl\""), "Missing touchpad-ctl class in LTP prompt")
+        assertTrue(ltpPrompt.contains("NO center button and NO tap-to-click mechanism"), "Missing NO center button in LTP prompt")
+        assertTrue(ltpPrompt.contains("2.0X BALLISTICS"), "Missing 2.0X BALLISTICS in LTP prompt")
+        assertFalse(ltpPrompt.contains("TAP: L3"), "LTP prompt must NOT contain TAP: L3")
 
         assertTrue(rtpPrompt.contains("Right Touch Camera Look Pad"), "Missing Right Touch Camera Look Pad in RTP prompt")
         assertTrue(rtpPrompt.contains("Free-look camera panning"), "Missing Free-look camera panning description in RTP prompt")
+        assertTrue(rtpPrompt.contains("NO center button and NO tap-to-click mechanism"), "Missing NO center button in RTP prompt")
+        assertTrue(rtpPrompt.contains("2.0X BALLISTICS"), "Missing 2.0X BALLISTICS in RTP prompt")
+        assertFalse(rtpPrompt.contains("TAP: R3"), "RTP prompt must NOT contain TAP: R3")
 
         // Test template resolution for LTP and RTP
         val ltpTmpl = NxprcHtmlCssConverter.getReferenceTemplate("LTP")
         assertTrue(ltpTmpl.contains("data-control=\"LTP\""))
         assertTrue(ltpTmpl.contains("data-category=\"JOYSTICK\""))
         assertTrue(ltpTmpl.contains("Touch Move • LTP"))
+        assertTrue(ltpTmpl.contains("2.0X BALLISTICS"))
+        assertFalse(ltpTmpl.contains("TAP: L3"))
 
         val rtpTmpl = NxprcHtmlCssConverter.getReferenceTemplate("RTP")
         assertTrue(rtpTmpl.contains("data-control=\"RTP\""))
         assertTrue(rtpTmpl.contains("data-category=\"JOYSTICK\""))
         assertTrue(rtpTmpl.contains("Touch Look • RTP"))
+        assertTrue(rtpTmpl.contains("2.0X BALLISTICS"))
+        assertFalse(rtpTmpl.contains("TAP: R3"))
 
         // Test syntax skeleton for LTP and RTP
         val skeleton = NxprcHtmlCssConverter.getSyntaxSkeleton("LTP", "STICKS", 180, 180)
         assertTrue(skeleton.contains("class=\"touchpad-ctl\""))
         assertTrue(skeleton.contains("data-control=\"LTP\""))
+    }
+
+    @Test
+    fun verifyNoCenterButtonOnJoysticksAndTouchpads() {
+        val lsTmpl = NxprcHtmlCssConverter.getReferenceTemplate("LS", "JOYSTICK")
+        val rsTmpl = NxprcHtmlCssConverter.getReferenceTemplate("RS", "JOYSTICK")
+        assertTrue(lsTmpl.contains("<span class=\"stick-label\">LS</span>"), "LS cap must be labeled LS")
+        assertFalse(lsTmpl.contains("<span class=\"stick-label\">L3</span>"), "LS cap must NOT be labeled L3")
+        assertTrue(rsTmpl.contains("<span class=\"stick-label\">RS</span>"), "RS cap must be labeled RS")
+        assertFalse(rsTmpl.contains("<span class=\"stick-label\">R3</span>"), "RS cap must NOT be labeled R3")
+
+        val ltpTmpl = NxprcHtmlCssConverter.getReferenceTemplate("LTP")
+        val rtpTmpl = NxprcHtmlCssConverter.getReferenceTemplate("RTP")
+        assertFalse(ltpTmpl.contains("TAP: L3"), "LTP preset must NOT contain TAP: L3")
+        assertFalse(rtpTmpl.contains("TAP: R3"), "RTP preset must NOT contain TAP: R3")
+        assertTrue(ltpTmpl.contains("2.0X BALLISTICS"), "LTP preset must denote 2.0x ballistics")
+        assertTrue(rtpTmpl.contains("2.0X BALLISTICS"), "RTP preset must denote 2.0x ballistics")
     }
 }
 

@@ -611,22 +611,20 @@ Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``
 """.trimIndent()
 
     private fun generateStickPrompt(control: String, widthDp: Int, heightDp: Int): String {
-        val clickLabel = if (control.uppercase() == NexpadKeys.RS) "R3" else "L3"
-
         return """
 ${genAiHeader()}
 
-You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Thumbstick Component for NEXPAD.
+You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Analog Thumbstick Component for NEXPAD.
 
 ### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control ($clickLabel Click)
+- **Control Key [COMPONENT-REQUIRED]**: $control (Analog Thumbstick - NO center click button)
 - **Category [GLOBAL-REQUIRED]**: JOYSTICK
 - **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
-- **Interaction Meaning [COMPONENT-REQUIRED]**: Continuous 360-degree analog navigation and axial thumbstick click ($clickLabel actuation).
+- **Interaction Meaning [COMPONENT-REQUIRED]**: Continuous 360-degree analog navigation. IMPORTANT: In NEXPAD, Analog Joysticks have NO center button or click mechanism. Stick click is strictly separated into standalone LSB/RSB buttons to prevent accidental clicks while dragging.
 - **Visual Affordance [RECOMMENDED]**: Outer gimbal socket well, concave thumb dome, concentric knurled grip texture for traction.
-- **Optional Visual Language [OPTIONAL]**: Knurled dashed rings, radial tick marks, cross-hatch metal, rubberized stippling.
+- **Optional Visual Language [OPTIONAL]**: Knurled dashed rings, radial tick marks, cross-hatch metal, rubberized stippling, cardinal directional markers (▲, ▼, ◀, ▶).
 - **Geometry [USER-OVERRIDE]**: Circle geometry is natural and authentic for physical joystick gimbal, socket, and thumb cap. Do not make it look like a flat circular web button. `data-category` is metadata, not a shape instruction. Gimbal ring, dish, square housing, or stylized silhouette: preserve the user's requested shape.
 
 ### VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
@@ -645,11 +643,11 @@ In physical gamepads (Xbox, PlayStation) and mobile gaming (CoD Mobile, Genshin,
 2. **Movable Analog Thumb Cap (The Inner Dome)**:
    - Sized at approximately 55%–65% of the base diameter (~${(widthDp * 0.58).toInt()}px to ${(widthDp * 0.65).toInt()}px) to provide mechanical clearance inside the socket.
    - **Only this part translates (x, y)** when the player drags their thumb, and springs back to center on release!
-   - Contains: Concave thumb dish, knurled traction grip rings, custom vector emblems/graphics, and center $clickLabel marking.
+   - Contains: Concave thumb dish, knurled traction grip rings, custom vector emblems/graphics, or center $control marking (NO center click button).
    - **MANDATORY DOM PLACEMENT**: Put ALL cap elements (dome background, knurled rings, graphics, label) inside `<div class="stick-cap">` or element classes containing: `stick-cap`, `thumb`, `grip`, `core`, `stick-label`. Never attach thumb cap elements directly to the root `<button>` or use `.stick-btn::before`/`::after` for the moving cap, as that causes the cap to freeze to the stationary socket!
-3. **Dual Mechanical Actuation**:
+3. **Continuous Analog Navigation (NO Center Button)**:
    - **360° Analog Deflection**: Handled dynamically at runtime by NEXPAD's touch vector engine with spring return physics when dragged. **Do not write JavaScript, CSS transitions/animations, or hover/pointer events for analog movement.**
-   - **Axial $clickLabel Click**: Actuated via physical downward thumb depression, represented in CSS by `.stick-btn:active { transform: scale(0.92); }` or `.stick-btn:active .stick-cap { transform: scale(0.92); }` with tactile spring damping micro-physics (`--spring-damping: 0.70; --spring-stiffness: 420;`).
+   - **Zero Center Button Interference**: In NEXPAD, thumbsticks do NOT actuate L3/R3 on click or press. Stick click is strictly isolated in dedicated standalone LSB/RSB buttons.
 
 ### NEXPAD COMPILER ARCHITECTURE & TWO-ZONE DOM CONTRACT:
 The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format) and partitions them into Base vs Cap layers:
@@ -659,9 +657,9 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
     <!-- Stationary Gimbal Base: socket cavity, outer rim, directional ticks, bezel -->
   </div>
   <div class="stick-cap">
-    <!-- Movable Thumb Cap: concave dish, knurled grip rings, custom vector art, click label -->
+    <!-- Movable Thumb Cap: concave dish, knurled grip rings, custom vector art, control label -->
     <div class="knurled-ring"></div>
-    <span class="stick-label">$clickLabel</span>
+    <span class="stick-label">$control</span>
   </div>
 </button>
 ```
@@ -679,10 +677,10 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
    - Dish bevel & rim: `box-shadow: inset 0 0 10px rgba(0,0,0,0.9), 0 0 0 2px rgba(255, 255, 255, 0.12);`
 4. **Concentric Knurled Grip Rings (`<div class="knurled-ring">` or SVG)**:
    - Placed inside `<div class="stick-cap">`: `position: absolute; width: ${(widthDp * 0.44).toInt()}px; height: ${(heightDp * 0.44).toInt()}px; border-radius: 50%; border: 2px dashed rgba(255, 255, 255, 0.35);`
-5. **Stick Click Typography**:
-   - `<span class="stick-label">$clickLabel</span>`: Font size 20px, weight 900, centered in cap. Real DOM text.
-6. **Tactile Active Press Physics**:
-   - `.stick-btn:active .stick-cap { transform: scale(0.92); }` or `.stick-btn:active { transform: scale(0.92); }` (simulates physical $clickLabel depression).
+5. **Stick Cap Typography**:
+   - `<span class="stick-label">$control</span>`: Font size 20px, weight 900, centered in cap. Real DOM text.
+6. **Tactile Active Feedback**:
+   - `.stick-btn:active .stick-cap { transform: scale(0.92); }` (simulates subtle physical thumb contact on the cap).
 
 ${engineBoundaries("stick-btn")}
 
@@ -691,6 +689,7 @@ Before outputting, verify your component against this checklist:
 - [ ] Two-Zone DOM Structure: Stationary base enclosed in `<div class="stick-base">`, movable cap enclosed in `<div class="stick-cap">`.
 - [ ] Mechanical Clearance: Thumb cap diameter is ~55%–65% of socket diameter (~${(widthDp * 0.60).toInt()}px) for realistic travel clearance.
 - [ ] No Frozen Cap Elements: Knurled rings, traction ridges, emblems, and label are placed INSIDE `<div class="stick-cap">`.
+- [ ] NO Center Click Button: The analog stick has NO center click button or L3/R3 marking. It is labeled "$control" (or clean vector/directional art). Stick click is handled separately by LSB/RSB.
 - [ ] Complex Graphics Architecture: If a character, emblem, or complex graphic is requested on the thumb cap, uses an embedded `<svg>` vector element inside `<div class="stick-cap">` with clean `<path d="...">` rather than brittle CSS `<div>` hacks.
 - [ ] Console Realism: Authentic industrial materials (matte charcoal, rubberized dish, physical shadows) rather than unsolicited neon glow.
 - [ ] No Scripts or Page CSS: Zero JavaScript, zero CSS keyframes animations, zero hover/pointer event handlers.
@@ -862,9 +861,9 @@ Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``
         val isLeft = control.equals("LTP", ignoreCase = true) || control.contains("L", ignoreCase = true)
         val padRole = if (isLeft) "Left Touch Movement Pad (Floating Dynamic-Center Stick)" else "Right Touch Camera Look Pad (Free-Look Swipe Trackpad)"
         val interactionDesc = if (isLeft) {
-            "Continuous 360° character locomotion via touch drag. Touching anywhere establishes a dynamic anchor pivot; dragging directs walking/sprinting."
+            "Continuous 360° character locomotion via touch drag. Touching anywhere establishes a dynamic anchor pivot; dragging directs walking/sprinting with laptop-touchpad speed-to-distance transfer (2.0x default sensitivity)."
         } else {
-            "Free-look camera panning via touch swipe deltas. Dragging converts instantaneous finger velocity into right-stick camera deflection with immediate stop when stationary."
+            "Free-look camera panning via touch swipe deltas. Dragging converts instantaneous finger velocity into right-stick camera deflection with immediate stop when stationary and 2.0x default gaming ballistics."
         }
 
         return """
@@ -877,15 +876,15 @@ ${genAiHeader()}
 - **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
-- **Interaction Meaning [COMPONENT-REQUIRED]**: $interactionDesc Single/double taps actuate axial stick click (${if (isLeft) "L3/LSB" else "R3/RSB"}).
+- **Interaction Meaning [COMPONENT-REQUIRED]**: $interactionDesc IMPORTANT: Touchpads have NO center button and NO tap-to-click mechanism. Stick click is strictly separated into standalone LSB/RSB buttons to prevent accidental sprint or melee triggers during camera panning or movement. The touchpad operates as a pure continuous speed-to-distance surface.
 - **Visual Affordance [RECOMMENDED]**: Expansive rounded-rectangular or circular touchpad surface with deep matte texture, laser-etched concentric guide rings, center tactile dimple/crosshair, and high-contrast technical typography.
 - **Optional Visual Language [OPTIONAL]**: Cardinal direction ticks, dashed guide rings, ambient edge illumination, carbon-fiber stippling.
 
 ### VISUAL TARGET — CONSOLE/STEAM DECK INDUSTRIAL REALISM:
 1. **Single-Surface Trackpad Architecture**: One expansive root `<div class="touchpad-ctl" data-control="$control" data-category="JOYSTICK" data-name="Touchpad $control">`.
-2. **Textured Recessed Dish**: Deep carbon/polycarbonate matte finish with inset drop shadow.
+2. **Textured Recessed Dish**: Deep carbon/polycarbonate matte finish with inset drop shadow and smooth laser-etched touch feel.
 3. **Laser-Etched Guides**: Concentric dashed guide rings and center crosshair dimple.
-4. **Header and Subtext Markings**: Technical monospace typography denoting touch mode and tap shortcut.
+4. **Header and Subtext Markings**: Technical monospace typography denoting touch mode (e.g. "${if (isLeft) "Touch Move • LTP" else "Touch Look • RTP"}") and ballistics ("2.0X BALLISTICS"). Do NOT include stick click or tap click text.
 
 ### NEXPAD COMPILER ARCHITECTURE & CONTRACT:
 1. **Root Tag**: `<div class="touchpad-ctl" data-control="$control" data-category="JOYSTICK" data-name="Touchpad $control">`
@@ -894,9 +893,18 @@ ${genAiHeader()}
    - Centered `<div class="touchpad-ring"></div>` and `<div class="touchpad-center-dot"></div>`.
 3. **Typography**:
    - `<span class="touchpad-title">${if (isLeft) "Touch Move • LTP" else "Touch Look • RTP"}</span>`
-   - `<span class="touchpad-sub">${if (isLeft) "TAP: L3" else "TAP: R3"}</span>`
+   - `<span class="touchpad-sub">2.0X BALLISTICS</span>`
 
 ${engineBoundaries("touchpad-ctl")}
+
+### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
+Before outputting, verify your component against this checklist:
+- [ ] Single Surface Contract: Exactly one root `<div class="touchpad-ctl">` element representing an expansive continuous trackpad surface.
+- [ ] NO Center Click Button: Touchpad has NO center button and NO tap-to-click mechanism. Stick click is handled exclusively by standalone LSB/RSB.
+- [ ] Laser-Etched Tactile Reticle: Concentric dashed rings and center dimple/crosshair for tactile spatial awareness.
+- [ ] Ballistics & Mode Markings: Monospace labels denoting mode ("${if (isLeft) "Touch Move • LTP" else "Touch Look • RTP"}") and ballistics ("2.0X BALLISTICS").
+- [ ] Console Realism: Matte polycarbonate / dark carbon textures with subtle edge highlights rather than noisy neon clutter.
+- [ ] Compiler Safety: Exactly one root `<div class="touchpad-ctl">` element; all px dimensions explicit.
 
 ### OPTIONAL STARTER TEMPLATE — SYNTAX SKELETON [NON-BINDING SYNTAX REFERENCE ONLY]:
 ```html
