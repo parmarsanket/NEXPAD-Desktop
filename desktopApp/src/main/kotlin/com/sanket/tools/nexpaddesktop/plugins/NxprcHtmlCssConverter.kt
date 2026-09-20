@@ -148,6 +148,7 @@ object NxprcHtmlCssConverter {
 8. Design with restraint: avoid visual clutter; prefer the minimum number of layers required to achieve the requested aesthetic.
 9. Ensure the label/icon remains clearly readable with strong contrast.
 10. Return ONLY the complete, self-contained HTML/CSS inside one code block.
+11. NEXPAD supports dual button labeling styles (Xbox: A, B, X, Y, LB, RB, LT, RT, LSB, RSB vs PlayStation: ✕, ○, □, △, L1, R1, L2, R2, L3, R3) and dynamically translates standard controller labels at runtime while preserving custom action text (e.g. ATTACK, DASH, JUMP).
 """.trimIndent()
 
 private fun engineBoundaries(rootClass: String): String = """
