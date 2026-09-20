@@ -762,32 +762,50 @@ class NxprcPromptTest {
         val rtpPrompt = NxprcHtmlCssConverter.generateAiPrompt("RTP", "STICKS", 180, 180)
 
         assertTrue(ltpPrompt.contains("Left Touch Movement Pad"), "Missing Left Touch Movement Pad in LTP prompt")
-        assertTrue(ltpPrompt.contains("data-category=\"JOYSTICK\""), "Missing JOYSTICK category attribute in LTP prompt")
+        assertTrue(ltpPrompt.contains("data-category=\"TOUCHPAD\""), "Missing TOUCHPAD category attribute in LTP prompt")
         assertTrue(ltpPrompt.contains("<div class=\"touchpad-ctl\""), "Missing touchpad-ctl class in LTP prompt")
-        assertTrue(ltpPrompt.contains("NO center button and NO tap-to-click mechanism"), "Missing NO center button in LTP prompt")
+        assertTrue(ltpPrompt.contains("NO center button"), "Missing NO center button in LTP prompt")
+        assertTrue(ltpPrompt.contains("NO movable ring"), "Missing NO movable ring in LTP prompt")
+        assertTrue(ltpPrompt.contains("NO tap-to-click mechanism"), "Missing NO tap-to-click mechanism in LTP prompt")
         assertTrue(ltpPrompt.contains("2.0X BALLISTICS"), "Missing 2.0X BALLISTICS in LTP prompt")
         assertFalse(ltpPrompt.contains("TAP: L3"), "LTP prompt must NOT contain TAP: L3")
 
         assertTrue(rtpPrompt.contains("Right Touch Camera Look Pad"), "Missing Right Touch Camera Look Pad in RTP prompt")
         assertTrue(rtpPrompt.contains("Free-look camera panning"), "Missing Free-look camera panning description in RTP prompt")
-        assertTrue(rtpPrompt.contains("NO center button and NO tap-to-click mechanism"), "Missing NO center button in RTP prompt")
+        assertTrue(rtpPrompt.contains("NO center button"), "Missing NO center button in RTP prompt")
+        assertTrue(rtpPrompt.contains("NO movable ring"), "Missing NO movable ring in RTP prompt")
+        assertTrue(rtpPrompt.contains("NO tap-to-click mechanism"), "Missing NO tap-to-click mechanism in RTP prompt")
         assertTrue(rtpPrompt.contains("2.0X BALLISTICS"), "Missing 2.0X BALLISTICS in RTP prompt")
         assertFalse(rtpPrompt.contains("TAP: R3"), "RTP prompt must NOT contain TAP: R3")
 
         // Test template resolution for LTP and RTP
         val ltpTmpl = NxprcHtmlCssConverter.getReferenceTemplate("LTP")
         assertTrue(ltpTmpl.contains("data-control=\"LTP\""))
-        assertTrue(ltpTmpl.contains("data-category=\"JOYSTICK\""))
+        assertTrue(ltpTmpl.contains("data-category=\"TOUCHPAD\""))
         assertTrue(ltpTmpl.contains("Touch Move • LTP"))
         assertTrue(ltpTmpl.contains("2.0X BALLISTICS"))
+        assertFalse(ltpTmpl.contains("touchpad-ring"), "LTP preset must NOT contain touchpad-ring")
+        assertFalse(ltpTmpl.contains("touchpad-center-dot"), "LTP preset must NOT contain touchpad-center-dot")
         assertFalse(ltpTmpl.contains("TAP: L3"))
 
         val rtpTmpl = NxprcHtmlCssConverter.getReferenceTemplate("RTP")
         assertTrue(rtpTmpl.contains("data-control=\"RTP\""))
-        assertTrue(rtpTmpl.contains("data-category=\"JOYSTICK\""))
+        assertTrue(rtpTmpl.contains("data-category=\"TOUCHPAD\""))
         assertTrue(rtpTmpl.contains("Touch Look • RTP"))
         assertTrue(rtpTmpl.contains("2.0X BALLISTICS"))
+        assertFalse(rtpTmpl.contains("touchpad-ring"), "RTP preset must NOT contain touchpad-ring")
+        assertFalse(rtpTmpl.contains("touchpad-center-dot"), "RTP preset must NOT contain touchpad-center-dot")
         assertFalse(rtpTmpl.contains("TAP: R3"))
+
+        // Verify compiler compiles touchpads with empty capLayerIndices
+        val ltpDoc = com.sanket.tools.nexpad.nxprc.engine.compiler.NxprcCompiler.compile(
+            ltpTmpl, "rc.ltp", "Touchpad LTP", "TOUCHPAD", "LTP"
+        )
+        val rtpDoc = com.sanket.tools.nexpad.nxprc.engine.compiler.NxprcCompiler.compile(
+            rtpTmpl, "rc.rtp", "Touchpad RTP", "TOUCHPAD", "RTP"
+        )
+        assertTrue(ltpDoc.canvas.capLayerIndices.isEmpty(), "LTP capLayerIndices must be empty for stationary touchpad")
+        assertTrue(rtpDoc.canvas.capLayerIndices.isEmpty(), "RTP capLayerIndices must be empty for stationary touchpad")
 
         // Test syntax skeleton for LTP and RTP
         val skeleton = NxprcHtmlCssConverter.getSyntaxSkeleton("LTP", "STICKS", 180, 180)

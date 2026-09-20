@@ -130,14 +130,28 @@ fun PluginsScreen(
     var soloLayerIndex by remember { mutableStateOf<Int?>(null) }
     var selectedLayerIndex by remember { mutableStateOf(0) }
 
-    // Keep indices in sync when document layer count changes
-    LaunchedEffect(compiledDoc.canvas.layers.size) {
+    // Helper: Reset layer state so that ALL layers are 100% active and enabled
+    val resetLayersToAllEnabled: (Int) -> Unit = { totalLayers ->
+        activeLayerIndices = (0 until totalLayers).toSet()
+        soloLayerIndex = null
+        selectedLayerIndex = 0
+    }
+
+    // Keep indices in sync when document changes — always ensure all layers enabled in main studio
+    LaunchedEffect(compiledDoc) {
         val total = compiledDoc.canvas.layers.size
         if (total > 0) {
             selectedLayerIndex = selectedLayerIndex.coerceIn(0, total - 1)
-            activeLayerIndices = activeLayerIndices.filter { it < total }.toSet().ifEmpty { (0 until total).toSet() }
-            if (soloLayerIndex != null && soloLayerIndex!! >= total) {
-                soloLayerIndex = null
+            if (!showFullScreenLayerStudio) {
+                // In main studio workspace, all layers are always 100% active and enabled
+                resetLayersToAllEnabled(total)
+            } else {
+                // Inside full-screen layer studio, keep existing selection valid and include any new layers
+                val validIndices = activeLayerIndices.filter { it < total }.toSet()
+                activeLayerIndices = if (validIndices.isEmpty()) (0 until total).toSet() else validIndices
+                if (soloLayerIndex != null && soloLayerIndex!! >= total) {
+                    soloLayerIndex = null
+                }
             }
         }
     }
@@ -159,6 +173,70 @@ fun PluginsScreen(
                 compileError = e.message ?: "Compilation error"
             }
         }
+    }
+
+    val handleSelectButton: (SubCategoryDefinition) -> Unit = { btn ->
+        selectedButtonKey = btn.key
+        defaultControl = btn.key
+        category = btn.componentType.name
+        componentId = btn.defaultId
+        componentName = btn.defaultName
+        targetWidthDp = btn.defaultWidthDp
+        targetHeightDp = btn.defaultHeightDp
+        val newSource = btn.starterHtmlPreset ?: NxprcHtmlCssConverter.getReferenceTemplate(btn.key, btn.componentType.name)
+        htmlSource = newSource
+        try {
+            val newDoc = NxprcHtmlCssConverter.convert(
+                source = newSource,
+                id = btn.defaultId,
+                name = btn.defaultName,
+                category = btn.componentType.name,
+                defaultControl = btn.key
+            )
+            compiledDoc = newDoc
+            compileError = null
+            resetLayersToAllEnabled(newDoc.canvas.layers.size)
+        } catch (e: Exception) {
+            compileError = e.message ?: "Compilation error"
+        }
+    }
+
+    val handleSelectCategory: (String) -> Unit = { catKey ->
+        selectedCategory = catKey
+        val firstButton = buttonsByCategory[catKey]?.firstOrNull()
+        if (firstButton != null) {
+            handleSelectButton(firstButton)
+        }
+    }
+
+    val handleLoadStarter: () -> Unit = {
+        val newSource = NxprcHtmlCssConverter.getReferenceTemplate(defaultControl, category)
+        htmlSource = newSource
+        promptCopiedBanner = "✓ Loaded starter template for $defaultControl ($category)!"
+        try {
+            val newDoc = NxprcHtmlCssConverter.convert(
+                source = newSource,
+                id = componentId,
+                name = componentName,
+                category = category,
+                defaultControl = defaultControl
+            )
+            compiledDoc = newDoc
+            compileError = null
+            resetLayersToAllEnabled(newDoc.canvas.layers.size)
+        } catch (e: Exception) {
+            compileError = e.message ?: "Compilation error"
+        }
+    }
+
+    val handleOpenLayerStudio: () -> Unit = {
+        resetLayersToAllEnabled(compiledDoc.canvas.layers.size)
+        showFullScreenLayerStudio = true
+    }
+
+    val handleCloseLayerStudio: () -> Unit = {
+        resetLayersToAllEnabled(compiledDoc.canvas.layers.size)
+        showFullScreenLayerStudio = false
     }
 
     // Auto-dismiss copy feedback banner after 4 seconds
@@ -207,38 +285,13 @@ fun PluginsScreen(
                         promptCopiedBanner = if (ok) "✓ AI Prompt for $defaultControl ($category) copied!" else "⚠️ Clipboard busy — please try again"
                     },
                     onOpenPromptModal = { showAiPromptModal = true },
-                    onLoadStarter = {
-                        htmlSource = NxprcHtmlCssConverter.getReferenceTemplate(defaultControl, category)
-                        promptCopiedBanner = "✓ Loaded starter template for $defaultControl ($category)!"
-                    },
+                    onLoadStarter = handleLoadStarter,
                     selectedCategory = selectedCategory,
-                    onSelectCategory = { catKey ->
-                        selectedCategory = catKey
-                        val firstButton = buttonsByCategory[catKey]?.firstOrNull()
-                        if (firstButton != null) {
-                            selectedButtonKey = firstButton.key
-                            defaultControl = firstButton.key
-                            category = firstButton.componentType.name
-                            componentId = firstButton.defaultId
-                            componentName = firstButton.defaultName
-                            targetWidthDp = firstButton.defaultWidthDp
-                            targetHeightDp = firstButton.defaultHeightDp
-                            htmlSource = firstButton.starterHtmlPreset ?: NxprcHtmlCssConverter.getReferenceTemplate(firstButton.key, firstButton.componentType.name)
-                        }
-                    },
+                    onSelectCategory = handleSelectCategory,
                     categories = categories,
                     buttonsByCategory = buttonsByCategory,
                     selectedButtonKey = selectedButtonKey,
-                    onSelectButton = { btn ->
-                        selectedButtonKey = btn.key
-                        defaultControl = btn.key
-                        category = btn.componentType.name
-                        componentId = btn.defaultId
-                        componentName = btn.defaultName
-                        targetWidthDp = btn.defaultWidthDp
-                        targetHeightDp = btn.defaultHeightDp
-                        htmlSource = btn.starterHtmlPreset ?: NxprcHtmlCssConverter.getReferenceTemplate(btn.key, btn.componentType.name)
-                    },
+                    onSelectButton = handleSelectButton,
                     htmlSource = htmlSource,
                     onHtmlSourceChange = { htmlSource = it }
                 )
@@ -262,20 +315,12 @@ fun PluginsScreen(
                     compileError = compileError,
                     exportStatus = exportStatus,
                     isExporting = isExporting,
-                    onOpenLayerStudio = { showFullScreenLayerStudio = true },
+                    onOpenLayerStudio = handleOpenLayerStudio,
                     onOpenFullAudit = { showFullAuditPreview = true },
                     onExport = {
                         scope.launch {
                             isExporting = true
-                            val exportDoc = if (activeLayerIndices.size == compiledDoc.canvas.layers.size) {
-                                compiledDoc
-                            } else {
-                                compiledDoc.copy(
-                                    canvas = compiledDoc.canvas.copy(
-                                        layers = compiledDoc.canvas.layers.filterIndexed { idx, _ -> idx in activeLayerIndices }
-                                    )
-                                )
-                            }
+                            val exportDoc = compiledDoc
                             val res = NxprcExporter.exportToFile(exportDoc)
                             res.fold(
                                 onSuccess = { file ->
@@ -292,15 +337,7 @@ fun PluginsScreen(
                     onPush = {
                         scope.launch {
                             isExporting = true
-                            val exportDoc = if (activeLayerIndices.size == compiledDoc.canvas.layers.size) {
-                                compiledDoc
-                            } else {
-                                compiledDoc.copy(
-                                    canvas = compiledDoc.canvas.copy(
-                                        layers = compiledDoc.canvas.layers.filterIndexed { idx, _ -> idx in activeLayerIndices }
-                                    )
-                                )
-                            }
+                            val exportDoc = compiledDoc
                             exportStatus = "Pushing ${exportDoc.canvas.layers.size} layers to phone via ${activeTransport.displayName}..."
                             val res = UniversalPushManager.pushComponent(exportDoc)
                             res.fold(
@@ -393,38 +430,13 @@ fun PluginsScreen(
                                 promptCopiedBanner = if (ok) "✓ AI Prompt for $defaultControl ($category) copied!" else "⚠️ Clipboard busy — please try again"
                             },
                             onOpenPromptModal = { showAiPromptModal = true },
-                            onLoadStarter = {
-                                htmlSource = NxprcHtmlCssConverter.getReferenceTemplate(defaultControl, category)
-                                promptCopiedBanner = "✓ Loaded starter template for $defaultControl ($category)!"
-                            },
+                            onLoadStarter = handleLoadStarter,
                             selectedCategory = selectedCategory,
-                            onSelectCategory = { catKey ->
-                                selectedCategory = catKey
-                                val firstButton = buttonsByCategory[catKey]?.firstOrNull()
-                                if (firstButton != null) {
-                                    selectedButtonKey = firstButton.key
-                                    defaultControl = firstButton.key
-                                    category = firstButton.componentType.name
-                                    componentId = firstButton.defaultId
-                                    componentName = firstButton.defaultName
-                                    targetWidthDp = firstButton.defaultWidthDp
-                                    targetHeightDp = firstButton.defaultHeightDp
-                                    htmlSource = firstButton.starterHtmlPreset ?: NxprcHtmlCssConverter.getReferenceTemplate(firstButton.key, firstButton.componentType.name)
-                                }
-                            },
+                            onSelectCategory = handleSelectCategory,
                             categories = categories,
                             buttonsByCategory = buttonsByCategory,
                             selectedButtonKey = selectedButtonKey,
-                            onSelectButton = { btn ->
-                                selectedButtonKey = btn.key
-                                defaultControl = btn.key
-                                category = btn.componentType.name
-                                componentId = btn.defaultId
-                                componentName = btn.defaultName
-                                targetWidthDp = btn.defaultWidthDp
-                                targetHeightDp = btn.defaultHeightDp
-                                htmlSource = btn.starterHtmlPreset ?: NxprcHtmlCssConverter.getReferenceTemplate(btn.key, btn.componentType.name)
-                            },
+                            onSelectButton = handleSelectButton,
                             htmlSource = htmlSource,
                             onHtmlSourceChange = { htmlSource = it }
                         )
@@ -445,20 +457,12 @@ fun PluginsScreen(
                             compileError = compileError,
                             exportStatus = exportStatus,
                             isExporting = isExporting,
-                            onOpenLayerStudio = { showFullScreenLayerStudio = true },
+                            onOpenLayerStudio = handleOpenLayerStudio,
                             onOpenFullAudit = { showFullAuditPreview = true },
                             onExport = {
                                 scope.launch {
                                     isExporting = true
-                                    val exportDoc = if (activeLayerIndices.size == compiledDoc.canvas.layers.size) {
-                                        compiledDoc
-                                    } else {
-                                        compiledDoc.copy(
-                                            canvas = compiledDoc.canvas.copy(
-                                                layers = compiledDoc.canvas.layers.filterIndexed { idx, _ -> idx in activeLayerIndices }
-                                            )
-                                        )
-                                    }
+                                    val exportDoc = compiledDoc
                                     val res = NxprcExporter.exportToFile(exportDoc)
                                     res.fold(
                                         onSuccess = { file ->
@@ -475,15 +479,7 @@ fun PluginsScreen(
                             onPush = {
                                 scope.launch {
                                     isExporting = true
-                                    val exportDoc = if (activeLayerIndices.size == compiledDoc.canvas.layers.size) {
-                                        compiledDoc
-                                    } else {
-                                        compiledDoc.copy(
-                                            canvas = compiledDoc.canvas.copy(
-                                                layers = compiledDoc.canvas.layers.filterIndexed { idx, _ -> idx in activeLayerIndices }
-                                            )
-                                        )
-                                    }
+                                    val exportDoc = compiledDoc
                                     exportStatus = "Pushing ${exportDoc.canvas.layers.size} layers to phone via ${activeTransport.displayName}..."
                                     val res = UniversalPushManager.pushComponent(exportDoc)
                                     res.fold(
@@ -603,7 +599,7 @@ fun PluginsScreen(
                 htmlSource = htmlSource,
                 onOpenLayerStudio = {
                     showFullAuditPreview = false
-                    showFullScreenLayerStudio = true
+                    handleOpenLayerStudio()
                 },
                 onClose = { showFullAuditPreview = false }
             )
@@ -670,7 +666,7 @@ fun PluginsScreen(
                 isPushEnabled = activeTransport != ActiveTransport.NONE,
                 pushLabel = if (activeTransport != ActiveTransport.NONE) "Push via ${activeTransport.displayName} (${compiledDoc.canvas.layers.size} L)" else "No Phone Connected",
                 onFeedback = { promptCopiedBanner = it },
-                onClose = { showFullScreenLayerStudio = false }
+                onClose = handleCloseLayerStudio
             )
         }
     }
@@ -1088,8 +1084,13 @@ private fun LiveSandboxPane(
                 val dy = stickDeflection.second
                 val xStr = if (dx >= 0f) "+${"%.2f".format(dx)}" else "%.2f".format(dx)
                 val yStr = if (dy >= 0f) "+${"%.2f".format(dy)}" else "%.2f".format(dy)
+                val isRightStick = defaultControl.uppercase() in listOf(
+                    com.sanket.tools.nexpad.category.ControlKey.RS.key,
+                    com.sanket.tools.nexpad.category.ControlKey.RTP.key
+                ) || compiledDoc.manifest.id.contains("rtp", ignoreCase = true)
+                val stickName = if (isRightStick) "RS Stick" else "LS Stick"
                 Text(
-                    "Stick: X:$xStr Y:$yStr",
+                    "$stickName: X:$xStr Y:$yStr",
                     color = if (dx != 0f || dy != 0f) Color(0xFF10B981) else Color.White.copy(alpha = 0.7f),
                     fontWeight = FontWeight.Bold,
                     fontSize = 10.5.sp

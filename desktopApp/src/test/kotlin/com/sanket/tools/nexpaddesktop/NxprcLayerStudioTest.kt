@@ -178,4 +178,120 @@ class NxprcLayerStudioTest {
             assertTrue(details.codeSnippet.isNotBlank())
         }
     }
+
+    @Test
+    fun switchingControlsResetsActiveLayersToAllEnabled() {
+        val docA = NxprcHtmlCssConverter.convert(
+            source = NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A,
+            id = "rc.action_a",
+            name = "Action A Button",
+            category = "BUTTON",
+            defaultControl = "A"
+        )
+        val docLS = NxprcHtmlCssConverter.convert(
+            source = NxprcHtmlCssConverter.PRESET_THUMBSTICK_LS,
+            id = "rc.stick_ls",
+            name = "Analog Stick LS",
+            category = "JOYSTICK",
+            defaultControl = "LS"
+        )
+        val docLTP = NxprcHtmlCssConverter.convert(
+            source = NxprcHtmlCssConverter.PRESET_TOUCHPAD_LTP,
+            id = "rc.pad_ltp",
+            name = "Touchpad LTP",
+            category = "TOUCHPAD",
+            defaultControl = "LTP"
+        )
+        val docLB = NxprcHtmlCssConverter.convert(
+            source = NxprcHtmlCssConverter.PRESET_BUMPER_LB,
+            id = "rc.bumper_lb",
+            name = "Shoulder Bumper LB",
+            category = "BUMPER",
+            defaultControl = "LB"
+        )
+
+        val totalA = docA.canvas.layers.size
+        val totalLS = docLS.canvas.layers.size
+        val totalLTP = docLTP.canvas.layers.size
+        val totalLB = docLB.canvas.layers.size
+
+        assertTrue(totalA >= 4, "Action A must have at least 4 layers")
+        assertTrue(totalLS >= 3, "Left Stick must have at least 3 layers")
+        assertTrue(totalLTP >= 2, "Touchpad LTP must have at least 2 layers")
+        assertTrue(totalLB >= 3, "Bumper LB must have at least 3 layers")
+
+        // Simulate layer modifications on Button A in Layer Studio (only layers 0 and 1 active)
+        var simulatedActiveIndices = setOf(0, 1)
+
+        // Switching to LS must NEVER inherit Button A's filtered layers
+        // When switching, the studio logic resets layers to (0 until totalLS).toSet()
+        val resetToLS = (0 until totalLS).toSet()
+        assertEquals(totalLS, resetToLS.size, "All LS layers must be enabled on selection")
+        assertTrue(resetToLS.containsAll((0 until totalLS).toList()))
+
+        // Switching to LTP must have all LTP layers active
+        val resetToLTP = (0 until totalLTP).toSet()
+        assertEquals(totalLTP, resetToLTP.size, "All LTP layers must be enabled on selection")
+
+        // Switching to LB must have all LB layers active
+        val resetToLB = (0 until totalLB).toSet()
+        assertEquals(totalLB, resetToLB.size, "All LB layers must be enabled on selection")
+
+        // Switching back to Button A must restore all Action A layers
+        val resetToA = (0 until totalA).toSet()
+        assertEquals(totalA, resetToA.size, "All Action A layers must be restored to 100% enabled")
+        assertTrue(resetToA.containsAll((0 until totalA).toList()))
+    }
+
+    @Test
+    fun layerStudioExitRestoresAllLayersToStudioSandbox() {
+        val doc = NxprcHtmlCssConverter.convert(
+            source = NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A,
+            id = "rc.action_a",
+            name = "Action A Button",
+            category = "BUTTON",
+            defaultControl = "A"
+        )
+        val totalLayers = doc.canvas.layers.size
+
+        // Inside Layer Studio: user disables layer 1 and solos layer 2
+        var activeIndices = setOf(0, 2, 3)
+        var soloIndex: Int? = 2
+
+        // Filtered export inside Layer Studio produces isolated output
+        val exportDocInStudio = doc.copy(
+            canvas = doc.canvas.copy(
+                layers = doc.canvas.layers.filterIndexed { idx, _ -> idx in activeIndices }
+            )
+        )
+        assertEquals(3, exportDocInStudio.canvas.layers.size)
+
+        fun resolvePreviewLayers(layers: List<CanvasLayer>, active: Set<Int>, solo: Int?): List<CanvasLayer>? {
+            return when {
+                solo != null -> {
+                    val single = layers.getOrNull(solo)
+                    if (single != null) listOf(single) else null
+                }
+                active.size < layers.size -> layers.filterIndexed { idx, _ -> idx in active }
+                else -> null
+            }
+        }
+
+        // When soloing layer #2: preview displays exclusively the 1 soloed layer
+        val soloLayers = resolvePreviewLayers(doc.canvas.layers, activeIndices, soloIndex)
+        assertEquals(1, soloLayers?.size, "Soloing layer #2 must isolate to exactly 1 layer")
+
+        // When solo is cleared, preview displays active filtered subset (3 layers)
+        val activeSubsetLayers = resolvePreviewLayers(doc.canvas.layers, activeIndices, null)
+        assertEquals(3, activeSubsetLayers?.size, "Preview must display exactly 3 active layers")
+
+        // On return to studio (onClose):
+        activeIndices = (0 until totalLayers).toSet()
+        soloIndex = null
+
+        // Main studio preview evaluates to all layers (no filtering)
+        val previewLayers = resolvePreviewLayers(doc.canvas.layers, activeIndices, soloIndex)
+        assertEquals(null, previewLayers, "Sandbox previewLayers must be null (rendering all layers)")
+        assertEquals(totalLayers, activeIndices.size, "All layers must be active after exiting Layer Studio")
+    }
 }

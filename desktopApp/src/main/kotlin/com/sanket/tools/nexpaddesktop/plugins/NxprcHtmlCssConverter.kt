@@ -876,21 +876,21 @@ ${genAiHeader()}
 - **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
-- **Interaction Meaning [COMPONENT-REQUIRED]**: $interactionDesc IMPORTANT: Touchpads have NO center button and NO tap-to-click mechanism. Stick click is strictly separated into standalone LSB/RSB buttons to prevent accidental sprint or melee triggers during camera panning or movement. The touchpad operates as a pure continuous speed-to-distance surface.
-- **Visual Affordance [RECOMMENDED]**: Expansive rounded-rectangular or circular touchpad surface with deep matte texture, laser-etched concentric guide rings, center tactile dimple/crosshair, and high-contrast technical typography.
-- **Optional Visual Language [OPTIONAL]**: Cardinal direction ticks, dashed guide rings, ambient edge illumination, carbon-fiber stippling.
+- **Interaction Meaning [COMPONENT-REQUIRED]**: $interactionDesc IMPORTANT: Touchpads are pure flat, stationary laptop-style trackpad surfaces. Strictly NO center button, NO center dot, NO movable ring, and NO tap-to-click mechanism. Stick click is strictly separated into standalone LSB/RSB buttons to prevent accidental sprint or melee triggers during camera panning or movement. The touchpad operates as a pure continuous speed-to-distance surface.
+- **Visual Affordance [RECOMMENDED]**: Expansive rounded-rectangular trackpad surface with deep matte texture, smooth glass touch feel, subtle peripheral bevel/frame, and high-contrast technical typography. Strictly NO center button or dot, and NO joystick-style circular ring.
+- **Optional Visual Language [OPTIONAL]**: Subtle corner alignment marks, inset glass framing, ambient edge illumination, carbon-fiber stippling.
 
 ### VISUAL TARGET — CONSOLE/STEAM DECK INDUSTRIAL REALISM:
-1. **Single-Surface Trackpad Architecture**: One expansive root `<div class="touchpad-ctl" data-control="$control" data-category="JOYSTICK" data-name="Touchpad $control">`.
+1. **Single-Surface Trackpad Architecture**: One expansive root `<div class="touchpad-ctl" data-id="touch_${control.lowercase()}" data-control="$control" data-category="TOUCHPAD" data-name="Touchpad $control">`.
 2. **Textured Recessed Dish**: Deep carbon/polycarbonate matte finish with inset drop shadow and smooth laser-etched touch feel.
-3. **Laser-Etched Guides**: Concentric dashed guide rings and center crosshair dimple.
+3. **Stationary Trackpad Surface**: Subtle inner boundary frame (`<div class="touchpad-surface"></div>`) or corner alignment marks. Completely stationary surface with NO movable ring, NO sliding thumb cap, and NO center dot.
 4. **Header and Subtext Markings**: Technical monospace typography denoting touch mode (e.g. "${if (isLeft) "Touch Move • LTP" else "Touch Look • RTP"}") and ballistics ("2.0X BALLISTICS"). Do NOT include stick click or tap click text.
 
 ### NEXPAD COMPILER ARCHITECTURE & CONTRACT:
-1. **Root Tag**: `<div class="touchpad-ctl" data-control="$control" data-category="JOYSTICK" data-name="Touchpad $control">`
+1. **Root Tag**: `<div class="touchpad-ctl" data-id="touch_${control.lowercase()}" data-control="$control" data-category="TOUCHPAD" data-name="Touchpad $control">`
    - `width: ${widthDp}px; height: ${heightDp}px; border-radius: 26px;`
-2. **Guide Rings & Center Reticle**:
-   - Centered `<div class="touchpad-ring"></div>` and `<div class="touchpad-center-dot"></div>`.
+2. **Stationary Trackpad Surface**:
+   - Optional inner `<div class="touchpad-surface"></div>` representing the smooth touch area.
 3. **Typography**:
    - `<span class="touchpad-title">${if (isLeft) "Touch Move • LTP" else "Touch Look • RTP"}</span>`
    - `<span class="touchpad-sub">2.0X BALLISTICS</span>`
@@ -900,8 +900,8 @@ ${engineBoundaries("touchpad-ctl")}
 ### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
 Before outputting, verify your component against this checklist:
 - [ ] Single Surface Contract: Exactly one root `<div class="touchpad-ctl">` element representing an expansive continuous trackpad surface.
-- [ ] NO Center Click Button: Touchpad has NO center button and NO tap-to-click mechanism. Stick click is handled exclusively by standalone LSB/RSB.
-- [ ] Laser-Etched Tactile Reticle: Concentric dashed rings and center dimple/crosshair for tactile spatial awareness.
+- [ ] Normal Stationary Trackpad: Pure flat, stationary trackpad surface. Strictly NO center button, NO center dot, and NO movable ring.
+- [ ] NO Center Click Button: Touchpad has NO center button, NO center dot, and NO tap-to-click mechanism. Stick click is handled exclusively by standalone LSB/RSB.
 - [ ] Ballistics & Mode Markings: Monospace labels denoting mode ("${if (isLeft) "Touch Move • LTP" else "Touch Look • RTP"}") and ballistics ("2.0X BALLISTICS").
 - [ ] Console Realism: Matte polycarbonate / dark carbon textures with subtle edge highlights rather than noisy neon clutter.
 - [ ] Compiler Safety: Exactly one root `<div class="touchpad-ctl">` element; all px dimensions explicit.

@@ -159,6 +159,9 @@ fun NxprcCanvasPreview(
             document.manifest.defaultControl.equals(com.sanket.tools.nexpad.category.ControlKey.RTP.key, ignoreCase = true) ||
             document.manifest.defaultControl.equals(com.sanket.tools.nexpad.category.ControlKey.LTP.key, ignoreCase = true) ||
             document.manifest.defaultControl.equals(com.sanket.tools.nexpad.category.ControlKey.RS.key, ignoreCase = true)
+    val isTouchpad = document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
+            document.manifest.defaultControl.equals(com.sanket.tools.nexpad.category.ControlKey.LTP.key, ignoreCase = true) ||
+            document.manifest.defaultControl.equals(com.sanket.tools.nexpad.category.ControlKey.RTP.key, ignoreCase = true)
 
     val thumbOffsetX = remember { Animatable(0f) }
     val thumbOffsetY = remember { Animatable(0f) }
@@ -451,8 +454,8 @@ fun NxprcCanvasPreview(
         }
     }
 
-    val isTwoStageStick = isStick && document.canvas.capLayerIndices.isNotEmpty()
-    val capIndicesSet = remember(document) { document.canvas.capLayerIndices.toSet() }
+    val isTwoStageStick = isStick && !isTouchpad && document.canvas.capLayerIndices.isNotEmpty()
+    val capIndicesSet = remember(document) { if (isTouchpad) emptySet() else document.canvas.capLayerIndices.toSet() }
 
     Box(
         modifier = modifier
@@ -469,8 +472,8 @@ fun NxprcCanvasPreview(
                     scaleY = if (isTwoStageStick) 1f else finalScale
                     rotationZ = if (hasDynamicTracks) trackRotation else 0f
                     alpha = if (hasDynamicTracks) trackOpacity.coerceIn(0f, 1f) else 1f
-                    translationX = (if (isStick && !isTwoStageStick) thumbOffsetX.value else 0f) + (trackTranslateX * density)
-                    translationY = (if (isStick && !isTwoStageStick) thumbOffsetY.value else 0f) + (pressOffsetYAnim + trackTranslateY) * density
+                    translationX = (if (isStick && !isTwoStageStick && !isTouchpad) thumbOffsetX.value else 0f) + (trackTranslateX * density)
+                    translationY = (if (isStick && !isTwoStageStick && !isTouchpad) thumbOffsetY.value else 0f) + (pressOffsetYAnim + trackTranslateY) * density
                     if (rgbFilter != null) {
                         colorFilter = rgbFilter
                     }
