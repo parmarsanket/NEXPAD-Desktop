@@ -723,6 +723,67 @@ class NxprcPromptTest {
             )
         }
     }
+
+    @Test
+    fun stickButtonPromptInformsTactileClickAndSingleButtonContract() {
+        val lsbPrompt = NxprcHtmlCssConverter.generateAiPrompt("LSB", "STICKS", 80, 80)
+        val rsbPrompt = NxprcHtmlCssConverter.generateAiPrompt("RSB", "STICKS", 80, 80)
+
+        listOf(lsbPrompt to "LSB", rsbPrompt to "RSB").forEach { (prompt, key) ->
+            assertTrue(prompt.contains("Stick Click Button Component"), "Missing stick click button header")
+            assertTrue(prompt.contains("Single-Button Tactile Architecture"), "Missing single-button architecture section")
+            assertTrue(prompt.contains("Textured Thumbstick Cap Dish"), "Missing textured thumbstick cap dish section")
+            assertTrue(prompt.contains("data-category=\"BUTTON\""), "Missing BUTTON category attribute in prompt")
+            assertTrue(prompt.contains("<button class=\"stick-btn-ctl\""), "Missing stick-btn-ctl class in prompt")
+            assertTrue(prompt.contains("--spring-damping"), "Missing spring damping")
+            assertTrue(prompt.contains("--spring-stiffness"), "Missing spring stiffness")
+            assertTrue(prompt.contains("No Two-Zone Analog Split"), "Missing no two-zone split rule in QA checklist")
+        }
+
+        // Also test template resolution for LSB and RSB
+        val lsbTmpl = NxprcHtmlCssConverter.getReferenceTemplate("LSB")
+        assertTrue(lsbTmpl.contains("data-control=\"LSB\""))
+        assertTrue(lsbTmpl.contains("data-category=\"BUTTON\""))
+
+        val rsbTmpl = NxprcHtmlCssConverter.getReferenceTemplate("RSB")
+        assertTrue(rsbTmpl.contains("data-control=\"RSB\""))
+        assertTrue(rsbTmpl.contains("data-category=\"BUTTON\""))
+
+        // Test syntax skeleton for LSB
+        val skeleton = NxprcHtmlCssConverter.getSyntaxSkeleton("LSB", "STICKS", 80, 80)
+        assertTrue(skeleton.contains("class=\"stick-btn-ctl\""))
+        assertTrue(skeleton.contains("data-control=\"LSB\""))
+    }
+
+    @Test
+    fun touchpadPromptInformsTrackpadAndDynamicCenterContract() {
+        val ltpPrompt = NxprcHtmlCssConverter.generateAiPrompt("LTP", "STICKS", 180, 180)
+        val rtpPrompt = NxprcHtmlCssConverter.generateAiPrompt("RTP", "STICKS", 180, 180)
+
+        assertTrue(ltpPrompt.contains("Left Touch Movement Pad"), "Missing Left Touch Movement Pad in LTP prompt")
+        assertTrue(ltpPrompt.contains("data-category=\"JOYSTICK\""), "Missing JOYSTICK category attribute in LTP prompt")
+        assertTrue(ltpPrompt.contains("<div class=\"touchpad-ctl\""), "Missing touchpad-ctl class in LTP prompt")
+
+        assertTrue(rtpPrompt.contains("Right Touch Camera Look Pad"), "Missing Right Touch Camera Look Pad in RTP prompt")
+        assertTrue(rtpPrompt.contains("Free-look camera panning"), "Missing Free-look camera panning description in RTP prompt")
+
+        // Test template resolution for LTP and RTP
+        val ltpTmpl = NxprcHtmlCssConverter.getReferenceTemplate("LTP")
+        assertTrue(ltpTmpl.contains("data-control=\"LTP\""))
+        assertTrue(ltpTmpl.contains("data-category=\"JOYSTICK\""))
+        assertTrue(ltpTmpl.contains("Touch Move • LTP"))
+
+        val rtpTmpl = NxprcHtmlCssConverter.getReferenceTemplate("RTP")
+        assertTrue(rtpTmpl.contains("data-control=\"RTP\""))
+        assertTrue(rtpTmpl.contains("data-category=\"JOYSTICK\""))
+        assertTrue(rtpTmpl.contains("Touch Look • RTP"))
+
+        // Test syntax skeleton for LTP and RTP
+        val skeleton = NxprcHtmlCssConverter.getSyntaxSkeleton("LTP", "STICKS", 180, 180)
+        assertTrue(skeleton.contains("class=\"touchpad-ctl\""))
+        assertTrue(skeleton.contains("data-control=\"LTP\""))
+    }
 }
+
 
 

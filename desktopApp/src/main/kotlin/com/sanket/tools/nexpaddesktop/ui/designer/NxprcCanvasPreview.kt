@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
+import kotlin.math.pow
 import kotlin.math.sin
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -34,6 +35,29 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.nxprc.*
+
+/**
+ * Professional 3-zone gaming speed-to-distance transfer function.
+ * Calibrated Sweet Spots:
+ * - Noise Gate: < 8 dp/s -> 0.0 (anti-jitter)
+ * - Precision Zone: 8..120 dp/s -> 0.16..0.25 (anti-deadzone floor)
+ * - Linear Tracking Zone: 120..400 dp/s -> 0.25..0.50 (GOLDEN SWEET SPOT: 400 dp/s = 0.50 half deflection)
+ * - Exponential Acceleration Zone: 400..1200 dp/s -> 0.50..1.00 (Smooth flick curve to full 1.00 deflection)
+ * - Saturation Zone: > 1200 dp/s -> 1.00 (clamped maximum)
+ */
+internal fun calculateGamingStickMagnitude(speedDpPerSec: Float, sensitivity: Float = 1.0f): Float {
+    val effSpeed = speedDpPerSec * sensitivity.coerceAtLeast(0.1f)
+    return when {
+        effSpeed < 8f -> 0f
+        effSpeed <= 120f -> 0.16f + 0.09f * ((effSpeed - 8f) / 112f)
+        effSpeed <= 400f -> 0.25f + 0.25f * ((effSpeed - 120f) / 280f)
+        effSpeed <= 1200f -> {
+            val norm = (effSpeed - 400f) / 800f
+            0.50f + 0.50f * norm.toDouble().pow(1.35).toFloat()
+        }
+        else -> 1.0f
+    }
+}
 
 private fun createNxprcColorFilter(filter: FilterDef): ColorFilter? {
     val brightness = filter.brightness.coerceAtLeast(0f)
@@ -124,10 +148,17 @@ fun NxprcCanvasPreview(
     val coroutineScope = rememberCoroutineScope()
 
     val isStick = document.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
+            document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
             document.manifest.defaultControl.uppercase() in listOf(
                 com.sanket.tools.nexpad.category.ControlKey.LS.key,
-                com.sanket.tools.nexpad.category.ControlKey.RS.key
+                com.sanket.tools.nexpad.category.ControlKey.RS.key,
+                com.sanket.tools.nexpad.category.ControlKey.LTP.key,
+                com.sanket.tools.nexpad.category.ControlKey.RTP.key
             )
+    val isCameraMode = document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
+            document.manifest.defaultControl.equals(com.sanket.tools.nexpad.category.ControlKey.RTP.key, ignoreCase = true) ||
+            document.manifest.defaultControl.equals(com.sanket.tools.nexpad.category.ControlKey.LTP.key, ignoreCase = true) ||
+            document.manifest.defaultControl.equals(com.sanket.tools.nexpad.category.ControlKey.RS.key, ignoreCase = true)
 
     val thumbOffsetX = remember { Animatable(0f) }
     val thumbOffsetY = remember { Animatable(0f) }
@@ -246,7 +277,7 @@ fun NxprcCanvasPreview(
     } else null
 
     val gestureModifier = if (isStick) {
-        Modifier.pointerInput(document.manifest.id) {
+        Modifier.pointerInput(document.manifest.id, isCameraMode, density) {
             awaitEachGesture {
                 val down = awaitFirstDown(requireUnconsumed = false)
                 isPressed = true
@@ -254,42 +285,158 @@ fun NxprcCanvasPreview(
                 val deadzoneRadius = 4f * density
                 val centerX = size.width / 2f
                 val centerY = size.height / 2f
+                val startTime = System.currentTimeMillis()
+                var previousTouchX = down.position.x
+                var previousTouchY = down.position.y
+                var previousTimeMs = startTime
+                var currentStickX = 0f
+                var currentStickY = 0f
+                var lastSpeed = 0f
+                var decayJob: kotlinx.coroutines.Job? = null
 
-                fun updateDeflection(pos: Offset) {
-                    val vecX = pos.x - centerX
-                    val vecY = pos.y - centerY
-                    val dist = hypot(vecX, vecY)
-                    val (clampedX, clampedY) = if (dist > maxRadius) {
-                        val angle = atan2(vecY, vecX)
-                        Pair(cos(angle) * maxRadius, sin(angle) * maxRadius)
-                    } else {
-                        Pair(vecX, vecY)
+                if (isCameraMode) {
+                    onStickDeflection?.invoke(0f, 0f)
+                } else {
+                    fun updateDeflection(pos: Offset) {
+                        val vecX = pos.x - centerX
+                        val vecY = pos.y - centerY
+                        val dist = hypot(vecX, vecY)
+                        val (clampedX, clampedY) = if (dist > maxRadius) {
+                            val angle = atan2(vecY, vecX)
+                            Pair(cos(angle) * maxRadius, sin(angle) * maxRadius)
+                        } else {
+                            Pair(vecX, vecY)
+                        }
+                        coroutineScope.launch {
+                            thumbOffsetX.snapTo(clampedX)
+                            thumbOffsetY.snapTo(clampedY)
+                        }
+                        val normX = if (dist < deadzoneRadius) 0f else (clampedX / maxRadius).coerceIn(-1f, 1f)
+                        val normY = if (dist < deadzoneRadius) 0f else (-clampedY / maxRadius).coerceIn(-1f, 1f)
+                        onStickDeflection?.invoke(normX, normY)
                     }
-                    coroutineScope.launch {
-                        thumbOffsetX.snapTo(clampedX)
-                        thumbOffsetY.snapTo(clampedY)
-                    }
-                    val normX = if (dist < deadzoneRadius) 0f else (clampedX / maxRadius).coerceIn(-1f, 1f)
-                    val normY = if (dist < deadzoneRadius) 0f else (-clampedY / maxRadius).coerceIn(-1f, 1f)
-                    onStickDeflection?.invoke(normX, normY)
+                    updateDeflection(down.position)
                 }
-
-                // Initial touch/click down deflection
-                updateDeflection(down.position)
 
                 while (true) {
                     val event = awaitPointerEvent()
                     val change = event.changes.firstOrNull { it.id == down.id }
                     if (change == null || !change.pressed) break
                     change.consume()
-                    updateDeflection(change.position)
+
+                    val currentTouchX = change.position.x
+                    val currentTouchY = change.position.y
+                    val deltaX = currentTouchX - previousTouchX
+                    val deltaY = currentTouchY - previousTouchY
+                    previousTouchX = currentTouchX
+                    previousTouchY = currentTouchY
+
+                    if (isCameraMode) {
+                        var finalDeltaX = deltaX
+                        var finalDeltaY = deltaY
+                        val absX = kotlin.math.abs(deltaX)
+                        val absY = kotlin.math.abs(deltaY)
+                        if (absX > 3.0f * absY) {
+                            finalDeltaY *= 0.5f // Suppress vertical wobble during horizontal turns
+                        } else if (absY > 3.0f * absX) {
+                            finalDeltaX *= 0.5f // Suppress horizontal wobble during vertical looks
+                        }
+
+                        val distPx = hypot(finalDeltaX, finalDeltaY)
+                        val distDp = distPx / density
+
+                        if (distDp > 0.15f) {
+                            val currentTimeMs = System.currentTimeMillis()
+                            val dtSec = ((currentTimeMs - previousTimeMs).coerceAtLeast(1L)) / 1000f
+                            previousTimeMs = currentTimeMs
+                            val speedDpPerSec = distDp / dtSec
+                            lastSpeed = speedDpPerSec
+
+                            val stickMagnitude = calculateGamingStickMagnitude(speedDpPerSec, 1.0f)
+
+                            if (stickMagnitude > 0f) {
+                                val dirX = finalDeltaX / distPx
+                                val dirY = finalDeltaY / distPx
+
+                                val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
+                                val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f)
+
+                                currentStickX = 0.70f * targetStickX + 0.30f * currentStickX
+                                currentStickY = 0.70f * targetStickY + 0.30f * currentStickY
+
+                                onStickDeflection?.invoke(currentStickX, currentStickY)
+
+                                // Visual knob deflection actively moves down when dragging down
+                                val clampedX = (currentStickX * maxRadius).coerceIn(-maxRadius, maxRadius)
+                                val clampedY = (-currentStickY * maxRadius).coerceIn(-maxRadius, maxRadius)
+                                coroutineScope.launch {
+                                    thumbOffsetX.snapTo(clampedX)
+                                    thumbOffsetY.snapTo(clampedY)
+                                }
+
+                                decayJob?.cancel()
+                                decayJob = coroutineScope.launch {
+                                    kotlinx.coroutines.delay(40)
+                                    currentStickX *= 0.3f
+                                    currentStickY *= 0.3f
+                                    onStickDeflection?.invoke(currentStickX, currentStickY)
+                                    launch { thumbOffsetX.snapTo(currentStickX * maxRadius) }
+                                    launch { thumbOffsetY.snapTo(-currentStickY * maxRadius) }
+                                    kotlinx.coroutines.delay(30)
+                                    currentStickX = 0f
+                                    currentStickY = 0f
+                                    onStickDeflection?.invoke(0f, 0f)
+                                    launch { thumbOffsetX.animateTo(0f, spring(stiffness = 1000f, dampingRatio = 0.65f)) }
+                                    launch { thumbOffsetY.animateTo(0f, spring(stiffness = 1000f, dampingRatio = 0.65f)) }
+                                    lastSpeed = 0f
+                                }
+                            }
+                        }
+                    } else {
+                        val vecX = change.position.x - centerX
+                        val vecY = change.position.y - centerY
+                        val dist = hypot(vecX, vecY)
+                        val (clampedX, clampedY) = if (dist > maxRadius) {
+                            val angle = atan2(vecY, vecX)
+                            Pair(cos(angle) * maxRadius, sin(angle) * maxRadius)
+                        } else {
+                            Pair(vecX, vecY)
+                        }
+                        coroutineScope.launch {
+                            thumbOffsetX.snapTo(clampedX)
+                            thumbOffsetY.snapTo(clampedY)
+                        }
+                        val normX = if (dist < deadzoneRadius) 0f else (clampedX / maxRadius).coerceIn(-1f, 1f)
+                        val normY = if (dist < deadzoneRadius) 0f else (-clampedY / maxRadius).coerceIn(-1f, 1f)
+                        onStickDeflection?.invoke(normX, normY)
+                    }
                 }
                 isPressed = false
-                coroutineScope.launch {
-                    launch { thumbOffsetX.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
-                    launch { thumbOffsetY.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
+                decayJob?.cancel()
+                if (isCameraMode && lastSpeed > 400f) {
+                    val coastSteps = ((lastSpeed / 200f).toInt()).coerceIn(3, 7)
+                    coroutineScope.launch {
+                        var coastX = currentStickX
+                        var coastY = currentStickY
+                        repeat(coastSteps) {
+                            coastX *= 0.68f
+                            coastY *= 0.68f
+                            onStickDeflection?.invoke(coastX, coastY)
+                            launch { thumbOffsetX.snapTo(coastX * maxRadius) }
+                            launch { thumbOffsetY.snapTo(-coastY * maxRadius) }
+                            kotlinx.coroutines.delay(16)
+                        }
+                        launch { thumbOffsetX.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
+                        launch { thumbOffsetY.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
+                        onStickDeflection?.invoke(0f, 0f)
+                    }
+                } else {
+                    coroutineScope.launch {
+                        launch { thumbOffsetX.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
+                        launch { thumbOffsetY.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
+                    }
+                    onStickDeflection?.invoke(0f, 0f)
                 }
-                onStickDeflection?.invoke(0f, 0f)
             }
         }
     } else {

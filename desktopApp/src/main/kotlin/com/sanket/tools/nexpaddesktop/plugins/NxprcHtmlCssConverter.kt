@@ -2,6 +2,8 @@ package com.sanket.tools.nexpaddesktop.plugins
 
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.CategoryType
+import com.sanket.tools.nexpad.category.ComponentType
+import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpad.nxprc.CompileResult
 import com.sanket.tools.nexpad.nxprc.NxprcCategory
@@ -76,6 +78,10 @@ object NxprcHtmlCssConverter {
     val PRESET_SYSTEM_MENU get() = NxprcPresets.PRESET_SYSTEM_MENU
     val PRESET_SYSTEM_VIEW get() = NxprcPresets.PRESET_SYSTEM_VIEW
     val PRESET_SYSTEM_HOME get() = NxprcPresets.PRESET_SYSTEM_HOME
+    val PRESET_STICK_BUTTON_LSB get() = NxprcPresets.PRESET_STICK_BUTTON_LSB
+    val PRESET_STICK_BUTTON_RSB get() = NxprcPresets.PRESET_STICK_BUTTON_RSB
+    val PRESET_TOUCHPAD_LTP get() = NxprcPresets.PRESET_TOUCHPAD_LTP
+    val PRESET_TOUCHPAD_RTP get() = NxprcPresets.PRESET_TOUCHPAD_RTP
 
     /** Reference templates (structure guide only) delegated to [NxprcPresets]. */
     fun getReferenceTemplate(control: String): String = NxprcPresets.getReferenceTemplate(control)
@@ -87,7 +93,7 @@ object NxprcHtmlCssConverter {
 
     /**
      * Generates an in-depth, specialized AI Prompt tailored specifically to the target button type.
-     * Delegates to dedicated generators for ABXY, D-PAD, TRIGGERS, BUMPERS, JOYSTICKS, and SYSTEM buttons.
+     * Delegates to dedicated generators for ABXY, D-PAD, TRIGGERS, BUMPERS, JOYSTICKS, STICK BUTTONS, TOUCHPADS, and SYSTEM buttons.
      */
     fun generateAiPrompt(
         control: String,
@@ -95,6 +101,17 @@ object NxprcHtmlCssConverter {
         widthDp: Int,
         heightDp: Int
     ): String {
+        val ctrl = ControlKey.fromIdentifier(control)
+        if (ctrl == ControlKey.LTP || ctrl == ControlKey.RTP ||
+            (ctrl?.componentType == ComponentType.TOUCHPAD && ctrl.categoryType == CategoryType.STICKS)) {
+            return generateTouchpadPrompt(control, widthDp, heightDp)
+        }
+
+        if (ctrl == ControlKey.LSB || ctrl == ControlKey.RSB ||
+            (ctrl?.componentType == ComponentType.BUTTON && ctrl.categoryType == CategoryType.STICKS)) {
+            return generateStickButtonPrompt(control, widthDp, heightDp)
+        }
+
         val catType = CategoryType.fromIdentifier(category)
             ?: CategoryManager.findCategoryForControl(control)?.type
         return when (catType) {
@@ -776,6 +793,120 @@ ${getSyntaxSkeleton(control, "SYSTEM", widthDp, heightDp)}
 ### OUTPUT FORMAT CONTRACT:
 Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
 """.trimIndent()
+
+    private fun generateStickButtonPrompt(control: String, widthDp: Int, heightDp: Int): String {
+        val clickLabel = if (control.uppercase() == NexpadKeys.RSB || control.uppercase() == "R3") "R3 (Melee/Crouch)" else "L3 (Sprint)"
+
+        return """
+${genAiHeader()}
+
+You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Stick Click Button Component for NEXPAD.
+
+### TARGET COMPONENT IDENTITY:
+- **Button Key [COMPONENT-REQUIRED]**: $control ($clickLabel)
+- **Category [GLOBAL-REQUIRED]**: BUTTON (Specialized Thumbstick Click Button under Sticks category)
+- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
+
+### CATEGORY SEMANTICS & INTERACTION MEANING:
+- **Interaction Meaning [COMPONENT-REQUIRED]**: Instant tactile thumbstick cap depression / axial click ($clickLabel action). Unlike continuous 360° analog sticks, this is a dedicated digital button for reliable, rapid stick clicks during high-intensity gameplay.
+- **Visual Affordance [RECOMMENDED]**: Circular thumbstick cap profile with knurled perimeter grip ring, concave thumb dish, radial lighting, and tactile spring micro-physics.
+- **Optional Visual Language [OPTIONAL]**: Dashed traction ring, radial tick notches, rubberized stippling, edge illumination.
+- **Geometry [USER-OVERRIDE]**: Circular geometry authentic to console thumbsticks is recommended, but user's requested style or custom contour always takes precedence.
+
+### VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
+Create an authentic console-grade hardware aesthetic with physical industrial realism:
+1. **Single-Button Tactile Architecture**: Unlike analog joysticks which require a stationary base + moving cap two-zone split, this dedicated stick button is a single unified button (`<button class="stick-btn-ctl">`). The entire cap depresses with spring return physics.
+2. **Textured Thumbstick Cap Dish**: A recessed center dish with knurled perimeter rim communicating molded rubber/elastomer thumb grip.
+3. **Restrained Detailing & Tactile Lighting**: Clean dark polycarbonate tones (`#333333` to `#141414`) with subtle accent glow and crisp high-contrast label.
+4. **Tactile Spring Micro-Physics**: Configure in `:root`:
+   `--spring-damping: 0.72; --spring-stiffness: 480; --press-scale: 0.90;`
+
+### NEXPAD COMPILER ARCHITECTURE & CONTRACT:
+1. **Root Button Tag (`<button class="stick-btn-ctl" data-control="$control" data-category="BUTTON" data-name="Stick Button $control">`)**:
+   - `width: ${widthDp}px; height: ${heightDp}px; border-radius: 50%;`
+2. **Outer Knurled Rim & 3D Bevel**:
+   - Knurled grip ring via `::before` or child element (`border: 2px dashed ...`).
+3. **Concave Dish & Typography**:
+   - Centered `<div class="stick-btn-dish">` with bold `<span class="stick-btn-label">$control</span>`.
+4. **Tactile Active Press Physics**:
+   - `.stick-btn-ctl:active { transform: scale(0.90) translateY(2px); }`
+
+${engineBoundaries("stick-btn-ctl")}
+
+### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
+Before outputting, verify your component against this checklist:
+- [ ] Single Button Contract: Exactly one root `<button class="stick-btn-ctl">` element with `data-category="BUTTON"`.
+- [ ] Thumbstick Aesthetics: Knurled perimeter rim, concave thumb dish, and bold "$control" glyph.
+- [ ] Tactile Click Feedback: Active press depression (`scale(0.90) translateY(2px)`).
+- [ ] No Two-Zone Analog Split: This is a direct digital click button, not a 360° movable joystick cap.
+- [ ] Complex Graphics Architecture: If custom emblems or graphics are requested, uses an embedded `<svg>` vector element rather than brittle CSS `<div>` hacks.
+
+### USER CUSTOMIZATION SCHEMA:
+- **STYLE**: [e.g. Tactical Thumbstick / Xbox Elite Swappable Cap / Cyberpunk Neon / Stealth Carbon]
+- **COLOR / ACCENT**: [e.g. Cyan / Magenta / Emerald / Amber / Custom palette]
+- **TRACTION GRIP**: [e.g. Dashed knurled ring / Radial ticks / Stippled texture]
+- **LABELS**: [e.g. "$control" / Custom glyph (Default: "$control")]
+- **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
+
+### OPTIONAL STARTER TEMPLATE — SYNTAX SKELETON [NON-BINDING SYNTAX REFERENCE ONLY]:
+```html
+${getSyntaxSkeleton(control, "BUTTON", widthDp, heightDp)}
+```
+
+### OUTPUT FORMAT CONTRACT:
+Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
+""".trimIndent()
+    }
+
+    private fun generateTouchpadPrompt(control: String, widthDp: Int, heightDp: Int): String {
+        val isLeft = control.equals("LTP", ignoreCase = true) || control.contains("L", ignoreCase = true)
+        val padRole = if (isLeft) "Left Touch Movement Pad (Floating Dynamic-Center Stick)" else "Right Touch Camera Look Pad (Free-Look Swipe Trackpad)"
+        val interactionDesc = if (isLeft) {
+            "Continuous 360° character locomotion via touch drag. Touching anywhere establishes a dynamic anchor pivot; dragging directs walking/sprinting."
+        } else {
+            "Free-look camera panning via touch swipe deltas. Dragging converts instantaneous finger velocity into right-stick camera deflection with immediate stop when stationary."
+        }
+
+        return """
+${genAiHeader()}
+
+### TARGET COMPONENT IDENTITY:
+- **Canonical Control Key [GLOBAL-REQUIRED]**: $control
+- **Component Role**: $padRole
+- **Category [GLOBAL-REQUIRED]**: JOYSTICK (Touchpad Surface under Sticks category)
+- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
+
+### CATEGORY SEMANTICS & INTERACTION MEANING:
+- **Interaction Meaning [COMPONENT-REQUIRED]**: $interactionDesc Single/double taps actuate axial stick click (${if (isLeft) "L3/LSB" else "R3/RSB"}).
+- **Visual Affordance [RECOMMENDED]**: Expansive rounded-rectangular or circular touchpad surface with deep matte texture, laser-etched concentric guide rings, center tactile dimple/crosshair, and high-contrast technical typography.
+- **Optional Visual Language [OPTIONAL]**: Cardinal direction ticks, dashed guide rings, ambient edge illumination, carbon-fiber stippling.
+
+### VISUAL TARGET — CONSOLE/STEAM DECK INDUSTRIAL REALISM:
+1. **Single-Surface Trackpad Architecture**: One expansive root `<div class="touchpad-ctl" data-control="$control" data-category="JOYSTICK" data-name="Touchpad $control">`.
+2. **Textured Recessed Dish**: Deep carbon/polycarbonate matte finish with inset drop shadow.
+3. **Laser-Etched Guides**: Concentric dashed guide rings and center crosshair dimple.
+4. **Header and Subtext Markings**: Technical monospace typography denoting touch mode and tap shortcut.
+
+### NEXPAD COMPILER ARCHITECTURE & CONTRACT:
+1. **Root Tag**: `<div class="touchpad-ctl" data-control="$control" data-category="JOYSTICK" data-name="Touchpad $control">`
+   - `width: ${widthDp}px; height: ${heightDp}px; border-radius: 26px;`
+2. **Guide Rings & Center Reticle**:
+   - Centered `<div class="touchpad-ring"></div>` and `<div class="touchpad-center-dot"></div>`.
+3. **Typography**:
+   - `<span class="touchpad-title">${if (isLeft) "Touch Move • LTP" else "Touch Look • RTP"}</span>`
+   - `<span class="touchpad-sub">${if (isLeft) "TAP: L3" else "TAP: R3"}</span>`
+
+${engineBoundaries("touchpad-ctl")}
+
+### OPTIONAL STARTER TEMPLATE — SYNTAX SKELETON [NON-BINDING SYNTAX REFERENCE ONLY]:
+```html
+${getSyntaxSkeleton(control, "JOYSTICK", widthDp, heightDp)}
+```
+
+### OUTPUT FORMAT CONTRACT:
+Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
+""".trimIndent()
+    }
 
     private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 }

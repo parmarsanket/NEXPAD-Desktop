@@ -2,6 +2,7 @@ package com.sanket.tools.nexpaddesktop.plugins
 
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.CategoryType
+import com.sanket.tools.nexpad.category.ComponentType
 import com.sanket.tools.nexpad.category.ControlKey
 
 private fun dpadGlyph(control: String): String = when (control.uppercase()) {
@@ -919,6 +920,294 @@ object NxprcPresets {
 </html>
 """.trimIndent()
 
+    val PRESET_STICK_BUTTON_LSB = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --btn-size: 70px;
+    --accent: #00E5FF;
+    --accent-glow: rgba(0, 229, 255, 0.4);
+    --spring-damping: 0.72;
+    --spring-stiffness: 480;
+    --press-scale: 0.90;
+  }
+  .stick-btn-ctl {
+    width: var(--btn-size);
+    height: var(--btn-size);
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #333333 0%, #141414 100%);
+    border: 2px solid #3d4657;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.65), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -6px 12px rgba(0, 0, 0, 0.8), 0 0 16px var(--accent-glow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-sizing: border-box;
+  }
+  .stick-btn-ctl::before {
+    content: "";
+    position: absolute;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    border: 2px dashed rgba(0, 229, 255, 0.5);
+    box-sizing: border-box;
+  }
+  .stick-btn-dish {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, #252525 0%, #121212 100%);
+    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+  .stick-btn-label {
+    font-size: 14px;
+    font-weight: 900;
+    color: var(--accent);
+    text-shadow: 0 0 8px var(--accent);
+    letter-spacing: 0.5px;
+  }
+  .stick-btn-ctl:active {
+    transform: scale(0.90) translateY(2px);
+  }
+</style>
+</head>
+<body>
+  <button class="stick-btn-ctl" data-control="LSB" data-category="BUTTON" data-name="Stick Button LSB">
+    <div class="stick-btn-dish">
+      <span class="stick-btn-label">LSB</span>
+    </div>
+  </button>
+</body>
+</html>
+""".trimIndent()
+
+    val PRESET_STICK_BUTTON_RSB = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --btn-size: 70px;
+    --accent: #FF007F;
+    --accent-glow: rgba(255, 0, 127, 0.4);
+    --spring-damping: 0.72;
+    --spring-stiffness: 480;
+    --press-scale: 0.90;
+  }
+  .stick-btn-ctl {
+    width: var(--btn-size);
+    height: var(--btn-size);
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #333333 0%, #141414 100%);
+    border: 2px solid #3d4657;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.65), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -6px 12px rgba(0, 0, 0, 0.8), 0 0 16px var(--accent-glow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-sizing: border-box;
+  }
+  .stick-btn-ctl::before {
+    content: "";
+    position: absolute;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    border: 2px dashed rgba(255, 0, 127, 0.5);
+    box-sizing: border-box;
+  }
+  .stick-btn-dish {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, #252525 0%, #121212 100%);
+    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+  .stick-btn-label {
+    font-size: 14px;
+    font-weight: 900;
+    color: var(--accent);
+    text-shadow: 0 0 8px var(--accent);
+    letter-spacing: 0.5px;
+  }
+  .stick-btn-ctl:active {
+    transform: scale(0.90) translateY(2px);
+  }
+</style>
+</head>
+<body>
+  <button class="stick-btn-ctl" data-control="RSB" data-category="BUTTON" data-name="Stick Button RSB">
+    <div class="stick-btn-dish">
+      <span class="stick-btn-label">RSB</span>
+    </div>
+  </button>
+</body>
+</html>
+""".trimIndent()
+
+    val PRESET_TOUCHPAD_LTP = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --pad-size: 180px;
+    --accent: #00E5FF;
+    --accent-glow: rgba(0, 229, 255, 0.35);
+  }
+  .touchpad-ctl {
+    width: var(--pad-size);
+    height: var(--pad-size);
+    border-radius: 26px;
+    background: radial-gradient(circle at 40% 40%, #23252B 0%, #131418 60%, #0B0C0E 100%);
+    border: 2px solid #353C4A;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.7), inset 0 2px 4px rgba(255, 255, 255, 0.15), inset 0 -6px 12px rgba(0, 0, 0, 0.8), 0 0 16px var(--accent-glow);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    position: relative;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  .touchpad-ring {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 1.5px dashed rgba(0, 229, 255, 0.25);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .touchpad-center-dot {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .touchpad-title {
+    font-size: 10px;
+    font-weight: 900;
+    color: var(--accent);
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+  }
+  .touchpad-sub {
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.4);
+    letter-spacing: 0.8px;
+  }
+</style>
+</head>
+<body>
+  <div class="touchpad-ctl" data-control="LTP" data-category="JOYSTICK" data-name="Touchpad LTP">
+    <span class="touchpad-title">Touch Move • LTP</span>
+    <div class="touchpad-ring"></div>
+    <div class="touchpad-center-dot"></div>
+    <span class="touchpad-sub">TAP: L3</span>
+  </div>
+</body>
+</html>
+""".trimIndent()
+
+    val PRESET_TOUCHPAD_RTP = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --pad-size: 180px;
+    --accent: #FF007F;
+    --accent-glow: rgba(255, 0, 127, 0.35);
+  }
+  .touchpad-ctl {
+    width: var(--pad-size);
+    height: var(--pad-size);
+    border-radius: 26px;
+    background: radial-gradient(circle at 40% 40%, #23252B 0%, #131418 60%, #0B0C0E 100%);
+    border: 2px solid #353C4A;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.7), inset 0 2px 4px rgba(255, 255, 255, 0.15), inset 0 -6px 12px rgba(0, 0, 0, 0.8), 0 0 16px var(--accent-glow);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    position: relative;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  .touchpad-ring {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 1.5px dashed rgba(255, 0, 127, 0.25);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .touchpad-center-dot {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .touchpad-title {
+    font-size: 10px;
+    font-weight: 900;
+    color: var(--accent);
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+  }
+  .touchpad-sub {
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.4);
+    letter-spacing: 0.8px;
+  }
+</style>
+</head>
+<body>
+  <div class="touchpad-ctl" data-control="RTP" data-category="JOYSTICK" data-name="Touchpad RTP">
+    <span class="touchpad-title">Touch Look • RTP</span>
+    <div class="touchpad-ring"></div>
+    <div class="touchpad-center-dot"></div>
+    <span class="touchpad-sub">TAP: R3</span>
+  </div>
+</body>
+</html>
+""".trimIndent()
+
     val PRESET_SYSTEM_MENU = """
 <!DOCTYPE html>
 <html lang="en">
@@ -1479,7 +1768,14 @@ object NxprcPresets {
                 }
                 CategoryType.TRIGGERS -> if (ctrl == ControlKey.LT) PRESET_TRIGGER_LT else PRESET_TRIGGER_RT
                 CategoryType.BUMPERS -> if (ctrl == ControlKey.LB) PRESET_BUMPER_LB else PRESET_BUMPER_RB
-                CategoryType.STICKS -> if (ctrl == ControlKey.RS) PRESET_THUMBSTICK_RS else PRESET_THUMBSTICK_LS
+                CategoryType.STICKS -> when (ctrl) {
+                    ControlKey.RS -> PRESET_THUMBSTICK_RS
+                    ControlKey.LSB -> PRESET_STICK_BUTTON_LSB
+                    ControlKey.RSB -> PRESET_STICK_BUTTON_RSB
+                    ControlKey.LTP -> PRESET_TOUCHPAD_LTP
+                    ControlKey.RTP -> PRESET_TOUCHPAD_RTP
+                    else -> PRESET_THUMBSTICK_LS
+                }
                 CategoryType.SYSTEM, CategoryType.MACROS -> when (ctrl) {
                     ControlKey.BACK -> PRESET_SYSTEM_VIEW
                     ControlKey.GUIDE -> PRESET_SYSTEM_HOME
@@ -1505,6 +1801,10 @@ object NxprcPresets {
             ControlKey.RB -> PRESET_BUMPER_RB
             ControlKey.LS -> PRESET_THUMBSTICK_LS
             ControlKey.RS -> PRESET_THUMBSTICK_RS
+            ControlKey.LSB -> PRESET_STICK_BUTTON_LSB
+            ControlKey.RSB -> PRESET_STICK_BUTTON_RSB
+            ControlKey.LTP -> PRESET_TOUCHPAD_LTP
+            ControlKey.RTP -> PRESET_TOUCHPAD_RTP
             ControlKey.START -> PRESET_SYSTEM_MENU
             ControlKey.BACK -> PRESET_SYSTEM_VIEW
             ControlKey.GUIDE -> PRESET_SYSTEM_HOME
@@ -1518,6 +1818,68 @@ object NxprcPresets {
      * to eliminate visual imitation bias in generative AI models.
      */
     fun getSyntaxSkeleton(control: String, category: String, widthDp: Int, heightDp: Int): String {
+        val ctrl = ControlKey.fromIdentifier(control)
+        if (ctrl == ControlKey.LTP || ctrl == ControlKey.RTP ||
+            (ctrl?.componentType == ComponentType.TOUCHPAD && ctrl.categoryType == CategoryType.STICKS)) {
+            return """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  .touchpad-ctl {
+    width: ${widthDp}px;
+    height: ${heightDp}px;
+    border-radius: 26px;
+    position: relative;
+    box-sizing: border-box;
+    /* Visually design the touchpad surface, laser-etched guide rings, and center anchor */
+  }
+</style>
+</head>
+<body>
+  <div class="touchpad-ctl" data-control="$control" data-category="JOYSTICK" data-name="Touchpad $control">
+    <span class="touchpad-title">$control</span>
+  </div>
+</body>
+</html>
+""".trimIndent()
+        }
+
+        if (ctrl == ControlKey.LSB || ctrl == ControlKey.RSB ||
+            (ctrl?.componentType == ComponentType.BUTTON && ctrl.categoryType == CategoryType.STICKS)) {
+            return """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --spring-damping: 0.72;
+    --spring-stiffness: 480;
+    --press-scale: 0.90;
+  }
+  .stick-btn-ctl {
+    width: ${widthDp}px;
+    height: ${heightDp}px;
+    position: relative;
+    border-radius: 50%;
+    /* Visually design the knurled rim, recessed thumb dish, and label here */
+  }
+  .stick-btn-ctl:active {
+    transform: scale(0.90) translateY(2px);
+  }
+</style>
+</head>
+<body>
+  <button class="stick-btn-ctl" data-control="$control" data-category="BUTTON" data-name="Stick Button $control">
+    <span class="stick-btn-label">$control</span>
+  </button>
+</body>
+</html>
+""".trimIndent()
+        }
+
         val catType = CategoryType.fromIdentifier(category)
             ?: ControlKey.fromIdentifier(control)?.categoryType
             ?: CategoryManager.findCategoryForControl(control)?.type

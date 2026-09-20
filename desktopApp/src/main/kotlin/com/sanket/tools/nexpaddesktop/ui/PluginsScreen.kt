@@ -1064,9 +1064,12 @@ private fun LiveSandboxPane(
 
         // Live Animation & Physics Stats Strip
         val isStick = category.equals("JOYSTICK", ignoreCase = true) ||
+                category.equals("TOUCHPAD", ignoreCase = true) ||
                 defaultControl.uppercase() in listOf(
                     com.sanket.tools.nexpad.category.ControlKey.LS.key,
-                    com.sanket.tools.nexpad.category.ControlKey.RS.key
+                    com.sanket.tools.nexpad.category.ControlKey.RS.key,
+                    com.sanket.tools.nexpad.category.ControlKey.LTP.key,
+                    com.sanket.tools.nexpad.category.ControlKey.RTP.key
                 )
         Row(
             modifier = Modifier
