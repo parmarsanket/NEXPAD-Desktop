@@ -829,6 +829,83 @@ class NxprcPromptTest {
         assertTrue(ltpTmpl.contains("2.0X BALLISTICS"), "LTP preset must denote 2.0x ballistics")
         assertTrue(rtpTmpl.contains("2.0X BALLISTICS"), "RTP preset must denote 2.0x ballistics")
     }
+
+    @Test
+    fun allCategoriesEnforceCalcAndAspectRatioCapabilities() {
+        val categories = listOf(
+            "BUTTON" to "A",
+            "DPAD" to "UP",
+            "TRIGGER" to "RT",
+            "BUMPER" to "RB",
+            "JOYSTICK" to "LS",
+            "SYSTEM" to "MENU"
+        )
+
+        categories.forEach { (category, control) ->
+            val prompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = control,
+                category = category,
+                widthDp = 96,
+                heightDp = 96
+            )
+            val tag = "[$category/$control]"
+
+            assertTrue(prompt.contains("calc()"), "$tag missing calc() capability instruction")
+            assertTrue(prompt.contains("aspect-ratio"), "$tag missing aspect-ratio capability instruction")
+        }
+    }
+
+    @Test
+    fun allCategoriesEnforceUnrotatedTextAndCssVectorEmblemGlow() {
+        val categories = listOf(
+            "BUTTON" to "A",
+            "DPAD" to "UP",
+            "TRIGGER" to "RT",
+            "BUMPER" to "RB",
+            "JOYSTICK" to "LS",
+            "SYSTEM" to "MENU"
+        )
+
+        categories.forEach { (category, control) ->
+            val prompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = control,
+                category = category,
+                widthDp = 96,
+                heightDp = 96
+            )
+            val tag = "[$category/$control]"
+
+            // Rule 1: Vector emblem glow via underlying CSS span, not SVG filter graphs
+            assertTrue(
+                prompt.contains("Vector Emblem Glow Rule"),
+                "$tag missing Vector Emblem Glow Rule"
+            )
+            assertTrue(
+                prompt.contains("Do NOT rely on SVG `<filter>` graphs"),
+                "$tag missing ban on SVG filter graphs for glow"
+            )
+            assertTrue(
+                prompt.contains("filter: blur("),
+                "$tag missing CSS blur instruction for emblem glow"
+            )
+
+            // Rule 2: Unrotated DOM text
+            assertTrue(
+                prompt.contains("NO TEXT ROTATION") || prompt.contains("without rotation"),
+                "$tag missing NO TEXT ROTATION guidance"
+            )
+            assertTrue(
+                prompt.contains("unrotated"),
+                "$tag missing unrotated text instruction"
+            )
+
+            // Anti-regression: Ensure no prompt erroneously claims full support for SVG filter graphs
+            assertFalse(
+                prompt.contains("Full support for vector iconography, paths, and SVG `<filter>` graphs"),
+                "$tag must NOT claim full support for SVG filter graphs"
+            )
+        }
+    }
 }
 
 

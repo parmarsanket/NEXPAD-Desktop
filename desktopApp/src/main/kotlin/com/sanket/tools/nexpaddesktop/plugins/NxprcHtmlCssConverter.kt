@@ -190,22 +190,25 @@ The NXPRC engine compiles HTML/CSS/SVG into hardware-accelerated Compose Canvas 
 - **`filter: blur(Npx)`**: GPU Gaussian blur on individual elements. ⚠️ Single function only (see PARTIAL below).
 - **`filter: brightness(N)` / `saturate(N)` / `hue-rotate(Ndeg)`**: Color adjustments. ⚠️ Single function only.
 - **Embedded `<svg>` & Vector Nodes**: Best for custom vector iconography, chevrons, emblems, and technical markings (`<path d="...">`, `<circle>`, `<rect>`, `<polygon>`, `<g>`). Supports `<defs>` paint servers (`<linearGradient id="...">`, `<radialGradient id="...">` with `<stop offset="..." stop-color="..." stop-opacity="...">`) referenced via `fill: url(#id)` or `stroke: url(#id)` in both direct attributes and CSS classes (`.my-shape { fill: url(#grad); }`).
-- **SVG `<filter>` Graphs**: Best for optical graph effects (`<feGaussianBlur>`, `<feColorMatrix>`, `<feDropShadow>`, `<feBlend>`) — **use SVG filters for compound optical effects** instead of multi-function CSS filter.
+- **Vector Emblem Glow Rule ✅**: Vector layers compile into raw hardware GPU Skia draw paths and do NOT compile SVG filter graphs. **Do NOT rely on SVG `<filter>` graphs (`<feGaussianBlur>`, `<feDropShadow>`) on vector paths for glow.** To create an optical halo or glow behind a vector emblem, use an underlying HTML/CSS `<span class="emblem-glow">` with `filter: blur(4px)` or `box-shadow: 0 0 16px <color>` placed underneath the `<svg>`!
+- **SVG Transforms & Group Matrices ✅ NEW**: Full native support for SVG transformations (`transform="translate(x, y)"`, `rotate(deg, cx, cy)`, `scale(sx, sy)`, `matrix(a,b,c,d,e,f)`). Nested `<g transform="...">` groups and direct `<path transform="...">` elements are automatically compiled and geometry-baked at compile time. Use this freely for rotational symmetry, radial petals, insignias, and emblems!
 - **`::before` / `::after`**: Painted decoration layers (`content: ""` only — no pseudo-element text).
 - **Flexbox Layout**: Best for grouped items (menu bars, grip ribs, multi-label stacks), flow, and alignment (`display: flex`, `flex-direction`, `flex-wrap: wrap`, `gap`, `row-gap`, `column-gap`, `justify-content`, `align-items`).
 - **`position: absolute`** with `left`, `top`, `width`, `height` in `px`: Explicit layer stacking.
 - **`z-index`**: Layer draw order.
+- **`calc()` Expressions ✅ NEW**: Dynamic dimension math resolved at compile time. Fully supported for `width` and `height`. Examples: `width: calc(100% - 16px)` (inset ring), `height: calc(100% - 20px)` (padded inner layer). Supports `+`, `-`, `%`, and `px` operands. **Use this to create precisely inset child layers without hardcoding pixel sizes.**
+- **`aspect-ratio` ✅ NEW**: Auto-derives the missing dimension from the explicit one. Fully supported. Examples: `aspect-ratio: 1` (perfect square/circle), `aspect-ratio: 16 / 9` (widescreen), `aspect-ratio: 4 / 3`. **Use this on inner rings, icons, and decorative elements to guarantee proportional geometry without specifying both width and height.**
 - **Typographic Auto-Wrapping**: Real DOM text formatting with `font-size`, `font-weight`, `letter-spacing`, `line-height`, `text-shadow`, and multi-line wrapping via `white-space: normal | pre-line` and explicit newlines.
 - **Modern CSS Colors**: Hex (`#rrggbbaa`), `rgb()`, `rgba()`, `hsl()`, `hwb()`, `oklch()`, and `color(display-p3 ...)`.
 
 #### ⚠️ PARTIALLY SUPPORTED — Use with care:
-- **`filter:` with multiple functions** (`filter: blur(4px) brightness(1.2)`): **Only the first function is compiled.** For compound optical effects use an SVG `<filter>` graph with `<feGaussianBlur>` + `<feColorMatrix>` nodes instead.
+- **`filter:` with multiple functions** (`filter: blur(4px) brightness(1.2)`): **Only the first function is compiled.** Use a single clear function per layer (`filter: blur(4px)` on one layer, `filter: brightness(1.2)` on another).
 - **`conic-gradient` with >8 color stops**: Compiles correctly but may reduce GPU rendering performance. Prefer an SVG `<radialGradient>` paint server for very complex sweep gradients.
 - **CSS custom properties (`var(--color)`) inside gradient stops**: Not reliably interpolated. Use **literal hex values** inside gradient color stops. `var()` is supported at the `:root` declaration level for spring physics only.
 
 #### ❌ NOT SUPPORTED — Do NOT use (will be silently dropped):
-- **`mix-blend-mode`**: Not supported. Use SVG `<feBlend>` inside a `<filter>` graph for blending effects.
-- **`backdrop-filter`**: Not supported. Use `filter:` or SVG `<filter>` applied to the element itself.
+- **`mix-blend-mode`**: Not supported. Use standard alpha compositing and layered gradients.
+- **`backdrop-filter`**: Not supported. Use `filter:` applied to the element itself.
 - **`@keyframes` / `animation:`**: Not supported. Use `--spring-stiffness` / `--spring-damping` for physics-based press animation; use SVG animations for decorative motion.
 - **`transition:`**: Not supported. Press interactions use spring micro-physics compiled from `:active` + `--spring-*` variables.
 - **`mask` / `mask-image`**: Not supported. Use `clip-path: polygon(...)` or `border-radius` for shape masking.
@@ -221,6 +224,7 @@ When the user requests a character, hero, creature, vehicle, weapon, insignia, o
 ⚠️ **FORBIDDEN ANTI-PATTERN (NEVER DO THIS)**:
 - Never try to sculpt complex characters, organic anatomy, faces, or intricate logos out of 30–50 nested HTML `<div>`s with fragile `clip-path: polygon(...)` hacks or stacked CSS box-shadows! This produces distorted geometry, fails at different scales, and severely bloats compiler layers.
 - Never omit the `<button>` shell to output a naked standalone `<svg>` (violates Rule #1: single button root).
+- Never use complex SVG `<filter>` graphs (`<feGaussianBlur>`, `<feDropShadow>`) for vector glow; use an underlying HTML/CSS `<span>` with `filter: blur(4px)` or `box-shadow` instead.
 
 ✅ **MANDATORY DUAL-ENGINE ARCHITECTURE (ALWAYS DO THIS)**:
 Always combine the native strengths of CSS styling and SVG vector paths:
@@ -228,20 +232,23 @@ Always combine the native strengths of CSS styling and SVG vector paths:
    - Handles the 3D physical tactile housing, surface material, perimeter bevel, specular curvature arc (`::after`), recessed socket shadows (`box-shadow`), and tactile active spring micro-physics (`--spring-damping: 0.68; --spring-stiffness: 440;` with `.$rootClass:active`).
 2. **The Embedded `<svg class="button-emblem" viewBox="0 0 100 100">` Vector Emblem**:
    - Embedded directly inside the `<button>`.
-   - Uses clean SVG vector paths (`<path d="...">`, `<polygon points="...">`, `<circle>`, `<ellipse>`, `<line>`, `<g>`) to draw the exact character, emblem, or insignia.
+   - Uses clean SVG vector paths (`<path d="...">`, `<polygon points="...">`, `<circle>`, `<ellipse>`, `<line>`) to draw the exact character, emblem, or insignia.
    - Sized appropriately to sit centered or docked on the button face (e.g., `width: 50px; height: 50px; position: absolute;` or flexbox child).
-   - Supports `<defs>` gradient paint servers (`<linearGradient id="...">` with `<stop>`) or solid vector fills and strokes.
+   - Supports `<defs>` gradient paint servers (`<linearGradient id="...">`, `<radialGradient id="...">` with `<stop>`) or solid vector fills and strokes.
+   - ⚠️ **VECTOR GLOW PATTERN**: Do NOT rely on SVG `<filter>` graphs (`<feGaussianBlur>`, `<feColorMatrix>`) on vector paths for glow. Instead, place an underlying HTML/CSS `<span class="emblem-ambient">` with `filter: blur(4px)` or `box-shadow: 0 0 16px var(--accent-glow)` underneath the `<svg>` to cast a luminous ambient aura!
+   - ✅ **SVG TRANSFORMS & ROTATIONS**: You can freely use `<g transform="translate(x,y) rotate(deg)">` or direct `<path transform="...">` to distribute or rotate shapes (such as radial petals, emblems, gear teeth, or insignia rays) around a center point, or bake coordinates directly. Both are fully compiled.
 3. **The High-Contrast Control Typography (`<span class="btn-label">`)**:
    - Real DOM text for the gamepad key ensuring instantaneous legibility during high-speed gaming.
+   - ⚠️ **NO TEXT ROTATION**: Keep labels, sub-labels, and hardware text markings in straight, unrotated `<span>` elements (avoid `transform: rotate(...)` on text nodes to ensure 100% crisp subpixel font rasterization on mobile displays).
 
 ### 5. STRICT NEXPAD COMPILER BOUNDARIES — FOLLOW THIS EXACTLY:
 1. **Single compiled component [GLOBAL-REQUIRED]**: `<body>` must contain exactly one root `<button class="$rootClass" data-control="..." data-category="..." data-name="...">`. Keep every visual child inside it. The compiler selects this button and does not render a general web page.
 2. **Portable self-contained document [GLOBAL-REQUIRED]**: Include one `<style>` block, one root button, and no external dependencies (no external `<link>`, `@import`, remote font files, or external web scripts). System fonts only.
 3. **Safe geometry & shapes [GLOBAL-REQUIRED]**: Use `px` dimensions for the root and visual children. Use `border-radius` or `clip-path: polygon(...)` for circles, capsules, stars, diamonds, hexagons, handmade, asymmetric, and organic silhouettes. Preserve the user's requested shape, proportions, and aesthetic.
 4. **Explicit layers & positioning [GLOBAL-REQUIRED]**: Set `position: relative` on the root. Set `position: absolute`, `left`, `top`, `width`, and `height` on decorative children as needed. Use `z-index` only for layer ordering.
-5. **Text must be real DOM text [GLOBAL-REQUIRED]**: Put labels, legends, and decorative symbols in actual `<span>`/`<div>` text nodes. Multi-label layouts are fully supported. Do not use pseudo-element text with icons or emoji; pseudo-elements `::before`/`::after` may use `content: ""` only for painted layers.
+5. **Text must be real DOM text without rotation [GLOBAL-REQUIRED]**: Put labels, legends, and decorative symbols in actual `<span>`/`<div>` text nodes. Multi-label layouts are fully supported. Do not use pseudo-element text with icons or emoji; pseudo-elements `::before`/`::after` may use `content: ""` only for painted layers. Keep text elements unrotated (`transform: rotate(...)` must NOT be applied to text nodes) for ultra-crisp GPU typography.
 6. **Stable CSS only [GLOBAL-REQUIRED]**: Do not use `@media`, `@supports`, `:hover`, `:focus`, or `:focus-visible` (these are browser page-state features). Do not use browser `@keyframes` animations; dynamic touch buttons use `$rootClass:active` tactile spring micro-physics for press actuation. Use `$rootClass:active` only for press feedback.
-7. **Optical filter rule [GLOBAL-REQUIRED]**: Use GPU `filter: blur()`, `brightness()`, `contrast()`, `saturate()`, `hue-rotate()`, or SVG `<filter>` graphs for optical effects. Do not use `backdrop-filter` or `mix-blend-mode`.
+7. **Optical filter rule [GLOBAL-REQUIRED]**: Use GPU `filter: blur()`, `brightness()`, `contrast()`, `saturate()`, `hue-rotate()` on CSS layers. Do not use `backdrop-filter` or `mix-blend-mode`.
 8. **Tactile active interaction [COMPONENT-REQUIRED]**: Always define `.$rootClass:active { transform: scale(...) translateY(...); }` using the exact root class.
 9. **Tactile spring micro-physics [COMPONENT-REQUIRED]**: Declare spring physics custom properties in `:root`:
    `--spring-damping: 0.68;`, `--spring-stiffness: 440;`, `--press-scale: 0.92;`
@@ -281,6 +288,11 @@ Self-check before output:
 - Does every decorative layer have a clear design purpose?
 - Does the final design match the user's requested aesthetic rather than the starter template?
 - If a character, hero, creature, vehicle, weapon, emblem, or intricate graphic is requested, does it use an embedded `<svg>` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks?
+- If inset child rings or padded inner layers are used, prefer `calc()` (e.g. `width: calc(100% - 16px)`) instead of hardcoded px that may not stay proportional.
+- If a circular/square icon or inner ring needs to stay proportional, prefer `aspect-ratio: 1` with only `width` specified instead of repeating the same value for both `width` and `height`.
+- Vector emblem glow: Did you use an underlying CSS `<span>` with `filter: blur()` or `box-shadow` instead of an SVG `<filter>` graph for emblem glow?
+- SVG Vector Geometry: Are all vector shapes centered within the SVG's viewBox, utilizing clean paths or native SVG transforms (`<g transform="translate(...) rotate(...)">`)?
+- Typography: Are all text labels and markings (`<span>`) kept straight without `transform: rotate(...)`?
 
 ### 9. AUTHORITATIVE OUTPUT CONTRACT:
 To ensure reliable programmatic compilation, return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text outside it.
@@ -328,9 +340,9 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
 3. **Pseudo-Elements & SVG Layers**:
    - `::before`: Inner recessed core or metallic chamfered bezel ring (`conic-gradient` supported).
    - `::after`: Translucent elliptical gloss reflection arc (`radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.7) 0%, transparent 70%)` rotated by -12deg).
-   - Embedded `<svg>`: Full support for vector iconography, paths, and SVG `<filter>` graphs (`<feGaussianBlur>`, `<feColorMatrix>`).
+   - Embedded `<svg>`: Full support for vector iconography, paths (`<path d="...">`, `<polygon>`), and `<defs>` paint servers (`<linearGradient>`, `<radialGradient>`). For vector emblem glow, use an underlying CSS `<span>` with `filter: blur()` or `box-shadow` (do NOT use SVG `<filter>` graphs like `<feGaussianBlur>`).
 4. **Center Typography Glyph & Auto-Wrapping**:
-   - `<span class="btn-label">$control</span>`: Font size 34-42px, weight 900.
+   - `<span class="btn-label">$control</span>`: Font size 34-42px, weight 900, kept straight in an unrotated `<span>` element.
    - Multi-layer `text-shadow`: `0 1px 0 rgba(255,255,255,0.8), 0 -1px 0 rgba(0,0,0,0.9), 0 3px 6px rgba(0,0,0,0.75), 0 0 12px var(--accent-core);` (renders as 3D extruded tactile letter).
    - Auto-wrapping support: Supports `white-space: pre-line` or `normal`, with `line-height` and explicit newlines.
 5. **Tactile Active Physics**:
@@ -348,10 +360,10 @@ ${engineBoundaries("nexpad-btn")}
 ### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
 Before outputting, verify your component against this checklist:
 - [ ] Console Realism: Authentic industrial materials (matte polycarbonate dome, subtle socket recess, physical contact shadows) rather than unsolicited neon glow.
-- [ ] Center Glyph Legibility: High-contrast "$control" label with embossed 3D text shadow readable at handheld touch scale.
+- [ ] Center Glyph Legibility: High-contrast "$control" label in an unrotated `<span>` with embossed 3D text shadow readable at handheld touch scale.
 - [ ] Optical Gloss Arc: Subtle specular reflection (`::after`) communicating convex molded plastic.
 - [ ] Tactile Active Physics: Spring micro-physics (`--spring-damping: 0.68; --spring-stiffness: 440; --press-scale: 0.92;`) and `.nexpad-btn:active { transform: scale(0.93) translateY(3px); }`.
-- [ ] Complex Graphics Architecture: If a character, emblem, insignia, or complex graphic is requested, uses an embedded `<svg>` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks.
+- [ ] Complex Graphics Architecture: If a character, emblem, insignia, or complex graphic is requested, uses an embedded `<svg>` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks. For vector glow, use an underlying CSS `<span>` with `filter: blur()` or `box-shadow` (no SVG `<filter>` graphs).
 - [ ] Compiler Safety: Exactly one root `<button class="nexpad-btn">` element; all px dimensions explicit.
 
 ### USER CUSTOMIZATION SCHEMA:
@@ -423,7 +435,7 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
    """ else """
    - Geometry: Shape the directional wedge, chevron, arrow, or button housing via `border-radius`, `clip-path`, or SVG vector paths.
    - `background`: Directional linear gradient sloped along the direction of travel ($control) from raised outer rim to recessed inner base.
-   - Arrow Glyph: Directional indicator (<span class="dpad-arrow">$arrowGlyph</span>) or embedded `<svg>` chevron with neon glow and drop shadow.
+   - Arrow Glyph: Directional indicator (<span class="dpad-arrow">$arrowGlyph</span> kept straight without rotation) or embedded `<svg>` chevron. For vector glow, use an underlying CSS `<span>` with `filter: blur()` or `box-shadow` (do NOT use SVG `<filter>` graphs).
    """}
 2. **Multi-Tier Box Shadows**:
    - Outset: `box-shadow: 0 10px 24px rgba(0,0,0,0.65), 0 0 0 2px rgba(35,40,55,0.8), 0 0 20px var(--accent-glow);`
@@ -437,8 +449,8 @@ ${engineBoundaries("dpad-btn")}
 Before outputting, verify your component against this checklist:
 - [ ] Directional Affordance: Distinct cardinal touch zones (or 4-way cross) with clear directional orientation.
 - [ ] Rocker Pivot Affordance: Central pivot well or sloped directional gradient communicating physical rocker mechanism.
-- [ ] High-Contrast Glyph: Crisp directional glyph ($arrowGlyph) or vector chevron readable at small touch scales.
-- [ ] Complex Graphics Architecture: If custom directional arrows, emblems, or complex graphics are requested, uses an embedded `<svg>` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks.
+- [ ] High-Contrast Glyph: Crisp directional glyph ($arrowGlyph) in unrotated `<span>` or vector chevron readable at small touch scales.
+- [ ] Complex Graphics Architecture: If custom directional arrows, emblems, or complex graphics are requested, uses an embedded `<svg>` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks. For vector glow, use an underlying CSS `<span>` (no SVG `<filter>` graphs).
 - [ ] Console Realism: Authentic industrial materials (textured matte ABS, subtle contact shadows) rather than unsolicited neon glow.
 - [ ] Tactile Active Physics: Spring micro-physics (`--spring-damping: 0.72; --spring-stiffness: 480;`) and `.dpad-btn:active` transform.
 - [ ] Compiler Safety: Exactly one root `<button class="dpad-btn">` element; all px dimensions explicit.
@@ -503,7 +515,7 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
    - Outset: `box-shadow: 0 10px 24px rgba(0,0,0,0.65), 0 0 18px var(--accent-glow);`
    - Inset: `box-shadow: inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -8px 16px rgba(0,0,0,0.8);` (deep vertical pull socket well).
 4. **Primary Typography & Layout**:
-   - Real DOM text: `<span class="trigger-label">$control</span>` (font-size 28px, weight 900) positioned on the upper portion of the paddle with vertical flexbox layout (`display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 18px;`).
+   - Real DOM text: `<span class="trigger-label">$control</span>` (font-size 28px, weight 900) positioned on the upper portion of the paddle with vertical flexbox layout (`display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 18px;`), kept straight without CSS rotation.
 5. **Tactile Active Travel Physics**:
    - `.trigger-btn:active { transform: scaleY(0.94) translateY(4px); }` (simulates physical downward paddle pull stroke).
 
@@ -513,9 +525,9 @@ ${engineBoundaries("trigger-btn")}
 Before outputting, verify your component against this checklist:
 - [ ] Analog Travel Affordance: Progressive depth and light slope communicating analog travel into socket.
 - [ ] Traction Grip: Molded horizontal ribs or grip ridges for authentic tactile purchase.
-- [ ] Clear Primary Typography: Clear high-contrast "$control" label readable at handheld touch scale.
+- [ ] Clear Primary Typography: Clear high-contrast "$control" label in an unrotated `<span>` readable at handheld touch scale.
 - [ ] Progressive Stroke Physics: Paddle stroke displacement (`.trigger-btn:active { transform: scaleY(0.94) translateY(4px); }`) with spring micro-physics (`--spring-damping: 0.65; --spring-stiffness: 380;`).
-- [ ] Complex Graphics Architecture: If custom weapon markings, manufacturer logos, or telemetry graphics are requested, uses an embedded `<svg>` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks.
+- [ ] Complex Graphics Architecture: If custom weapon markings, manufacturer logos, or telemetry graphics are requested, uses an embedded `<svg>` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks. For vector glow, use an underlying CSS `<span>` (no SVG `<filter>` graphs).
 - [ ] Compiler Safety: Exactly one root `<button class="trigger-btn">` element; all px dimensions explicit.
 
 ### USER CUSTOMIZATION SCHEMA:
@@ -576,7 +588,7 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
    - Outset: `box-shadow: 0 8px 20px rgba(0,0,0,0.6), 0 0 16px var(--accent-glow);` (chassis seam shadow and socket depth).
    - Inset: `box-shadow: inset 0 2px 4px rgba(255,255,255,0.35), inset 0 -4px 8px rgba(0,0,0,0.7);` (shoulder bevel and housing recess).
 4. **Typography & Layout**:
-   - `<span class="bumper-label">$control</span>`: Font size 24px, weight 900, with horizontal specular highlight and dark drop shadow.
+   - `<span class="bumper-label">$control</span>`: Font size 24px, weight 900, with horizontal specular highlight and dark drop shadow, kept straight without CSS rotation.
    - Flexbox centering: `display: flex; align-items: center; justify-content: center;`
 5. **Tactile Active Click Physics**:
    - `.bumper-btn:active { transform: scale(0.96) translateY(2px); }` (simulates shallow micro-switch click).
@@ -588,8 +600,8 @@ Before outputting, verify your component against this checklist:
 - [ ] Shoulder Lever Mechanics: Physical shoulder lever/rocker seated in a housing socket or chassis seam rather than a generic floating button.
 - [ ] Specular Sheen Arc: Upper curvature highlight communicating convex physical plastic molding.
 - [ ] Microswitch Actuation: Shallow crisp click feedback (`scale(0.96) translateY(2px)`).
-- [ ] High-Contrast Label: Crisp "$control" text with embossed 3D shadows.
-- [ ] Complex Graphics Architecture: If faction crests, wing markings, or complex graphics are requested, uses an embedded `<svg>` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks.
+- [ ] High-Contrast Label: Crisp "$control" text in an unrotated `<span>` with embossed 3D shadows.
+- [ ] Complex Graphics Architecture: If faction crests, wing markings, or complex graphics are requested, uses an embedded `<svg>` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks. For vector glow, use an underlying CSS `<span>` (no SVG `<filter>` graphs).
 - [ ] Compiler Safety: Exactly one root `<button class="bumper-btn">` element; all px dimensions explicit.
 
 ### USER CUSTOMIZATION SCHEMA:
@@ -679,7 +691,7 @@ The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw
 4. **Concentric Knurled Grip Rings (`<div class="knurled-ring">` or SVG)**:
    - Placed inside `<div class="stick-cap">`: `position: absolute; width: ${(widthDp * 0.44).toInt()}px; height: ${(heightDp * 0.44).toInt()}px; border-radius: 50%; border: 2px dashed rgba(255, 255, 255, 0.35);`
 5. **Stick Cap Typography**:
-   - `<span class="stick-label">$control</span>`: Font size 20px, weight 900, centered in cap. Real DOM text.
+   - `<span class="stick-label">$control</span>`: Font size 20px, weight 900, centered in cap. Real DOM text kept straight without CSS rotation.
 6. **Tactile Active Feedback**:
    - `.stick-btn:active .stick-cap { transform: scale(0.92); }` (simulates subtle physical thumb contact on the cap).
 
@@ -690,8 +702,8 @@ Before outputting, verify your component against this checklist:
 - [ ] Two-Zone DOM Structure: Stationary base enclosed in `<div class="stick-base">`, movable cap enclosed in `<div class="stick-cap">`.
 - [ ] Mechanical Clearance: Thumb cap diameter is ~55%–65% of socket diameter (~${(widthDp * 0.60).toInt()}px) for realistic travel clearance.
 - [ ] No Frozen Cap Elements: Knurled rings, traction ridges, emblems, and label are placed INSIDE `<div class="stick-cap">`.
-- [ ] NO Center Click Button: The analog stick has NO center click button or L3/R3 marking. It is labeled "$control" (or clean vector/directional art). Stick click is handled separately by LSB/RSB.
-- [ ] Complex Graphics Architecture: If a character, emblem, or complex graphic is requested on the thumb cap, uses an embedded `<svg>` vector element inside `<div class="stick-cap">` with clean `<path d="...">` rather than brittle CSS `<div>` hacks.
+- [ ] NO Center Click Button: The analog stick has NO center click button or L3/R3 marking. It is labeled "$control" in an unrotated `<span>` (or clean vector/directional art). Stick click is handled separately by LSB/RSB.
+- [ ] Complex Graphics Architecture: If a character, emblem, or complex graphic is requested on the thumb cap, uses an embedded `<svg>` vector element inside `<div class="stick-cap">` with clean `<path d="...">` rather than brittle CSS `<div>` hacks. For vector glow, use an underlying CSS `<span>` (no SVG `<filter>` graphs).
 - [ ] Console Realism: Authentic industrial materials (matte charcoal, rubberized dish, physical shadows) rather than unsolicited neon glow.
 - [ ] No Scripts or Page CSS: Zero JavaScript, zero CSS keyframes animations, zero hover/pointer event handlers.
 - [ ] Compiler Safety: Exactly one root `<button class="stick-btn">` element; all px dimensions explicit.
@@ -769,8 +781,8 @@ ${engineBoundaries("system-btn")}
 ### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
 Before outputting, verify your component against this checklist:
 - [ ] Low-Profile Footprint: Compact dimensions with recessed socket well.
-- [ ] Crisp Iconography: Clean, instantly recognizable symbol (hamburger bars, dual windows, nexus emblem) with ZERO conflicting fallback text stamped over it.
-- [ ] Complex Graphics Architecture: If a custom system emblem, guide logo, or complex graphic is requested, uses an embedded `<svg>` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks.
+- [ ] Crisp Iconography: Clean, instantly recognizable symbol (hamburger bars, dual windows, nexus emblem) with ZERO conflicting fallback text stamped over it. Any text labels kept in unrotated `<span>`.
+- [ ] Complex Graphics Architecture: If a custom system emblem, guide logo, or complex graphic is requested, uses an embedded `<svg>` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks. For vector glow, use an underlying CSS `<span>` (no SVG `<filter>` graphs).
 - [ ] Micro-Travel Physics: Subtle tactile click feedback (`scale(0.92) translateY(2px)`).
 - [ ] Console Realism: Authentic industrial utility finish rather than unsolicited neon halos.
 - [ ] Compiler Safety: Exactly one root `<button class="system-btn">` (or `<button class="system-home-btn">`); all px dimensions explicit.
@@ -827,7 +839,7 @@ Create an authentic console-grade hardware aesthetic with physical industrial re
 2. **Outer Knurled Rim & 3D Bevel**:
    - Knurled grip ring via `::before` or child element (`border: 2px dashed ...`).
 3. **Concave Dish & Typography**:
-   - Centered `<div class="stick-btn-dish">` with bold `<span class="stick-btn-label">$control</span>`.
+   - Centered `<div class="stick-btn-dish">` with bold `<span class="stick-btn-label">$control</span>` kept straight without CSS rotation.
 4. **Tactile Active Press Physics**:
    - `.stick-btn-ctl:active { transform: scale(0.90) translateY(2px); }`
 
@@ -836,10 +848,10 @@ ${engineBoundaries("stick-btn-ctl")}
 ### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
 Before outputting, verify your component against this checklist:
 - [ ] Single Button Contract: Exactly one root `<button class="stick-btn-ctl">` element with `data-category="BUTTON"`.
-- [ ] Thumbstick Aesthetics: Knurled perimeter rim, concave thumb dish, and bold "$control" glyph.
+- [ ] Thumbstick Aesthetics: Knurled perimeter rim, concave thumb dish, and bold unrotated "$control" glyph in `<span>`.
 - [ ] Tactile Click Feedback: Active press depression (`scale(0.90) translateY(2px)`).
 - [ ] No Two-Zone Analog Split: This is a direct digital click button, not a 360° movable joystick cap.
-- [ ] Complex Graphics Architecture: If custom emblems or graphics are requested, uses an embedded `<svg>` vector element rather than brittle CSS `<div>` hacks.
+- [ ] Complex Graphics Architecture: If custom emblems or graphics are requested, uses an embedded `<svg>` vector element rather than brittle CSS `<div>` hacks. For vector glow, use an underlying CSS `<span>` (no SVG `<filter>` graphs).
 
 ### USER CUSTOMIZATION SCHEMA:
 - **STYLE**: [e.g. Tactical Thumbstick / Xbox Elite Swappable Cap / Cyberpunk Neon / Stealth Carbon]
@@ -893,7 +905,7 @@ ${genAiHeader()}
 2. **Stationary Trackpad Surface**:
    - Optional inner `<div class="touchpad-surface"></div>` representing the smooth touch area.
 3. **Typography**:
-   - `<span class="touchpad-title">${if (isLeft) "Touch Move • LTP" else "Touch Look • RTP"}</span>`
+   - `<span class="touchpad-title">${if (isLeft) "Touch Move • LTP" else "Touch Look • RTP"}</span>` (real unrotated DOM text)
    - `<span class="touchpad-sub">2.0X BALLISTICS</span>`
 
 ${engineBoundaries("touchpad-ctl")}
@@ -903,7 +915,7 @@ Before outputting, verify your component against this checklist:
 - [ ] Single Surface Contract: Exactly one root `<div class="touchpad-ctl">` element representing an expansive continuous trackpad surface.
 - [ ] Normal Stationary Trackpad: Pure flat, stationary trackpad surface. Strictly NO center button, NO center dot, and NO movable ring.
 - [ ] NO Center Click Button: Touchpad has NO center button, NO center dot, and NO tap-to-click mechanism. Stick click is handled exclusively by standalone LSB/RSB.
-- [ ] Ballistics & Mode Markings: Monospace labels denoting mode ("${if (isLeft) "Touch Move • LTP" else "Touch Look • RTP"}") and ballistics ("2.0X BALLISTICS").
+- [ ] Ballistics & Mode Markings: Monospace labels in unrotated `<span>` denoting mode ("${if (isLeft) "Touch Move • LTP" else "Touch Look • RTP"}") and ballistics ("2.0X BALLISTICS").
 - [ ] Console Realism: Matte polycarbonate / dark carbon textures with subtle edge highlights rather than noisy neon clutter.
 - [ ] Compiler Safety: Exactly one root `<div class="touchpad-ctl">` element; all px dimensions explicit.
 
