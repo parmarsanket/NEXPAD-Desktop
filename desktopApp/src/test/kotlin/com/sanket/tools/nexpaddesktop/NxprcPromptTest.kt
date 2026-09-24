@@ -1373,6 +1373,100 @@ class NxprcPromptTest {
         assertTrue(normalized.contains("z-index: 8") || normalized.contains("z-index: 9") || normalized.contains("z-index: 7"),
             "Opaque surface with data-layer-role='surface' must be lowered below artwork")
     }
+
+    @Test
+    fun testBuildRepairPromptRetainsAllCustomParameters() {
+        // Audit issue #31: buildRepairPrompt was omitting shape, material, emblem, lighting, texture, label
+        val options = AiDesignOptions(
+            shape = "Hexagonal Diamond",
+            material = "Brushed Titanium",
+            emblem = "Valkyrie Wing Crest",
+            lighting = "Bioluminescent Edge",
+            texture = "Carbon Honeycomb",
+            label = "BOOST"
+        )
+
+        val repair = NxprcHtmlCssConverter.generateRepairPrompt(
+            previousHtml = "<button class=\"nexpad-btn\"></button>",
+            warnings = listOf("Missing explicit px width"),
+            errors = listOf(),
+            control = "X",
+            category = "BUTTON",
+            options = options
+        )
+
+        assertTrue(repair.contains("Hexagonal Diamond"), "Repair prompt must retain shape")
+        assertTrue(repair.contains("Brushed Titanium"), "Repair prompt must retain material")
+        assertTrue(repair.contains("Valkyrie Wing Crest"), "Repair prompt must retain emblem")
+        assertTrue(repair.contains("Bioluminescent Edge"), "Repair prompt must retain lighting")
+        assertTrue(repair.contains("Carbon Honeycomb"), "Repair prompt must retain texture")
+        assertTrue(repair.contains("BOOST"), "Repair prompt must retain label")
+    }
+
+    @Test
+    fun testPromptEliminatesDefaultBiasWhenCustomOptionsProvided() {
+        // Audit issue #24: AI Prompt "Default Bias" elimination
+        val categories = listOf(
+            "BUTTON" to "A",
+            "DPAD"   to "UP",
+            "TRIGGER" to "RT",
+            "BUMPER"  to "RB",
+            "JOYSTICK" to "LS",
+            "SYSTEM"  to "MENU"
+        )
+
+        categories.forEach { (category, control) ->
+            // 1. With custom options: MUST contain authoritative user directive and omit Xbox defaults
+            val customPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = control,
+                category = category,
+                widthDp = 96,
+                heightDp = 96,
+                options = AiDesignOptions(
+                    style = "Cyberpunk Neo-Tokyo",
+                    color = "Hot Magenta & Cyan",
+                    shape = "Asymmetric Shard"
+                )
+            )
+
+            assertTrue(
+                customPrompt.contains("USER CUSTOM DESIGN DIRECTIVE [AUTHORITATIVE]"),
+                "[$category/$control] Must include authoritative custom directive when custom parameters active"
+            )
+            assertFalse(
+                customPrompt.contains("### DEFAULT VISUAL PROFILE / VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:"),
+                "[$category/$control] Must NOT contain default Xbox profile when custom parameters active"
+            )
+
+            // 2. Without custom options: MUST contain default console realism profile
+            val defaultPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = control,
+                category = category,
+                widthDp = 96,
+                heightDp = 96,
+                options = AiDesignOptions()
+            )
+
+            assertTrue(
+                defaultPrompt.contains("### DEFAULT VISUAL PROFILE / VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:"),
+                "[$category/$control] Must include default console profile when no custom parameters active"
+            )
+            assertFalse(
+                defaultPrompt.contains("USER CUSTOM DESIGN DIRECTIVE [AUTHORITATIVE]"),
+                "[$category/$control] Must NOT include authoritative custom directive when options are default"
+            )
+        }
+    }
+
+    @Test
+    fun testSectionTenGeometryAndVisualQaChecklistIncluded() {
+        // Audit issue #27: Geometry & Visual QA checklist
+        val prompt = NxprcHtmlCssConverter.generateAiPrompt("A", "BUTTON", 110, 110)
+        assertTrue(prompt.contains("SECTION 10 — GEOMETRY & VISUAL QA CHECKLIST"), "Must include Section 10 checklist")
+        assertTrue(prompt.contains("width: 110px; height: 110px;"), "Must include explicit dimensions in checklist")
+        assertTrue(prompt.contains("Transform Origin Intent"), "Must include Transform Origin Intent check")
+        assertTrue(prompt.contains("Visual Stacking & Occlusion"), "Must include Visual Stacking check")
+    }
 }
 
 

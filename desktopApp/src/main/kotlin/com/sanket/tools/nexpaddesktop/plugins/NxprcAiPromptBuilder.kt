@@ -404,12 +404,7 @@ object NxprcAiPromptBuilder {
         options: AiDesignOptions = AiDesignOptions()
     ): String {
         val paramsSection = StringBuilder()
-        if (options.creativity != Creativity.HIGH || options.complexity != Complexity.AUTO ||
-            options.fidelity != Fidelity.INSPIRED || options.visualDensity != VisualDensity.AUTO ||
-            !options.style.isNullOrBlank() || !options.color.isNullOrBlank() ||
-            !options.tactilePhysics.isNullOrBlank() ||
-            !options.specialInstructions.isNullOrBlank() || options.userRequest.isNotBlank()
-        ) {
+        if (options.hasCustomParameters()) {
             paramsSection.append("### TARGET DESIGN CONSTRAINTS (PRESERVE THESE IN REPAIR):\n")
             paramsSection.append(renderDesignParameters(options).removePrefix("### USER DESIGN PARAMETERS & PREFERENCES:\n"))
             if (options.userRequest.isNotBlank()) {
@@ -461,7 +456,7 @@ $previousHtml
 11. NEXPAD supports dual button labeling styles (Xbox: A, B, X, Y, LB, RB, LT, RT, LSB, RSB vs PlayStation: ✕, ○, □, △, L1, R1, L2, R2, L3, R3) and dynamically translates standard controller labels at runtime while preserving custom action text (e.g. ATTACK, DASH, JUMP).
 """.trimIndent()
 
-    private fun engineBoundaries(rootClass: String): String = """
+    private fun engineBoundaries(rootClass: String, widthDp: Int = 96, heightDp: Int = 96): String = """
 ### SECTION 1 — INSTRUCTION PRIORITY & CONFLICT RESOLUTION
 When instructions conflict, resolve them in this strict order of authority:
 1. **Non-Negotiable Compiler Safety** [GLOBAL-REQUIRED] (Single button root, px bounds, DOM text, self-contained document, no external assets or scripts).
@@ -580,22 +575,41 @@ When a user request exceeds compiler limits or platform capabilities:
 4. Do not explain limitations or output conversational excuses.
 5. Return the best compilable implementation.
 
-### SECTION 10 — VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT)
+### SECTION 10 — GEOMETRY & VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT)
 Self-check before output:
 - [ ] Compiler Safety: Exactly one root `<button class="$rootClass"` with matching `data-control`, `data-category`, and `data-name`.
-- [ ] Real DOM Text: Real DOM text labels with strong contrast and readable font size in unrotated `<span>` (`Text must be real DOM text`).
-- [ ] Explicit Coordinates: Explicit px dimensions on root and layered children (`Set position: absolute, left, top, width, and height`).
+- [ ] Deterministic Bounds: Explicit px dimensions on root (`width: ${widthDp}px; height: ${heightDp}px;`) and layered children. Width and height must be > 0 with no NaN or infinite values.
+- [ ] Boundary Containment: Children and nested plates stay within intended container bounds; padding must not clip usable content.
+- [ ] Label Region Clearance: Real DOM text labels with strong contrast and readable font size in unrotated `<span>`. Labels must fit inside their intended region.
+- [ ] SVG ViewBox Integrity: SVG artwork coordinates stay within the declared viewBox; no arbitrary clipping.
+- [ ] Transform Origin Intent: Explicit `transform-origin` specified when rotations or scaling are applied to prevent unexpected drift.
+- [ ] Visual Stacking & Occlusion: Foreground vector artwork and labels have higher z-index (or appear after) opaque background/surface plates.
 - [ ] Tactile Physics: Valid active state `.$rootClass:active` with spring micro-physics (`--spring-damping`, `--spring-stiffness`) in `:root`.
-- [ ] Clean Engine Profile: No forbidden properties (`Do not use @media`, no external fonts, no external scripts, no `mix-blend-mode`).
-- [ ] Restraint & Coherence: Preserves the user's requested shape and applies appropriate design restraint without stripping meaningful detail.
-- [ ] Complex Graphics Architecture: If a character, emblem, or complex graphic is requested, uses an embedded `<svg class="button-emblem" viewBox="0 0 100 100">` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks. For vector glow, use an underlying CSS `<span>` with `filter: blur()` or `box-shadow` (no SVG `<filter>` graphs).
-- [ ] Geometry & Dimensions: If inset child rings or padded inner layers are used, prefer `calc()` (e.g. `width: calc(100% - 16px)`) and `aspect-ratio: 1`.
-- [ ] Vector Emblem Glow: Did you use an underlying CSS `<span>` with `filter: blur()` or `box-shadow` instead of an SVG `<filter>` graph (`feGaussianBlur`) for emblem glow?
-- [ ] Typography: Are all text labels and markings (`<span>`) kept straight without `transform: rotate(...)` (unrotated)?
+- [ ] Clean Engine Profile: No forbidden properties (no `@media`, no external fonts, no external scripts, no `mix-blend-mode`, no `backdrop-filter`, no CSS Grid).
+- [ ] Complex Graphics Architecture: If a character, emblem, or complex graphic is requested, uses an embedded `<svg class="button-emblem" viewBox="...">` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks. For vector glow, use an underlying CSS `<span>` with `filter: blur()` or `box-shadow` (no SVG `<filter>` graphs).
 
 ### SECTION 11 — AUTHORITATIVE OUTPUT CONTRACT
 To ensure reliable programmatic compilation, return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text outside it.
 """.trimIndent()
+
+    private fun renderVisualProfileOrCustomDirective(
+        defaultProfileTitle: String,
+        defaultProfileBody: String,
+        options: AiDesignOptions
+    ): String {
+        return if (options.hasCustomParameters()) {
+            """
+### USER CUSTOM DESIGN DIRECTIVE [AUTHORITATIVE]:
+The user has provided an explicit custom visual design or thematic request. Prioritize the user's requested theme, colors, materials, silhouette, and artistic concept above any default hardware styling. Do NOT default to dark industrial polycarbonate, cyan glow, or console chassis styling unless explicitly requested by the user.
+            """.trimIndent()
+        } else {
+            """
+### DEFAULT VISUAL PROFILE / VISUAL TARGET — $defaultProfileTitle:
+When no specific custom aesthetic or character theme is requested by the user, adopt an authentic console-grade hardware aesthetic:
+$defaultProfileBody
+            """.trimIndent()
+        }
+    }
 
     private fun renderDesignParameters(options: AiDesignOptions): String = options.formatDesignParameters()
 
@@ -638,14 +652,18 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Optional Visual Language [OPTIONAL]**: Multi-stop radial gradients, specular highlight arcs, metallic chamfer rings, neon edge halos.
 - **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. The silhouette is completely yours: circle, hexagon, rounded rect, diamond, shield, or organic silhouette. Preserve the user's requested shape.
 
-### DEFAULT VISUAL PROFILE / VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
-When no specific custom aesthetic or character theme is requested by the user, adopt an authentic console-grade hardware aesthetic:
-1. **Matte Polycarbonate Body & Optical Depth**: Rich dual-cast molding — deep chassis base tones (`#14171e`, `#1c202a`, `#08090c`) with perimeter chamfer highlights, NOT flat monochrome or pure `#000`.
-2. **Physical Contact Shadows & Recessed Socket**: Elevated dome seated inside subtle socket well (`box-shadow: 0 8px 24px rgba(0,0,0,0.65), inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -6px 12px rgba(0,0,0,0.7)`).
-3. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested.
-4. **Legible High-Contrast Letterform**: Prominent center glyph ($control) with multi-stop 3D text shadow.
+${renderVisualProfileOrCustomDirective(
+    "CONSOLE/XBOX INDUSTRIAL REALISM",
+    """
+    1. **Matte Polycarbonate Body & Optical Depth**: Rich dual-cast molding — deep chassis base tones (`#14171e`, `#1c202a`, `#08090c`) with perimeter chamfer highlights, NOT flat monochrome or pure `#000`.
+    2. **Physical Contact Shadows & Recessed Socket**: Elevated dome seated inside subtle socket well (`box-shadow: 0 8px 24px rgba(0,0,0,0.65), inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -6px 12px rgba(0,0,0,0.7)`).
+    3. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested.
+    4. **Legible High-Contrast Letterform**: Prominent center glyph ($control) with multi-stop 3D text shadow.
+    """.trimIndent(),
+    options
+)}
 
-${engineBoundaries("nexpad-btn")}
+${engineBoundaries("nexpad-btn", widthDp, heightDp)}
 
 ### USER CUSTOMIZATION SCHEMA:
 The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
@@ -696,14 +714,18 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Optional Visual Language [OPTIONAL]**: Recessed pivot well, laser-etched chevron markings, sloped directional gradients, tactile nubs.
 - **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. Cross, wedge, arrow, star, disc, or organic form are all valid. Preserve the user's requested shape.
 
-### DEFAULT VISUAL PROFILE / VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
-When no specific custom aesthetic or character theme is requested by the user, adopt an authentic console-grade hardware aesthetic:
-1. **Textured Matte ABS Plastic**: Deep chassis body tones (`#14171e`, `#1c202a`, `#08090c`) with subtle perimeter bevels, NOT flat grey or pure `#000`.
-2. **Central Rocker Pivot Mechanics**: Authentic console D-pads rock around a central spherical pivot. When designing a 4-way cross or dish, include a recessed central pivot well (`::before` circular indent) simulating the physical rocker mechanism. When designing an individual directional button, slope the gradient along the direction of travel to communicate tactile inward tilt.
-3. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic directional pads prioritize tactile finger purchase, molded cardinal bevels, and crisp physical contact shadows.
-4. **High-Contrast Cardinal Directional Affordance**: Crisp directional indicators (arrow glyph $arrowGlyph, chevron, or vector path) with high contrast against the dark textured housing.
+${renderVisualProfileOrCustomDirective(
+    "CONSOLE/XBOX INDUSTRIAL REALISM",
+    """
+    1. **Textured Matte ABS Plastic**: Deep chassis body tones (`#14171e`, `#1c202a`, `#08090c`) with subtle perimeter bevels, NOT flat grey or pure `#000`.
+    2. **Central Rocker Pivot Mechanics**: Authentic console D-pads rock around a central spherical pivot. When designing a 4-way cross or dish, include a recessed central pivot well (`::before` circular indent) simulating the physical rocker mechanism. When designing an individual directional button, slope the gradient along the direction of travel to communicate tactile inward tilt.
+    3. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic directional pads prioritize tactile finger purchase, molded cardinal bevels, and crisp physical contact shadows.
+    4. **High-Contrast Cardinal Directional Affordance**: Crisp directional indicators (arrow glyph $arrowGlyph, chevron, or vector path) with high contrast against the dark textured housing.
+    """.trimIndent(),
+    options
+)}
 
-${engineBoundaries("dpad-btn")}
+${engineBoundaries("dpad-btn", widthDp, heightDp)}
 
 ### USER CUSTOMIZATION SCHEMA:
 The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
@@ -744,14 +766,18 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Optional Visual Language [OPTIONAL]**: Horizontal friction ribs, stippling, curved rake paddle angle, digital pressure telemetry.
 - **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. Ergonomic curved paddle, angular wedge, minimal capsule, or custom silhouette. Preserve the user's requested shape.
 
-### DEFAULT VISUAL PROFILE / VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
-When no specific custom aesthetic or character theme is requested by the user, adopt an authentic console-grade hardware aesthetic:
-1. **Progressive Analog Travel Mechanics**: Authentic analog triggers communicate progressive depth and travel within the bounding box (${widthDp}px x ${heightDp}px) with a gradient receding into the controller housing cavity, communicating analog travel and finger placement.
-2. **Molded Traction Ribs**: Physical molded horizontal friction ridges (via Flexbox column or `::before` layered shadows) providing authentic fingertip grip for throttling, braking, or aiming.
-3. **High-Contrast Clean Typography**: Prominent primary key indicator ("$control", font-size 26-30px, weight 900). Keep the typography clean and authentic to real console gamepads without artificial secondary sub-labels.
-4. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic triggers focus on ergonomic paddle curvature, molded grip traction, and deep socket shadow wells.
+${renderVisualProfileOrCustomDirective(
+    "CONSOLE/XBOX INDUSTRIAL REALISM",
+    """
+    1. **Progressive Analog Travel Mechanics**: Authentic analog triggers communicate progressive depth and travel within the bounding box (${widthDp}px x ${heightDp}px) with a gradient receding into the controller housing cavity, communicating analog travel and finger placement.
+    2. **Molded Traction Ribs**: Physical molded horizontal friction ridges (via Flexbox column or `::before` layered shadows) providing authentic fingertip grip for throttling, braking, or aiming.
+    3. **High-Contrast Clean Typography**: Prominent primary key indicator ("$control", font-size 26-30px, weight 900). Keep the typography clean and authentic to real console gamepads without artificial secondary sub-labels.
+    4. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic triggers focus on ergonomic paddle curvature, molded grip traction, and deep socket shadow wells.
+    """.trimIndent(),
+    options
+)}
 
-${engineBoundaries("trigger-btn")}
+${engineBoundaries("trigger-btn", widthDp, heightDp)}
 
 ### USER CUSTOMIZATION SCHEMA:
 The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
@@ -790,14 +816,18 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Optional Visual Language [OPTIONAL]**: Specular sheen arc, brushed metallic texture, chamfered housing seam, tactile ridge.
 - **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. The silhouette is completely yours: curved shoulder lever, angular stealth wedge, faceted cyber wing, horizontal blade, or organic contour. Preserve the user's requested shape.
 
-### DEFAULT VISUAL PROFILE / VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
-When no specific custom aesthetic or character theme is requested by the user, adopt an authentic console-grade hardware aesthetic:
-1. **Physical Shoulder Lever/Rocker Architecture**: Authentic gamepad bumpers are physical shoulder levers seated directly in a recessed chassis housing seam or socket on the controller shell, rather than floating abstract pills. The lever surface catches ambient light along its top shoulder contour.
-2. **Convex Curvature Specular Sheen**: Specular highlight arc communicating convex molded polycarbonate catching studio light.
-3. **Microswitch Click Actuation**: Unlike analog triggers, shoulder bumpers use crisp tactile microswitches with shallow travel displacement (`scale(${SpringPhysics.BUMPER.pressScaleFormatted}) translateY(2px)`) and snappy spring return (`${SpringPhysics.BUMPER.toDeclarations()}`).
-4. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic bumpers feature clean industrial dark tones (`#2c3342` to `#0c0e13`), chassis seam contact shadows, and crisp high-contrast labels.
+${renderVisualProfileOrCustomDirective(
+    "CONSOLE/XBOX INDUSTRIAL REALISM",
+    """
+    1. **Physical Shoulder Lever/Rocker Architecture**: Authentic gamepad bumpers are physical shoulder levers seated directly in a recessed chassis housing seam or socket on the controller shell, rather than floating abstract pills. The lever surface catches ambient light along its top shoulder contour.
+    2. **Convex Curvature Specular Sheen**: Specular highlight arc communicating convex molded polycarbonate catching studio light.
+    3. **Microswitch Click Actuation**: Unlike analog triggers, shoulder bumpers use crisp tactile microswitches with shallow travel displacement (`scale(${SpringPhysics.BUMPER.pressScaleFormatted}) translateY(2px)`) and snappy spring return (`${SpringPhysics.BUMPER.toDeclarations()}`).
+    4. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic bumpers feature clean industrial dark tones (`#2c3342` to `#0c0e13`), chassis seam contact shadows, and crisp high-contrast labels.
+    """.trimIndent(),
+    options
+)}
 
-${engineBoundaries("bumper-btn")}
+${engineBoundaries("bumper-btn", widthDp, heightDp)}
 
 ### USER CUSTOMIZATION SCHEMA:
 The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
@@ -850,14 +880,18 @@ In physical gamepads (Xbox, PlayStation) and mobile gaming (CoD Mobile, Genshin,
    - **360° Analog Deflection**: Handled dynamically at runtime by NEXPAD's touch vector engine with spring return physics when dragged. **Do not write JavaScript, CSS transitions/animations, or hover/pointer events for analog movement.**
    - **Zero Center Button Interference**: In NEXPAD, thumbsticks do NOT actuate L3/R3 on click or press. Stick click is strictly isolated in dedicated standalone LSB/RSB buttons.
 
-### DEFAULT VISUAL PROFILE / VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
-When no specific custom aesthetic or character theme is requested by the user, adopt an authentic console-grade hardware aesthetic:
-1. **Matte Charcoal & Polycarbonate Plastic**: Base chassis tones `#14171e`, `#1c202a`, `#08090c` with subtle surface specular rim highlights, NOT flat grey or pure `#000`.
-2. **Physical Material Contrast**: The outer gimbal socket is a deep, recessed cavity (`box-shadow: inset 0 -8px 16px rgba(0,0,0,0.85)`). The inner thumb cap is textured molded rubber/elastomer with knurled traction rings or micro-ribs.
-3. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic gamepads feature clean micro-textures, matte finishes, and crisp physical contact shadows.
-4. **Mechanical Clearance & Proportions**: The thumb cap diameter must be approximately 55%–65% of the total socket diameter (~${(widthDp * 0.60).toInt()}px for ${widthDp}px socket) to provide authentic travel clearance inside the housing well. A 1:1 cap-to-socket ratio looks like a broken button, not an analog stick!
+${renderVisualProfileOrCustomDirective(
+    "CONSOLE/XBOX INDUSTRIAL REALISM",
+    """
+    1. **Matte Charcoal & Polycarbonate Plastic**: Base chassis tones `#14171e`, `#1c202a`, `#08090c` with subtle surface specular rim highlights, NOT flat grey or pure `#000`.
+    2. **Physical Material Contrast**: The outer gimbal socket is a deep, recessed cavity (`box-shadow: inset 0 -8px 16px rgba(0,0,0,0.85)`). The inner thumb cap is textured molded rubber/elastomer with knurled traction rings or micro-ribs.
+    3. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic gamepads feature clean micro-textures, matte finishes, and crisp physical contact shadows.
+    4. **Mechanical Clearance & Proportions**: The thumb cap diameter must be approximately 55%–65% of the total socket diameter (~${(widthDp * 0.60).toInt()}px for ${widthDp}px socket) to provide authentic travel clearance inside the housing well. A 1:1 cap-to-socket ratio looks like a broken button, not an analog stick!
+    """.trimIndent(),
+    options
+)}
 
-${engineBoundaries("stick-btn")}
+${engineBoundaries("stick-btn", widthDp, heightDp)}
 
 ### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
 Before outputting, verify your component against this checklist:
@@ -909,15 +943,19 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Optional Visual Language [OPTIONAL]**: Dashed traction ring, radial tick notches, rubberized stippling, edge illumination.
 - **Geometry [USER-OVERRIDE]**: Circular geometry authentic to console thumbsticks is recommended, but user's requested style or custom contour always takes precedence.
 
-### DEFAULT VISUAL PROFILE / VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
-When no specific custom aesthetic or character theme is requested by the user, adopt an authentic console-grade hardware aesthetic:
-1. **Single-Button Tactile Architecture**: Unlike analog joysticks which require a stationary base + moving cap two-zone split, this dedicated stick button is a single unified button (`<button class="stick-btn-ctl" data-control="$control" data-category="BUTTON">`). The entire cap depresses with spring return physics.
-2. **Textured Thumbstick Cap Dish**: A recessed center dish with knurled perimeter rim communicating molded rubber/elastomer thumb grip.
-3. **Restrained Detailing & Tactile Lighting**: Clean dark polycarbonate tones (`#333333` to `#141414`) with subtle accent glow and crisp high-contrast label.
-4. **Tactile Spring Micro-Physics**: Configure in `:root`:
-   `${SpringPhysics.STICK_BUTTON.toDeclarations()}`
+${renderVisualProfileOrCustomDirective(
+    "CONSOLE/XBOX INDUSTRIAL REALISM",
+    """
+    1. **Single-Button Tactile Architecture**: Unlike analog joysticks which require a stationary base + moving cap two-zone split, this dedicated stick button is a single unified button (`<button class="stick-btn-ctl" data-control="$control" data-category="BUTTON">`). The entire cap depresses with spring return physics.
+    2. **Textured Thumbstick Cap Dish**: A recessed center dish with knurled perimeter rim communicating molded rubber/elastomer thumb grip.
+    3. **Restrained Detailing & Tactile Lighting**: Clean dark polycarbonate tones (`#333333` to `#141414`) with subtle accent glow and crisp high-contrast label.
+    4. **Tactile Spring Micro-Physics**: Configure in `:root`:
+       `${SpringPhysics.STICK_BUTTON.toDeclarations()}`
+    """.trimIndent(),
+    options
+)}
 
-${engineBoundaries("stick-btn-ctl")}
+${engineBoundaries("stick-btn-ctl", widthDp, heightDp)}
 
 ### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
 Before outputting, verify your component against this checklist:
@@ -968,13 +1006,18 @@ ${genAiHeader()}
 - **Visual Affordance [RECOMMENDED]**: Expansive rounded-rectangular trackpad surface with deep matte texture, smooth glass touch feel, subtle peripheral bevel/frame, and high-contrast technical typography. Strictly NO center button or dot, and NO joystick-style circular ring.
 - **Optional Visual Language [OPTIONAL]**: Subtle corner alignment marks, inset glass framing, ambient edge illumination, carbon-fiber stippling.
 
-### DEFAULT VISUAL PROFILE / VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM (STEAM DECK):
-1. **Single-Surface Trackpad Architecture**: One expansive root `<button class="touchpad-ctl" data-id="touch_${control.lowercase()}" data-control="$control" data-category="$category" data-name="Touchpad $control">`.
-2. **Textured Recessed Dish**: Deep carbon/polycarbonate matte finish with inset drop shadow and smooth laser-etched touch feel.
-3. **Stationary Trackpad Surface**: Subtle inner boundary frame (`<div class="touchpad-surface"></div>`) or corner alignment marks. Completely stationary surface with NO movable ring, NO sliding thumb cap, and NO center dot.
-4. **Header and Subtext Markings**: Technical monospace typography denoting touch mode (e.g. "${if (isLeft) "Touch Move • LTP" else "Touch Look • RTP"}") and ballistics ("2.0X BALLISTICS"). Do NOT include stick click or tap click text.
+${renderVisualProfileOrCustomDirective(
+    "CONSOLE/XBOX INDUSTRIAL REALISM (STEAM DECK)",
+    """
+    1. **Single-Surface Trackpad Architecture**: One expansive root `<button class="touchpad-ctl" data-id="touch_${control.lowercase()}" data-control="$control" data-category="$category" data-name="Touchpad $control">`.
+    2. **Textured Recessed Dish**: Deep carbon/polycarbonate matte finish with inset drop shadow and smooth laser-etched touch feel.
+    3. **Stationary Trackpad Surface**: Subtle inner boundary frame (`<div class="touchpad-surface"></div>`) or corner alignment marks. Completely stationary surface with NO movable ring, NO sliding thumb cap, and NO center dot.
+    4. **Header and Subtext Markings**: Technical monospace typography denoting touch mode (e.g. "${if (isLeft) "Touch Move • LTP" else "Touch Look • RTP"}") and ballistics ("2.0X BALLISTICS"). Do NOT include stick click or tap click text.
+    """.trimIndent(),
+    options
+)}
 
-${engineBoundaries("touchpad-ctl")}
+${engineBoundaries("touchpad-ctl", widthDp, heightDp)}
 
 ${renderDesignParameters(options)}
 
@@ -1003,17 +1046,21 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Optional Visual Language [OPTIONAL]**: Flexbox hamburger pause bars, overlapping dual rectangles, glowing nexus guide emblem.
 - **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. Pill, sphere, tile, emblem, or custom form are all valid. Preserve the user's requested shape.
 
-### DEFAULT VISUAL PROFILE / VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
-When no specific custom aesthetic or character theme is requested by the user, adopt an authentic console-grade hardware aesthetic:
-1. **Flush Low-Profile Utility Ergonomics**: System buttons (MENU, VIEW, HOME, SHARE) on authentic gamepads are secondary utility controls. They feature a compact, flush or slightly recessed profile to prevent accidental presses during intense gameplay.
-2. **Crisp Authentic Iconography**:
-   - `MENU`: 3 horizontal hamburger bars with clean vertical flexbox column spacing (`gap: 4px`), rounded pill ends, and clean white/silver contrast.
-   - `VIEW`: Overlapping dual windows/rectangles symbol (`⧉`) or vector path.
-   - `HOME` / `GUIDE`: Central nexus orb / emblem with subtle radial glow and chamfered bezel ring.
-3. **Zero Text Collision on Graphic Buttons**: Iconographic system buttons (such as MENU hamburger bars or VIEW windows) must NEVER have automatic text stamped over their icons. The icon itself is the visual identity.
-4. **Restrained Lighting & Tactile Click**: Subtle recessed socket well (`box-shadow: inset 0 1px 3px rgba(255,255,255,0.25), inset 0 -3px 6px rgba(0,0,0,0.75)`), matte chassis darks, and shallow tactile micro-travel (`scale(0.92) translateY(2px)`).
+${renderVisualProfileOrCustomDirective(
+    "CONSOLE/XBOX INDUSTRIAL REALISM",
+    """
+    1. **Flush Low-Profile Utility Ergonomics**: System buttons (MENU, VIEW, HOME, SHARE) on authentic gamepads are secondary utility controls. They feature a compact, flush or slightly recessed profile to prevent accidental presses during intense gameplay.
+    2. **Crisp Authentic Iconography**:
+       - `MENU`: 3 horizontal hamburger bars with clean vertical flexbox column spacing (`gap: 4px`), rounded pill ends, and clean white/silver contrast.
+       - `VIEW`: Overlapping dual windows/rectangles symbol (`⧉`) or vector path.
+       - `HOME` / `GUIDE`: Central nexus orb / emblem with subtle radial glow and chamfered bezel ring.
+    3. **Zero Text Collision on Graphic Buttons**: Iconographic system buttons (such as MENU hamburger bars or VIEW windows) must NEVER have automatic text stamped over their icons. The icon itself is the visual identity.
+    4. **Restrained Lighting & Tactile Click**: Subtle recessed socket well (`box-shadow: inset 0 1px 3px rgba(255,255,255,0.25), inset 0 -3px 6px rgba(0,0,0,0.75)`), matte chassis darks, and shallow tactile micro-travel (`scale(0.92) translateY(2px)`).
+    """.trimIndent(),
+    options
+)}
 
-${engineBoundaries("system-btn")}
+${engineBoundaries("system-btn", widthDp, heightDp)}
 
 ### USER CUSTOMIZATION SCHEMA:
 The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
