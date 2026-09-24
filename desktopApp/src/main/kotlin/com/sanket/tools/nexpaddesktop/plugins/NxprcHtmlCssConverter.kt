@@ -14,6 +14,16 @@ import com.sanket.tools.nexpad.nxprc.engine.dom.HtmlDomParser
  */
 object NxprcHtmlCssConverter {
 
+    // Domain constants for AST root class resolution
+    private val STANDARD_BUTTON_SUFFIXES = listOf("-btn", "-ctl")
+    private val CONTAINER_CLASS_KEYWORDS = listOf("button", "touchpad", "pad", "control")
+    private const val DEFAULT_ROOT_BUTTON_CLASS = "button"
+
+    // Domain constants for stacking order remediation
+    private const val DEFAULT_SVG_MIN_Z_INDEX = 6
+    private const val MIN_REPAIRED_SURFACE_Z_INDEX = 2
+    private const val Z_INDEX_CLEARANCE_STEP = 2
+
     /**
      * Converts raw HTML/CSS/SVG text into an NxprcDocument via shared :protocol engine.
      * Automatically normalizes AI-generated code (code block extraction, root rectification,
@@ -324,23 +334,25 @@ object NxprcHtmlCssConverter {
         val classList = rootButton?.classNames ?: emptyList()
         val discoveredClass = when {
             rootClassHint != null && classList.contains(rootClassHint) -> rootClassHint
-            classList.any { it.endsWith("-btn") || it.endsWith("-ctl") } ->
-                classList.first { it.endsWith("-btn") || it.endsWith("-ctl") }
-            classList.any { it.contains("button") || it.contains("touchpad") || it.contains("pad") || it.contains("control") } ->
-                classList.first { it.contains("button") || it.contains("touchpad") || it.contains("pad") || it.contains("control") }
+            classList.any { cls -> STANDARD_BUTTON_SUFFIXES.any { cls.endsWith(it) } } ->
+                classList.first { cls -> STANDARD_BUTTON_SUFFIXES.any { cls.endsWith(it) } }
+            classList.any { cls -> CONTAINER_CLASS_KEYWORDS.any { cls.contains(it) } } ->
+                classList.first { cls -> CONTAINER_CLASS_KEYWORDS.any { cls.contains(it) } }
             classList.isNotEmpty() -> classList.first()
-            else -> rootClassHint ?: "button"
+            else -> rootClassHint ?: DEFAULT_ROOT_BUTTON_CLASS
         }
 
-        val activeSelector = if (discoveredClass.isNotBlank() && discoveredClass != "button") {
+        val activeSelector = if (discoveredClass.isNotBlank() && discoveredClass != DEFAULT_ROOT_BUTTON_CLASS) {
             ".$discoveredClass:active, button:active"
         } else {
             "button:active"
         }
 
+        val defaultPhysics = SpringPhysics.DEFAULT
+
         // If no <style> block exists, inject one with default spring physics
         if (!res.contains("<style", ignoreCase = true)) {
-            val springPhysicsBlock = "<style>\n  :root {\n    --spring-damping: 0.68;\n    --spring-stiffness: 440;\n    --press-scale: 0.92;\n  }\n  $activeSelector { transform: scale(0.92) translateY(2px); }\n</style>\n"
+            val springPhysicsBlock = "<style>\n  ${defaultPhysics.toRootBlock()}\n  $activeSelector { transform: scale(${defaultPhysics.pressScaleFormatted}) translateY(2px); }\n</style>\n"
             val bodyIdx = res.indexOf("<body", ignoreCase = true)
             res = if (bodyIdx != -1) {
                 val afterBody = res.indexOf(">", bodyIdx) + 1
@@ -355,7 +367,7 @@ object NxprcHtmlCssConverter {
                 val match = styleTagRegex.find(res)
                 if (match != null) {
                     val insertIdx = match.range.last + 1
-                    val springPhysicsBlock = "\n    :root {\n      --spring-damping: 0.68;\n      --spring-stiffness: 440;\n      --press-scale: 0.92;\n    }\n"
+                    val springPhysicsBlock = "\n    ${defaultPhysics.toRootBlock()}\n"
                     res = res.substring(0, insertIdx) + springPhysicsBlock + res.substring(insertIdx)
                 }
             }
@@ -365,7 +377,7 @@ object NxprcHtmlCssConverter {
                 val match = styleEndRegex.find(res)
                 if (match != null) {
                     val insertIdx = match.range.first
-                    val fallbackActive = "\n  $activeSelector { transform: scale(var(--press-scale, 0.92)) translateY(2px); }\n"
+                    val fallbackActive = "\n  $activeSelector { transform: scale(var(--press-scale, ${defaultPhysics.pressScaleFormatted})) translateY(2px); }\n"
                     res = res.substring(0, insertIdx) + fallbackActive + res.substring(insertIdx)
                 }
             }
@@ -435,7 +447,7 @@ object NxprcHtmlCssConverter {
         // Find the lowest explicit z-index among SVG vector layers
         val minSvgZ = allRules.filter { r ->
             r.zIndex != null && svgIdentifiers.any { r.selector.lowercase().contains(it) }
-        }.mapNotNull { it.zIndex }.minOrNull() ?: 6
+        }.mapNotNull { it.zIndex }.minOrNull() ?: DEFAULT_SVG_MIN_Z_INDEX
 
         // Find non-SVG container rules with a background and z-index >= minSvgZ
         val inversionSelectors = mutableSetOf<String>()
@@ -463,7 +475,7 @@ object NxprcHtmlCssConverter {
 
         if (inversionSelectors.isEmpty()) return html
 
-        val targetZ = maxOf(2, minSvgZ - 2)
+        val targetZ = maxOf(MIN_REPAIRED_SURFACE_Z_INDEX, minSvgZ - Z_INDEX_CLEARANCE_STEP)
         return styleTagRegex.replace(html) { match ->
             var css = match.groupValues[1]
             for (invSel in inversionSelectors) {

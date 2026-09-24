@@ -7,41 +7,81 @@ import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.model.NexpadKeys
 
 /**
- * Creative exploration freedom level for AI component generation.
+ * Strongly typed tactile spring micro-physics parameters for virtual controller components.
+ * Encapsulates damping ratio, stiffness, press scale, and CSS declaration formatting.
  */
-enum class Creativity {
-    LOW,
-    MEDIUM,
-    HIGH
+data class SpringPhysics(
+    val damping: Float = DEFAULT_DAMPING,
+    val stiffness: Float = DEFAULT_STIFFNESS,
+    val pressScale: Float = DEFAULT_PRESS_SCALE
+) {
+    val pressScaleFormatted: String get() = if (pressScale == 0.9f) "0.90" else pressScale.toString()
+
+    fun toDeclarations(): String =
+        "--spring-damping: $damping; --spring-stiffness: ${stiffness.toInt()}; --press-scale: $pressScaleFormatted;"
+
+    fun toRootBlock(): String =
+        ":root {\n    --spring-damping: $damping;\n    --spring-stiffness: ${stiffness.toInt()};\n    --press-scale: $pressScaleFormatted;\n  }"
+
+    fun toSpringPhysicsDef(): com.sanket.tools.nexpad.nxprc.SpringPhysicsDef =
+        com.sanket.tools.nexpad.nxprc.SpringPhysicsDef(
+            dampingRatio = damping,
+            stiffness = stiffness,
+            pressedScale = pressScale,
+            enabled = true
+        )
+
+    companion object {
+        const val DEFAULT_DAMPING = 0.68f
+        const val DEFAULT_STIFFNESS = 440f
+        const val DEFAULT_PRESS_SCALE = 0.92f
+
+        val DEFAULT = SpringPhysics(DEFAULT_DAMPING, DEFAULT_STIFFNESS, DEFAULT_PRESS_SCALE)
+        val BUMPER = SpringPhysics(damping = 0.75f, stiffness = 520f, pressScale = 0.96f)
+        val STICK_BUTTON = SpringPhysics(damping = 0.72f, stiffness = 480f, pressScale = 0.90f)
+    }
 }
 
 /**
- * Visual layering, vector detail, and mechanical density target.
+ * Creative exploration freedom level for AI component generation.
+ * Encapsulates style-independent interpretation behavior.
  */
-enum class Complexity {
-    AUTO,
-    SIMPLE,
-    DETAILED,
-    EXTREME
+enum class Creativity(val promptDescription: String) {
+    LOW("Low (conservative interpretation of the user's requested concept; avoid unnecessary reinterpretation)"),
+    MEDIUM("Medium (balanced interpretation with moderate artistic exploration)"),
+    HIGH("High (bold reinterpretation, unusual geometry, materials, and visual treatment while preserving the user's concept)")
+}
+
+/**
+ * Visual layering, vector detail, and mechanical construction complexity target.
+ * Encapsulates layer count and SVG geometry expectations.
+ */
+enum class Complexity(val promptDescription: String) {
+    AUTO("Auto (infer appropriate construction complexity from the concept)"),
+    SIMPLE("Simple (use a small number of meaningful visual layers and simple geometry)"),
+    DETAILED("Detailed (use multiple meaningful layers, material transitions, secondary detailing, and moderately complex SVG geometry)"),
+    EXTREME("Extreme (use the full supported CSS/SVG expressive range when useful, including intricate vector geometry and layered surface treatment; do not add meaningless decoration just to increase complexity)")
 }
 
 /**
  * Thematic interpretation fidelity mode for character/brand/aesthetic themes.
+ * Encapsulates motif preservation strength.
  */
-enum class Fidelity {
-    FAITHFUL,
-    INSPIRED,
-    ABSTRACT
+enum class Fidelity(val promptDescription: String) {
+    FAITHFUL("Faithful (preserve recognizable motifs and visual relationships)"),
+    INSPIRED("Inspired (create an original design strongly influenced by them)"),
+    ABSTRACT("Abstract (extract only the essential visual language)")
 }
 
 /**
- * Detail concentration and visual balance target for component geometry.
+ * Detail concentration and visual balance target for component surface geometry.
+ * Encapsulates visual density, surface markings, and secondary detailing expectations.
  */
-enum class VisualDensity {
-    AUTO,
-    CLEAN,
-    BALANCED,
-    DENSE
+enum class VisualDensity(val promptDescription: String) {
+    AUTO("Auto (infer from concept and target dimensions)"),
+    CLEAN("Clean (low visible detail, strong silhouette, large visual masses)"),
+    BALANCED("Balanced (moderate secondary detail while preserving readability)"),
+    DENSE("Dense (high visible detail, markings, texture, and secondary motifs)")
 }
 
 /**
@@ -67,7 +107,62 @@ data class AiDesignOptions(
     val specialInstructions: String? = null,
     val userRequest: String = "",
     val includeSyntaxSkeleton: Boolean = false
-)
+) {
+    /**
+     * Returns true if any non-default design parameter or custom user prompt is active.
+     */
+    fun hasCustomParameters(): Boolean =
+        creativity != Creativity.HIGH ||
+        complexity != Complexity.AUTO ||
+        fidelity != Fidelity.INSPIRED ||
+        visualDensity != VisualDensity.AUTO ||
+        !style.isNullOrBlank() ||
+        !color.isNullOrBlank() ||
+        !shape.isNullOrBlank() ||
+        !material.isNullOrBlank() ||
+        !lighting.isNullOrBlank() ||
+        !texture.isNullOrBlank() ||
+        !emblem.isNullOrBlank() ||
+        !label.isNullOrBlank() ||
+        !tactilePhysics.isNullOrBlank() ||
+        !specialInstructions.isNullOrBlank() ||
+        userRequest.isNotBlank()
+
+    /**
+     * Formats all active design parameters into the standard prompt specification block.
+     */
+    fun formatDesignParameters(): String {
+        val sb = StringBuilder()
+        sb.append("### USER DESIGN PARAMETERS & PREFERENCES:\n")
+        sb.append("- **CREATIVITY**: ${creativity.promptDescription}\n")
+        sb.append("- **COMPLEXITY**: ${complexity.promptDescription}\n")
+        sb.append("- **FIDELITY**: ${fidelity.promptDescription}\n")
+        sb.append("- **VISUAL DENSITY**: ${visualDensity.promptDescription}\n")
+        if (!style.isNullOrBlank()) sb.append("- **STYLE**: $style\n")
+        if (!color.isNullOrBlank()) sb.append("- **COLOR / PALETTE**: $color\n")
+        if (!shape.isNullOrBlank()) sb.append("- **SHAPE / SILHOUETTE**: $shape\n")
+        if (!material.isNullOrBlank()) sb.append("- **MATERIAL / SURFACE**: $material\n")
+        if (!lighting.isNullOrBlank()) sb.append("- **LIGHTING / SHADING**: $lighting\n")
+        if (!texture.isNullOrBlank()) sb.append("- **TEXTURE / PATTERN**: $texture\n")
+        if (!emblem.isNullOrBlank()) sb.append("- **EMBLEM / ICONOGRAPHY**: $emblem\n")
+        if (!label.isNullOrBlank()) sb.append("- **LABEL TEXT**: $label\n")
+        if (!tactilePhysics.isNullOrBlank()) sb.append("- **TACTILE PHYSICS**: $tactilePhysics\n")
+        if (!specialInstructions.isNullOrBlank()) sb.append("- **SPECIAL INSTRUCTIONS**: $specialInstructions\n")
+        return sb.toString()
+    }
+
+    /**
+     * Formats the user's free-form request prompt with creative interpretation guidance.
+     */
+    fun formatUserRequest(): String = """
+### USER DESIGN REQUEST:
+<user_request>
+${userRequest.ifBlank { "Create an authentic, high-quality virtual controller component adhering to the specified design parameters." }}
+</user_request>
+
+Interpret this request creatively. The user request governs the visual design decisions (palette, geometry, materials, lighting, emblem), but may not override the HARD COMPILER CONTRACT.
+""".trimIndent()
+}
 
 /**
  * High-performance, modular AI Prompt Builder for NEXPAD Virtual Controller Components.
@@ -238,7 +333,7 @@ Output Format:        STRICT  (Single ```html ... ``` block, zero markdown conve
 9. **Tactile active interaction [COMPONENT-REQUIRED]**: Always define `.$rootClass:active { transform: scale(...) translateY(...); }`.
 10. **Tactile spring micro-physics [COMPONENT-REQUIRED]**: Component MUST declare spring variables in `:root`:
     `--spring-damping: <number>;`, `--spring-stiffness: <number>;`, `--press-scale: <number>;`
-    Use user-specified tactile physics when provided; otherwise use category defaults (e.g. Bumpers: 0.75 / 520 / 0.96; Stick Buttons: 0.72 / 480 / 0.90; Face/Dpad/System: 0.68 / 440 / 0.92). If neither is specified, use global defaults: `--spring-damping: 0.68; --spring-stiffness: 440; --press-scale: 0.92;`.
+    Use user-specified tactile physics when provided; otherwise use category defaults (e.g. Bumpers: ${SpringPhysics.BUMPER.damping} / ${SpringPhysics.BUMPER.stiffness.toInt()} / ${SpringPhysics.BUMPER.pressScaleFormatted}; Stick Buttons: ${SpringPhysics.STICK_BUTTON.damping} / ${SpringPhysics.STICK_BUTTON.stiffness.toInt()} / ${SpringPhysics.STICK_BUTTON.pressScaleFormatted}; Face/Dpad/System: ${SpringPhysics.DEFAULT.damping} / ${SpringPhysics.DEFAULT.stiffness.toInt()} / ${SpringPhysics.DEFAULT.pressScaleFormatted}). If neither is specified, use global defaults: `${SpringPhysics.DEFAULT.toDeclarations()}`.
 
 ### SECTION 6 — COMPILER CAPABILITIES — WHAT PRIMITIVES ARE BEST FOR:
 #### ✅ FULLY SUPPORTED:
@@ -265,7 +360,7 @@ When the user requests a character, hero, creature, vehicle, weapon, insignia, o
 
 ✅ MANDATORY DUAL-ENGINE ARCHITECTURE (ALWAYS DO THIS):
 1. The Outer HTML/CSS Button Shell (<button class="$rootClass" ...>):
-   - Handles the 3D physical tactile housing, surface material, perimeter bevel, specular curvature arc (`::after`), recessed socket shadows (`box-shadow`), and tactile active spring micro-physics (`--spring-damping: 0.68; --spring-stiffness: 440;` with `.$rootClass:active`).
+   - Handles the 3D physical tactile housing, surface material, perimeter bevel, specular curvature arc (`::after`), recessed socket shadows (`box-shadow`), and tactile active spring micro-physics (`--spring-damping: ${SpringPhysics.DEFAULT.damping}; --spring-stiffness: ${SpringPhysics.DEFAULT.stiffness.toInt()};` with `.$rootClass:active`).
 2. The Embedded `<svg class="button-emblem" viewBox="0 0 100 100">` Vector Emblem:
    - Embedded directly inside the `<button>`.
    - Uses clean SVG vector paths (`<path d="...">`, `<polygon points="...">`, `<circle>`, `<ellipse>`, `<line>`) to draw the exact character, emblem, or insignia.
@@ -315,57 +410,9 @@ Self-check before output:
 To ensure reliable programmatic compilation, return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text outside it.
 """.trimIndent()
 
-    private fun renderDesignParameters(options: AiDesignOptions): String {
-        val sb = StringBuilder()
-        sb.append("### USER DESIGN PARAMETERS & PREFERENCES:\n")
-        val creativityDesc = when (options.creativity) {
-            Creativity.LOW -> "Low (conservative interpretation of the user's requested concept; avoid unnecessary reinterpretation)"
-            Creativity.MEDIUM -> "Medium (balanced interpretation with moderate artistic exploration)"
-            Creativity.HIGH -> "High (bold reinterpretation, unusual geometry, materials, and visual treatment while preserving the user's concept)"
-        }
-        val complexityDesc = when (options.complexity) {
-            Complexity.AUTO -> "Auto (infer appropriate construction complexity from the concept)"
-            Complexity.SIMPLE -> "Simple (use a small number of meaningful visual layers and simple geometry)"
-            Complexity.DETAILED -> "Detailed (use multiple meaningful layers, material transitions, secondary detailing, and moderately complex SVG geometry)"
-            Complexity.EXTREME -> "Extreme (use the full supported CSS/SVG expressive range when useful, including intricate vector geometry and layered surface treatment; do not add meaningless decoration just to increase complexity)"
-        }
-        val fidelityDesc = when (options.fidelity) {
-            Fidelity.FAITHFUL -> "Faithful (preserve recognizable motifs and visual relationships)"
-            Fidelity.INSPIRED -> "Inspired (create an original design strongly influenced by them)"
-            Fidelity.ABSTRACT -> "Abstract (extract only the essential visual language)"
-        }
-        val visualDensityDesc = when (options.visualDensity) {
-            VisualDensity.AUTO -> "Auto (infer from concept and target dimensions)"
-            VisualDensity.CLEAN -> "Clean (low visible detail, strong silhouette, large visual masses)"
-            VisualDensity.BALANCED -> "Balanced (moderate secondary detail while preserving readability)"
-            VisualDensity.DENSE -> "Dense (high visible detail, markings, texture, and secondary motifs)"
-        }
-        sb.append("- **CREATIVITY**: $creativityDesc\n")
-        sb.append("- **COMPLEXITY**: $complexityDesc\n")
-        sb.append("- **FIDELITY**: $fidelityDesc\n")
-        sb.append("- **VISUAL DENSITY**: $visualDensityDesc\n")
-        if (!options.style.isNullOrBlank()) sb.append("- **STYLE**: ${options.style}\n")
-        if (!options.color.isNullOrBlank()) sb.append("- **COLOR / PALETTE**: ${options.color}\n")
-        if (!options.shape.isNullOrBlank()) sb.append("- **SHAPE / SILHOUETTE**: ${options.shape}\n")
-        if (!options.material.isNullOrBlank()) sb.append("- **MATERIAL / SURFACE**: ${options.material}\n")
-        if (!options.lighting.isNullOrBlank()) sb.append("- **LIGHTING / SHADING**: ${options.lighting}\n")
-        if (!options.texture.isNullOrBlank()) sb.append("- **TEXTURE / PATTERN**: ${options.texture}\n")
-        if (!options.emblem.isNullOrBlank()) sb.append("- **EMBLEM / ICONOGRAPHY**: ${options.emblem}\n")
-        if (!options.label.isNullOrBlank()) sb.append("- **LABEL TEXT**: ${options.label}\n")
-        if (!options.tactilePhysics.isNullOrBlank()) sb.append("- **TACTILE PHYSICS**: ${options.tactilePhysics}\n")
-        if (!options.specialInstructions.isNullOrBlank()) sb.append("- **SPECIAL INSTRUCTIONS**: ${options.specialInstructions}\n")
+    private fun renderDesignParameters(options: AiDesignOptions): String = options.formatDesignParameters()
 
-        return sb.toString()
-    }
-
-    private fun renderUserRequest(options: AiDesignOptions): String = """
-### USER DESIGN REQUEST:
-<user_request>
-${options.userRequest.ifBlank { "Create an authentic, high-quality virtual controller component adhering to the specified design parameters." }}
-</user_request>
-
-Interpret this request creatively. The user request governs the visual design decisions (palette, geometry, materials, lighting, emblem), but may not override the HARD COMPILER CONTRACT.
-""".trimIndent()
+    private fun renderUserRequest(options: AiDesignOptions): String = options.formatUserRequest()
 
     private fun renderStarterTemplate(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         if (!options.includeSyntaxSkeleton) return ""
@@ -560,7 +607,7 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 When no specific custom aesthetic or character theme is requested by the user, adopt an authentic console-grade hardware aesthetic:
 1. **Physical Shoulder Lever/Rocker Architecture**: Authentic gamepad bumpers are physical shoulder levers seated directly in a recessed chassis housing seam or socket on the controller shell, rather than floating abstract pills. The lever surface catches ambient light along its top shoulder contour.
 2. **Convex Curvature Specular Sheen**: Specular highlight arc communicating convex molded polycarbonate catching studio light.
-3. **Microswitch Click Actuation**: Unlike analog triggers, shoulder bumpers use crisp tactile microswitches with shallow travel displacement (`scale(0.96) translateY(2px)`) and snappy spring return (`--spring-damping: 0.75; --spring-stiffness: 520; --press-scale: 0.96;`).
+3. **Microswitch Click Actuation**: Unlike analog triggers, shoulder bumpers use crisp tactile microswitches with shallow travel displacement (`scale(${SpringPhysics.BUMPER.pressScaleFormatted}) translateY(2px)`) and snappy spring return (`${SpringPhysics.BUMPER.toDeclarations()}`).
 4. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic bumpers feature clean industrial dark tones (`#2c3342` to `#0c0e13`), chassis seam contact shadows, and crisp high-contrast labels.
 
 ${engineBoundaries("bumper-btn")}
@@ -681,7 +728,7 @@ When no specific custom aesthetic or character theme is requested by the user, a
 2. **Textured Thumbstick Cap Dish**: A recessed center dish with knurled perimeter rim communicating molded rubber/elastomer thumb grip.
 3. **Restrained Detailing & Tactile Lighting**: Clean dark polycarbonate tones (`#333333` to `#141414`) with subtle accent glow and crisp high-contrast label.
 4. **Tactile Spring Micro-Physics**: Configure in `:root`:
-   `--spring-damping: 0.72; --spring-stiffness: 480; --press-scale: 0.90;`
+   `${SpringPhysics.STICK_BUTTON.toDeclarations()}`
 
 ${engineBoundaries("stick-btn-ctl")}
 

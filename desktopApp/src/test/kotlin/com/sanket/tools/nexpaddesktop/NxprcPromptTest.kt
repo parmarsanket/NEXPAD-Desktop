@@ -5,6 +5,7 @@ import com.sanket.tools.nexpaddesktop.plugins.Complexity
 import com.sanket.tools.nexpaddesktop.plugins.Creativity
 import com.sanket.tools.nexpaddesktop.plugins.Fidelity
 import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
+import com.sanket.tools.nexpaddesktop.plugins.SpringPhysics
 import com.sanket.tools.nexpaddesktop.plugins.VisualDensity
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -1198,6 +1199,64 @@ class NxprcPromptTest {
         assertTrue(repair.contains("Clicky microswitch with sharp snap"), "Repair prompt must include tactile physics")
         assertTrue(repair.contains("Neon cyberpunk samurai emblem"), "Repair prompt must include user request")
         assertTrue(repair.contains("Extreme (use the full supported CSS/SVG expressive range"), "Repair prompt must include complexity description")
+    }
+
+    @Test
+    fun domainModelEncapsulationAndZeroHardcodeTest() {
+        // 1. SpringPhysics domain model encapsulation and CSS emission
+        val defaultPhysics = SpringPhysics.DEFAULT
+        assertEquals(0.68f, defaultPhysics.damping)
+        assertEquals(440f, defaultPhysics.stiffness)
+        assertEquals(0.92f, defaultPhysics.pressScale)
+        assertEquals("0.92", defaultPhysics.pressScaleFormatted)
+        assertTrue(defaultPhysics.toDeclarations().contains("--spring-damping: 0.68;"))
+        assertTrue(defaultPhysics.toDeclarations().contains("--spring-stiffness: 440;"))
+        assertTrue(defaultPhysics.toDeclarations().contains("--press-scale: 0.92;"))
+        assertTrue(defaultPhysics.toRootBlock().contains(":root {"))
+
+        val bumperPhysics = SpringPhysics.BUMPER
+        assertEquals(0.75f, bumperPhysics.damping)
+        assertEquals(520f, bumperPhysics.stiffness)
+        assertEquals(0.96f, bumperPhysics.pressScale)
+
+        val stickButtonPhysics = SpringPhysics.STICK_BUTTON
+        assertEquals(0.72f, stickButtonPhysics.damping)
+        assertEquals(480f, stickButtonPhysics.stiffness)
+        assertEquals("0.90", stickButtonPhysics.pressScaleFormatted)
+
+        // Bridge to :protocol SpringPhysicsDef
+        val protocolDef = defaultPhysics.toSpringPhysicsDef()
+        assertEquals(0.68f, protocolDef.dampingRatio)
+        assertEquals(440f, protocolDef.stiffness)
+        assertEquals(0.92f, protocolDef.pressedScale)
+        assertTrue(protocolDef.enabled)
+
+        // 2. Enum self-encapsulation (no anemic switch/when dependencies)
+        Creativity.values().forEach {
+            assertTrue(it.promptDescription.isNotBlank(), "Creativity.${it.name} must encapsulate its promptDescription")
+        }
+        Complexity.values().forEach {
+            assertTrue(it.promptDescription.isNotBlank(), "Complexity.${it.name} must encapsulate its promptDescription")
+        }
+        Fidelity.values().forEach {
+            assertTrue(it.promptDescription.isNotBlank(), "Fidelity.${it.name} must encapsulate its promptDescription")
+        }
+        VisualDensity.values().forEach {
+            assertTrue(it.promptDescription.isNotBlank(), "VisualDensity.${it.name} must encapsulate its promptDescription")
+        }
+
+        // 3. AiDesignOptions domain method encapsulation
+        val defaultOpts = AiDesignOptions()
+        assertFalse(defaultOpts.hasCustomParameters(), "Default options should have hasCustomParameters() == false")
+
+        val customizedOpts = AiDesignOptions(style = "Cyberpunk Neo", tactilePhysics = "Snap switch")
+        assertTrue(customizedOpts.hasCustomParameters(), "Customized options should have hasCustomParameters() == true")
+        val formattedParams = customizedOpts.formatDesignParameters()
+        assertTrue(formattedParams.contains("**STYLE**: Cyberpunk Neo"))
+        assertTrue(formattedParams.contains("**TACTILE PHYSICS**: Snap switch"))
+
+        val customReq = customizedOpts.formatUserRequest()
+        assertTrue(customReq.contains("<user_request>"))
     }
 }
 
