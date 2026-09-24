@@ -49,8 +49,16 @@ class NxprcPromptTest {
             }
             assertTrue(prompt.contains("clip-path: polygon"))
             assertTrue(prompt.contains("data-category` is metadata, not a shape instruction"))
-            assertTrue(prompt.contains("OPTIONAL STARTER TEMPLATE"))
-            assertTrue(prompt.contains("REFERENCE ONLY"))
+            assertFalse(prompt.contains("OPTIONAL STARTER TEMPLATE"), "Starter template should be omitted by default")
+            val promptWithSkeleton = NxprcHtmlCssConverter.generateAiPrompt(
+                control = if (category == "DPAD") "UP" else "A",
+                category = category,
+                widthDp = 96,
+                heightDp = 96,
+                options = AiDesignOptions(includeSyntaxSkeleton = true)
+            )
+            assertTrue(promptWithSkeleton.contains("OPTIONAL STARTER TEMPLATE"))
+            assertTrue(promptWithSkeleton.contains("REFERENCE ONLY"))
             assertTrue(prompt.contains("Do not use `@media`"))
             assertTrue(prompt.contains("Text must be real DOM text"))
             assertTrue(prompt.contains("Self-check before output"))
@@ -102,8 +110,19 @@ class NxprcPromptTest {
             assertTrue(prompt.contains("data-category` is metadata, not a shape instruction"), "$tag missing creative freedom rule")
             assertTrue(prompt.contains("Preserve the user's requested shape"), "$tag missing shape preservation rule")
             assertTrue(prompt.contains("Set `position: absolute`, `left`, `top`, `width`, and `height`"), "$tag missing explicit position rule")
-            assertTrue(prompt.contains("OPTIONAL STARTER TEMPLATE"), "$tag missing starter template section")
-            assertTrue(prompt.contains("REFERENCE ONLY"), "$tag missing REFERENCE ONLY label")
+            assertFalse(prompt.contains("OPTIONAL STARTER TEMPLATE"), "$tag should omit starter template by default")
+            assertFalse(prompt.contains("REFERENCE ONLY"), "$tag should omit REFERENCE ONLY by default")
+
+            // Template included when explicitly requested
+            val promptWithSkeleton = NxprcHtmlCssConverter.generateAiPrompt(
+                control = control,
+                category = category,
+                widthDp = 96,
+                heightDp = 96,
+                options = AiDesignOptions(includeSyntaxSkeleton = true)
+            )
+            assertTrue(promptWithSkeleton.contains("OPTIONAL STARTER TEMPLATE"), "$tag missing starter template when requested")
+            assertTrue(promptWithSkeleton.contains("REFERENCE ONLY"), "$tag missing REFERENCE ONLY label when requested")
         }
     }
 
@@ -203,8 +222,15 @@ class NxprcPromptTest {
             assertTrue(prompt.contains("The schema is a convenience, not a limitation"), "$tag missing schema convenience note")
             assertTrue(prompt.contains("STYLE"), "$tag missing STYLE slot")
 
-            // 8. Syntax-Only Starter Template Anti-Copy Protection
-            assertTrue(prompt.contains("This template demonstrates document syntax only"), "$tag missing anti-copy template warning")
+            // 8. Syntax-Only Starter Template Anti-Copy Protection (when requested)
+            val promptWithSkeleton = NxprcHtmlCssConverter.generateAiPrompt(
+                control = control,
+                category = category,
+                widthDp = 96,
+                heightDp = 96,
+                options = AiDesignOptions(includeSyntaxSkeleton = true)
+            )
+            assertTrue(promptWithSkeleton.contains("This template demonstrates document syntax only"), "$tag missing anti-copy template warning")
         }
     }
 
@@ -634,7 +660,8 @@ class NxprcPromptTest {
                 control = control,
                 category = category,
                 widthDp = 96,
-                heightDp = 96
+                heightDp = 96,
+                options = AiDesignOptions(includeSyntaxSkeleton = true)
             )
             val tag = "[$category/$control]"
 
@@ -928,6 +955,7 @@ class NxprcPromptTest {
             texture = "Carbon Fiber",
             emblem = "Samurai Oni Mask",
             label = "TURBO",
+            tactilePhysics = "Ultra-snappy microswitch with high resistance",
             specialInstructions = "Add pulsating energy rings",
             userRequest = "Make it look like Cyberpunk 2077"
         )
@@ -942,11 +970,14 @@ class NxprcPromptTest {
         assertTrue(prompt.contains("**TEXTURE / PATTERN**: Carbon Fiber"))
         assertTrue(prompt.contains("**EMBLEM / ICONOGRAPHY**: Samurai Oni Mask"))
         assertTrue(prompt.contains("**LABEL TEXT**: TURBO"))
+        assertTrue(prompt.contains("**TACTILE PHYSICS**: Ultra-snappy microswitch with high resistance"))
         assertTrue(prompt.contains("**SPECIAL INSTRUCTIONS**: Add pulsating energy rings"))
         assertTrue(prompt.contains("<user_request>"))
         assertTrue(prompt.contains("Make it look like Cyberpunk 2077"))
-        assertTrue(prompt.contains("High (bold creative choices within compiler rules)"))
-        assertTrue(prompt.contains("Faithful (respect core reference shapes and motifs closely)"))
+        assertTrue(prompt.contains("High (bold reinterpretation, unusual geometry, materials, and visual treatment while preserving the user's concept)"))
+        assertTrue(prompt.contains("Faithful (preserve recognizable motifs and visual relationships)"))
+        assertTrue(prompt.contains("Detailed (use multiple meaningful layers, material transitions, secondary detailing, and moderately complex SVG geometry)"))
+        assertTrue(prompt.contains("Balanced (moderate secondary detail while preserving readability)"))
     }
 
     @Test
@@ -1034,6 +1065,139 @@ class NxprcPromptTest {
         assertTrue(normalized.contains("<div class=\"touchpad-surface\"></div>"), "Inner surface div preserved")
         assertTrue(normalized.trimEnd().endsWith("</button>"), "Closing button tag matched")
         assertTrue(normalized.contains(".touchpad-ctl:active"), "Touchpad active state injected")
+    }
+
+    @Test
+    fun normalizerResolvesNestedCssVariableFallbacks() {
+        val cssWithFallbacks = """
+            <style>
+              :root {
+                --defined-color: #00ffcc;
+              }
+              .btn {
+                background: var(--accent, rgba(255, 0, 0, 0.5));
+                width: var(--custom-width, calc(100% - 20px));
+                border-color: var(--primary, var(--secondary, #ffffff));
+                color: var(--defined-color, #000000);
+              }
+            </style>
+            <button class="nexpad-btn" data-control="A"><span>A</span></button>
+        """.trimIndent()
+
+        val normalized = NxprcHtmlCssConverter.normalizeAiHtml(cssWithFallbacks, "nexpad-btn")
+        assertTrue(normalized.contains("rgba(255, 0, 0, 0.5)"), "Nested rgba() fallback must be preserved")
+        assertTrue(normalized.contains("calc(100% - 20px)"), "Nested calc() fallback must be preserved")
+        assertTrue(normalized.contains("#ffffff"), "Deeply nested fallback #ffffff must be resolved")
+        assertTrue(normalized.contains("#00ffcc"), "Defined variable --defined-color must be resolved")
+        assertFalse(normalized.contains("var(--accent"), "Unresolved var(--accent) must be substituted")
+    }
+
+    @Test
+    fun normalizerVendorPrefixBidirectionalSync() {
+        // Case 1: Unprefixed only
+        val unprefixedHtml = """
+            <style>
+              .shape { clip-path: polygon(0 0, 100% 0, 100% 100%); }
+            </style>
+            <button class="nexpad-btn" data-control="A"><span>A</span></button>
+        """.trimIndent()
+        val normalized1 = NxprcHtmlCssConverter.normalizeAiHtml(unprefixedHtml, "nexpad-btn")
+        assertTrue(normalized1.contains("-webkit-clip-path: polygon(0 0, 100% 0, 100% 100%)"), "Must inject -webkit-clip-path")
+        assertTrue(normalized1.contains("clip-path: polygon(0 0, 100% 0, 100% 100%)"), "Must preserve clip-path")
+        assertFalse(normalized1.contains("-webkit--webkit"), "Must not double prefix")
+
+        // Case 2: Prefixed only
+        val prefixedHtml = """
+            <style>
+              .shape { -webkit-clip-path: polygon(50% 0%, 0% 100%, 100% 100%); }
+            </style>
+            <button class="nexpad-btn" data-control="A"><span>A</span></button>
+        """.trimIndent()
+        val normalized2 = NxprcHtmlCssConverter.normalizeAiHtml(prefixedHtml, "nexpad-btn")
+        assertTrue(normalized2.contains("clip-path: polygon(50% 0%, 0% 100%, 100% 100%)"), "Must inject unprefixed clip-path")
+        assertTrue(normalized2.contains("-webkit-clip-path: polygon(50% 0%, 0% 100%, 100% 100%)"), "Must preserve -webkit-clip-path")
+        assertFalse(normalized2.contains("-webkit--webkit"), "Must not double prefix")
+    }
+
+    @Test
+    fun normalizerPreservesTranslucentAndGlassStackingOverlays() {
+        val htmlWithGlassOverlay = """
+            <style>
+              .base-plate { position: absolute; z-index: 10; background: #222; }
+              .glass-shine { position: absolute; z-index: 5; background: rgba(255, 255, 255, 0.15); pointer-events: none; }
+              .text-label { position: absolute; z-index: 8; color: #fff; }
+            </style>
+            <button class="nexpad-btn" data-control="A">
+              <div class="base-plate"></div>
+              <div class="glass-shine"></div>
+              <span class="text-label">A</span>
+            </button>
+        """.trimIndent()
+
+        val normalized = NxprcHtmlCssConverter.normalizeAiHtml(htmlWithGlassOverlay, "nexpad-btn")
+        // The translucent glass-shine overlay should NOT force arbitrary z-index destruction
+        assertTrue(normalized.contains(".glass-shine"), "Glass overlay must be preserved")
+        assertTrue(normalized.contains("rgba(255, 255, 255, 0.15)"), "Overlay opacity/rgba must be intact")
+    }
+
+    @Test
+    fun normalizerMultiClassRootDiscoveryAndSafeClosing() {
+        val rawHtml = """
+            <div class="control-container nexpad-btn elevated" data-control="B">
+                <div class="bevel">
+                    <span class="label">B</span>
+                </div>
+            </div>
+        """.trimIndent()
+
+        val normalized = NxprcHtmlCssConverter.normalizeAiHtml(rawHtml)
+        assertTrue(normalized.contains("<button class=\"control-container nexpad-btn elevated\""), "Must preserve multi-class root")
+        assertTrue(normalized.trimEnd().endsWith("</button>"), "Must cleanly close root button")
+        assertTrue(normalized.contains(".nexpad-btn:active"), "Active state must target known nexpad-btn class token")
+    }
+
+    @Test
+    fun normalizerConservativeSvgViewBox() {
+        // Explicit pixel dimensions should synthesize viewBox
+        val svgWithPixels = """
+            <button class="nexpad-btn" data-control="A">
+              <svg width="48px" height="48px"><circle cx="24" cy="24" r="20"/></svg>
+            </button>
+        """.trimIndent()
+        val normalizedPx = NxprcHtmlCssConverter.normalizeAiHtml(svgWithPixels, "nexpad-btn")
+        assertTrue(normalizedPx.contains("viewBox=\"0 0 48 48\""), "Should synthesize viewBox for explicit pixel dimensions")
+
+        // Percentage or missing dimensions should NOT synthesize arbitrary 0 0 100 100
+        val svgWithPercent = """
+            <button class="nexpad-btn" data-control="A">
+              <svg width="100%" height="100%"><circle cx="50" cy="50" r="40"/></svg>
+            </button>
+        """.trimIndent()
+        val normalizedPct = NxprcHtmlCssConverter.normalizeAiHtml(svgWithPercent, "nexpad-btn")
+        assertFalse(normalizedPct.contains("viewBox=\"0 0 100 100\""), "Must NOT synthesize arbitrary 100 100 viewBox for percentage widths")
+    }
+
+    @Test
+    fun repairPromptPreservesAiDesignOptions() {
+        val options = AiDesignOptions(
+            creativity = Creativity.HIGH,
+            complexity = Complexity.EXTREME,
+            tactilePhysics = "Clicky microswitch with sharp snap",
+            userRequest = "Neon cyberpunk samurai emblem"
+        )
+
+        val repair = NxprcHtmlCssConverter.generateRepairPrompt(
+            previousHtml = "<button class=\"nexpad-btn\"></button>",
+            warnings = listOf("Missing label"),
+            errors = listOf("No text layer found"),
+            control = "A",
+            category = "BUTTON",
+            options = options
+        )
+
+        assertTrue(repair.contains("Clicky microswitch with sharp snap"), "Repair prompt must include tactile physics")
+        assertTrue(repair.contains("Neon cyberpunk samurai emblem"), "Repair prompt must include user request")
+        assertTrue(repair.contains("Extreme (use the full supported CSS/SVG expressive range"), "Repair prompt must include complexity description")
     }
 }
 

@@ -61,11 +61,11 @@ object NxprcHtmlCssConverter {
     /**
      * Comprehensive, industry-standard normalization pipeline for AI-generated HTML/CSS/SVG code:
      * 1. [extractCleanMarkup]: Strips Markdown fences, conversational envelope text, scripts, and unsafe handlers.
-     * 2. [inlineCssCustomProperties]: Pre-evaluates :root CSS variables (var(--...)) into concrete values for styles.
+     * 2. [inlineCssCustomProperties]: Pre-evaluates :root CSS variables using balanced-parentheses fallback parsing.
      * 3. [normalizeCssVendorPrefixes]: Bi-directionally synchronizes vendor prefixes (-webkit-clip-path <-> clip-path).
-     * 4. [normalizeSvgElements]: Auto-completes missing viewBox and namespace attributes on <svg> tags.
-     * 5. [resolveStructuralStackingInversions]: AST/DOM-driven semantic occlusion remediation (NO hardcoded class names).
-     * 6. [ensureRootComponentContract]: Guarantees a single root <button> with spring micro-physics and active state.
+     * 4. [normalizeSvgElements]: Auto-completes missing namespace and explicit numeric pixel viewBox attributes.
+     * 5. [ensureRootComponentContract]: Guarantees a single root <button> with spring micro-physics and active state.
+     * 6. [resolveStructuralStackingInversions]: AST/DOM-driven semantic occlusion remediation on the rectified DOM.
      */
     fun normalizeAiHtml(source: String, rootClassHint: String? = null): String {
         if (source.isBlank()) return source
@@ -73,8 +73,8 @@ object NxprcHtmlCssConverter {
         clean = inlineCssCustomProperties(clean)
         clean = normalizeCssVendorPrefixes(clean)
         clean = normalizeSvgElements(clean)
-        clean = resolveStructuralStackingInversions(clean)
         clean = ensureRootComponentContract(clean, rootClassHint)
+        clean = resolveStructuralStackingInversions(clean)
         return clean
     }
 
@@ -152,16 +152,7 @@ object NxprcHtmlCssConverter {
             var changed = false
             for ((k, v) in resolvedVars) {
                 if (v.contains("var(--")) {
-                    var newV = v
-                    for ((subK, subV) in resolvedVars) {
-                        if (!subV.contains("var(--$subK)")) {
-                            val pattern = Regex("""var\(\s*--${Regex.escape(subK)}(?:\s*,\s*[^)]+)?\s*\)""")
-                            if (pattern.containsMatchIn(newV)) {
-                                newV = newV.replace(pattern, subV)
-                                changed = true
-                            }
-                        }
-                    }
+                    val newV = resolveCssVariablesWithFallbacks(v, resolvedVars)
                     if (newV != v) {
                         resolvedVars[k] = newV
                         changed = true
@@ -172,28 +163,85 @@ object NxprcHtmlCssConverter {
         }
 
         val styleTagRegex = Regex("""<style[^>]*>([\s\S]*?)</style>""", RegexOption.IGNORE_CASE)
-        val fallbackRegex = Regex("""var\(\s*--[a-zA-Z0-9_-]+\s*,\s*([^)]+)\)""")
         return styleTagRegex.replace(html) { match ->
-            var css = match.groupValues[1]
-            for ((k, v) in resolvedVars) {
-                if (!v.contains("var(--")) {
-                    val varRefRegex = Regex("""var\(\s*--${Regex.escape(k)}(?:\s*,\s*[^)]+)?\s*\)""")
-                    css = css.replace(varRefRegex, v)
-                }
-            }
-            // Resolve any remaining undefined variables that provided fallback values
-            css = css.replace(fallbackRegex) { it.groupValues[1].trim() }
-            "<style>${css}</style>"
+            val css = match.groupValues[1]
+            val resolvedCss = resolveCssVariablesWithFallbacks(css, resolvedVars)
+            "<style>${resolvedCss}</style>"
         }
+    }
+
+    /**
+     * Resolves CSS `var(--name, fallback)` calls using balanced-parentheses parsing
+     * to safely support nested functional values such as `rgba(...)`, `calc(...)`, or `linear-gradient(...)`.
+     */
+    private fun resolveCssVariablesWithFallbacks(css: String, resolvedVars: Map<String, String>): String {
+        val sb = StringBuilder()
+        var i = 0
+        val len = css.length
+        while (i < len) {
+            val varStart = css.indexOf("var(", i, ignoreCase = true)
+            if (varStart == -1) {
+                sb.append(css.substring(i))
+                break
+            }
+            sb.append(css.substring(i, varStart))
+
+            // Find matching closing parenthesis for this var(...) call
+            var depth = 1
+            var j = varStart + 4
+            var firstCommaIdx = -1
+            while (j < len && depth > 0) {
+                when (css[j]) {
+                    '(' -> depth++
+                    ')' -> depth--
+                    ',' -> if (depth == 1 && firstCommaIdx == -1) firstCommaIdx = j
+                }
+                if (depth == 0) break
+                j++
+            }
+
+            if (depth == 0) {
+                val (varName, fallback) = if (firstCommaIdx != -1) {
+                    val name = css.substring(varStart + 4, firstCommaIdx).trim()
+                    val fb = css.substring(firstCommaIdx + 1, j).trim()
+                    Pair(name, fb)
+                } else {
+                    val name = css.substring(varStart + 4, j).trim()
+                    Pair(name, null)
+                }
+
+                val cleanVarName = varName.removePrefix("--").trim()
+                val resolvedValue = resolvedVars[cleanVarName]
+
+                if (resolvedValue != null && !resolvedValue.contains("var(--")) {
+                    sb.append(resolvedValue)
+                } else if (fallback != null) {
+                    // Recursively resolve any nested var() inside fallback
+                    val resolvedFallback = resolveCssVariablesWithFallbacks(fallback, resolvedVars)
+                    sb.append(resolvedFallback)
+                } else {
+                    // Undefined without fallback, preserve original var(...) call
+                    sb.append(css.substring(varStart, j + 1))
+                }
+                i = j + 1
+            } else {
+                sb.append("var(")
+                i = varStart + 4
+            }
+        }
+        return sb.toString()
     }
 
     private fun normalizeCssVendorPrefixes(html: String): String {
         var res = html
-        if (res.contains("-webkit-clip-path", ignoreCase = true) && !res.contains("clip-path:", ignoreCase = true)) {
+        val hasPrefixed = Regex("""-webkit-clip-path\s*:""", RegexOption.IGNORE_CASE).containsMatchIn(res)
+        val hasUnprefixed = Regex("""(?<!-webkit-)clip-path\s*:""", RegexOption.IGNORE_CASE).containsMatchIn(res)
+
+        if (hasPrefixed && !hasUnprefixed) {
             res = res.replace(Regex("""-webkit-clip-path\s*:\s*([^;]+);""", RegexOption.IGNORE_CASE)) {
                 "-webkit-clip-path: ${it.groupValues[1]}; clip-path: ${it.groupValues[1]};"
             }
-        } else if (res.contains("clip-path:", ignoreCase = true) && !res.contains("-webkit-clip-path:", ignoreCase = true)) {
+        } else if (hasUnprefixed && !hasPrefixed) {
             res = res.replace(Regex("""(?<!-webkit-)clip-path\s*:\s*([^;]+);""", RegexOption.IGNORE_CASE)) {
                 "clip-path: ${it.groupValues[1]}; -webkit-clip-path: ${it.groupValues[1]};"
             }
@@ -203,20 +251,127 @@ object NxprcHtmlCssConverter {
 
     private fun normalizeSvgElements(html: String): String {
         val svgTagRegex = Regex("""<svg\b([^>]*)>""", RegexOption.IGNORE_CASE)
+        val numAttrRegex = { name: String ->
+            Regex("""\b$name\s*=\s*(?:"(\d+(?:\.\d+)?)(?:px)?"|'(\d+(?:\.\d+)?)(?:px)?'|(\d+(?:\.\d+)?)(?:px)?(?=[\s>]))""", RegexOption.IGNORE_CASE)
+        }
         return svgTagRegex.replace(html) { match ->
             var attrs = match.groupValues[1]
             if (!attrs.contains("xmlns", ignoreCase = true)) {
                 attrs = "$attrs xmlns=\"http://www.w3.org/2000/svg\""
             }
             if (!attrs.contains("viewBox", ignoreCase = true)) {
-                val wMatch = Regex("""width\s*=\s*["']?(\d+(?:\.\d+)?)p?x?["']?""", RegexOption.IGNORE_CASE).find(attrs)
-                val hMatch = Regex("""height\s*=\s*["']?(\d+(?:\.\d+)?)p?x?["']?""", RegexOption.IGNORE_CASE).find(attrs)
-                val w = wMatch?.groupValues?.get(1) ?: "100"
-                val h = hMatch?.groupValues?.get(1) ?: "100"
-                attrs = "$attrs viewBox=\"0 0 $w $h\""
+                val wMatch = numAttrRegex("width").find(attrs)
+                val hMatch = numAttrRegex("height").find(attrs)
+                val w = wMatch?.groupValues?.drop(1)?.firstOrNull { it.isNotEmpty() }
+                val h = hMatch?.groupValues?.drop(1)?.firstOrNull { it.isNotEmpty() }
+                // Only synthesize viewBox if both width and height are explicit numeric pixel values
+                if (w != null && h != null) {
+                    attrs = "$attrs viewBox=\"0 0 $w $h\""
+                }
             }
             "<svg$attrs>"
         }
+    }
+
+    /**
+     * Guarantees a single root <button> element with interactive spring micro-physics and active state.
+     *
+     * Note on Metadata Contract: Component metadata attributes (`data-control`, `data-category`, `data-name`)
+     * are validated, completed, and packaged during the compiler packaging phase by [NxprcPackager.compile],
+     * which applies authoritative category defaults when omitted by the AI model.
+     */
+    private fun ensureRootComponentContract(html: String, rootClassHint: String? = null): String {
+        var res = html
+
+        // Inspect existing DOM structure
+        val initialParsed = try { HtmlDomParser.parse(res) } catch (e: Throwable) { null }
+        val existingButtons = initialParsed?.root?.findByTag("button") ?: emptyList()
+
+        if (existingButtons.isEmpty()) {
+            val hintRegex = rootClassHint?.let { Regex("""<div(\s+[^>]*class\s*=\s*["'][^"']*${Regex.escape(it)}[^"']*["'][^>]*)>""", RegexOption.IGNORE_CASE) }
+            val divBtnRegex = Regex("""<div(\s+[^>]*class\s*=\s*["'][^"']*(?:btn|button|pad|control|ctl)[^"']*["'][^>]*)>""", RegexOption.IGNORE_CASE)
+            val anyDivRegex = Regex("""<div\b([^>]*)>""", RegexOption.IGNORE_CASE)
+            val match = hintRegex?.find(res) ?: if (divBtnRegex.containsMatchIn(res)) divBtnRegex.find(res) else anyDivRegex.find(res)
+            if (match != null) {
+                val openTagEnd = match.range.last + 1
+                val divTagRegex = Regex("""</?div\b[^>]*>""", RegexOption.IGNORE_CASE)
+                var depth = 1
+                var matchingEndDivRange: IntRange? = null
+                for (divMatch in divTagRegex.findAll(res, openTagEnd)) {
+                    val tagText = divMatch.value
+                    if (tagText.startsWith("</", ignoreCase = true)) {
+                        depth--
+                        if (depth == 0) {
+                            matchingEndDivRange = divMatch.range
+                            break
+                        }
+                    } else if (!tagText.endsWith("/>")) {
+                        depth++
+                    }
+                }
+
+                if (matchingEndDivRange != null) {
+                    res = res.substring(0, matchingEndDivRange.first) + "</button>" + res.substring(matchingEndDivRange.last + 1)
+                    res = res.substring(0, match.range.first) + "<button${match.groupValues[1]}>" + res.substring(match.range.last + 1)
+                }
+                // When depth matching fails, leave markup untouched (Point 12: no unsafe lastIndexOf fallback)
+            }
+        }
+
+        // Discover root class name from parsed DOM (Point 15: AST-driven, resilient to multi-class lists)
+        val postParsed = try { HtmlDomParser.parse(res) } catch (e: Throwable) { null }
+        val rootButton = postParsed?.root?.findByTag("button")?.firstOrNull()
+        val classList = rootButton?.classNames ?: emptyList()
+        val discoveredClass = when {
+            rootClassHint != null && classList.contains(rootClassHint) -> rootClassHint
+            classList.any { it.endsWith("-btn") || it.endsWith("-ctl") } ->
+                classList.first { it.endsWith("-btn") || it.endsWith("-ctl") }
+            classList.any { it.contains("button") || it.contains("touchpad") || it.contains("pad") || it.contains("control") } ->
+                classList.first { it.contains("button") || it.contains("touchpad") || it.contains("pad") || it.contains("control") }
+            classList.isNotEmpty() -> classList.first()
+            else -> rootClassHint ?: "button"
+        }
+
+        val activeSelector = if (discoveredClass.isNotBlank() && discoveredClass != "button") {
+            ".$discoveredClass:active, button:active"
+        } else {
+            "button:active"
+        }
+
+        // If no <style> block exists, inject one with default spring physics
+        if (!res.contains("<style", ignoreCase = true)) {
+            val springPhysicsBlock = "<style>\n  :root {\n    --spring-damping: 0.68;\n    --spring-stiffness: 440;\n    --press-scale: 0.92;\n  }\n  $activeSelector { transform: scale(0.92) translateY(2px); }\n</style>\n"
+            val bodyIdx = res.indexOf("<body", ignoreCase = true)
+            res = if (bodyIdx != -1) {
+                val afterBody = res.indexOf(">", bodyIdx) + 1
+                res.substring(0, afterBody) + "\n" + springPhysicsBlock + res.substring(afterBody)
+            } else {
+                springPhysicsBlock + res
+            }
+        } else {
+            // If :root does not contain spring physics, inject them into the first <style> block
+            if (!res.contains("--spring-damping")) {
+                val styleTagRegex = Regex("""<style[^>]*>""", RegexOption.IGNORE_CASE)
+                val match = styleTagRegex.find(res)
+                if (match != null) {
+                    val insertIdx = match.range.last + 1
+                    val springPhysicsBlock = "\n    :root {\n      --spring-damping: 0.68;\n      --spring-stiffness: 440;\n      --press-scale: 0.92;\n    }\n"
+                    res = res.substring(0, insertIdx) + springPhysicsBlock + res.substring(insertIdx)
+                }
+            }
+            // If no :active rule is present in CSS, inject fallback active selector
+            if (!res.contains(":active", ignoreCase = true)) {
+                val styleEndRegex = Regex("""</style>""", RegexOption.IGNORE_CASE)
+                val match = styleEndRegex.find(res)
+                if (match != null) {
+                    val insertIdx = match.range.first
+                    val fallbackActive = "\n  $activeSelector { transform: scale(var(--press-scale, 0.92)) translateY(2px); }\n"
+                    res = res.substring(0, insertIdx) + fallbackActive + res.substring(insertIdx)
+                }
+            }
+        }
+
+        return res
     }
 
     private fun resolveStructuralStackingInversions(html: String): String {
@@ -289,7 +444,14 @@ object NxprcHtmlCssConverter {
                 val hasBg = r.body.contains("background", ignoreCase = true) || r.body.contains("background-color", ignoreCase = true)
                 val matchesSvg = svgIdentifiers.any { r.selector.lowercase().contains(it) }
                 val isPseudoGloss = r.selector.contains("::before") || r.selector.contains("::after")
-                if (!matchesSvg && !isPseudoGloss && hasBg) {
+                val isTranslucentOrOverlay = r.body.contains("opacity", ignoreCase = true) ||
+                    r.body.contains("rgba", ignoreCase = true) ||
+                    r.body.contains("hsla", ignoreCase = true) ||
+                    r.body.contains("transparent", ignoreCase = true) ||
+                    r.body.contains("pointer-events", ignoreCase = true) ||
+                    r.body.contains("backdrop-filter", ignoreCase = true)
+
+                if (!matchesSvg && !isPseudoGloss && hasBg && !isTranslucentOrOverlay) {
                     val isSurface = surfaceIdentifiers.any { r.selector.lowercase().contains(it) }
                     val isClassOrId = r.selector.trim().startsWith(".") || r.selector.trim().startsWith("#")
                     if (isSurface || isClassOrId) {
@@ -313,92 +475,6 @@ object NxprcHtmlCssConverter {
             }
             "<style>${css}</style>"
         }
-    }
-
-    private fun ensureRootComponentContract(html: String, rootClassHint: String? = null): String {
-        var res = html
-        // If root is a <div>, convert top-level container to <button>
-        if (!res.contains("<button", ignoreCase = true)) {
-            val hintRegex = rootClassHint?.let { Regex("""<div(\s+[^>]*class\s*=\s*["'][^"']*${Regex.escape(it)}[^"']*["'][^>]*)>""", RegexOption.IGNORE_CASE) }
-            val divBtnRegex = Regex("""<div(\s+[^>]*class\s*=\s*["'][^"']*(?:btn|button|pad|control|ctl)[^"']*["'][^>]*)>""", RegexOption.IGNORE_CASE)
-            val anyDivRegex = Regex("""<div\b([^>]*)>""", RegexOption.IGNORE_CASE)
-            val match = hintRegex?.find(res) ?: if (divBtnRegex.containsMatchIn(res)) divBtnRegex.find(res) else anyDivRegex.find(res)
-            if (match != null) {
-                // Find matching closing </div> using depth tracking starting from match.range.last + 1
-                val openTagEnd = match.range.last + 1
-                val divTagRegex = Regex("""</?div\b[^>]*>""", RegexOption.IGNORE_CASE)
-                var depth = 1
-                var matchingEndDivRange: IntRange? = null
-                for (divMatch in divTagRegex.findAll(res, openTagEnd)) {
-                    val tagText = divMatch.value
-                    if (tagText.startsWith("</", ignoreCase = true)) {
-                        depth--
-                        if (depth == 0) {
-                            matchingEndDivRange = divMatch.range
-                            break
-                        }
-                    } else if (!tagText.endsWith("/>")) {
-                        depth++
-                    }
-                }
-
-                if (matchingEndDivRange != null) {
-                    res = res.substring(0, matchingEndDivRange.first) + "</button>" + res.substring(matchingEndDivRange.last + 1)
-                    res = res.substring(0, match.range.first) + "<button${match.groupValues[1]}>" + res.substring(match.range.last + 1)
-                } else {
-                    val lastDivIdx = res.lastIndexOf("</div>", ignoreCase = true)
-                    if (lastDivIdx != -1) {
-                        res = res.substring(0, lastDivIdx) + "</button>" + res.substring(lastDivIdx + 6)
-                    }
-                    res = res.replaceRange(match.range, "<button${match.groupValues[1]}>")
-                }
-            }
-        }
-
-        // Discover root class name from <button>
-        val rootClassRegex = Regex("""<button\b[^>]*class\s*=\s*["']([^"'\s]+)[^"']*["']""", RegexOption.IGNORE_CASE)
-        val discoveredClass = rootClassRegex.find(res)?.groupValues?.get(1) ?: rootClassHint
-
-        val activeSelector = if (!discoveredClass.isNullOrBlank() && discoveredClass != "button") {
-            ".$discoveredClass:active, button:active"
-        } else {
-            "button:active"
-        }
-
-        // If no <style> block exists, inject one with default spring physics
-        if (!res.contains("<style", ignoreCase = true)) {
-            val springPhysicsBlock = "<style>\n  :root {\n    --spring-damping: 0.68;\n    --spring-stiffness: 440;\n    --press-scale: 0.92;\n  }\n  $activeSelector { transform: scale(0.92) translateY(2px); }\n</style>\n"
-            val bodyIdx = res.indexOf("<body", ignoreCase = true)
-            res = if (bodyIdx != -1) {
-                val afterBody = res.indexOf(">", bodyIdx) + 1
-                res.substring(0, afterBody) + "\n" + springPhysicsBlock + res.substring(afterBody)
-            } else {
-                springPhysicsBlock + res
-            }
-        } else {
-            // If :root does not contain spring physics, inject them into the first <style> block
-            if (!res.contains("--spring-damping")) {
-                val styleTagRegex = Regex("""<style[^>]*>""", RegexOption.IGNORE_CASE)
-                val match = styleTagRegex.find(res)
-                if (match != null) {
-                    val insertIdx = match.range.last + 1
-                    val springPhysicsBlock = "\n    :root {\n      --spring-damping: 0.68;\n      --spring-stiffness: 440;\n      --press-scale: 0.92;\n    }\n"
-                    res = res.substring(0, insertIdx) + springPhysicsBlock + res.substring(insertIdx)
-                }
-            }
-            // If no :active rule is present in CSS, inject fallback active selector
-            if (!res.contains(":active", ignoreCase = true)) {
-                val styleEndRegex = Regex("""</style>""", RegexOption.IGNORE_CASE)
-                val match = styleEndRegex.find(res)
-                if (match != null) {
-                    val insertIdx = match.range.first
-                    val fallbackActive = "\n  $activeSelector { transform: scale(var(--press-scale, 0.92)) translateY(2px); }\n"
-                    res = res.substring(0, insertIdx) + fallbackActive + res.substring(insertIdx)
-                }
-            }
-        }
-
-        return res
     }
 
     /** Pre-built HTML/CSS templates for instant testing (Delegated to [NxprcPresets]) */

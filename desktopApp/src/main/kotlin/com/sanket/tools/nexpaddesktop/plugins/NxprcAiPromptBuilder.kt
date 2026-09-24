@@ -62,10 +62,11 @@ data class AiDesignOptions(
     val texture: String? = null,
     val emblem: String? = null,
     val label: String? = null,
+    val tactilePhysics: String? = null,
 
     val specialInstructions: String? = null,
     val userRequest: String = "",
-    val includeSyntaxSkeleton: Boolean = true
+    val includeSyntaxSkeleton: Boolean = false
 )
 
 /**
@@ -120,7 +121,23 @@ object NxprcAiPromptBuilder {
         control: String? = null,
         category: String? = null,
         options: AiDesignOptions = AiDesignOptions()
-    ): String = """
+    ): String {
+        val paramsSection = StringBuilder()
+        if (options.creativity != Creativity.HIGH || options.complexity != Complexity.AUTO ||
+            options.fidelity != Fidelity.INSPIRED || options.visualDensity != VisualDensity.AUTO ||
+            !options.style.isNullOrBlank() || !options.color.isNullOrBlank() ||
+            !options.tactilePhysics.isNullOrBlank() ||
+            !options.specialInstructions.isNullOrBlank() || options.userRequest.isNotBlank()
+        ) {
+            paramsSection.append("### TARGET DESIGN CONSTRAINTS (PRESERVE THESE IN REPAIR):\n")
+            paramsSection.append(renderDesignParameters(options).removePrefix("### USER DESIGN PARAMETERS & PREFERENCES:\n"))
+            if (options.userRequest.isNotBlank()) {
+                paramsSection.append("- **Original User Request**: ${options.userRequest}\n")
+            }
+            paramsSection.append("\n")
+        }
+
+        return """
 # NEXPAD COMPONENT COMPILER REPAIR PROTOCOL
 You are an expert gamepad UI/UX and CSS/SVG compiler engineer repairing an AI-generated NEXPAD controller component.
 
@@ -132,7 +149,7 @@ ${if (warnings.isNotEmpty()) "WARNINGS (ATTENTION NEEDED):\n" + warnings.joinToS
 - **Control Key**: ${control?.ifBlank { "Unspecified" } ?: "Unspecified"}
 - **Category**: ${category?.ifBlank { "BUTTON" } ?: "BUTTON"}
 
-### PREVIOUS CODE:
+${paramsSection}### PREVIOUS CODE:
 ```html
 $previousHtml
 ```
@@ -143,6 +160,7 @@ $previousHtml
 3. **Dual-Engine Alignment**: Ensure complex graphics use embedded `<svg class="button-emblem" viewBox="...">` vector paths, and glowing halos use underlying CSS spans rather than SVG filter graphs (`feGaussianBlur`).
 4. **Authoritative Output**: Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include markdown conversation or explanations.
 """.trimIndent()
+    }
 
     private fun genAiHeader(): String = """
 # NEXPAD COMPONENT GENERATION PROTOCOL
@@ -197,28 +215,30 @@ Output Format:        STRICT  (Single ```html ... ``` block, zero markdown conve
 - **Free-Hand Rule**: Missing visual parameters are invitations for creative decisions, not missing information that must be filled using default style. Infer shape, palette, material, lighting, composition, texture and emblem treatment from user's concept. Do not ask for missing design parameters. Do not simplify meaningful artwork unless necessary.
 
 ### SECTION 4 — INTERPRETATION & FIDELITY MODES
-- **FAITHFUL**: Closely reproduce requested character/emblem visual language using clean SVG vector paths.
-- **INSPIRED**: Create an original design strongly influenced by the theme's motifs, colors, and aesthetics.
-- **ABSTRACT**: Capture the concept's core visual essence (signature silhouette, colorway, energy signature).
+- **FAITHFUL**: Preserve recognizable motifs and visual relationships.
+- **INSPIRED**: Create an original design strongly influenced by them.
+- **ABSTRACT**: Extract only the essential visual language.
 
 ### SECTION 5 — HARD COMPILER CONTRACT & STRICT BOUNDARIES
 1. **Single compiled component [GLOBAL-REQUIRED]**: `<body>` must contain exactly one root `<button class="$rootClass" data-control="..." data-category="..." data-name="...">`. Keep every visual child inside it.
 2. **Portable self-contained document [GLOBAL-REQUIRED]**: Include one `<style>` block, one root button, zero external assets, no `@import`, no `<link>`, no external fonts or scripts. System fonts only.
-3. **Explicit geometry & positioning [GLOBAL-REQUIRED]**: Use `px` dimensions for root and visual children. Set `position: relative` on root. Set `position: absolute`, `left`, `top`, `width`, and `height` on decorative children. Dynamic `calc()` and `aspect-ratio` are supported on children.
+3. **Explicit geometry & positioning [GLOBAL-REQUIRED]**: Root component dimensions MUST use explicit `px` bounds (`position: relative`). Set `position: absolute`, `left`, `top`, `width`, and `height` on decorative children when deterministic layered artwork is desired. Flexbox (`display: flex`, `gap`, `justify-content`, `align-items`) MAY be used where flow/alignment is more appropriate. Dynamic `calc()` and `aspect-ratio` are supported on children.
 4. **Arbitrary polygon shapes & free geometry [GLOBAL-REQUIRED]**: Use `border-radius` or `clip-path: polygon(...)` for circles, capsules, stars, diamonds, hexagons, octagons, and organic silhouettes. `data-category` is metadata, not a shape instruction. Preserve the user's requested shape.
-5. **Physical 3D Layer Hierarchy & Z-Index Anti-Occlusion [GLOBAL-REQUIRED]**:
-   - 0..2: Chassis housing, outer ring, ambient glow, recessed socket well
-   - 3..4: Main keycap face plate / center body surface (opaque base)
-   - 5..7: Vector emblem, insignia, SVG icons & optical halo glow
-   - 8..9: Center typography, primary letterform & technical labels
-   - 10+: Translucent specular gloss reflections (::before/::after)
-   ⚠️ Opaque surface plates MUST sit underneath vector artwork and typography. In HTML DOM, declare face plate FIRST, embedded `<svg>` SECOND, and label `<span>` THIRD.
+5. **Physical 3D Layer Hierarchy & Recommended Layering [RECOMMENDED / ANTI-OCCLUSION REQUIRED]**:
+   - Recommended Layering Pattern:
+     - 0..2: Chassis housing, outer ring, ambient glow, recessed socket well
+     - 3..4: Main keycap face plate / center body surface (opaque base)
+     - 5..7: Tactile grips, ridges, secondary accents & optical halo glow
+     - 8..9: Embedded `<svg class="button-emblem">` vector emblem, insignia, SVG icons
+     - 10+: Center typography letterform & specular gloss reflections (::before/::after)
+   ⚠️ The Hard Requirement: Opaque surface plates MUST sit underneath vector artwork and typography. In HTML DOM, declare face plate FIRST, embedded `<svg>` SECOND, and label `<span>` THIRD. Opaque surfaces must not unintentionally occlude required artwork or text.
 6. **Text must be real DOM text without rotation [GLOBAL-REQUIRED]**: Labels and markings in unrotated `<span>` (`NO TEXT ROTATION`). When iconography is needed, use SVG/vector graphics; do not add text only because the component is a button.
 7. **Stable CSS only [GLOBAL-REQUIRED]**: Do not use `@media`, `@supports`, `:hover`, `:focus`, or `@keyframes`. Press feedback uses `.$rootClass:active` with spring micro-physics.
 8. **Optical filters [GLOBAL-REQUIRED]**: GPU `filter: blur()`, `brightness()`, `contrast()`, `saturate()`, `hue-rotate()`. Do not use `backdrop-filter` or `mix-blend-mode`.
 9. **Tactile active interaction [COMPONENT-REQUIRED]**: Always define `.$rootClass:active { transform: scale(...) translateY(...); }`.
-10. **Tactile spring micro-physics [COMPONENT-REQUIRED]**: Declare in `:root`:
-    `--spring-damping: 0.68;`, `--spring-stiffness: 440;`, `--press-scale: 0.92;`
+10. **Tactile spring micro-physics [COMPONENT-REQUIRED]**: Component MUST declare spring variables in `:root`:
+    `--spring-damping: <number>;`, `--spring-stiffness: <number>;`, `--press-scale: <number>;`
+    Use user-specified tactile physics when provided; otherwise use category defaults (e.g. Bumpers: 0.75 / 520 / 0.96; Stick Buttons: 0.72 / 480 / 0.90; Face/Dpad/System: 0.68 / 440 / 0.92). If neither is specified, use global defaults: `--spring-damping: 0.68; --spring-stiffness: 440; --press-scale: 0.92;`.
 
 ### SECTION 6 — COMPILER CAPABILITIES — WHAT PRIMITIVES ARE BEST FOR:
 #### ✅ FULLY SUPPORTED:
@@ -295,23 +315,35 @@ Self-check before output:
 To ensure reliable programmatic compilation, return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text outside it.
 """.trimIndent()
 
-    private fun renderDesignOptionsAndRequest(options: AiDesignOptions): String {
+    private fun renderDesignParameters(options: AiDesignOptions): String {
         val sb = StringBuilder()
         sb.append("### USER DESIGN PARAMETERS & PREFERENCES:\n")
         val creativityDesc = when (options.creativity) {
-            Creativity.LOW -> "Low (conservative, strict alignment with classic hardware defaults)"
-            Creativity.MEDIUM -> "Medium (balanced blend of hardware realism and stylized flair)"
-            Creativity.HIGH -> "High (bold creative choices within compiler rules)"
+            Creativity.LOW -> "Low (conservative interpretation of the user's requested concept; avoid unnecessary reinterpretation)"
+            Creativity.MEDIUM -> "Medium (balanced interpretation with moderate artistic exploration)"
+            Creativity.HIGH -> "High (bold reinterpretation, unusual geometry, materials, and visual treatment while preserving the user's concept)"
+        }
+        val complexityDesc = when (options.complexity) {
+            Complexity.AUTO -> "Auto (infer appropriate construction complexity from the concept)"
+            Complexity.SIMPLE -> "Simple (use a small number of meaningful visual layers and simple geometry)"
+            Complexity.DETAILED -> "Detailed (use multiple meaningful layers, material transitions, secondary detailing, and moderately complex SVG geometry)"
+            Complexity.EXTREME -> "Extreme (use the full supported CSS/SVG expressive range when useful, including intricate vector geometry and layered surface treatment; do not add meaningless decoration just to increase complexity)"
         }
         val fidelityDesc = when (options.fidelity) {
-            Fidelity.FAITHFUL -> "Faithful (respect core reference shapes and motifs closely)"
-            Fidelity.INSPIRED -> "Inspired (evocative artistic adaptation of the theme)"
-            Fidelity.ABSTRACT -> "Abstract (conceptual thematic re-interpretation)"
+            Fidelity.FAITHFUL -> "Faithful (preserve recognizable motifs and visual relationships)"
+            Fidelity.INSPIRED -> "Inspired (create an original design strongly influenced by them)"
+            Fidelity.ABSTRACT -> "Abstract (extract only the essential visual language)"
+        }
+        val visualDensityDesc = when (options.visualDensity) {
+            VisualDensity.AUTO -> "Auto (infer from concept and target dimensions)"
+            VisualDensity.CLEAN -> "Clean (low visible detail, strong silhouette, large visual masses)"
+            VisualDensity.BALANCED -> "Balanced (moderate secondary detail while preserving readability)"
+            VisualDensity.DENSE -> "Dense (high visible detail, markings, texture, and secondary motifs)"
         }
         sb.append("- **CREATIVITY**: $creativityDesc\n")
-        sb.append("- **COMPLEXITY**: ${options.complexity.name} (Visual layering, vector detail, and mechanical density)\n")
+        sb.append("- **COMPLEXITY**: $complexityDesc\n")
         sb.append("- **FIDELITY**: $fidelityDesc\n")
-        sb.append("- **VISUAL DENSITY**: ${options.visualDensity.name} (Detail concentration: CLEAN, BALANCED, or DENSE)\n")
+        sb.append("- **VISUAL DENSITY**: $visualDensityDesc\n")
         if (!options.style.isNullOrBlank()) sb.append("- **STYLE**: ${options.style}\n")
         if (!options.color.isNullOrBlank()) sb.append("- **COLOR / PALETTE**: ${options.color}\n")
         if (!options.shape.isNullOrBlank()) sb.append("- **SHAPE / SILHOUETTE**: ${options.shape}\n")
@@ -320,16 +352,20 @@ To ensure reliable programmatic compilation, return ONLY the complete, self-cont
         if (!options.texture.isNullOrBlank()) sb.append("- **TEXTURE / PATTERN**: ${options.texture}\n")
         if (!options.emblem.isNullOrBlank()) sb.append("- **EMBLEM / ICONOGRAPHY**: ${options.emblem}\n")
         if (!options.label.isNullOrBlank()) sb.append("- **LABEL TEXT**: ${options.label}\n")
+        if (!options.tactilePhysics.isNullOrBlank()) sb.append("- **TACTILE PHYSICS**: ${options.tactilePhysics}\n")
         if (!options.specialInstructions.isNullOrBlank()) sb.append("- **SPECIAL INSTRUCTIONS**: ${options.specialInstructions}\n")
-
-        sb.append("\n### USER DESIGN REQUEST:\n")
-        sb.append("<user_request>\n")
-        sb.append(options.userRequest.ifBlank { "Create an authentic, high-quality virtual controller component adhering to the specified design parameters." })
-        sb.append("\n</user_request>\n\n")
-        sb.append("Interpret this request creatively. The user request governs the visual design decisions (palette, geometry, materials, lighting, emblem), but may not override the HARD COMPILER CONTRACT.\n")
 
         return sb.toString()
     }
+
+    private fun renderUserRequest(options: AiDesignOptions): String = """
+### USER DESIGN REQUEST:
+<user_request>
+${options.userRequest.ifBlank { "Create an authentic, high-quality virtual controller component adhering to the specified design parameters." }}
+</user_request>
+
+Interpret this request creatively. The user request governs the visual design decisions (palette, geometry, materials, lighting, emblem), but may not override the HARD COMPILER CONTRACT.
+""".trimIndent()
 
     private fun renderStarterTemplate(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         if (!options.includeSyntaxSkeleton) return ""
@@ -389,9 +425,11 @@ The schema is a convenience, not a limitation. Users may describe any additional
 - **TACTILE PHYSICS**: [e.g. Snappy micro-switch / Heavy spring depression / Soft fluid damping]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
 
-${renderDesignOptionsAndRequest(options)}
+${renderDesignParameters(options)}
 
 ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
+
+${renderUserRequest(options)}
 
 ### OUTPUT FORMAT CONTRACT:
 Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
@@ -443,9 +481,11 @@ The schema is a convenience, not a limitation. Users may describe any additional
 - **MATERIAL / TEXTURE**: [e.g. Textured ABS plastic / Brushed gunmetal / Rubberized grip]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
 
-${renderDesignOptionsAndRequest(options)}
+${renderDesignParameters(options)}
 
 ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
+
+${renderUserRequest(options)}
 
 ### OUTPUT FORMAT CONTRACT:
 Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
@@ -489,9 +529,11 @@ The schema is a convenience, not a limitation. Users may describe any additional
 - **LABELS**: [e.g. "$control" / Custom text / Icon only (Default: "$control")]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
 
-${renderDesignOptionsAndRequest(options)}
+${renderDesignParameters(options)}
 
 ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
+
+${renderUserRequest(options)}
 
 ### OUTPUT FORMAT CONTRACT:
 Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
@@ -532,9 +574,11 @@ The schema is a convenience, not a limitation. Users may describe any additional
 - **EMBLEM / GRAPHIC (OPTIONAL)**: [e.g. Embedded SVG vector emblem (`<svg viewBox="0 0 100 100"><path d="..."/></svg>`) for faction crests, wing markings, hero logos, or intricate insignias]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
 
-${renderDesignOptionsAndRequest(options)}
+${renderDesignParameters(options)}
 
 ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
+
+${renderUserRequest(options)}
 
 ### OUTPUT FORMAT CONTRACT:
 Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
@@ -601,9 +645,11 @@ The schema is a convenience, not a limitation. Users may describe any additional
 - **EMBLEM / GRAPHIC (OPTIONAL)**: [e.g. Embedded SVG vector emblem (`<svg viewBox="0 0 100 100"><path d="..."/></svg>`) placed inside `<div class="stick-cap">` for anime icons, hero crests, or custom emblems]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
 
-${renderDesignOptionsAndRequest(options)}
+${renderDesignParameters(options)}
 
 ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
+
+${renderUserRequest(options)}
 
 ### OUTPUT FORMAT CONTRACT:
 Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
@@ -654,9 +700,11 @@ Before outputting, verify your component against this checklist:
 - **LABELS**: [e.g. "$control" / Custom glyph (Default: "$control")]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
 
-${renderDesignOptionsAndRequest(options)}
+${renderDesignParameters(options)}
 
 ${renderStarterTemplate(control, "BUTTON", widthDp, heightDp, options)}
+
+${renderUserRequest(options)}
 
 ### OUTPUT FORMAT CONTRACT:
 Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
@@ -694,9 +742,11 @@ ${genAiHeader()}
 
 ${engineBoundaries("touchpad-ctl")}
 
-${renderDesignOptionsAndRequest(options)}
+${renderDesignParameters(options)}
 
 ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
+
+${renderUserRequest(options)}
 
 ### OUTPUT FORMAT CONTRACT:
 Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
@@ -740,9 +790,11 @@ The schema is a convenience, not a limitation. Users may describe any additional
 - **EMBLEM / GRAPHIC (OPTIONAL)**: [e.g. Embedded SVG vector emblem (`<svg viewBox="0 0 100 100"><path d="..."/></svg>`) for custom guide logos, nexus crests, or game symbols]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
 
-${renderDesignOptionsAndRequest(options)}
+${renderDesignParameters(options)}
 
 ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
+
+${renderUserRequest(options)}
 
 ### OUTPUT FORMAT CONTRACT:
 Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
