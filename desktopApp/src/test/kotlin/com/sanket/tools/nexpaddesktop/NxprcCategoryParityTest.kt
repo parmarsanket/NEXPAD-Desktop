@@ -770,6 +770,77 @@ class NxprcCategoryParityTest {
                         gLayer.color = Color(((layer.shadowColor shr 16) and 0xFF).toInt(), ((layer.shadowColor shr 8) and 0xFF).toInt(), (layer.shadowColor and 0xFF).toInt(), shAlpha)
                         gLayer.draw(Arc2D.Float(arcX, arcY, arcDiam, arcDiam, 180f, 180f, Arc2D.OPEN))
                     }
+                    is CanvasLayer.VectorPath -> {
+                        val svgBoxW = btnW * layer.scale
+                        val svgBoxH = btnH * layer.scale
+                        val svgBoxX = btnLeft + btnW * layer.offsetXRatio
+                        val svgBoxY = btnTop + btnH * layer.offsetYRatio
+                        val shape = com.sanket.tools.nexpaddesktop.plugins.NxprcAuditService.skiaPathToAwtShape(layer.pathData, svgBoxX, svgBoxY, svgBoxW, svgBoxH)
+                        if (shape != null) {
+                            if (layer.rotationDegrees != 0f) {
+                                val cx = svgBoxX + svgBoxW / 2.0
+                                val cy = svgBoxY + svgBoxH / 2.0
+                                gLayer.translate(cx, cy)
+                                gLayer.rotate(Math.toRadians(layer.rotationDegrees.toDouble()))
+                                gLayer.translate(-cx, -cy)
+                            }
+                            // Fill
+                            when (val fill = layer.fill) {
+                                is FillBrush.Solid -> {
+                                    val alpha = ((fill.color shr 24) and 0xFF).toInt()
+                                    if (alpha > 0) {
+                                        gLayer.color = Color(((fill.color shr 16) and 0xFF).toInt(), ((fill.color shr 8) and 0xFF).toInt(), (fill.color and 0xFF).toInt(), alpha)
+                                        gLayer.fill(shape)
+                                    }
+                                }
+                                is FillBrush.LinearGradient -> {
+                                    val angleRad = Math.toRadians((fill.angleDegrees - 90.0))
+                                    val gcx = svgBoxX + svgBoxW / 2f
+                                    val gcy = svgBoxY + svgBoxH / 2f
+                                    val r = Math.hypot(svgBoxW.toDouble(), svgBoxH.toDouble()).toFloat() / 2f
+                                    val cos = Math.cos(angleRad).toFloat()
+                                    val sin = Math.sin(angleRad).toFloat()
+                                    val x1 = gcx - cos * r
+                                    val y1 = gcy - sin * r
+                                    val x2 = gcx + cos * r
+                                    val y2 = gcy + sin * r
+                                    val fractions = fill.stops.takeIf { it.size == fill.colors.size && it.size >= 2 }?.toFloatArray()
+                                        ?: FloatArray(fill.colors.size) { it.toFloat() / (fill.colors.size - 1).coerceAtLeast(1) }
+                                    val colors = fill.colors.map { col ->
+                                        val alpha = ((col shr 24) and 0xFF).toInt()
+                                        Color(((col shr 16) and 0xFF).toInt(), ((col shr 8) and 0xFF).toInt(), (col and 0xFF).toInt(), alpha)
+                                    }.toTypedArray()
+                                    gLayer.paint = LinearGradientPaint(x1, y1, x2, y2, fractions, colors)
+                                    gLayer.fill(shape)
+                                }
+                                is FillBrush.RadialGradient -> {
+                                    val gcx = svgBoxX + svgBoxW * fill.centerXRatio
+                                    val gcy = svgBoxY + svgBoxH * fill.centerYRatio
+                                    val radius = (Math.min(svgBoxW, svgBoxH) * fill.radiusRatio * 1.5f).coerceAtLeast(1f)
+                                    val fractions = fill.stops.takeIf { it.size == fill.colors.size && it.size >= 2 }?.toFloatArray()
+                                        ?: FloatArray(fill.colors.size) { it.toFloat() / (fill.colors.size - 1).coerceAtLeast(1) }
+                                    val colors = fill.colors.map { col ->
+                                        val alpha = ((col shr 24) and 0xFF).toInt()
+                                        Color(((col shr 16) and 0xFF).toInt(), ((col shr 8) and 0xFF).toInt(), (col and 0xFF).toInt(), alpha)
+                                    }.toTypedArray()
+                                    gLayer.paint = RadialGradientPaint(gcx, gcy, radius, fractions, colors)
+                                    gLayer.fill(shape)
+                                }
+                                else -> {}
+                            }
+
+                            // Stroke
+                            layer.stroke?.let { st ->
+                                val alpha = ((st.color shr 24) and 0xFF).toInt()
+                                if (alpha > 0) {
+                                    gLayer.color = Color(((st.color shr 16) and 0xFF).toInt(), ((st.color shr 8) and 0xFF).toInt(), (st.color and 0xFF).toInt(), alpha)
+                                    val strokeW = (st.width * density).coerceAtLeast(0.5f)
+                                    gLayer.stroke = BasicStroke(strokeW, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
+                                    gLayer.draw(shape)
+                                }
+                            }
+                        }
+                    }
                     else -> {}
                 }
             } finally {
@@ -1441,4 +1512,58 @@ class NxprcCategoryParityTest {
 
         assertTrue("Visual parity score must be >= 88.0%, was " + parityScore + "%", parityScore >= 88.0)
     }
+
+    @Test
+    fun testUserAnimeButtonDiagnostics() {
+        val html = File(scratchDir, "user_anime_button.html").readText()
+        val doc = NxprcPackager.compile(
+            html = html,
+            id = "rc.anime_a",
+            name = "Anime A",
+            category = "BUTTON",
+            defaultControl = "A"
+        )
+        assertNotNull(doc)
+        println("=== COMPILED LAYERS FOR USER ANIME BUTTON (${doc.canvas.layers.size}) ===")
+        doc.canvas.layers.forEachIndexed { i, l ->
+            when (l) {
+                is CanvasLayer.VectorPath -> {
+                    val skiaPath = try { org.jetbrains.skia.Path.makeFromSVGString(l.pathData) } catch (e: Throwable) { null }
+                    if (skiaPath != null) {
+                        val b = skiaPath.bounds
+                        println("  #$i VectorPath bounds=[L=${b.left}, T=${b.top}, R=${b.right}, B=${b.bottom}] fill=${l.fill::class.simpleName} stroke=${l.stroke?.let { "0x%08X w=${it.width}".format(it.color, it.width) }} d='${l.pathData.take(45)}...'")
+                    } else {
+                        println("  #$i VectorPath FAILED SKIA PARSE! d='${l.pathData}'")
+                    }
+                }
+                is CanvasLayer.BoxLayer -> println("  #$i BoxLayer shape=${l.shapeType} w=${l.widthRatio} h=${l.heightRatio} x=${l.offsetXRatio} y=${l.offsetYRatio} op=${l.effectiveEffects.opacity}")
+                is CanvasLayer.CenterGlyph -> println("  #$i CenterGlyph text=${l.text}")
+                else -> println("  #$i ${l::class.simpleName}")
+            }
+        }
+        val canvasSize = 400
+        val nativeImg = renderNxprcToImage(doc, canvasSize, canvasSize)
+        val nativeOut = File(brainDir, "user_anime_button_native_after.png")
+        ImageIO.write(nativeImg, "PNG", nativeOut)
+        println("Saved native image to: ${nativeOut.absolutePath}")
+
+        val chromeFile = File(brainDir, "user_anime_button_chrome.png")
+        if (chromeFile.exists()) {
+            val chromeImg = ImageIO.read(chromeFile)
+            val parityScore = computeVisualParity(chromeImg, nativeImg)
+            println("=== USER ANIME BUTTON PARITY SCORE: ${String.format("%.2f", parityScore)}% ===")
+
+            val sideBySideCard = generateSideBySideCard(
+                category = "ANIME",
+                displayName = "Anime Action A (Sakura Emblem & Energy Halo)",
+                chromeImg = chromeImg,
+                nativeImg = nativeImg,
+                parityScore = parityScore
+            )
+            val cardOut = File(brainDir, "user_anime_button_side_by_side.png")
+            ImageIO.write(sideBySideCard, "PNG", cardOut)
+            println("Saved side-by-side comparison card to: ${cardOut.absolutePath}")
+        }
+    }
 }
+
