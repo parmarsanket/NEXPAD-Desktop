@@ -1,6 +1,7 @@
 package com.sanket.tools.nexpaddesktop
 
 import com.sanket.tools.nexpad.nxprc.*
+import com.sanket.tools.nexpaddesktop.plugins.NxprcAuditService
 import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
 import org.junit.Assert.*
 import org.junit.Test
@@ -348,12 +349,23 @@ class NxprcCategoryParityTest {
         val density = viewScale
 
         val primaryBox = doc.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull()
-        val isRootOval = primaryBox?.shapeType?.uppercase() == "OVAL"
-        val rootCornerArc = (primaryBox?.cornerRadiusTopLeft ?: 14f) * density * 2f
-        val rootClipShape: Shape = if (isRootOval) {
-            Ellipse2D.Float(btnLeft, btnTop, btnW, btnH)
-        } else {
-            RoundRectangle2D.Float(btnLeft, btnTop, btnW, btnH, rootCornerArc, rootCornerArc)
+        val primaryGrad = doc.canvas.layers.filterIsInstance<CanvasLayer.GradientShape>().firstOrNull()
+        val rootShapeType = primaryBox?.shapeType?.uppercase() ?: primaryGrad?.shapeType?.uppercase() ?: "ROUNDED_RECT"
+        val isRootOval = rootShapeType == "OVAL"
+        val rootCornerArc = (primaryBox?.cornerRadiusTopLeft ?: primaryGrad?.cornerRadius ?: 14f) * density * 2f
+        val rootPathData = primaryBox?.pathData ?: ""
+        val rootPolySides = primaryBox?.polygonSides ?: 0
+        val rootEffectiveSides = when {
+            rootPolySides >= 3 -> rootPolySides
+            rootShapeType == "HEXAGON" -> 6
+            rootShapeType == "OCTAGON" -> 8
+            else -> 0
+        }
+        val rootClipShape: Shape = when {
+            rootPathData.isNotBlank() -> NxprcAuditService.skiaPathToAwtShape(rootPathData, btnLeft, btnTop, btnW, btnH) ?: NxprcAuditService.parsePathDataToShape(rootPathData, btnLeft, btnTop, btnW, btnH)
+            rootEffectiveSides >= 3 -> buildPolygonShape(rootEffectiveSides, btnLeft, btnTop, btnW, btnH)
+            isRootOval -> Ellipse2D.Float(btnLeft, btnTop, btnW, btnH)
+            else -> RoundRectangle2D.Float(btnLeft, btnTop, btnW, btnH, rootCornerArc, rootCornerArc)
         }
 
         val layersToRender = activeLayersOnly ?: doc.canvas.layers
@@ -417,7 +429,7 @@ class NxprcCategoryParityTest {
                                 alpha
                             )
                             gLayer.color = c
-                            val sShape = getBoxShape(boxX + sx - sp, boxY + sy - sp, boxW + sp * 2, boxH + sp * 2, tl + sp, tr + sp, br + sp, bl + sp, isOval)
+                            val sShape = getBoxShape(boxX + sx - sp, boxY + sy - sp, boxW + sp * 2, boxH + sp * 2, tl + sp, tr + sp, br + sp, bl + sp, isOval, layer.pathData, layer.shapeType, layer.polygonSides)
                             gLayer.fill(sShape)
                         }
 
@@ -506,7 +518,7 @@ class NxprcCategoryParityTest {
                                 }
                                 else -> {}
                             }
-                            val fShape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval)
+                            val fShape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval, layer.pathData, layer.shapeType, layer.polygonSides)
                             gLayer.fill(fShape)
                         }
 
@@ -531,7 +543,7 @@ class NxprcCategoryParityTest {
                             } else {
                                 gLayer.stroke = BasicStroke(st.width * density)
                             }
-                            val stShape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval)
+                            val stShape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval, layer.pathData, layer.shapeType, layer.polygonSides)
                             gLayer.draw(stShape)
                         }
 
@@ -540,7 +552,7 @@ class NxprcCategoryParityTest {
                         if (insets.isNotEmpty()) {
                             val gInset = gLayer.create() as Graphics2D
                             try {
-                                val shapeClip = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval)
+                                val shapeClip = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval, layer.pathData, layer.shapeType, layer.polygonSides)
                                 gInset.clip(shapeClip)
                                 insets.forEach { shadow ->
                                     val alpha = (((shadow.color shr 24) and 0xFF) * layer.opacity).toInt().coerceIn(0, 255)
@@ -555,7 +567,7 @@ class NxprcCategoryParityTest {
                                     gInset.stroke = BasicStroke(blur * 1.5f)
                                     val sx = shadow.offsetX * density
                                     val sy = shadow.offsetY * density
-                                    val inShape = getBoxShape(boxX + sx, boxY + sy, boxW, boxH, tl, tr, br, bl, isOval)
+                                    val inShape = getBoxShape(boxX + sx, boxY + sy, boxW, boxH, tl, tr, br, bl, isOval, layer.pathData, layer.shapeType, layer.polygonSides)
                                     gInset.draw(inShape)
                                 }
                             } finally {
@@ -671,9 +683,14 @@ class NxprcCategoryParityTest {
                         if (layer.effectiveTransform.scaleX != 1f || layer.effectiveTransform.scaleY != 1f) gLayer.scale(layer.effectiveTransform.scaleX.toDouble(), layer.effectiveTransform.scaleY.toDouble())
                         gLayer.translate(-pivotX.toDouble(), -pivotY.toDouble())
 
+                        val effectiveSides = when {
+                            shapeType == "HEXAGON" -> 6
+                            shapeType == "OCTAGON" -> 8
+                            shapeType == "POLYGON" -> 6
+                            else -> 0
+                        }
                         val shape = when {
-                            shapeType == "HEXAGON" -> buildPolygonShape(6, shapeLeft, shapeTop, shapeW, shapeH)
-                            shapeType == "OCTAGON" -> buildPolygonShape(8, shapeLeft, shapeTop, shapeW, shapeH)
+                            effectiveSides >= 3 -> buildPolygonShape(effectiveSides, shapeLeft, shapeTop, shapeW, shapeH)
                             isOval -> Ellipse2D.Float(shapeLeft, shapeTop, shapeW, shapeH)
                             else -> RoundRectangle2D.Float(shapeLeft, shapeTop, shapeW, shapeH, cornerRadius * 2f, cornerRadius * 2f)
                         }
@@ -869,13 +886,14 @@ class NxprcCategoryParityTest {
         return path
     }
 
-    private fun getBoxShape(x: Float, y: Float, w: Float, h: Float, tl: Float, tr: Float, br: Float, bl: Float, isOval: Boolean): Shape {
-        if (isOval) {
-            return Ellipse2D.Float(x, y, w, h)
-        }
-        val avgCorner = (tl + tr + br + bl) / 4f
-        return RoundRectangle2D.Float(x, y, w, h, avgCorner * 2f, avgCorner * 2f)
-    }
+    private fun getBoxShape(
+        x: Float, y: Float, w: Float, h: Float,
+        tl: Float, tr: Float, br: Float, bl: Float,
+        isOval: Boolean,
+        pathData: String = "",
+        shapeType: String = "",
+        polygonSides: Int = 0
+    ): Shape = NxprcAuditService.getBoxShape(x, y, w, h, tl, tr, br, bl, isOval, pathData, shapeType, polygonSides)
 
     private fun computeVisualParity(imgA: BufferedImage, imgB: BufferedImage): Double {
         val croppedA = cropToButtonContent(imgA)
@@ -1563,6 +1581,115 @@ class NxprcCategoryParityTest {
             val cardOut = File(brainDir, "user_anime_button_side_by_side.png")
             ImageIO.write(sideBySideCard, "PNG", cardOut)
             println("Saved side-by-side comparison card to: ${cardOut.absolutePath}")
+        }
+    }
+
+    @Test
+    fun testUserTwoVariationsLayerByLayerAudit() {
+        val variations = listOf(
+            Triple("variation1.html", "Action A • Feature Test", "variation1"),
+            Triple("variation2.html", "Action A • Forged Octagon", "variation2")
+        )
+
+        for ((fileName, displayName, prefix) in variations) {
+            val htmlFile = File(scratchDir, fileName)
+            if (!htmlFile.exists()) {
+                println("File not found: ${htmlFile.absolutePath}")
+                continue
+            }
+            val html = htmlFile.readText()
+
+            println("\n" + "=".repeat(80))
+            println("=== TESTING LAYER-BY-LAYER: $displayName ($fileName) ===")
+            println("=".repeat(80))
+
+            val compileResult = NxprcHtmlCssConverter.convertWithWarnings(
+                source = html,
+                id = "rc.$prefix",
+                name = displayName,
+                category = "BUTTON",
+                defaultControl = "A"
+            )
+            val doc = compileResult.document
+            val warnings = compileResult.warnings
+
+            println("\n--- COMPILER WARNINGS (${warnings.size}) ---")
+            if (warnings.isEmpty()) {
+                println("  [None] All CSS and SVG features cleanly parsed.")
+            } else {
+                warnings.forEach { w ->
+                    println("  [${w.severity}] [${w.code}] ${w.message} (${w.source})")
+                }
+            }
+
+            println("\n--- COMPILED LAYERS AUDIT (${doc.canvas.layers.size} layers) ---")
+            doc.canvas.layers.forEachIndexed { i, layer ->
+                when (layer) {
+                    is CanvasLayer.GradientShape -> {
+                        println("  #$i [GradientShape] shape=${layer.shapeType} rW=${String.format("%.3f", layer.widthRatio)} rH=${String.format("%.3f", layer.heightRatio)} offX=${String.format("%.3f", layer.offsetXRatio)} offY=${String.format("%.3f", layer.offsetYRatio)} rot=${layer.rotationDegrees} op=${layer.opacity} fill=${layer.fill::class.simpleName} stroke=${layer.stroke?.let { "0x%08X w=${it.width}".format(it.color, it.width) }}")
+                    }
+                    is CanvasLayer.BoxLayer -> {
+                        println("  #$i [BoxLayer] shape=${layer.shapeType} poly=${layer.polygonSides} rW=${String.format("%.3f", layer.widthRatio)} rH=${String.format("%.3f", layer.heightRatio)} offX=${String.format("%.3f", layer.offsetXRatio)} offY=${String.format("%.3f", layer.offsetYRatio)} rot=${layer.rotationDegrees} op=${layer.effectiveEffects.opacity} fill=${layer.fill::class.simpleName} fills=${layer.fills.size} stroke=${layer.stroke?.let { "0x%08X w=${it.width}".format(it.color, it.width) }} shadows=${layer.boxShadows.size}")
+                    }
+                    is CanvasLayer.VectorPath -> {
+                        val skiaPath = try { org.jetbrains.skia.Path.makeFromSVGString(layer.pathData) } catch (e: Throwable) { null }
+                        val boundsStr = if (skiaPath != null) {
+                            val b = skiaPath.bounds
+                            "bounds=[L=${b.left}, T=${b.top}, R=${b.right}, B=${b.bottom}]"
+                        } else "bounds=[unknown]"
+                        println("  #$i [VectorPath] $boundsStr rot=${layer.rotationDegrees} scale=${String.format("%.3f", layer.scale)} offX=${String.format("%.3f", layer.offsetXRatio)} offY=${String.format("%.3f", layer.offsetYRatio)} fill=${layer.fill::class.simpleName} stroke=${layer.stroke?.let { "0x%08X w=${it.width}".format(it.color, it.width) }} d='${layer.pathData.take(35)}...'")
+                    }
+                    is CanvasLayer.GlowRing -> {
+                        println("  #$i [GlowRing] color=0x%08X blur=${layer.blurRadius} pulse=${layer.pulseEnabled}".format(layer.glowColor))
+                    }
+                    is CanvasLayer.BezelSocket -> {
+                        println("  #$i [BezelSocket] outerBezel=0x%08X outerBevel=0x%08X shadow=0x%08X insetRatio=${layer.insetRatio}".format(layer.outerBezelColor, layer.outerBevelStroke, layer.shadowColor))
+                    }
+                    is CanvasLayer.InnerShadow -> {
+                        println("  #$i [InnerShadow] shadow=0x%08X highlight=0x%08X width=${layer.strokeWidth}".format(layer.shadowColor, layer.highlightColor))
+                    }
+                    is CanvasLayer.CenterGlyph -> {
+                        println("  #$i [CenterGlyph] text='${layer.text}' fontSize=${layer.fontSizeSp}sp color=0x%08X shadows=${layer.textShadows.size}".format(layer.textColor))
+                    }
+                    is CanvasLayer.TextLayer -> {
+                        println("  #$i [TextLayer] text='${layer.text}' fontSize=${layer.fontSizeSp}sp color=0x%08X align=${layer.textAlign} offX=${String.format("%.3f", layer.offsetXRatio)} offY=${String.format("%.3f", layer.offsetYRatio)}".format(layer.textColor))
+                    }
+                    else -> {
+                        println("  #$i [${layer::class.simpleName}]")
+                    }
+                }
+            }
+
+            // Render Native Image
+            val canvasSize = 400
+            val nativeImg = renderNxprcToImage(doc, canvasSize, canvasSize)
+            val nativeOut = File(brainDir, "${prefix}_native.png")
+            ImageIO.write(nativeImg, "PNG", nativeOut)
+            println("\nSaved native image: ${nativeOut.absolutePath}")
+
+            // Capture Chrome Screenshot
+            val previewHtmlFile = File(scratchDir, "preview_${prefix}.html")
+            previewHtmlFile.writeText(wrapHtmlForPreview(html, canvasSize, canvasSize))
+            val chromeImgFile = File(brainDir, "${prefix}_chrome.png")
+            val chromeSuccess = captureChromeScreenshot(previewHtmlFile, chromeImgFile, canvasSize, canvasSize)
+            if (chromeSuccess && chromeImgFile.exists()) {
+                val chromeImg = ImageIO.read(chromeImgFile)
+                val parityScore = computeVisualParity(chromeImg, nativeImg)
+                println("=== $displayName VISUAL PARITY SCORE: ${String.format("%.2f", parityScore)}% ===")
+
+                val sideBySideCard = generateSideBySideCard(
+                    category = "ABXY",
+                    displayName = displayName,
+                    chromeImg = chromeImg,
+                    nativeImg = nativeImg,
+                    parityScore = parityScore
+                )
+                val cardOut = File(brainDir, "${prefix}_side_by_side.png")
+                ImageIO.write(sideBySideCard, "PNG", cardOut)
+                println("Saved side-by-side card: ${cardOut.absolutePath}")
+            } else {
+                println("Chrome screenshot failed or skipped.")
+            }
         }
     }
 }

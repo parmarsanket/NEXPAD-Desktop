@@ -229,12 +229,23 @@ object NxprcAuditService {
         val density = viewScale
 
         val primaryBox = doc.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull()
-        val isRootOval = primaryBox?.shapeType?.uppercase() == "OVAL"
-        val rootCornerArc = (primaryBox?.cornerRadiusTopLeft ?: 14f) * density * 2f
-        val rootClipShape: Shape = if (isRootOval) {
-            Ellipse2D.Float(btnLeft, btnTop, btnW, btnH)
-        } else {
-            RoundRectangle2D.Float(btnLeft, btnTop, btnW, btnH, rootCornerArc, rootCornerArc)
+        val primaryGrad = doc.canvas.layers.filterIsInstance<CanvasLayer.GradientShape>().firstOrNull()
+        val rootShapeType = primaryBox?.shapeType?.uppercase() ?: primaryGrad?.shapeType?.uppercase() ?: "ROUNDED_RECT"
+        val isRootOval = rootShapeType == "OVAL"
+        val rootCornerArc = (primaryBox?.cornerRadiusTopLeft ?: primaryGrad?.cornerRadius ?: 14f) * density * 2f
+        val rootPathData = primaryBox?.pathData ?: ""
+        val rootPolySides = primaryBox?.polygonSides ?: 0
+        val rootEffectiveSides = when {
+            rootPolySides >= 3 -> rootPolySides
+            rootShapeType == "HEXAGON" -> 6
+            rootShapeType == "OCTAGON" -> 8
+            else -> 0
+        }
+        val rootClipShape: Shape = when {
+            rootPathData.isNotBlank() -> skiaPathToAwtShape(rootPathData, btnLeft, btnTop, btnW, btnH) ?: parsePathDataToShape(rootPathData, btnLeft, btnTop, btnW, btnH)
+            rootEffectiveSides >= 3 -> buildPolygonShape(rootEffectiveSides, btnLeft, btnTop, btnW, btnH)
+            isRootOval -> Ellipse2D.Float(btnLeft, btnTop, btnW, btnH)
+            else -> RoundRectangle2D.Float(btnLeft, btnTop, btnW, btnH, rootCornerArc, rootCornerArc)
         }
 
         val layersToRender = activeLayersOnly ?: doc.canvas.layers
@@ -471,9 +482,14 @@ object NxprcAuditService {
                         if (layer.effectiveTransform.scaleX != 1f || layer.effectiveTransform.scaleY != 1f) gLayer.scale(layer.effectiveTransform.scaleX.toDouble(), layer.effectiveTransform.scaleY.toDouble())
                         gLayer.translate(-pivotX.toDouble(), -pivotY.toDouble())
 
+                        val effectiveSides = when {
+                            shapeType == "HEXAGON" -> 6
+                            shapeType == "OCTAGON" -> 8
+                            shapeType == "POLYGON" -> 6
+                            else -> 0
+                        }
                         val shape = when {
-                            shapeType == "HEXAGON" -> buildPolygonShape(6, shapeLeft, shapeTop, shapeW, shapeH)
-                            shapeType == "OCTAGON" -> buildPolygonShape(8, shapeLeft, shapeTop, shapeW, shapeH)
+                            effectiveSides >= 3 -> buildPolygonShape(effectiveSides, shapeLeft, shapeTop, shapeW, shapeH)
                             isOval -> Ellipse2D.Float(shapeLeft, shapeTop, shapeW, shapeH)
                             else -> RoundRectangle2D.Float(shapeLeft, shapeTop, shapeW, shapeH, cornerRadius * 2f, cornerRadius * 2f)
                         }
@@ -672,7 +688,7 @@ object NxprcAuditService {
         return img
     }
 
-    private fun buildPolygonShape(sides: Int, x: Float, y: Float, w: Float, h: Float): Shape {
+    fun buildPolygonShape(sides: Int, x: Float, y: Float, w: Float, h: Float): Shape {
         val path = Path2D.Float()
         val cx = x + w / 2f
         val cy = y + h / 2f
@@ -730,29 +746,39 @@ object NxprcAuditService {
         return path2d
     }
 
-    private fun getBoxShape(
+    fun getBoxShape(
         x: Float, y: Float, w: Float, h: Float,
         tl: Float, tr: Float, br: Float, bl: Float,
         isOval: Boolean,
-        pathData: String = ""
+        pathData: String = "",
+        shapeType: String = "",
+        polygonSides: Int = 0
     ): Shape {
-        val baseShape: Shape = if (pathData.isNotBlank()) {
-            parsePathDataToShape(pathData, x, y, w, h)
-        } else if (isOval) {
-            Ellipse2D.Float(x, y, w, h)
-        } else {
-            val path = Path2D.Float()
-            path.moveTo(x + tl, y)
-            path.lineTo(x + w - tr, y)
-            path.quadTo(x + w, y, x + w, y + tr)
-            path.lineTo(x + w, y + h - br)
-            path.quadTo(x + w, y + h, x + w - br, y + h)
-            path.lineTo(x + bl, y + h)
-            path.quadTo(x, y + h, x, y + h - bl)
-            path.lineTo(x, y + tl)
-            path.quadTo(x, y, x + tl, y)
-            path.closePath()
-            path
+        val st = shapeType.uppercase()
+        val effectiveSides = when {
+            polygonSides >= 3 -> polygonSides
+            st == "HEXAGON" -> 6
+            st == "OCTAGON" -> 8
+            else -> 0
+        }
+        val baseShape: Shape = when {
+            pathData.isNotBlank() -> skiaPathToAwtShape(pathData, x, y, w, h) ?: parsePathDataToShape(pathData, x, y, w, h)
+            effectiveSides >= 3 -> buildPolygonShape(effectiveSides, x, y, w, h)
+            isOval || st == "OVAL" -> Ellipse2D.Float(x, y, w, h)
+            else -> {
+                val path = Path2D.Float()
+                path.moveTo(x + tl, y)
+                path.lineTo(x + w - tr, y)
+                path.quadTo(x + w, y, x + w, y + tr)
+                path.lineTo(x + w, y + h - br)
+                path.quadTo(x + w, y + h, x + w - br, y + h)
+                path.lineTo(x + bl, y + h)
+                path.quadTo(x, y + h, x, y + h - bl)
+                path.lineTo(x, y + tl)
+                path.quadTo(x, y, x + tl, y)
+                path.closePath()
+                path
+            }
         }
 
         if (pathData.isNotBlank() && isOval) {
@@ -780,7 +806,7 @@ object NxprcAuditService {
         return baseShape
     }
 
-    private fun parsePathDataToShape(pathData: String, boxX: Float, boxY: Float, boxW: Float, boxH: Float): Shape {
+    fun parsePathDataToShape(pathData: String, boxX: Float, boxY: Float, boxW: Float, boxH: Float): Shape {
         val path = Path2D.Float()
         val tokens = pathData.trim().split(java.util.regex.Pattern.compile("[,\\s]+")).filter { it.isNotEmpty() }
         var i = 0

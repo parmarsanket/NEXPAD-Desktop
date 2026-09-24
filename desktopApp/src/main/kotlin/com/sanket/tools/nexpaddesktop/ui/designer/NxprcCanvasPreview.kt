@@ -506,13 +506,17 @@ fun NxprcCanvasPreview(
                 val rootBr = (primaryBox?.cornerRadiusBottomRight ?: primaryShape?.cornerRadius ?: 14f) * pxPerUnit
                 val rootBl = (primaryBox?.cornerRadiusBottomLeft ?: primaryShape?.cornerRadius ?: 14f) * pxPerUnit
 
+                val rootEffectiveSides = when {
+                    (primaryBox?.polygonSides ?: 0) >= 3 -> primaryBox!!.polygonSides
+                    rootShapeType == "HEXAGON" -> 6
+                    rootShapeType == "OCTAGON" -> 8
+                    else -> 0
+                }
                 val rootClipShape = Path().apply {
-                    if (rootIsPolygon && primaryBox != null && primaryBox.pathData.isNotBlank()) {
+                    if (primaryBox != null && primaryBox.pathData.isNotBlank()) {
                         addPath(buildScaledPath(primaryBox.pathData, Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH)))
-                    } else if (rootShapeType == "HEXAGON") {
-                        addPath(buildRegularPolygonPath(6, Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH)))
-                    } else if (rootShapeType == "OCTAGON") {
-                        addPath(buildRegularPolygonPath(8, Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH)))
+                    } else if (rootEffectiveSides >= 3) {
+                        addPath(buildRegularPolygonPath(rootEffectiveSides, Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH)))
                     } else if (rootIsOval) {
                         addOval(Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH))
                     } else {
@@ -868,18 +872,15 @@ fun NxprcCanvasPreview(
 
                             val drawShape: () -> Unit = {
                                 val shapeType = layer.shapeType.uppercase()
+                                val effectiveSides = when {
+                                    shapeType == "HEXAGON" -> 6
+                                    shapeType == "OCTAGON" -> 8
+                                    shapeType == "POLYGON" -> 6
+                                    else -> 0
+                                }
                                 when {
-                                    shapeType == "HEXAGON" -> {
-                                        val polyPath = buildRegularPolygonPath(6, Rect(shapeLeft, shapeTop, shapeLeft + shapeW, shapeTop + shapeH))
-                                        drawPath(polyPath, brush = brush, alpha = shapeAlpha)
-                                        layer.stroke?.let { st ->
-                                            val stColor = Color(st.color)
-                                            val strokeStyle = if (st.isDashed) Stroke(width = st.width * pxPerUnit, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f * pxPerUnit, 6f * pxPerUnit), 0f)) else Stroke(width = st.width * pxPerUnit)
-                                            drawPath(polyPath, color = stColor.copy(alpha = stColor.alpha * shapeAlpha), style = strokeStyle)
-                                        }
-                                    }
-                                    shapeType == "OCTAGON" -> {
-                                        val polyPath = buildRegularPolygonPath(8, Rect(shapeLeft, shapeTop, shapeLeft + shapeW, shapeTop + shapeH))
+                                    effectiveSides >= 3 -> {
+                                        val polyPath = buildRegularPolygonPath(effectiveSides, Rect(shapeLeft, shapeTop, shapeLeft + shapeW, shapeTop + shapeH))
                                         drawPath(polyPath, brush = brush, alpha = shapeAlpha)
                                         layer.stroke?.let { st ->
                                             val stColor = Color(st.color)
