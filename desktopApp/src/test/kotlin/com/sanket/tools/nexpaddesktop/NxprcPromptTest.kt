@@ -1,7 +1,13 @@
 package com.sanket.tools.nexpaddesktop
 
+import com.sanket.tools.nexpaddesktop.plugins.AiDesignOptions
+import com.sanket.tools.nexpaddesktop.plugins.Complexity
+import com.sanket.tools.nexpaddesktop.plugins.Creativity
+import com.sanket.tools.nexpaddesktop.plugins.Fidelity
 import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
+import com.sanket.tools.nexpaddesktop.plugins.VisualDensity
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -762,8 +768,8 @@ class NxprcPromptTest {
         val rtpPrompt = NxprcHtmlCssConverter.generateAiPrompt("RTP", "STICKS", 180, 180)
 
         assertTrue(ltpPrompt.contains("Left Touch Movement Pad"), "Missing Left Touch Movement Pad in LTP prompt")
-        assertTrue(ltpPrompt.contains("data-category=\"TOUCHPAD\""), "Missing TOUCHPAD category attribute in LTP prompt")
-        assertTrue(ltpPrompt.contains("<div class=\"touchpad-ctl\""), "Missing touchpad-ctl class in LTP prompt")
+        assertTrue(ltpPrompt.contains("data-category=\"STICKS\"") || ltpPrompt.contains("data-category=\"TOUCHPAD\""), "Missing category attribute in LTP prompt")
+        assertTrue(ltpPrompt.contains("<button class=\"touchpad-ctl\""), "Missing touchpad-ctl root button in LTP prompt")
         assertTrue(ltpPrompt.contains("NO center button"), "Missing NO center button in LTP prompt")
         assertTrue(ltpPrompt.contains("NO movable ring"), "Missing NO movable ring in LTP prompt")
         assertTrue(ltpPrompt.contains("NO tap-to-click mechanism"), "Missing NO tap-to-click mechanism in LTP prompt")
@@ -905,6 +911,129 @@ class NxprcPromptTest {
                 "$tag must NOT claim full support for SVG filter graphs"
             )
         }
+    }
+
+    @Test
+    fun parameterDrivenPromptCustomization() {
+        val options = AiDesignOptions(
+            creativity = Creativity.HIGH,
+            complexity = Complexity.DETAILED,
+            fidelity = Fidelity.FAITHFUL,
+            visualDensity = VisualDensity.BALANCED,
+            style = "Cyberpunk Neo",
+            color = "Electric Cyan",
+            shape = "Hexagonal Diamond",
+            material = "Brushed Titanium",
+            lighting = "Backlit Neon",
+            texture = "Carbon Fiber",
+            emblem = "Samurai Oni Mask",
+            label = "TURBO",
+            specialInstructions = "Add pulsating energy rings",
+            userRequest = "Make it look like Cyberpunk 2077"
+        )
+
+        val prompt = NxprcHtmlCssConverter.generateAiPrompt("A", "BUTTON", 96, 96, options)
+
+        assertTrue(prompt.contains("**STYLE**: Cyberpunk Neo"))
+        assertTrue(prompt.contains("**COLOR / PALETTE**: Electric Cyan"))
+        assertTrue(prompt.contains("**SHAPE / SILHOUETTE**: Hexagonal Diamond"))
+        assertTrue(prompt.contains("**MATERIAL / SURFACE**: Brushed Titanium"))
+        assertTrue(prompt.contains("**LIGHTING / SHADING**: Backlit Neon"))
+        assertTrue(prompt.contains("**TEXTURE / PATTERN**: Carbon Fiber"))
+        assertTrue(prompt.contains("**EMBLEM / ICONOGRAPHY**: Samurai Oni Mask"))
+        assertTrue(prompt.contains("**LABEL TEXT**: TURBO"))
+        assertTrue(prompt.contains("**SPECIAL INSTRUCTIONS**: Add pulsating energy rings"))
+        assertTrue(prompt.contains("<user_request>"))
+        assertTrue(prompt.contains("Make it look like Cyberpunk 2077"))
+        assertTrue(prompt.contains("High (bold creative choices within compiler rules)"))
+        assertTrue(prompt.contains("Faithful (respect core reference shapes and motifs closely)"))
+    }
+
+    @Test
+    fun generateRepairPromptContract() {
+        val previousCode = "<button class=\"nexpad-btn\" style=\"mix-blend-mode: multiply;\"><span>A</span></button>"
+        val repairPrompt = NxprcHtmlCssConverter.generateRepairPrompt(
+            previousHtml = previousCode,
+            warnings = listOf("Approximating filter: blur(4px)"),
+            errors = listOf("CSS mix-blend-mode is unsupported"),
+            control = "A",
+            category = "BUTTON"
+        )
+
+        assertTrue(repairPrompt.contains("# NEXPAD COMPONENT COMPILER REPAIR PROTOCOL"))
+        assertTrue(repairPrompt.contains("CSS mix-blend-mode is unsupported"))
+        assertTrue(repairPrompt.contains("Approximating filter: blur(4px)"))
+        assertTrue(repairPrompt.contains("Control Key**: A"))
+        assertTrue(repairPrompt.contains("Category**: BUTTON"))
+        assertTrue(repairPrompt.contains("SURGICAL REPAIR CONTRACT"))
+        assertTrue(repairPrompt.contains(previousCode))
+        assertTrue(repairPrompt.contains("Return ONLY the complete, self-contained HTML/CSS"))
+    }
+
+    @Test
+    fun normalizerDepthTrackingWithNestedDivs() {
+        val rawHtml = """
+            <div class="nexpad-btn" data-control="A">
+                <div class="outer-bevel">
+                    <div class="inner-plate">
+                        <div class="label-box">
+                            <span class="label">A</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        """.trimIndent()
+
+        val normalized = NxprcHtmlCssConverter.normalizeAiHtml(rawHtml, rootClassHint = "nexpad-btn")
+
+        // Root <div> should be converted to <button>, but inner <div>s must remain <div>!
+        assertTrue(normalized.contains("<button class=\"nexpad-btn\""), "Root must be converted to <button>")
+        assertFalse(normalized.contains("<div class=\"nexpad-btn\""), "Root <div> must be replaced")
+        assertTrue(normalized.trimEnd().endsWith("</button>"), "Root closing tag must be </button>")
+        assertTrue(normalized.contains("<div class=\"outer-bevel\">"), "Nested outer-bevel <div> preserved")
+        assertTrue(normalized.contains("<div class=\"inner-plate\">"), "Nested inner-plate <div> preserved")
+        assertTrue(normalized.contains("<div class=\"label-box\">"), "Nested label-box <div> preserved")
+        // Check that inner closing tags remain </div>
+        val divCloseCount = Regex("""</div>""").findAll(normalized).count()
+        assertEquals(3, divCloseCount, "All 3 inner closing </div> tags must be preserved")
+    }
+
+    @Test
+    fun normalizerDiscoveredRootClassActiveInjection() {
+        val rawHtml = """
+            <button class="custom-holo-pad" data-control="X">
+                <span>X</span>
+            </button>
+        """.trimIndent()
+
+        val normalized = NxprcHtmlCssConverter.normalizeAiHtml(rawHtml)
+        assertTrue(normalized.contains(".custom-holo-pad:active"), "Fallback active state must target discovered root class")
+        assertTrue(normalized.contains("--spring-damping"), "Spring physics must be injected into style block")
+    }
+
+    @Test
+    fun touchpadRootButtonAndDynamicCategory() {
+        val prompt = NxprcHtmlCssConverter.generateAiPrompt("LTP", "TOUCHPAD", 180, 180)
+        assertTrue(prompt.contains("Single-Surface Trackpad Architecture"), "Must describe single-surface trackpad")
+        assertTrue(prompt.contains("<button class=\"touchpad-ctl\""), "Root skeleton must be <button>")
+        assertTrue(prompt.contains("data-category=\"TOUCHPAD\""), "Must carry dynamic category TOUCHPAD")
+
+        // Also test sticks category pass-through
+        val sticksPrompt = NxprcHtmlCssConverter.generateAiPrompt("RTP", "STICKS", 180, 180)
+        assertTrue(sticksPrompt.contains("data-category=\"STICKS\""), "Must carry dynamic category STICKS")
+
+        // Normalizer test on touchpad
+        val rawDivTouchpad = """
+            <div class="touchpad-ctl" data-control="LTP">
+                <div class="touchpad-surface"></div>
+            </div>
+        """.trimIndent()
+        val normalized = NxprcHtmlCssConverter.normalizeAiHtml(rawDivTouchpad, "touchpad-ctl")
+        assertTrue(normalized.contains("<button class=\"touchpad-ctl\""), "Touchpad root div converted to button")
+        assertFalse(normalized.contains("<div class=\"touchpad-ctl\""), "Touchpad root div must be replaced")
+        assertTrue(normalized.contains("<div class=\"touchpad-surface\"></div>"), "Inner surface div preserved")
+        assertTrue(normalized.trimEnd().endsWith("</button>"), "Closing button tag matched")
+        assertTrue(normalized.contains(".touchpad-ctl:active"), "Touchpad active state injected")
     }
 }
 

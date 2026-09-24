@@ -1575,11 +1575,11 @@ object NxprcPresets {
 </style>
 </head>
 <body>
-  <div class="touchpad-ctl" data-id="touch_ltp" data-control="LTP" data-category="TOUCHPAD" data-name="Touchpad LTP">
+  <button class="touchpad-ctl" data-id="touch_ltp" data-control="LTP" data-category="TOUCHPAD" data-name="Touchpad LTP">
     <span class="touchpad-title">Touch Move • LTP</span>
     <div class="touchpad-surface"></div>
     <span class="touchpad-sub">2.0X BALLISTICS</span>
-  </div>
+  </button>
 </body>
 </html>
 """.trimIndent()
@@ -1637,11 +1637,11 @@ object NxprcPresets {
 </style>
 </head>
 <body>
-  <div class="touchpad-ctl" data-id="touch_rtp" data-control="RTP" data-category="TOUCHPAD" data-name="Touchpad RTP">
+  <button class="touchpad-ctl" data-id="touch_rtp" data-control="RTP" data-category="TOUCHPAD" data-name="Touchpad RTP">
     <span class="touchpad-title">Touch Look • RTP</span>
     <div class="touchpad-surface"></div>
     <span class="touchpad-sub">2.0X BALLISTICS</span>
-  </div>
+  </button>
 </body>
 </html>
 """.trimIndent()
@@ -1874,9 +1874,9 @@ object NxprcPresets {
 </style>
 </head>
 <body>
-  <div class="touchpad-ctl" data-id="touch_${control.lowercase()}" data-control="$control" data-category="TOUCHPAD" data-name="Touchpad $control">
+  <button class="touchpad-ctl" data-id="touch_${control.lowercase()}" data-control="$control" data-category="$category" data-name="Touchpad $control">
     <span class="touchpad-title">$control</span>
-  </div>
+  </button>
 </body>
 </html>
 """.trimIndent()
