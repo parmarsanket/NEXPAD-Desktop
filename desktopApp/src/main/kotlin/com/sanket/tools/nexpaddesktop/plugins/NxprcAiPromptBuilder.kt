@@ -733,10 +733,10 @@ $previousHtml
         heightDp: Int = 96,
         options: AiDesignOptions = AiDesignOptions()
     ): String {
-        return if (options.modelCapability == ModelCapability.COMPACT) {
-            compactEngineBoundaries(rootClass, widthDp, heightDp)
-        } else {
-            standardEngineBoundaries(rootClass, widthDp, heightDp)
+        return when (options.modelCapability) {
+            ModelCapability.COMPACT -> compactEngineBoundaries(rootClass, widthDp, heightDp)
+            ModelCapability.FRONTIER -> standardEngineBoundaries(rootClass, widthDp, heightDp) + "\n\n" + frontierEngineBoundaries(rootClass, widthDp, heightDp)
+            else -> standardEngineBoundaries(rootClass, widthDp, heightDp)
         }
     }
 
@@ -890,6 +890,108 @@ Self-check before output:
 
 ### SECTION 11 — AUTHORITATIVE OUTPUT CONTRACT
 To ensure reliable programmatic compilation, return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text outside it.
+""".trimIndent()
+
+    private fun frontierEngineBoundaries(rootClass: String, widthDp: Int = 96, heightDp: Int = 96): String = """
+### SECTION F1 — COMPILATION PIPELINE TRANSPARENCY (FRONTIER DEPTH)
+The NXPRC compiler processes your HTML+CSS through this exact pipeline:
+1. **HTML Parsing**: Your HTML is parsed into a `DomNode` tree and embedded `<style>` into a `CssStylesheet`.
+2. **CSS Cascade Resolution**: `CssCascadeResolver` applies W3C specificity rules, resolving `:root` variables, `:active` / `::before` / `::after` pseudo-states into typed `CssPropertyMap` per node.
+3. **Flex Layout Engine**: `FlexLayoutEngine` computes W3C Flexbox positions for all children — respecting `flex-direction`, `justify-content`, `align-items`, `flex-wrap`, `gap`, and absolute positioning overrides.
+4. **Depth-First DOM Walk**: `DomTreeCompiler` walks nodes depth-first. For each node: `::before` pseudo → element Box/Vector → recursive children → `::after` pseudo.
+5. **Layer Creation**: `BoxLayerBuilder` + `ShapeClassifier` + `NodeRoleClassifier` convert each DOM node into typed `CanvasLayer` instances.
+6. **Z-Order Assignment**: `LayerStack` assigns each layer a deterministic z-slot in 1000-unit zones, preventing cross-bleeding between logical button components.
+7. **Output**: `NxprcDocument` containing `manifest` (physics, dimensions), `canvas.layers[]` (display list), and `animations` (tracks, idle, press).
+
+### SECTION F2 — LAYER TYPE MAPPING (WHAT CSS PRODUCES WHAT LAYER)
+Your CSS patterns map to exactly these 9 compiled layer types:
+| CSS / HTML Pattern | Compiled Layer Type | Purpose |
+|---|---|---|
+| `<div>` with `background-color` or gradient | `BoxLayer` or `GradientShape` | Multi-purpose shape with radii, shadows, transforms |
+| Heavy outer `box-shadow` (large spread/blur) | `GlowRing` | Ambient glow rendered BEHIND the button surface |
+| Outer shadow on `data-category="JOYSTICK"` | `BezelSocket` | Socket housing for analog stick components |
+| `box-shadow: inset ...` (substantial inset) | `InnerShadow` | Depth/concavity overlay creating recessed surface |
+| `::after` + semi-transparent gradient fill | `GlossReflection` | Surface sheen highlight for specular effect |
+| `<svg>` shapes (`<path>`, `<circle>`, `<polygon>`) | `VectorPath` | Pre-baked SVG with AffineMatrix2D applied to pathData |
+| Single-character `<span>` | `CenterGlyph` | Simplified label rendering centered on button |
+| Multi-character text or `<text>` element | `TextLayer` | Full text with shadows, font sizing, alignment |
+
+**Z-Order Zones** (1000-unit deterministic slots):
+`GlowRing(~1000)` → `BezelSocket(~2000)` → `Surface(~3000)` → `InnerShadow(~4000)` → `Content(~5000+)` → `Text(~7000)` → `ThumbCap(+20000)`
+
+### SECTION F3 — SVG PATH PRE-BAKING PIPELINE
+SVG paths are compiled with **zero runtime transform overhead**:
+1. `<svg viewBox="0 0 W H">` → viewBox dimensions create a scale/translate `AffineMatrix2D`.
+2. `<g transform="translate(x,y) rotate(deg)">` → group transforms are matrix-accumulated with parent matrices.
+3. Child `transform` attributes are matrix-multiplied with the accumulated parent matrix.
+4. The final `AffineMatrix2D` `[a c e; b d f; 0 0 1]` is applied directly to the raw `d="..."` path coordinates.
+5. Output: `VectorPath.pathData` contains ALREADY-TRANSFORMED absolute coordinates.
+
+**Design Implication**: You can freely use `<g transform="...">` groups to rotate, translate, and scale SVG shapes (e.g., distributing radial petals, gear teeth, or insignia rays around a center point). The compiler pre-bakes all transforms into absolute path coordinates — no runtime matrix overhead.
+
+### SECTION F4 — AFFINE TRANSFORM DECOMPOSITION
+CSS `transform` on DOM elements is parsed by `GeometryParser` into discrete fields:
+```
+TransformDef {
+  rotationDegrees: Float,    // CSS rotate() → degrees
+  scaleX: Float,             // CSS scale()/scaleX()
+  scaleY: Float,             // CSS scale()/scaleY()
+  skewX: Float,              // CSS skewX()
+  skewY: Float,              // CSS skewY()
+  offsetXRatio: Float,       // CSS translateX() → 0.0-1.0 ratio of layer bounds
+  offsetYRatio: Float,       // CSS translateY() → 0.0-1.0 ratio of layer bounds
+  originXRatio: Float,       // CSS transform-origin X → 0.0-1.0 (center = 0.5)
+  originYRatio: Float,       // CSS transform-origin Y → 0.0-1.0 (center = 0.5)
+  isRotating: Boolean        // true if continuous rotation animation detected
+}
+```
+**Constraint**: Only 2D affine transforms (6 DOF) are supported. `perspective`, `rotateX`, `rotateY`, `rotate3d`, and all 3D transforms are silently DROPPED by the compiler.
+
+### SECTION F5 — SPRING PHYSICS KINEMATICS
+The engine runs a **damped harmonic oscillator** at 120 FPS for press feedback:
+`x(t) = A · e^(-ζωₙt) · cos(ωd·t + φ)`
+Where:
+- `ζ` = `--spring-damping` (damping ratio). Tested range: `0.62 – 0.78`. Values < 0.6 produce bouncy overshoot; > 0.8 feel sluggish.
+- `ωₙ` = `√(--spring-stiffness / mass)` (natural frequency). Tested range: `380 – 520`. Values < 300 = slow return; > 600 = very snappy.
+- `ωd` = `ωₙ · √(1 - ζ²)` (damped frequency).
+- `A` = determined by `--press-scale` (amplitude). Tested range: `0.92 – 0.96`.
+- `.$rootClass:active { transform: scale(--press-scale) translateY(Npx); }` maps to the spring trajectory target.
+
+### SECTION F6 — CLASSIFIER INTELLIGENCE
+The compiler uses two classifiers to interpret your DOM structure:
+
+**NodeRoleClassifier** — Assigns semantic meaning to DOM nodes:
+- Reads `data-layer-role` attribute (e.g., `data-layer-role="thumb-cap"`, `"base"`, `"label"`)
+- Reads `data-primitive` attribute for explicit layer type hints
+- Tokenizes CSS class and ID names for semantic matching: `"thumb"`, `"cap"`, `"base"`, `"label"`, `"grip"`, `"socket"`
+- Walks ancestor context (critical for JOYSTICK cap vs. base disambiguation)
+- Known roles: `THUMB_CAP`, `BASE_SOCKET`, `SURFACE_SVG`, `TEXT_LABEL`, `DECORATIVE_LAYER`, `BOX_PRIMITIVE`, `HIDDEN`
+
+**ShapeClassifier** — Reduces CSS shape declarations to typed geometry:
+- `border-radius: 50%` or radii ≥ 45% of `min(width, height)` → `OVAL`
+- `clip-path: polygon(6 vertices)` → `HEXAGON`
+- `clip-path: polygon(8 vertices)` → `OCTAGON`
+- `clip-path: polygon(N vertices)` → `POLYGON`
+- `clip-path: path("...")` → `PATH`
+- Default fallback → `ROUNDED_RECT`
+
+**Design Tip**: Use `data-layer-role` attributes on key structural elements to help the classifier produce optimal layer types. For joystick designs, mark the movable cap element with `data-layer-role="thumb-cap"` and the housing with `data-layer-role="base"`.
+
+### SECTION F7 — MANDATORY 5-STEP REASONING PROTOCOL
+Before writing ANY HTML/CSS code, you MUST execute this reasoning chain:
+
+**Step 1 — LAYER PLAN**: List every visual layer you intend to create and map each to its expected `CanvasLayer` type (BoxLayer, VectorPath, GradientShape, GlowRing, InnerShadow, GlossReflection, CenterGlyph, TextLayer).
+
+**Step 2 — Z-ORDER VERIFY**: Confirm your HTML DOM order matches the expected `LayerStack` zone progression: ambient glow → bezel/socket → primary surface → inner shadows → decorative content → vector emblem → text label.
+
+**Step 3 — SHAPE AUDIT**: For each layer, verify the shape will classify correctly:
+- Using `border-radius: 50%`? → Will produce `OVAL`
+- Using `clip-path: polygon()`? → Count vertices for HEXAGON/OCTAGON/POLYGON
+- Neither? → Will default to `ROUNDED_RECT`
+
+**Step 4 — TRANSFORM CHECK**: Verify ALL transforms are 2D affine only. No `perspective`, `rotateX`, `rotateY`, or `rotate3d`. Confirm `transform-origin` is set explicitly when using rotate/scale.
+
+**Step 5 — BUDGET CHECK**: Count total DOM nodes vs. the complexity budget. Estimate compiled layer count vs. `targetLayers`. Verify spring physics variables are in `:root`.
 """.trimIndent()
 
     private fun renderVisualProfileOrCustomDirective(

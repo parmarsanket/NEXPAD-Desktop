@@ -1646,7 +1646,262 @@ class NxprcPromptTest {
             )
         }
     }
+
+    @Test
+    fun testFrontierTierContainsPipelineTransparency() {
+        val frontierPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(modelCapability = ModelCapability.FRONTIER)
+        )
+
+        assertTrue(
+            frontierPrompt.contains("SECTION F1 — COMPILATION PIPELINE TRANSPARENCY"),
+            "Frontier prompt must contain Section F1 on compilation pipeline transparency"
+        )
+        assertTrue(
+            frontierPrompt.contains("DomTreeCompiler"),
+            "Frontier prompt must explain DomTreeCompiler depth-first walk"
+        )
+        assertTrue(
+            frontierPrompt.contains("CssCascadeResolver"),
+            "Frontier prompt must explain CssCascadeResolver specificity"
+        )
+        assertTrue(
+            frontierPrompt.contains("FlexLayoutEngine"),
+            "Frontier prompt must explain FlexLayoutEngine W3C layout"
+        )
+        assertTrue(
+            frontierPrompt.contains("LayerStack"),
+            "Frontier prompt must explain LayerStack deterministic z-slots"
+        )
+    }
+
+    @Test
+    fun testFrontierTierContainsLayerTypeMapping() {
+        val frontierPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(modelCapability = ModelCapability.FRONTIER)
+        )
+
+        assertTrue(
+            frontierPrompt.contains("SECTION F2 — LAYER TYPE MAPPING"),
+            "Frontier prompt must contain Section F2 on layer type mapping"
+        )
+
+        val expectedLayers = listOf(
+            "BoxLayer",
+            "GradientShape",
+            "GlowRing",
+            "BezelSocket",
+            "InnerShadow",
+            "GlossReflection",
+            "VectorPath",
+            "CenterGlyph",
+            "TextLayer"
+        )
+        expectedLayers.forEach { layer ->
+            assertTrue(
+                frontierPrompt.contains(layer),
+                "Frontier prompt must document compiled layer type: $layer"
+            )
+        }
+
+        assertTrue(
+            frontierPrompt.contains("GlowRing(~1000)"),
+            "Frontier prompt must document GlowRing zone"
+        )
+        assertTrue(
+            frontierPrompt.contains("ThumbCap(+20000)"),
+            "Frontier prompt must document ThumbCap priority zone"
+        )
+    }
+
+    @Test
+    fun testFrontierTierContainsSvgPreBakingAndAffine() {
+        val frontierPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(modelCapability = ModelCapability.FRONTIER)
+        )
+
+        assertTrue(
+            frontierPrompt.contains("SECTION F3 — SVG PATH PRE-BAKING PIPELINE"),
+            "Frontier prompt must contain Section F3 on SVG pre-baking"
+        )
+        assertTrue(
+            frontierPrompt.contains("AffineMatrix2D"),
+            "Frontier prompt must detail AffineMatrix2D matrix accumulation"
+        )
+        assertTrue(
+            frontierPrompt.contains("zero runtime transform overhead"),
+            "Frontier prompt must clarify zero runtime transform overhead"
+        )
+
+        assertTrue(
+            frontierPrompt.contains("SECTION F4 — AFFINE TRANSFORM DECOMPOSITION"),
+            "Frontier prompt must contain Section F4 on transform decomposition"
+        )
+        assertTrue(
+            frontierPrompt.contains("TransformDef"),
+            "Frontier prompt must describe TransformDef structure"
+        )
+        assertTrue(
+            frontierPrompt.contains("rotationDegrees"),
+            "Frontier prompt must document TransformDef scalar fields"
+        )
+    }
+
+    @Test
+    fun testFrontierTierContainsSpringKinematicsAndClassifier() {
+        val frontierPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(modelCapability = ModelCapability.FRONTIER)
+        )
+
+        assertTrue(
+            frontierPrompt.contains("SECTION F5 — SPRING PHYSICS KINEMATICS"),
+            "Frontier prompt must contain Section F5 on spring physics kinematics"
+        )
+        assertTrue(
+            frontierPrompt.contains("damped harmonic oscillator"),
+            "Frontier prompt must explain damped harmonic oscillator"
+        )
+        assertTrue(
+            frontierPrompt.contains("x(t) = A · e^(-ζωₙt) · cos(ωd·t + φ)"),
+            "Frontier prompt must provide the exact differential physics formula"
+        )
+
+        assertTrue(
+            frontierPrompt.contains("SECTION F6 — CLASSIFIER INTELLIGENCE"),
+            "Frontier prompt must contain Section F6 on compiler classifiers"
+        )
+        assertTrue(
+            frontierPrompt.contains("NodeRoleClassifier"),
+            "Frontier prompt must document NodeRoleClassifier"
+        )
+        assertTrue(
+            frontierPrompt.contains("ShapeClassifier"),
+            "Frontier prompt must document ShapeClassifier"
+        )
+        assertTrue(
+            frontierPrompt.contains("data-layer-role"),
+            "Frontier prompt must recommend data-layer-role attributes"
+        )
+    }
+
+    @Test
+    fun testFrontierTierContainsReasoningProtocol() {
+        val frontierPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(modelCapability = ModelCapability.FRONTIER)
+        )
+
+        assertTrue(
+            frontierPrompt.contains("SECTION F7 — MANDATORY 5-STEP REASONING PROTOCOL"),
+            "Frontier prompt must mandate the 5-step reasoning protocol"
+        )
+        assertTrue(
+            frontierPrompt.contains("Step 1 — LAYER PLAN"),
+            "Reasoning protocol must require Step 1 Layer Plan"
+        )
+        assertTrue(
+            frontierPrompt.contains("Step 2 — Z-ORDER VERIFY"),
+            "Reasoning protocol must require Step 2 Z-Order Verify"
+        )
+        assertTrue(
+            frontierPrompt.contains("Step 3 — SHAPE AUDIT"),
+            "Reasoning protocol must require Step 3 Shape Audit"
+        )
+        assertTrue(
+            frontierPrompt.contains("Step 4 — TRANSFORM CHECK"),
+            "Reasoning protocol must require Step 4 Transform Check"
+        )
+        assertTrue(
+            frontierPrompt.contains("Step 5 — BUDGET CHECK"),
+            "Reasoning protocol must require Step 5 Budget Check"
+        )
+    }
+
+    @Test
+    fun testAllThreeTiersProduceStrictTokenProgression() {
+        val compactPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(modelCapability = ModelCapability.COMPACT)
+        )
+
+        val standardPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(modelCapability = ModelCapability.STANDARD)
+        )
+
+        val frontierPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(modelCapability = ModelCapability.FRONTIER)
+        )
+
+        // Strict size progression
+        assertTrue(
+            compactPrompt.length < standardPrompt.length,
+            "Compact (${compactPrompt.length} chars) must be significantly smaller than Standard (${standardPrompt.length} chars)"
+        )
+        assertTrue(
+            standardPrompt.length < frontierPrompt.length,
+            "Standard (${standardPrompt.length} chars) must be significantly smaller than Frontier (${frontierPrompt.length} chars)"
+        )
+
+        // Content containment boundaries
+        assertFalse(
+            compactPrompt.contains("SECTION F1"),
+            "Compact prompt must NOT contain Frontier depth sections"
+        )
+        assertFalse(
+            compactPrompt.contains("SECTION 1 — INSTRUCTION PRIORITY & CONFLICT RESOLUTION"),
+            "Compact prompt must NOT contain Standard 11-section text"
+        )
+
+        assertFalse(
+            standardPrompt.contains("SECTION F1"),
+            "Standard prompt must NOT contain Frontier depth sections"
+        )
+        assertTrue(
+            standardPrompt.contains("SECTION 1 — INSTRUCTION PRIORITY & CONFLICT RESOLUTION"),
+            "Standard prompt MUST contain Standard 11-section text"
+        )
+
+        assertTrue(
+            frontierPrompt.contains("SECTION 1 — INSTRUCTION PRIORITY & CONFLICT RESOLUTION"),
+            "Frontier prompt MUST contain Standard foundational boundaries"
+        )
+        assertTrue(
+            frontierPrompt.contains("SECTION F1 — COMPILATION PIPELINE TRANSPARENCY"),
+            "Frontier prompt MUST contain Frontier depth sections"
+        )
+    }
 }
+
 
 
 

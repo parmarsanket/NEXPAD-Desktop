@@ -49,8 +49,24 @@ import java.awt.datatransfer.StringSelection
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.SubCategoryDefinition
 import com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel
+import com.sanket.tools.nexpaddesktop.plugins.AiDesignOptions
+import com.sanket.tools.nexpaddesktop.plugins.ModelCapability
 
 val SubCategoryDefinition.accentColor: Color get() = Color(accentColorArgb)
+
+/**
+ * Prompt tier for AI model targeting. Controls the level of detail in generated prompts.
+ */
+private enum class PromptTier(
+    val icon: String,
+    val displayName: String,
+    val description: String,
+    val modelCapability: ModelCapability
+) {
+    COMPACT("⚡", "Compact", "< 500 tokens • Small/Local LLMs", ModelCapability.COMPACT),
+    STANDARD("🎮", "Standard", "~1.2k tokens • GPT-4o, Claude Sonnet", ModelCapability.STANDARD),
+    FRONTIER("🚀", "Frontier", "~2.8k tokens • Claude Opus, o1, GPT-4.5", ModelCapability.FRONTIER)
+}
 
 private fun safeCopyToClipboard(text: String): Boolean {
     val selection = StringSelection(text)
@@ -104,6 +120,7 @@ fun PluginsScreen(
     var isExporting by remember { mutableStateOf(false) }
 
     var showAiPromptModal by remember { mutableStateOf(false) }
+    var selectedPromptTier by remember { mutableStateOf(PromptTier.STANDARD) }
     var showFullAuditPreview by remember { mutableStateOf(false) }
     var showFullScreenLayerStudio by remember { mutableStateOf(false) }
     var promptCopiedBanner by remember { mutableStateOf<String?>(null) }
@@ -274,15 +291,18 @@ fun PluginsScreen(
                     targetWidthDp = targetWidthDp,
                     targetHeightDp = targetHeightDp,
                     promptCopiedBanner = promptCopiedBanner,
+                    selectedPromptTier = selectedPromptTier,
+                    onSelectPromptTier = { selectedPromptTier = it },
                     onCopyAiPrompt = {
                         val prompt = NxprcHtmlCssConverter.generateAiPrompt(
                             control = defaultControl,
                             category = category,
                             widthDp = targetWidthDp,
-                            heightDp = targetHeightDp
+                            heightDp = targetHeightDp,
+                            options = AiDesignOptions(modelCapability = selectedPromptTier.modelCapability)
                         )
                         val ok = safeCopyToClipboard(prompt)
-                        promptCopiedBanner = if (ok) "✓ AI Prompt for $defaultControl ($category) copied!" else "⚠️ Clipboard busy — please try again"
+                        promptCopiedBanner = if (ok) "✓ ${selectedPromptTier.icon} ${selectedPromptTier.displayName} AI Prompt for $defaultControl ($category) copied!" else "⚠️ Clipboard busy — please try again"
                     },
                     onOpenPromptModal = { showAiPromptModal = true },
                     onLoadStarter = handleLoadStarter,
@@ -419,15 +439,18 @@ fun PluginsScreen(
                             targetWidthDp = targetWidthDp,
                             targetHeightDp = targetHeightDp,
                             promptCopiedBanner = promptCopiedBanner,
+                            selectedPromptTier = selectedPromptTier,
+                            onSelectPromptTier = { selectedPromptTier = it },
                             onCopyAiPrompt = {
                                 val prompt = NxprcHtmlCssConverter.generateAiPrompt(
                                     control = defaultControl,
                                     category = category,
                                     widthDp = targetWidthDp,
-                                    heightDp = targetHeightDp
+                                    heightDp = targetHeightDp,
+                                    options = AiDesignOptions(modelCapability = selectedPromptTier.modelCapability)
                                 )
                                 val ok = safeCopyToClipboard(prompt)
-                                promptCopiedBanner = if (ok) "✓ AI Prompt for $defaultControl ($category) copied!" else "⚠️ Clipboard busy — please try again"
+                                promptCopiedBanner = if (ok) "✓ ${selectedPromptTier.icon} ${selectedPromptTier.displayName} AI Prompt for $defaultControl ($category) copied!" else "⚠️ Clipboard busy — please try again"
                             },
                             onOpenPromptModal = { showAiPromptModal = true },
                             onLoadStarter = handleLoadStarter,
@@ -499,12 +522,14 @@ fun PluginsScreen(
         // Modal Dialog: AI Prompt Inspector
         // ==========================================
         if (showAiPromptModal) {
-            val generatedPrompt = remember(defaultControl, category, targetWidthDp, targetHeightDp) {
+            var modalTier by remember { mutableStateOf(selectedPromptTier) }
+            val generatedPrompt = remember(defaultControl, category, targetWidthDp, targetHeightDp, modalTier) {
                 NxprcHtmlCssConverter.generateAiPrompt(
                     control = defaultControl,
                     category = category,
                     widthDp = targetWidthDp,
-                    heightDp = targetHeightDp
+                    heightDp = targetHeightDp,
+                    options = AiDesignOptions(modelCapability = modalTier.modelCapability)
                 )
             }
 
@@ -541,7 +566,11 @@ fun PluginsScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    "Compatible with: ChatGPT (GPT-4o, o1, o3-mini), Claude (3.5/3.7), Gemini (2.0/1.5), DeepSeek (V3/R1), Grok 2",
+                                    "${modalTier.icon} ${modalTier.displayName} tier • Compatible with: ${when(modalTier) {
+                                        PromptTier.COMPACT -> "Gemma, Llama 3.2, DeepSeek R1-Distill, Haiku"
+                                        PromptTier.STANDARD -> "GPT-4o, Claude 3.5 Sonnet, Gemini 1.5 Pro"
+                                        PromptTier.FRONTIER -> "Claude 3.7 Opus, o1/o3, GPT-4.5, Gemini 2.0 Pro"
+                                    }}",
                                     color = Color(0xFFC4B5FD),
                                     fontSize = 12.sp
                                 )
@@ -551,7 +580,7 @@ fun PluginsScreen(
                                 Button(
                                     onClick = {
                                         val ok = safeCopyToClipboard(generatedPrompt)
-                                        promptCopiedBanner = if (ok) "✓ AI Prompt for $defaultControl copied to clipboard!" else "⚠️ Clipboard busy — please try again"
+                                        promptCopiedBanner = if (ok) "✓ ${modalTier.icon} ${modalTier.displayName} AI Prompt for $defaultControl copied to clipboard!" else "⚠️ Clipboard busy — please try again"
                                         showAiPromptModal = false
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
@@ -565,6 +594,36 @@ fun PluginsScreen(
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
                                     Text("Close", color = Color.White, fontSize = 12.sp)
+                                }
+                            }
+                        }
+
+                        // Tier Tab Switcher
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF090E18))
+                                .border(1.dp, Color(0xFF1E293B), RoundedCornerShape(8.dp))
+                                .padding(3.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            PromptTier.entries.forEach { tier ->
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(30.dp)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(if (modalTier == tier) Color(0xFF7C3AED) else Color.Transparent)
+                                        .clickable { modalTier = tier },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "${tier.icon} ${tier.displayName}",
+                                        color = if (modalTier == tier) Color.White else Color.White.copy(alpha = 0.6f),
+                                        fontWeight = if (modalTier == tier) FontWeight.Bold else FontWeight.Normal,
+                                        fontSize = 11.5.sp
+                                    )
                                 }
                             }
                         }
@@ -685,6 +744,8 @@ private fun ComponentEditorPane(
     targetWidthDp: Int,
     targetHeightDp: Int,
     promptCopiedBanner: String?,
+    selectedPromptTier: PromptTier,
+    onSelectPromptTier: (PromptTier) -> Unit,
     onCopyAiPrompt: () -> Unit,
     onOpenPromptModal: () -> Unit,
     onLoadStarter: () -> Unit,
@@ -731,14 +792,62 @@ private fun ComponentEditorPane(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Button(
-                        onClick = onCopyAiPrompt,
-                        shape = RoundedCornerShape(6.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
-                        modifier = Modifier.height(28.dp)
-                    ) {
-                        Text("🤖 Copy AI Prompt", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    // SplitButton: Copy AI Prompt with tier dropdown
+                    Box {
+                        var showTierMenu by remember { mutableStateOf(false) }
+                        Row(
+                            modifier = Modifier
+                                .height(28.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                        ) {
+                            // Main copy action
+                            Button(
+                                onClick = onCopyAiPrompt,
+                                shape = RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp, topEnd = 0.dp, bottomEnd = 0.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
+                                modifier = Modifier.height(28.dp)
+                            ) {
+                                Text("${selectedPromptTier.icon} Copy AI Prompt", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+                            // Dropdown chevron
+                            Button(
+                                onClick = { showTierMenu = true },
+                                shape = RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = 6.dp, bottomEnd = 6.dp),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 3.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6D28D9)),
+                                modifier = Modifier.height(28.dp)
+                            ) {
+                                Text("▼", fontSize = 9.sp, color = Color.White)
+                            }
+                        }
+                        DropdownMenu(
+                            expanded = showTierMenu,
+                            onDismissRequest = { showTierMenu = false }
+                        ) {
+                            PromptTier.entries.forEach { tier ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text(
+                                                "${tier.icon} ${tier.displayName}${if (tier == selectedPromptTier) " ✓" else ""}",
+                                                fontWeight = if (tier == selectedPromptTier) FontWeight.Bold else FontWeight.Normal,
+                                                fontSize = 13.sp
+                                            )
+                                            Text(
+                                                tier.description,
+                                                fontSize = 10.5.sp,
+                                                color = Color.Gray
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        onSelectPromptTier(tier)
+                                        showTierMenu = false
+                                    }
+                                )
+                            }
+                        }
                     }
 
                     OutlinedButton(
@@ -790,13 +899,58 @@ private fun ComponentEditorPane(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Button(
-                        onClick = onCopyAiPrompt,
-                        shape = RoundedCornerShape(6.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
-                    ) {
-                        Text("🤖 Copy AI Prompt", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    // SplitButton: Copy AI Prompt with tier dropdown
+                    Box {
+                        var showTierMenu by remember { mutableStateOf(false) }
+                        Row(
+                            modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                        ) {
+                            // Main copy action
+                            Button(
+                                onClick = onCopyAiPrompt,
+                                shape = RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp, topEnd = 0.dp, bottomEnd = 0.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
+                            ) {
+                                Text("${selectedPromptTier.icon} Copy AI Prompt", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+                            // Dropdown chevron
+                            Button(
+                                onClick = { showTierMenu = true },
+                                shape = RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = 6.dp, bottomEnd = 6.dp),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6D28D9))
+                            ) {
+                                Text("▼", fontSize = 9.5.sp, color = Color.White)
+                            }
+                        }
+                        DropdownMenu(
+                            expanded = showTierMenu,
+                            onDismissRequest = { showTierMenu = false }
+                        ) {
+                            PromptTier.entries.forEach { tier ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text(
+                                                "${tier.icon} ${tier.displayName}${if (tier == selectedPromptTier) " ✓" else ""}",
+                                                fontWeight = if (tier == selectedPromptTier) FontWeight.Bold else FontWeight.Normal,
+                                                fontSize = 13.sp
+                                            )
+                                            Text(
+                                                tier.description,
+                                                fontSize = 10.5.sp,
+                                                color = Color.Gray
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        onSelectPromptTier(tier)
+                                        showTierMenu = false
+                                    }
+                                )
+                            }
+                        }
                     }
 
                     OutlinedButton(
