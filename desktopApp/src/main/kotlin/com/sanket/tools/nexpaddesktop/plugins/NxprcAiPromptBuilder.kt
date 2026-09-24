@@ -59,7 +59,8 @@ data class ComplexityBudget(
     val minLayers: Int,
     val maxLayers: Int,
     val maxSvgNodes: Int,
-    val guidance: String
+    val guidance: String,
+    val targetLayers: Int = (minLayers + maxLayers) / 2
 )
 
 /**
@@ -72,19 +73,19 @@ enum class Complexity(
 ) {
     AUTO(
         "Auto (infer appropriate construction complexity from the concept)",
-        ComplexityBudget(minLayers = 3, maxLayers = 8, maxSvgNodes = 6, guidance = "Infer appropriate construction complexity from the concept")
+        ComplexityBudget(minLayers = 3, maxLayers = 8, maxSvgNodes = 12, guidance = "Infer appropriate construction complexity from the concept; scale vector nodes to match subject detail", targetLayers = 5)
     ),
     SIMPLE(
         "Simple (use a small number of meaningful visual layers and simple geometry)",
-        ComplexityBudget(minLayers = 2, maxLayers = 4, maxSvgNodes = 3, guidance = "Use a small number of meaningful visual layers and simple geometry; avoid excessive layering")
+        ComplexityBudget(minLayers = 2, maxLayers = 4, maxSvgNodes = 4, guidance = "Use a small number of meaningful visual layers and simple geometry; avoid excessive layering", targetLayers = 3)
     ),
     DETAILED(
         "Detailed (use multiple meaningful layers, material transitions, secondary detailing, and moderately complex SVG geometry)",
-        ComplexityBudget(minLayers = 5, maxLayers = 9, maxSvgNodes = 10, guidance = "Use multiple meaningful layers, material transitions, secondary detailing, and moderately complex SVG geometry")
+        ComplexityBudget(minLayers = 5, maxLayers = 9, maxSvgNodes = 10, guidance = "Use multiple meaningful layers, material transitions, secondary detailing, and moderately complex SVG geometry", targetLayers = 7)
     ),
     EXTREME(
         "Extreme (use the full supported CSS/SVG expressive range when useful, including intricate vector geometry and layered surface treatment; do not add meaningless decoration just to increase complexity)",
-        ComplexityBudget(minLayers = 7, maxLayers = 14, maxSvgNodes = 20, guidance = "Use the full supported CSS/SVG expressive range when useful, including intricate vector geometry and layered surface treatment")
+        ComplexityBudget(minLayers = 7, maxLayers = 14, maxSvgNodes = 20, guidance = "Use the full supported CSS/SVG expressive range when useful, including intricate vector geometry and layered surface treatment", targetLayers = 10)
     )
 }
 
@@ -170,15 +171,9 @@ data class AiDesignOptions(
     val geometryOptions: GeometryOptions = GeometryOptions()
 ) {
     /**
-     * Returns true if any non-default design parameter or custom user prompt is active.
+     * Returns true if explicit custom visual/thematic intent (style, color, shape, etc.) was provided.
      */
-    fun hasCustomParameters(): Boolean =
-        creativity != Creativity.HIGH ||
-        complexity != Complexity.AUTO ||
-        fidelity != Fidelity.INSPIRED ||
-        visualDensity != VisualDensity.AUTO ||
-        modelCapability != ModelCapability.STANDARD ||
-        geometryOptions != GeometryOptions() ||
+    fun hasCustomVisualIntent(): Boolean =
         !style.isNullOrBlank() ||
         !color.isNullOrBlank() ||
         !shape.isNullOrBlank() ||
@@ -186,10 +181,39 @@ data class AiDesignOptions(
         !lighting.isNullOrBlank() ||
         !texture.isNullOrBlank() ||
         !emblem.isNullOrBlank() ||
-        !label.isNullOrBlank() ||
-        !tactilePhysics.isNullOrBlank() ||
-        !specialInstructions.isNullOrBlank() ||
+        !label.isNullOrBlank()
+
+    /**
+     * Returns true if the user provided an explicit free-form prompt request.
+     */
+    fun hasCustomRequest(): Boolean =
         userRequest.isNotBlank()
+
+    /**
+     * Returns true if non-default generation tuning parameters (complexity, creativity, etc.) are set.
+     */
+    fun hasCustomGenerationParameters(): Boolean =
+        creativity != Creativity.HIGH ||
+        complexity != Complexity.AUTO ||
+        fidelity != Fidelity.INSPIRED ||
+        visualDensity != VisualDensity.AUTO ||
+        modelCapability != ModelCapability.STANDARD ||
+        geometryOptions != GeometryOptions() ||
+        !tactilePhysics.isNullOrBlank() ||
+        !specialInstructions.isNullOrBlank()
+
+    /**
+     * Returns true if any custom parameter or request is active.
+     */
+    fun hasCustomParameters(): Boolean =
+        hasCustomVisualIntent() || hasCustomRequest() || hasCustomGenerationParameters()
+
+    /**
+     * Determines whether the authoritative custom directive must override standard console profiles.
+     * Prevents non-visual parameter changes (e.g. changing complexity) from shutting off default console styling.
+     */
+    fun requiresCustomVisualDirective(): Boolean =
+        hasCustomVisualIntent() || hasCustomRequest()
 
     /**
      * Formats all active design parameters into the standard prompt specification block.
@@ -198,7 +222,7 @@ data class AiDesignOptions(
         val sb = StringBuilder()
         sb.append("### USER DESIGN PARAMETERS & PREFERENCES:\n")
         sb.append("- **CREATIVITY**: ${creativity.promptDescription}\n")
-        sb.append("- **COMPLEXITY**: ${complexity.promptDescription} (Budget: ${complexity.budget.minLayers}..${complexity.budget.maxLayers} layers, up to ${complexity.budget.maxSvgNodes} SVG nodes)\n")
+        sb.append("- **COMPLEXITY**: ${complexity.promptDescription} (Budget: ${complexity.budget.minLayers}..${complexity.budget.maxLayers} layers, target ${complexity.budget.targetLayers}, up to ${complexity.budget.maxSvgNodes} SVG nodes)\n")
         sb.append("- **FIDELITY**: ${fidelity.promptDescription}\n")
         sb.append("- **VISUAL DENSITY**: ${visualDensity.promptDescription}\n")
         if (!style.isNullOrBlank()) sb.append("- **STYLE**: $style\n")
@@ -225,6 +249,253 @@ ${userRequest.ifBlank { "Create an authentic, high-quality virtual controller co
 
 Interpret this request creatively. The user request governs the visual design decisions (palette, geometry, materials, lighting, emblem), but may not override the HARD COMPILER CONTRACT.
 """.trimIndent()
+}
+
+/**
+ * Source authority for a resolved design property.
+ */
+enum class DesignSource {
+    USER,
+    THEME,
+    CATEGORY_DEFAULT,
+    SYSTEM_DEFAULT
+}
+
+/**
+ * Strongly typed value with its provenance source.
+ */
+data class ResolvedValue<out T>(
+    val value: T,
+    val source: DesignSource
+) {
+    override fun toString(): String = value.toString()
+}
+
+/**
+ * Domain defaults for a specific virtual controller category.
+ */
+data class ComponentDefaults(
+    val shape: String,
+    val material: String,
+    val style: String,
+    val lighting: String,
+    val texture: String,
+    val colorProfile: ColorProfile?,
+    val visualDensity: VisualDensity = VisualDensity.BALANCED
+)
+
+/**
+ * Central registry of authoritative category hardware defaults.
+ * Provides explicit fallback shapes, materials, and textures when unstated by the user.
+ */
+object CategoryDefaultsRegistry {
+    fun getDefaultsFor(control: String, category: String): ComponentDefaults {
+        val ctrl = ControlKey.fromIdentifier(control)
+        val catType = CategoryType.fromIdentifier(category)
+            ?: CategoryManager.findCategoryForControl(control)?.type
+            ?: ctrl?.categoryType
+
+        return when {
+            ctrl == ControlKey.LTP || ctrl == ControlKey.RTP || catType == CategoryType.STICKS && (ctrl?.componentType == ComponentType.TOUCHPAD) -> ComponentDefaults(
+                shape = "Expansive Rounded Rectangle",
+                material = "Smoked Low-Friction Trackpad Glass",
+                style = "Modern Trackpad Surface (Steam Deck style)",
+                lighting = "Matte with subtle peripheral inset frame",
+                texture = "Laser-etched micro-matte glass",
+                colorProfile = null,
+                visualDensity = VisualDensity.CLEAN
+            )
+            ctrl == ControlKey.LSB || ctrl == ControlKey.RSB || (catType == CategoryType.STICKS && ctrl?.componentType == ComponentType.BUTTON) -> ComponentDefaults(
+                shape = "Circular Thumb Cap Dish",
+                material = "Textured Elastomer Thumb Grip",
+                style = "Tactile Axial Thumbstick Button",
+                lighting = "Spherical radial concave shading",
+                texture = "Perimeter knurled grip rim",
+                colorProfile = null,
+                visualDensity = VisualDensity.BALANCED
+            )
+            catType == CategoryType.TRIGGERS -> ComponentDefaults(
+                shape = "Ergonomic Curved Paddle",
+                material = "High-Impact Composite Polymer",
+                style = "Console Performance Trigger",
+                lighting = "Progressive travel gradient receding into housing",
+                texture = "Molded horizontal traction ribs",
+                colorProfile = null,
+                visualDensity = VisualDensity.BALANCED
+            )
+            catType == CategoryType.BUMPERS -> ComponentDefaults(
+                shape = "Long Rounded Shoulder Lever",
+                material = "Molded Polycarbonate Shoulder Shell",
+                style = "Console Shoulder Lever",
+                lighting = "Horizontal specular contour sheen",
+                texture = "Smooth matte with chassis seam contact shadow",
+                colorProfile = null,
+                visualDensity = VisualDensity.BALANCED
+            )
+            catType == CategoryType.DPAD -> ComponentDefaults(
+                shape = "Directional Cross / Rocker Dish",
+                material = "Textured Matte ABS Plastic",
+                style = "Modern Console Realism",
+                lighting = "Sloped directional shading with central pivot indent",
+                texture = "Micro-stippled cardinal finger grip",
+                colorProfile = null,
+                visualDensity = VisualDensity.BALANCED
+            )
+            catType == CategoryType.STICKS -> ComponentDefaults(
+                shape = "Two-Zone Concentric (Stationary Gimbal Base + Movable Concave Thumb Cap)",
+                material = "Molded Rubber/Elastomer Dome on ABS Base",
+                style = "Console Analog Thumbstick",
+                lighting = "Deep recessed socket shadow with top-down dome illumination",
+                texture = "Concentric knurled traction rings",
+                colorProfile = null,
+                visualDensity = VisualDensity.BALANCED
+            )
+            catType == CategoryType.SYSTEM || catType == CategoryType.MACROS -> ComponentDefaults(
+                shape = "Compact Flush Rounded Squircle / Pill",
+                material = "Matte Polycarbonate",
+                style = "Flush Low-Profile Utility Button",
+                lighting = "Subtle recessed socket well",
+                texture = "Smooth molded matte",
+                colorProfile = null,
+                visualDensity = VisualDensity.CLEAN
+            )
+            else -> {
+                // ABXY / Standard Button
+                val profile = when (control.uppercase()) {
+                    NexpadKeys.X -> ColorProfile("Vibrant Sapphire Blue", "#00B0FF", "rgba(0, 176, 255, 0.6)", "linear-gradient(145deg, #0284c7 0%, #0369a1 50%, #0c4a6e 100%)")
+                    NexpadKeys.Y -> ColorProfile("Radiant Solar Yellow", "#FFCC00", "rgba(255, 204, 0, 0.6)", "linear-gradient(145deg, #eab308 0%, #ca8a04 50%, #713f12 100%)")
+                    NexpadKeys.B -> ColorProfile("Vibrant Crimson Red", "#FF3366", "rgba(255, 51, 102, 0.6)", "linear-gradient(145deg, #f43f5e 0%, #e11d48 50%, #881337 100%)")
+                    else -> ColorProfile("Vibrant Emerald Green", "#4ADE80", "rgba(74, 222, 128, 0.6)", "linear-gradient(145deg, #10b981 0%, #059669 50%, #047857 100%)")
+                }
+                ComponentDefaults(
+                    shape = "Rounded Squircle (border-radius: 24–28px)",
+                    material = "Molded Polycarbonate",
+                    style = "Modern Console Realism",
+                    lighting = "Top-left directional with soft specular highlight",
+                    texture = "Subtle molded matte body",
+                    colorProfile = profile,
+                    visualDensity = VisualDensity.BALANCED
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Authoritatively resolved design specification after combining user inputs, category defaults,
+ * and system heuristics. Eliminates ambiguity for LLM generation.
+ */
+data class ResolvedDesign(
+    val style: ResolvedValue<String>,
+    val shape: ResolvedValue<String>,
+    val color: ResolvedValue<String>,
+    val material: ResolvedValue<String>,
+    val lighting: ResolvedValue<String>,
+    val texture: ResolvedValue<String>,
+    val emblem: ResolvedValue<String>?,
+    val label: ResolvedValue<String>,
+    val creativity: Creativity,
+    val complexity: Complexity,
+    val fidelity: Fidelity,
+    val visualDensity: VisualDensity
+) {
+    fun toPromptSpecification(): String {
+        val sb = StringBuilder()
+        sb.append("### RESOLVED DESIGN SPECIFICATION (PRE-RESOLVED INTENT):\n")
+        sb.append("- **STYLE**: ${style.value} [${style.source}]\n")
+        sb.append("- **SHAPE**: ${shape.value} [${shape.source}]\n")
+        sb.append("- **COLOR**: ${color.value} [${color.source}]\n")
+        sb.append("- **MATERIAL**: ${material.value} [${material.source}]\n")
+        sb.append("- **LIGHTING**: ${lighting.value} [${lighting.source}]\n")
+        sb.append("- **TEXTURE**: ${texture.value} [${texture.source}]\n")
+        if (emblem != null && !emblem.value.isNullOrBlank()) {
+            sb.append("- **EMBLEM**: ${emblem.value} [${emblem.source}]\n")
+        }
+        sb.append("- **LABEL**: ${label.value} [${label.source}]\n")
+        sb.append("- **CREATIVITY**: ${creativity.promptDescription}\n")
+        sb.append("- **COMPLEXITY**: ${complexity.promptDescription} (Target: ${complexity.budget.targetLayers} layers, max ${complexity.budget.maxLayers} layers, up to ${complexity.budget.maxSvgNodes} SVG nodes)\n")
+        sb.append("- **FIDELITY**: ${fidelity.promptDescription}\n")
+        sb.append("- **VISUAL DENSITY**: ${visualDensity.promptDescription}\n")
+        return sb.toString()
+    }
+}
+
+/**
+ * Resolves callers' AiDesignOptions against category hardware defaults.
+ */
+object DesignResolver {
+    fun resolve(control: String, category: String, options: AiDesignOptions): ResolvedDesign {
+        val defaults = CategoryDefaultsRegistry.getDefaultsFor(control, category)
+
+        val style = if (!options.style.isNullOrBlank()) {
+            ResolvedValue(options.style, DesignSource.USER)
+        } else {
+            ResolvedValue(defaults.style, DesignSource.CATEGORY_DEFAULT)
+        }
+
+        val shape = if (!options.shape.isNullOrBlank()) {
+            ResolvedValue(options.shape, DesignSource.USER)
+        } else {
+            ResolvedValue(defaults.shape, DesignSource.CATEGORY_DEFAULT)
+        }
+
+        val color = if (!options.color.isNullOrBlank()) {
+            ResolvedValue(options.color, DesignSource.USER)
+        } else if (defaults.colorProfile != null) {
+            ResolvedValue("${defaults.colorProfile.name} (${defaults.colorProfile.hexCode})", DesignSource.CATEGORY_DEFAULT)
+        } else {
+            ResolvedValue("Charcoal Graphite Neutral with Subtle Cool Accent", DesignSource.CATEGORY_DEFAULT)
+        }
+
+        val material = if (!options.material.isNullOrBlank()) {
+            ResolvedValue(options.material, DesignSource.USER)
+        } else {
+            ResolvedValue(defaults.material, DesignSource.CATEGORY_DEFAULT)
+        }
+
+        val lighting = if (!options.lighting.isNullOrBlank()) {
+            ResolvedValue(options.lighting, DesignSource.USER)
+        } else {
+            ResolvedValue(defaults.lighting, DesignSource.CATEGORY_DEFAULT)
+        }
+
+        val texture = if (!options.texture.isNullOrBlank()) {
+            ResolvedValue(options.texture, DesignSource.USER)
+        } else {
+            ResolvedValue(defaults.texture, DesignSource.CATEGORY_DEFAULT)
+        }
+
+        val emblem = if (!options.emblem.isNullOrBlank()) {
+            ResolvedValue(options.emblem, DesignSource.USER)
+        } else null
+
+        val label = if (!options.label.isNullOrBlank()) {
+            ResolvedValue(options.label, DesignSource.USER)
+        } else {
+            ResolvedValue(control, DesignSource.CATEGORY_DEFAULT)
+        }
+
+        val visualDensity = if (options.visualDensity != VisualDensity.AUTO) {
+            options.visualDensity
+        } else {
+            defaults.visualDensity
+        }
+
+        return ResolvedDesign(
+            style = style,
+            shape = shape,
+            color = color,
+            material = material,
+            lighting = lighting,
+            texture = texture,
+            emblem = emblem,
+            label = label,
+            creativity = options.creativity,
+            complexity = options.complexity,
+            fidelity = options.fidelity,
+            visualDensity = visualDensity
+        )
+    }
 }
 
 /**
@@ -432,7 +703,7 @@ $previousHtml
 
 ### SURGICAL REPAIR CONTRACT:
 1. **Preserve Visual Design**: Do NOT redesign the component or alter its requested theme, artistic concept, color palette, or vector artwork.
-2. **Fix Compiler Diagnostics**: Resolve ONLY the specific errors and warnings reported above (e.g., ensure single root `<button>`, valid explicit px bounds, valid SVG viewBox, remove unsupported CSS like `@media`/`@keyframes`/`mix-blend-mode`).
+2. **Fix Compiler Diagnostics**: Resolve ONLY the specific errors and warnings reported above (e.g., ensure single root `<button>`, valid explicit px bounds, valid SVG viewBox, remove unsupported CSS like `@media`/`mix-blend-mode`/`backdrop-filter`). Note: Standard CSS `@keyframes` on transform/opacity properties ARE supported for ambient animations; do NOT remove valid keyframes unless the compiler diagnostic specifically identifies them as invalid.
 3. **Dual-Engine Alignment**: Ensure complex graphics use embedded `<svg class="button-emblem" viewBox="...">` vector paths, and glowing halos use underlying CSS spans rather than SVG filter graphs (`feGaussianBlur`).
 4. **Authoritative Output**: Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include markdown conversation or explanations.
 """.trimIndent()
@@ -456,7 +727,36 @@ $previousHtml
 11. NEXPAD supports dual button labeling styles (Xbox: A, B, X, Y, LB, RB, LT, RT, LSB, RSB vs PlayStation: ✕, ○, □, △, L1, R1, L2, R2, L3, R3) and dynamically translates standard controller labels at runtime while preserving custom action text (e.g. ATTACK, DASH, JUMP).
 """.trimIndent()
 
-    private fun engineBoundaries(rootClass: String, widthDp: Int = 96, heightDp: Int = 96): String = """
+    private fun engineBoundaries(
+        rootClass: String,
+        widthDp: Int = 96,
+        heightDp: Int = 96,
+        options: AiDesignOptions = AiDesignOptions()
+    ): String {
+        return if (options.modelCapability == ModelCapability.COMPACT) {
+            compactEngineBoundaries(rootClass, widthDp, heightDp)
+        } else {
+            standardEngineBoundaries(rootClass, widthDp, heightDp)
+        }
+    }
+
+    private fun compactEngineBoundaries(rootClass: String, widthDp: Int = 96, heightDp: Int = 96): String = """
+### SECTION 1 — STRICT COMPILER & ENGINE CONTRACT (LEAN COMPACT MODE):
+1. **Single Button Root [GLOBAL-REQUIRED]**: `<body>` must contain exactly one root `<button class="$rootClass" data-control="..." data-category="..." data-name="...">`. Keep every visual child inside it.
+2. **Explicit Dimensions [GLOBAL-REQUIRED]**: Root component dimensions MUST use explicit `px` bounds (`position: relative; width: ${widthDp}px; height: ${heightDp}px;`). Set `position: absolute`, `left`, `top`, `width`, and `height` on decorative layered children, or use Flexbox (`display: flex; gap; justify-content; align-items`). Dynamic `calc()` and `aspect-ratio` are supported on children.
+3. **Portable Self-Contained Document [GLOBAL-REQUIRED]**: Include exactly one `<style>` block, system fonts, zero external URLs, zero JavaScript, no `@import`, no `<link>`.
+4. **Stable CSS Only [GLOBAL-REQUIRED]**: Gradients (`radial-gradient`, `linear-gradient`, `conic-gradient`), `box-shadow`, `border-radius`, `clip-path: polygon(...)`, GPU `filter: blur()`. Do not use `@media`, `@supports`, `:hover`, `:focus`, `mix-blend-mode`, `backdrop-filter`, or CSS transitions. Standard CSS `@keyframes` on transform/opacity are supported for ambient loops.
+5. **Real DOM Text [GLOBAL-REQUIRED]**: Labels and markings in straight, unrotated `<span>` (Text must be real DOM text without rotation).
+6. **Vector Graphics & Dual-Engine Architecture**: Complex graphics/emblems MUST use embedded `<svg class="button-emblem" viewBox="0 0 100 100"><path d="..."/></svg>`. Do NOT use SVG `<filter>` graphs (`feGaussianBlur`); place an underlying HTML/CSS `<span class="emblem-ambient">` with `box-shadow` or `filter: blur()` underneath for glow!
+7. **Tactile Spring Micro-Physics [COMPONENT-REQUIRED]**: Declare in `:root`:
+   `--spring-damping: ${SpringPhysics.DEFAULT.damping}; --spring-stiffness: ${SpringPhysics.DEFAULT.stiffness.toInt()}; --press-scale: ${SpringPhysics.DEFAULT.pressScaleFormatted};`
+   Define active press: `.$rootClass:active { transform: scale(${SpringPhysics.DEFAULT.pressScaleFormatted}) translateY(2px); }`.
+8. **Shape Freedom & Semantics**: `data-category` is metadata, not a shape instruction. Preserve the user's requested shape.
+9. **Self-check before output**: Verify single root `<button>`, explicit px bounds, unrotated DOM text, and no forbidden CSS.
+10. **Authoritative Output Contract**: Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text outside it.
+""".trimIndent()
+
+    private fun standardEngineBoundaries(rootClass: String, widthDp: Int = 96, heightDp: Int = 96): String = """
 ### SECTION 1 — INSTRUCTION PRIORITY & CONFLICT RESOLUTION
 When instructions conflict, resolve them in this strict order of authority:
 1. **Non-Negotiable Compiler Safety** [GLOBAL-REQUIRED] (Single button root, px bounds, DOM text, self-contained document, no external assets or scripts).
@@ -597,7 +897,7 @@ To ensure reliable programmatic compilation, return ONLY the complete, self-cont
         defaultProfileBody: String,
         options: AiDesignOptions
     ): String {
-        return if (options.hasCustomParameters()) {
+        return if (options.requiresCustomVisualDirective()) {
             """
 ### USER CUSTOM DESIGN DIRECTIVE [AUTHORITATIVE]:
 The user has provided an explicit custom visual design or thematic request. Prioritize the user's requested theme, colors, materials, silhouette, and artistic concept above any default hardware styling. Do NOT default to dark industrial polycarbonate, cyan glow, or console chassis styling unless explicitly requested by the user.
@@ -627,6 +927,7 @@ ${NxprcPresets.getSyntaxSkeleton(control, category, widthDp, heightDp)}
     }
 
     internal fun generateAbxyPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
+        val resolved = DesignResolver.resolve(control, category, options)
         val profile = when (control.uppercase()) {
             NexpadKeys.X -> ColorProfile("Vibrant Sapphire Blue", "#00B0FF", "rgba(0, 176, 255, 0.6)", "linear-gradient(145deg, #0284c7 0%, #0369a1 50%, #0c4a6e 100%)")
             NexpadKeys.Y -> ColorProfile("Radiant Solar Yellow", "#FFCC00", "rgba(255, 204, 0, 0.6)", "linear-gradient(145deg, #eab308 0%, #ca8a04 50%, #713f12 100%)")
@@ -663,19 +964,21 @@ ${renderVisualProfileOrCustomDirective(
     options
 )}
 
-${engineBoundaries("nexpad-btn", widthDp, heightDp)}
+${engineBoundaries("nexpad-btn", widthDp, heightDp, options)}
 
 ### USER CUSTOMIZATION SCHEMA:
 The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
 - **STYLE**: [e.g. Cyberpunk 2077 / Glassmorphism / Brushed Gunmetal / Retro Arcade / Minimal Flat / Anime Mecha / Custom]
 - **COLOR / ACCENT**: [e.g. Neon cyan & dark obsidian / Crimson & carbon / Custom palette (Default: ${profile.hexCode})]
-- **SHAPE / SILHOUETTE**: [e.g. Faceted octagon / Smooth capsule / Organic shield / Asymmetric shard (Default: Circular)]
+- **SHAPE / SILHOUETTE**: [e.g. Faceted octagon / Smooth capsule / Organic shield / Asymmetric shard (Default: Rounded Squircle)]
 - **EMBLEM / GRAPHIC (OPTIONAL)**: [e.g. Embedded SVG vector emblem (`<svg viewBox="0 0 100 100"><path d="..."/></svg>`) for character art, hero logos, vehicle silhouettes, or intricate crests]
 - **LABEL / GLYPH**: [e.g. "$control" / Custom text / SVG icon emblem (Default: "$control")]
 - **MATERIAL / TEXTURE**: [e.g. Matte polycarbonate / Anodized aluminum / Smoked translucent glass / Stippled rubber]
 - **LIGHTING & DEPTH**: [e.g. Top-left specular directional / Under-glow neon edge / Deep recessed socket]
 - **TACTILE PHYSICS**: [e.g. Snappy micro-switch / Heavy spring depression / Soft fluid damping]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
+
+${resolved.toPromptSpecification()}
 
 ${renderDesignParameters(options)}
 
@@ -689,6 +992,7 @@ Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``
     }
 
     internal fun generateDpadPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
+        val resolved = DesignResolver.resolve(control, category, options)
         val arrowGlyph = when (control.uppercase()) {
             NexpadKeys.DOWN -> "▼"
             NexpadKeys.LEFT -> "◀"
@@ -725,17 +1029,19 @@ ${renderVisualProfileOrCustomDirective(
     options
 )}
 
-${engineBoundaries("dpad-btn", widthDp, heightDp)}
+${engineBoundaries("dpad-btn", widthDp, heightDp, options)}
 
 ### USER CUSTOMIZATION SCHEMA:
 The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
 - **STYLE**: [e.g. Stealth Matte Black / Cyberpunk High-Contrast Hazard / Retro Game Boy / Clean Minimal]
 - **COLOR / ACCENT**: [e.g. Electric Cyan / Neon Amber / Stealth Dark / Custom palette]
-- **SHAPE / SILHOUETTE**: [e.g. 12-point faceted cross / Segmented arrows / Radial disc / Wedge]
+- **SHAPE / SILHOUETTE**: [e.g. 12-point faceted cross / Segmented arrows / Radial disc / Wedge (Default: Directional cross)]
 - **DIRECTIONAL MARKINGS**: [e.g. Laser-etched arrows / Glowing chevrons / Raised tactile nubs]
 - **EMBLEM / GRAPHIC (OPTIONAL)**: [e.g. Embedded SVG vector emblem (`<svg viewBox="0 0 100 100"><path d="..."/></svg>`) for custom center emblems, directional arrows, or intricate crests]
 - **MATERIAL / TEXTURE**: [e.g. Textured ABS plastic / Brushed gunmetal / Rubberized grip]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
+
+${resolved.toPromptSpecification()}
 
 ${renderDesignParameters(options)}
 
@@ -749,6 +1055,7 @@ Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``
     }
 
     internal fun generateTriggerPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
+        val resolved = DesignResolver.resolve(control, category, options)
         return """
 ${genAiHeader()}
 
@@ -777,17 +1084,19 @@ ${renderVisualProfileOrCustomDirective(
     options
 )}
 
-${engineBoundaries("trigger-btn", widthDp, heightDp)}
+${engineBoundaries("trigger-btn", widthDp, heightDp, options)}
 
 ### USER CUSTOMIZATION SCHEMA:
 The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
 - **STYLE**: [e.g. Carbon Fiber Racing / Brembo Red Performance / Cyberpunk Neon Telemetry / Tactical Military]
 - **COLOR / ACCENT**: [e.g. Racing Red / Neon Magenta / Titanium Gray / Custom palette]
-- **SHAPE / SILHOUETTE**: [e.g. Ergonomic curved paddle / Angular wedge / Modern capsule / Asymmetric blade / Custom contour]
+- **SHAPE / SILHOUETTE**: [e.g. Ergonomic curved paddle / Angular wedge / Modern capsule / Asymmetric blade / Custom contour (Default: Ergonomic Curved Paddle)]
 - **TRACTION GRIP**: [e.g. Horizontal rubberized ribs / Stippled texture / Slotted heat vents]
 - **EMBLEM / GRAPHIC (OPTIONAL)**: [e.g. Embedded SVG vector emblem (`<svg viewBox="0 0 100 100"><path d="..."/></svg>`) for weapon branding, team logos, vehicle silhouettes, or telemetry graphics]
 - **LABELS**: [e.g. "$control" / Custom text / Icon only (Default: "$control")]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
+
+${resolved.toPromptSpecification()}
 
 ${renderDesignParameters(options)}
 
@@ -800,7 +1109,9 @@ Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``
 """.trimIndent()
     }
 
-    internal fun generateBumperPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String = """
+    internal fun generateBumperPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
+        val resolved = DesignResolver.resolve(control, category, options)
+        return """
 ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Shoulder Bumper for NEXPAD.
@@ -827,16 +1138,18 @@ ${renderVisualProfileOrCustomDirective(
     options
 )}
 
-${engineBoundaries("bumper-btn", widthDp, heightDp)}
+${engineBoundaries("bumper-btn", widthDp, heightDp, options)}
 
 ### USER CUSTOMIZATION SCHEMA:
 The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
 - **STYLE**: [e.g. Brushed Gunmetal Aluminum / Matte Stealth Carbon / Sci-Fi Thruster / Minimalist]
 - **COLOR / ACCENT**: [e.g. Electric Blue / Cyberpunk Yellow / Gunmetal / Custom palette]
-- **SHAPE / SILHOUETTE**: [e.g. Ergonomic curved shoulder / Angled stealth wedge / Faceted cyber wing / Horizontal blade / Custom contour]
+- **SHAPE / SILHOUETTE**: [e.g. Ergonomic curved shoulder / Angled stealth wedge / Faceted cyber wing / Horizontal blade / Custom contour (Default: Long Rounded Shoulder Lever)]
 - **FINISH & SHEEN**: [e.g. Horizontal specular arc / Frosted matte / Edge illumination]
 - **EMBLEM / GRAPHIC (OPTIONAL)**: [e.g. Embedded SVG vector emblem (`<svg viewBox="0 0 100 100"><path d="..."/></svg>`) for faction crests, wing markings, hero logos, or intricate insignias]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
+
+${resolved.toPromptSpecification()}
 
 ${renderDesignParameters(options)}
 
@@ -847,8 +1160,10 @@ ${renderUserRequest(options)}
 ### OUTPUT FORMAT CONTRACT:
 Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
 """.trimIndent()
+    }
 
     internal fun generateStickPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
+        val resolved = DesignResolver.resolve(control, category, options)
         return """
 ${genAiHeader()}
 
@@ -891,7 +1206,7 @@ ${renderVisualProfileOrCustomDirective(
     options
 )}
 
-${engineBoundaries("stick-btn", widthDp, heightDp)}
+${engineBoundaries("stick-btn", widthDp, heightDp, options)}
 
 ### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
 Before outputting, verify your component against this checklist:
@@ -908,10 +1223,12 @@ Before outputting, verify your component against this checklist:
 The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
 - **STYLE**: [e.g. Tactical Rubber Dome / Xbox Elite Magnetic Swappable / DualSense Two-Tone / Arcade Flight-Sim]
 - **COLOR / ACCENT**: [e.g. Neon Emerald Green / Cyberpunk Cyan / Stealth Black / Custom palette]
-- **THUMB DOME**: [e.g. Deep concave dish / Convex textured dome / Cross-hatch metallic surface]
+- **THUMB DOME / SHAPE**: [e.g. Deep concave dish / Convex textured dome / Cross-hatch metallic surface (Default: Two-Zone Concentric: Stationary Gimbal Base + Movable Cap)]
 - **KNURLING & TRACTION**: [e.g. Concentric dashed rings / Radial tick marks / Diamond knurl texture]
 - **EMBLEM / GRAPHIC (OPTIONAL)**: [e.g. Embedded SVG vector emblem (`<svg viewBox="0 0 100 100"><path d="..."/></svg>`) placed inside `<div class="stick-cap">` for anime icons, hero crests, or custom emblems]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
+
+${resolved.toPromptSpecification()}
 
 ${renderDesignParameters(options)}
 
@@ -925,6 +1242,7 @@ Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``
     }
 
     internal fun generateStickButtonPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
+        val resolved = DesignResolver.resolve(control, category, options)
         val clickLabel = if (control.uppercase() == NexpadKeys.RSB || control.uppercase() == "RSB") "Right Stick Click (RSB / R3)" else "Left Stick Click (LSB / L3)"
 
         return """
@@ -955,7 +1273,7 @@ ${renderVisualProfileOrCustomDirective(
     options
 )}
 
-${engineBoundaries("stick-btn-ctl", widthDp, heightDp)}
+${engineBoundaries("stick-btn-ctl", widthDp, heightDp, options)}
 
 ### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
 Before outputting, verify your component against this checklist:
@@ -967,10 +1285,13 @@ Before outputting, verify your component against this checklist:
 ### USER CUSTOMIZATION SCHEMA:
 - **STYLE**: [e.g. Tactical Thumbstick / Xbox Elite Swappable Cap / Cyberpunk Neon / Stealth Carbon]
 - **COLOR / ACCENT**: [e.g. Cyan / Magenta / Emerald / Amber / Custom palette]
+- **SHAPE / SILHOUETTE**: [e.g. Circular thumb dish / Tactical button (Default: Circular Thumb Cap Dish)]
 - **TRACTION GRIP**: [e.g. Dashed knurled ring / Radial ticks / Stippled texture]
 - **EMBLEM / GRAPHIC (OPTIONAL)**: [e.g. Embedded SVG vector emblem (`<svg viewBox="0 0 100 100"><path d="..."/></svg>`) for custom cap insignia]
 - **LABELS**: [e.g. "$control" / Custom glyph (Default: "$control")]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
+
+${resolved.toPromptSpecification()}
 
 ${renderDesignParameters(options)}
 
@@ -984,6 +1305,7 @@ Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``
     }
 
     internal fun generateTouchpadPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
+        val resolved = DesignResolver.resolve(control, category, options)
         val isLeft = control.equals("LTP", ignoreCase = true)
         val padRole = if (isLeft) "Left Touch Movement Pad (Floating Dynamic-Center Stick)" else "Right Touch Camera Look Pad (Free-Look Swipe Trackpad)"
         val interactionDesc = if (isLeft) {
@@ -1017,7 +1339,17 @@ ${renderVisualProfileOrCustomDirective(
     options
 )}
 
-${engineBoundaries("touchpad-ctl", widthDp, heightDp)}
+${engineBoundaries("touchpad-ctl", widthDp, heightDp, options)}
+
+### USER CUSTOMIZATION SCHEMA:
+The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
+- **STYLE**: [e.g. Steam Deck Matte / Minimalist Glass / Tactical Military / Cyberpunk Glass]
+- **COLOR / ACCENT**: [e.g. Gunmetal / Stealth Charcoal / Neon Accents / Custom palette]
+- **SHAPE / SILHOUETTE**: [e.g. Expansive rounded rectangle / Ergonomic squircle (Default: Expansive Rounded Rectangle)]
+- **SURFACE / TEXTURE**: [e.g. Smoked glass / Carbon fiber weave / Deep matte stipple]
+- **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
+
+${resolved.toPromptSpecification()}
 
 ${renderDesignParameters(options)}
 
@@ -1030,7 +1362,9 @@ Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``
 """.trimIndent()
     }
 
-    internal fun generateSystemPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String = """
+    internal fun generateSystemPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
+        val resolved = DesignResolver.resolve(control, category, options)
+        return """
 ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller System/Utility Button for NEXPAD.
@@ -1060,16 +1394,18 @@ ${renderVisualProfileOrCustomDirective(
     options
 )}
 
-${engineBoundaries("system-btn", widthDp, heightDp)}
+${engineBoundaries("system-btn", widthDp, heightDp, options)}
 
 ### USER CUSTOMIZATION SCHEMA:
 The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
 - **STYLE**: [e.g. Minimalist Matte Dark Pill / Cyberpunk Neon Toggle / Xbox Series Glass Guide / Brushed Steel Switch]
 - **COLOR / ACCENT**: [e.g. Subtle Cool White / Neon Yellow / Amber / Custom palette]
-- **SHAPE / SILHOUETTE**: [e.g. Compact pill / Circular guide emblem / Rounded tile]
+- **SHAPE / SILHOUETTE**: [e.g. Compact pill / Circular guide emblem / Rounded tile (Default: Compact Flush Rounded Squircle / Pill)]
 - **ICONOGRAPHY**: [e.g. Hamburger bars / Dual overlapping rectangles / Nexus sphere emblem]
 - **EMBLEM / GRAPHIC (OPTIONAL)**: [e.g. Embedded SVG vector emblem (`<svg viewBox="0 0 100 100"><path d="..."/></svg>`) for custom guide logos, nexus crests, or game symbols]
 - **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
+
+${resolved.toPromptSpecification()}
 
 ${renderDesignParameters(options)}
 
@@ -1080,4 +1416,6 @@ ${renderUserRequest(options)}
 ### OUTPUT FORMAT CONTRACT:
 Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
 """.trimIndent()
+    }
 }
+

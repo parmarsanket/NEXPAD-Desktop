@@ -15,6 +15,9 @@ import com.sanket.tools.nexpaddesktop.plugins.ModelCapability
 import com.sanket.tools.nexpaddesktop.plugins.NxprcAiPromptBuilder
 import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
 import com.sanket.tools.nexpaddesktop.plugins.SpringPhysics
+import com.sanket.tools.nexpaddesktop.plugins.CategoryDefaultsRegistry
+import com.sanket.tools.nexpaddesktop.plugins.DesignResolver
+import com.sanket.tools.nexpaddesktop.plugins.DesignSource
 import com.sanket.tools.nexpaddesktop.plugins.StickButtonPromptStrategy
 import com.sanket.tools.nexpaddesktop.plugins.StickPromptStrategy
 import com.sanket.tools.nexpaddesktop.plugins.SystemPromptStrategy
@@ -1466,6 +1469,182 @@ class NxprcPromptTest {
         assertTrue(prompt.contains("width: 110px; height: 110px;"), "Must include explicit dimensions in checklist")
         assertTrue(prompt.contains("Transform Origin Intent"), "Must include Transform Origin Intent check")
         assertTrue(prompt.contains("Visual Stacking & Occlusion"), "Must include Visual Stacking check")
+    }
+
+    @Test
+    fun testDesignResolverProvenanceAndDefaults() {
+        // 1. When options are empty, all fields resolve with CATEGORY_DEFAULT source
+        val defaultResolved = DesignResolver.resolve("A", "BUTTON", AiDesignOptions())
+        assertEquals(DesignSource.CATEGORY_DEFAULT, defaultResolved.style.source)
+        assertEquals(DesignSource.CATEGORY_DEFAULT, defaultResolved.shape.source)
+        assertEquals(DesignSource.CATEGORY_DEFAULT, defaultResolved.color.source)
+        assertEquals(DesignSource.CATEGORY_DEFAULT, defaultResolved.material.source)
+        assertEquals(DesignSource.CATEGORY_DEFAULT, defaultResolved.lighting.source)
+        assertEquals(DesignSource.CATEGORY_DEFAULT, defaultResolved.texture.source)
+        assertEquals(DesignSource.CATEGORY_DEFAULT, defaultResolved.label.source)
+        assertEquals("A", defaultResolved.label.value)
+        assertEquals(null, defaultResolved.emblem)
+
+        // Verify explicit default shapes for each category
+        val abxy = DesignResolver.resolve("A", "BUTTON", AiDesignOptions())
+        assertTrue(abxy.shape.value.contains("Rounded Squircle"), "ABXY default shape should be squircle")
+
+        val dpad = DesignResolver.resolve("UP", "DPAD", AiDesignOptions())
+        assertTrue(dpad.shape.value.contains("Directional Cross"), "Dpad default shape should be directional cross")
+
+        val trigger = DesignResolver.resolve("RT", "TRIGGER", AiDesignOptions())
+        assertTrue(trigger.shape.value.contains("Curved Paddle"), "Trigger default shape should be curved paddle")
+
+        val bumper = DesignResolver.resolve("RB", "BUMPER", AiDesignOptions())
+        assertTrue(bumper.shape.value.contains("Shoulder Lever"), "Bumper default shape should be shoulder lever")
+
+        val stick = DesignResolver.resolve("LS", "JOYSTICK", AiDesignOptions())
+        assertTrue(stick.shape.value.contains("Two-Zone Concentric"), "Stick default shape should be two-zone concentric")
+
+        val stickButton = DesignResolver.resolve("LSB", "STICKS", AiDesignOptions())
+        assertTrue(stickButton.shape.value.contains("Circular Thumb Cap Dish"), "Stick button default shape should be circular thumb cap dish")
+
+        val touchpad = DesignResolver.resolve("LTP", "STICKS", AiDesignOptions())
+        assertTrue(touchpad.shape.value.contains("Rounded Rectangle"), "Touchpad default shape should be rounded rectangle")
+
+        val system = DesignResolver.resolve("MENU", "SYSTEM", AiDesignOptions())
+        assertTrue(system.shape.value.contains("Rounded Squircle / Pill"), "System default shape should be rounded squircle / pill")
+
+        // 2. When user provides explicit overrides, source becomes USER
+        val customResolved = DesignResolver.resolve(
+            "X",
+            "BUTTON",
+            AiDesignOptions(
+                style = "Anime Cyberpunk",
+                shape = "Octagonal Shield",
+                color = "Neon Violet",
+                material = "Smoked Polycarbonate",
+                emblem = "Valkyrie Wing",
+                label = "FIRE"
+            )
+        )
+        assertEquals(DesignSource.USER, customResolved.style.source)
+        assertEquals("Anime Cyberpunk", customResolved.style.value)
+        assertEquals(DesignSource.USER, customResolved.shape.source)
+        assertEquals("Octagonal Shield", customResolved.shape.value)
+        assertEquals(DesignSource.USER, customResolved.color.source)
+        assertEquals(DesignSource.USER, customResolved.material.source)
+        assertEquals(DesignSource.USER, customResolved.emblem?.source)
+        assertEquals("Valkyrie Wing", customResolved.emblem?.value)
+        assertEquals(DesignSource.USER, customResolved.label.source)
+        assertEquals("FIRE", customResolved.label.value)
+    }
+
+    @Test
+    fun testRequiresCustomVisualDirectiveSeparation() {
+        // Tuning parameters alone must NOT trigger custom visual directive
+        val tuningOnly = AiDesignOptions(
+            complexity = Complexity.DETAILED,
+            creativity = Creativity.LOW,
+            fidelity = Fidelity.ABSTRACT,
+            visualDensity = VisualDensity.CLEAN,
+            modelCapability = ModelCapability.COMPACT
+        )
+        assertFalse(
+            tuningOnly.requiresCustomVisualDirective(),
+            "Non-visual tuning parameters must not require custom visual directive"
+        )
+
+        // Visual intent triggers custom visual directive
+        val visualIntent = AiDesignOptions(shape = "Hexagon")
+        assertTrue(
+            visualIntent.requiresCustomVisualDirective(),
+            "Visual shape override must require custom visual directive"
+        )
+
+        val userPrompt = AiDesignOptions(userRequest = "Cyberpunk glowing shield")
+        assertTrue(
+            userPrompt.requiresCustomVisualDirective(),
+            "User free-form request must require custom visual directive"
+        )
+    }
+
+    @Test
+    fun testModelCapabilityPromptTiering() {
+        val compactPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(modelCapability = ModelCapability.COMPACT)
+        )
+        assertTrue(
+            compactPrompt.contains("SECTION 1 — STRICT COMPILER & ENGINE CONTRACT (LEAN COMPACT MODE)"),
+            "Compact prompt must use lean contract"
+        )
+        assertFalse(
+            compactPrompt.contains("SECTION 1 — INSTRUCTION PRIORITY & CONFLICT RESOLUTION"),
+            "Compact prompt must not include full 11-section text"
+        )
+
+        val standardPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(modelCapability = ModelCapability.STANDARD)
+        )
+        assertTrue(
+            standardPrompt.contains("SECTION 1 — INSTRUCTION PRIORITY & CONFLICT RESOLUTION"),
+            "Standard prompt must include full 11-section boundaries"
+        )
+        assertTrue(
+            standardPrompt.contains("SECTION 10 — GEOMETRY & VISUAL QA CHECKLIST"),
+            "Standard prompt must include QA checklist"
+        )
+    }
+
+    @Test
+    fun testRepairPromptProtectsKeyframes() {
+        val repair = NxprcHtmlCssConverter.generateRepairPrompt(
+            previousHtml = "<button class=\"nexpad-btn\"></button>",
+            warnings = listOf("Missing explicit px width"),
+            errors = listOf(),
+            control = "A",
+            category = "BUTTON"
+        )
+        assertTrue(
+            repair.contains("@keyframes"),
+            "Repair prompt must mention @keyframes support"
+        )
+        assertTrue(
+            repair.contains("do NOT remove valid keyframes"),
+            "Repair prompt must instruct model to preserve valid @keyframes"
+        )
+    }
+
+    @Test
+    fun testAllCategoryPromptsContainPreResolvedIntent() {
+        val testCases = listOf(
+            "BUTTON" to "A",
+            "DPAD" to "DPAD",
+            "TRIGGER" to "LT",
+            "BUMPER" to "LB",
+            "JOYSTICK" to "LS",
+            "SYSTEM" to "MENU"
+        )
+
+        testCases.forEach { (cat, ctrl) ->
+            val prompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = ctrl,
+                category = cat,
+                widthDp = 96,
+                heightDp = 96
+            )
+            assertTrue(
+                prompt.contains("### RESOLVED DESIGN SPECIFICATION (PRE-RESOLVED INTENT):"),
+                "[$cat/$ctrl] Must contain pre-resolved design specification"
+            )
+            assertTrue(
+                prompt.contains("[CATEGORY_DEFAULT]"),
+                "[$cat/$ctrl] Must state [CATEGORY_DEFAULT] provenance"
+            )
+        }
     }
 }
 
