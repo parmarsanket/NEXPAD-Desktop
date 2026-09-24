@@ -1900,6 +1900,249 @@ class NxprcPromptTest {
             "Frontier prompt MUST contain Frontier depth sections"
         )
     }
+
+    @Test
+    fun testShinobiButtonVectorEmblemCentering() {
+        val userHtml = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NEXPAD — Face Button A (Shinobi)</title>
+<style>
+  :root{
+    --spring-damping: 0.68;
+    --spring-stiffness: 440;
+    --press-scale: 0.92;
+
+    --nx-orange-hi: #fdba74;
+    --nx-orange:    #f97316;
+    --nx-orange-mid:#ea580c;
+    --nx-orange-deep:#b45309;
+    --nx-ink:       #7a2c00;
+    --nx-glow:      rgba(249, 115, 22, 0.65);
+  }
+
+  html, body{
+    height: 100%;
+    margin: 0;
+  }
+
+  body{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 50% 45%, #1a1c22 0%, #0a0b0e 72%);
+    font-family: "Trebuchet MS", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  /* ============ ROOT BUTTON ============ */
+  .nexpad-btn{
+    position: relative;
+    width: 96px;
+    height: 96px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    cursor: pointer;
+    transform-origin: 50% 50%;
+    transform: scale(1) translateY(0);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ---------- 0 : AMBIENT GLOW RING ---------- */
+  .nx-glow{
+    position: absolute;
+    left: -10px;
+    top: -8px;
+    width: 116px;
+    height: 116px;
+    border-radius: 40px;
+    background: radial-gradient(circle at 50% 50%,
+                  rgba(249, 115, 22, 0.85) 0%,
+                  rgba(234, 88, 12, 0.42) 46%,
+                  rgba(194, 65, 12, 0) 74%);
+    filter: blur(9px);
+    opacity: 0.7;
+    z-index: 0;
+    pointer-events: none;
+    transform-origin: 50% 50%;
+    animation: nx-breathe 3.6s ease-in-out infinite;
+  }
+
+  @keyframes nx-breathe{
+    0%, 100%{ opacity: 0.52; transform: scale(0.97); }
+    50%     { opacity: 0.86; transform: scale(1.03); }
+  }
+
+  /* ---------- 1 : DARK CHASSIS / SOCKET WELL ---------- */
+  .nx-housing{
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 96px;
+    height: 96px;
+    border-radius: 26px;
+    background:
+      linear-gradient(160deg, #3b2a1b 0%, #1d1309 44%, #080503 100%);
+    box-shadow:
+      0 10px 24px rgba(0, 0, 0, 0.68),
+      0 2px 0 rgba(255, 255, 255, 0.07),
+      inset 0 -5px 12px rgba(0, 0, 0, 0.85),
+      inset 0 2px 3px rgba(255, 190, 130, 0.20);
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* ---------- 2 : ORANGE KEYCAP FACE PLATE ---------- */
+  .nx-face{
+    position: absolute;
+    left: 5px;
+    top: 5px;
+    width: 86px;
+    height: 86px;
+    border-radius: 22px;
+    background:
+      radial-gradient(circle at 32% 20%,
+        rgba(255, 255, 255, 0.60) 0%,
+        rgba(255, 255, 0.10) 38%,
+        rgba(255, 255, 255, 0) 58%),
+      radial-gradient(circle at 68% 88%,
+        rgba(120, 45, 0, 0.55) 0%,
+        rgba(120, 45, 0, 0) 62%),
+      linear-gradient(148deg,
+        var(--nx-orange-hi) 0%,
+        var(--nx-orange) 34%,
+        var(--nx-orange-mid) 66%,
+        var(--nx-orange-deep) 100%);
+    box-shadow:
+      inset 0 3px 6px rgba(255, 245, 230, 0.55),
+      inset 0 -9px 16px rgba(110, 38, 0, 0.55),
+      inset 0 0 0 2px rgba(70, 22, 0, 0.35),
+      0 4px 10px rgba(0, 0, 0, 0.55);
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  /* ---------- 3 : KONOHA SWIRL EMBLEM ---------- */
+  .button-emblem{
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 58px;
+    height: 58px;
+    transform: translate(-50%, -50%);
+    opacity: 0.55;
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  /* ---------- 4 : SPECULAR GLOSS ARC ---------- */
+  .nexpad-btn::after{
+    content: "";
+    position: absolute;
+    left: 12px;
+    top: 9px;
+    width: 72px;
+    height: 30px;
+    border-radius: 50% 50% 48% 48% / 62% 62% 38% 38%;
+    background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0.16) 52%,
+      rgba(255, 255, 255, 0) 100%);
+    filter: blur(0.4px);
+    z-index: 4;
+    pointer-events: none;
+  }
+
+  /* ---------- 5 : HIGH-CONTRAST GLYPH ---------- */
+  .btn-label{
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 96px;
+    height: 96px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 42px;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    color: #fff8ef;
+    text-shadow:
+      -1.5px -1.5px 0 #3a1200,
+       1.5px -1.5px 0 #3a1200,
+      -1.5px  1.5px 0 #3a1200,
+       1.5px  1.5px 0 #3a1200,
+       0 3px 6px rgba(40, 10, 0, 0.75),
+       0 0 14px rgba(255, 226, 190, 0.45);
+    z-index: 9;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  /* ---------- TACTILE SPRING PRESS ---------- */
+  .nexpad-btn:active{
+    transform: scale(var(--press-scale)) translateY(2px);
+  }
+</style>
+</head>
+<body>
+
+  <button class="nexpad-btn" data-control="A" data-category="BUTTON" data-name="A">
+    <span class="nx-glow" aria-hidden="true"></span>
+    <span class="nx-housing" aria-hidden="true"></span>
+    <span class="nx-face" data-layer-role="base" aria-hidden="true"></span>
+
+    <svg class="button-emblem" viewBox="0 0 100 100" data-layer-role="emblem" aria-hidden="true">
+      <!-- leaf tip -->
+      <path d="M50 16 C55 8 64 5 78 7 C72 15 63 19 50 16 Z"
+            fill="#7a2c00"/>
+      <!-- uzumaki swirl stem -->
+      <path d="M50 16 C70 16 84 32 84 52 C84 72 70 86 50 86 C34 86 22 74 22 58 C22 45 32 35 45 35 C55 35 63 43 63 53 C63 60 57 66 50 66"
+            fill="none"
+            stroke="#7a2c00"
+            stroke-width="7.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"/>
+    </svg>
+
+    <span class="btn-label" data-layer-role="label">A</span>
+  </button>
+
+</body>
+</html>
+        """.trimIndent()
+
+        val result = NxprcHtmlCssConverter.convertWithWarnings(
+            source = userHtml,
+            id = "rc.shinobi_test",
+            name = "Shinobi A",
+            category = "BUTTON",
+            defaultControl = "A"
+        )
+
+        val doc = result.document
+        assertEquals(8, doc.canvas.layers.size, "Document must have exactly 8 compiled layers")
+
+        // Layer 4: Leaf tip vector path
+        val leafTip = doc.canvas.layers[4] as com.sanket.tools.nexpad.nxprc.CanvasLayer.VectorPath
+        assertEquals(0.1979f, leafTip.offsetXRatio, 0.001f, "Leaf tip must be offset correctly by translate(-50%, -50%)")
+        assertEquals(0.1979f, leafTip.offsetYRatio, 0.001f, "Leaf tip must be offset correctly by translate(-50%, -50%)")
+
+        // Layer 5: Uzumaki swirl stem vector path
+        val swirlStem = doc.canvas.layers[5] as com.sanket.tools.nexpad.nxprc.CanvasLayer.VectorPath
+        assertEquals(0.1979f, swirlStem.offsetXRatio, 0.001f, "Swirl stem must be offset correctly by translate(-50%, -50%)")
+        assertEquals(0.1979f, swirlStem.offsetYRatio, 0.001f, "Swirl stem must be offset correctly by translate(-50%, -50%)")
+        assertEquals(0.6041f, swirlStem.scale, 0.001f, "Swirl stem scale must match 58px / 96px bounds")
+
+        // Layer 7: Center glyph 'A'
+        val glyph = doc.canvas.layers[7] as com.sanket.tools.nexpad.nxprc.CanvasLayer.CenterGlyph
+        assertEquals("A", glyph.text, "Glyph text must be 'A'")
+    }
 }
 
 
