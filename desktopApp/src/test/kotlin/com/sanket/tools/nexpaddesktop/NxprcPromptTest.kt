@@ -1,11 +1,25 @@
 package com.sanket.tools.nexpaddesktop
 
+import com.sanket.tools.nexpaddesktop.plugins.AbxyPromptStrategy
 import com.sanket.tools.nexpaddesktop.plugins.AiDesignOptions
+import com.sanket.tools.nexpaddesktop.plugins.BumperPromptStrategy
+import com.sanket.tools.nexpaddesktop.plugins.ColorProfile
 import com.sanket.tools.nexpaddesktop.plugins.Complexity
+import com.sanket.tools.nexpaddesktop.plugins.ComplexityBudget
+import com.sanket.tools.nexpaddesktop.plugins.ComponentPromptRegistry
 import com.sanket.tools.nexpaddesktop.plugins.Creativity
+import com.sanket.tools.nexpaddesktop.plugins.DpadPromptStrategy
 import com.sanket.tools.nexpaddesktop.plugins.Fidelity
+import com.sanket.tools.nexpaddesktop.plugins.GeometryOptions
+import com.sanket.tools.nexpaddesktop.plugins.ModelCapability
+import com.sanket.tools.nexpaddesktop.plugins.NxprcAiPromptBuilder
 import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
 import com.sanket.tools.nexpaddesktop.plugins.SpringPhysics
+import com.sanket.tools.nexpaddesktop.plugins.StickButtonPromptStrategy
+import com.sanket.tools.nexpaddesktop.plugins.StickPromptStrategy
+import com.sanket.tools.nexpaddesktop.plugins.SystemPromptStrategy
+import com.sanket.tools.nexpaddesktop.plugins.TouchpadPromptStrategy
+import com.sanket.tools.nexpaddesktop.plugins.TriggerPromptStrategy
 import com.sanket.tools.nexpaddesktop.plugins.VisualDensity
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -1257,6 +1271,107 @@ class NxprcPromptTest {
 
         val customReq = customizedOpts.formatUserRequest()
         assertTrue(customReq.contains("<user_request>"))
+    }
+
+    @Test
+    fun testComplexityBudgetDomainModel() {
+        Complexity.values().forEach { c ->
+            val budget = c.budget
+            assertTrue(budget.minLayers > 0, "Complexity ${c.name} minLayers must be > 0")
+            assertTrue(budget.maxLayers >= budget.minLayers, "Complexity ${c.name} maxLayers must be >= minLayers")
+            assertTrue(budget.maxSvgNodes > 0, "Complexity ${c.name} maxSvgNodes must be > 0")
+            assertTrue(budget.guidance.isNotBlank(), "Complexity ${c.name} guidance must be non-blank")
+        }
+
+        val options = AiDesignOptions(complexity = Complexity.DETAILED)
+        val formatted = options.formatDesignParameters()
+        assertTrue(formatted.contains("Budget: 5..9 layers"), "Must include detailed budget range")
+        assertTrue(formatted.contains("up to 10 SVG nodes"), "Must include detailed SVG node budget")
+    }
+
+    @Test
+    fun testModelCapabilityAndGeometryOptions() {
+        // Compact models automatically receive syntax skeleton guidance
+        val compactPrompt = NxprcAiPromptBuilder.buildPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(modelCapability = ModelCapability.COMPACT)
+        )
+        assertTrue(compactPrompt.contains("OPTIONAL STARTER TEMPLATE"), "Compact model must have syntax skeleton enabled")
+
+        // GeometryOptions overrides default width/height
+        val customGeomPrompt = NxprcAiPromptBuilder.buildPrompt(
+            control = "RT",
+            category = "TRIGGER",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(geometryOptions = GeometryOptions(widthDp = 140, heightDp = 180))
+        )
+        assertTrue(customGeomPrompt.contains("width: 140px; height: 180px;"), "Must use geometryOptions dimensions")
+    }
+
+    @Test
+    fun testComponentPromptStrategyRegistry() {
+        val abxyStrategy = ComponentPromptRegistry.resolveStrategy("A", "BUTTON")
+        assertTrue(abxyStrategy is AbxyPromptStrategy, "A/BUTTON should resolve to AbxyPromptStrategy")
+
+        val dpadStrategy = ComponentPromptRegistry.resolveStrategy("UP", "DPAD")
+        assertTrue(dpadStrategy is DpadPromptStrategy, "UP/DPAD should resolve to DpadPromptStrategy")
+
+        val triggerStrategy = ComponentPromptRegistry.resolveStrategy("RT", "TRIGGER")
+        assertTrue(triggerStrategy is TriggerPromptStrategy, "RT/TRIGGER should resolve to TriggerPromptStrategy")
+
+        val bumperStrategy = ComponentPromptRegistry.resolveStrategy("LB", "BUMPER")
+        assertTrue(bumperStrategy is BumperPromptStrategy, "LB/BUMPER should resolve to BumperPromptStrategy")
+
+        val stickStrategy = ComponentPromptRegistry.resolveStrategy("LS", "JOYSTICK")
+        assertTrue(stickStrategy is StickPromptStrategy, "LS/JOYSTICK should resolve to StickPromptStrategy")
+
+        val stickButtonStrategy = ComponentPromptRegistry.resolveStrategy("LSB", "JOYSTICK")
+        assertTrue(stickButtonStrategy is StickButtonPromptStrategy, "LSB/JOYSTICK should resolve to StickButtonPromptStrategy")
+
+        val touchpadStrategy = ComponentPromptRegistry.resolveStrategy("LTP", "JOYSTICK")
+        assertTrue(touchpadStrategy is TouchpadPromptStrategy, "LTP/JOYSTICK should resolve to TouchpadPromptStrategy")
+
+        val systemStrategy = ComponentPromptRegistry.resolveStrategy("MENU", "SYSTEM")
+        assertTrue(systemStrategy is SystemPromptStrategy, "MENU/SYSTEM should resolve to SystemPromptStrategy")
+
+        assertEquals(8, ComponentPromptRegistry.getAllStrategies().size)
+    }
+
+    @Test
+    fun testKeyframesContractHarmonization() {
+        val prompt = NxprcAiPromptBuilder.buildPrompt("A", "BUTTON", 96, 96)
+        assertTrue(prompt.contains("CSS transitions and layout animations are prohibited"), "Must prohibit layout transitions/animations")
+        assertTrue(prompt.contains("standard CSS `@keyframes` on transform/opacity properties are supported by the engine"), "Must clarify supported property keyframes")
+    }
+
+    @Test
+    fun testDataLayerRoleStackingRemediation() {
+        val htmlWithInversion = """
+            <html>
+            <head>
+              <style>
+                .nexpad-btn { position: relative; width: 96px; height: 96px; }
+                .artwork-layer { position: absolute; width: 50px; height: 50px; z-index: 10; }
+                .surface-plate { position: absolute; width: 96px; height: 96px; z-index: 20; background: #222; }
+              </style>
+            </head>
+            <body>
+              <button class="nexpad-btn" data-control="A" data-category="BUTTON">
+                <div class="surface-plate" data-layer-role="surface"></div>
+                <div class="artwork-layer" data-layer-role="artwork"></div>
+              </button>
+            </body>
+            </html>
+        """.trimIndent()
+
+        val normalized = NxprcHtmlCssConverter.normalize(htmlWithInversion)
+        // Stacking remediation must have lowered the surface plate's z-index below the artwork
+        assertTrue(normalized.contains("z-index: 8") || normalized.contains("z-index: 9") || normalized.contains("z-index: 7"),
+            "Opaque surface with data-layer-role='surface' must be lowered below artwork")
     }
 }
 

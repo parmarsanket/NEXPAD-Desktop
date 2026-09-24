@@ -53,15 +53,74 @@ enum class Creativity(val promptDescription: String) {
 }
 
 /**
- * Visual layering, vector detail, and mechanical construction complexity target.
- * Encapsulates layer count and SVG geometry expectations.
+ * Detailed complexity budget for virtual controller layers and geometry.
  */
-enum class Complexity(val promptDescription: String) {
-    AUTO("Auto (infer appropriate construction complexity from the concept)"),
-    SIMPLE("Simple (use a small number of meaningful visual layers and simple geometry)"),
-    DETAILED("Detailed (use multiple meaningful layers, material transitions, secondary detailing, and moderately complex SVG geometry)"),
-    EXTREME("Extreme (use the full supported CSS/SVG expressive range when useful, including intricate vector geometry and layered surface treatment; do not add meaningless decoration just to increase complexity)")
+data class ComplexityBudget(
+    val minLayers: Int,
+    val maxLayers: Int,
+    val maxSvgNodes: Int,
+    val guidance: String
+)
+
+/**
+ * Visual layering, vector detail, and mechanical construction complexity target.
+ * Encapsulates layer count and SVG geometry expectations with an explicit domain budget.
+ */
+enum class Complexity(
+    val promptDescription: String,
+    val budget: ComplexityBudget
+) {
+    AUTO(
+        "Auto (infer appropriate construction complexity from the concept)",
+        ComplexityBudget(minLayers = 3, maxLayers = 8, maxSvgNodes = 6, guidance = "Infer appropriate construction complexity from the concept")
+    ),
+    SIMPLE(
+        "Simple (use a small number of meaningful visual layers and simple geometry)",
+        ComplexityBudget(minLayers = 2, maxLayers = 4, maxSvgNodes = 3, guidance = "Use a small number of meaningful visual layers and simple geometry; avoid excessive layering")
+    ),
+    DETAILED(
+        "Detailed (use multiple meaningful layers, material transitions, secondary detailing, and moderately complex SVG geometry)",
+        ComplexityBudget(minLayers = 5, maxLayers = 9, maxSvgNodes = 10, guidance = "Use multiple meaningful layers, material transitions, secondary detailing, and moderately complex SVG geometry")
+    ),
+    EXTREME(
+        "Extreme (use the full supported CSS/SVG expressive range when useful, including intricate vector geometry and layered surface treatment; do not add meaningless decoration just to increase complexity)",
+        ComplexityBudget(minLayers = 7, maxLayers = 14, maxSvgNodes = 20, guidance = "Use the full supported CSS/SVG expressive range when useful, including intricate vector geometry and layered surface treatment")
+    )
 }
+
+/**
+ * Target AI model capability tier for prompt optimization.
+ */
+enum class ModelCapability(
+    val id: String,
+    val maxContextTokens: Int,
+    val syntaxSkeletonRecommended: Boolean
+) {
+    COMPACT("compact", 2048, true),
+    STANDARD("standard", 4096, false),
+    FRONTIER("frontier", 8192, false)
+}
+
+/**
+ * Strongly typed geometric and dimensional hints for component synthesis.
+ */
+data class GeometryOptions(
+    val widthDp: Int? = null,
+    val heightDp: Int? = null,
+    val aspectRatio: Float? = null,
+    val preferredShape: String? = null
+)
+
+/**
+ * Strongly typed 4-channel color profile for virtual controller components.
+ * Replaces generic tuples with clean domain semantics.
+ */
+data class ColorProfile(
+    val name: String,
+    val hexCode: String,
+    val glowRgba: String,
+    val coreGradient: String
+)
 
 /**
  * Thematic interpretation fidelity mode for character/brand/aesthetic themes.
@@ -106,7 +165,9 @@ data class AiDesignOptions(
 
     val specialInstructions: String? = null,
     val userRequest: String = "",
-    val includeSyntaxSkeleton: Boolean = false
+    val includeSyntaxSkeleton: Boolean = false,
+    val modelCapability: ModelCapability = ModelCapability.STANDARD,
+    val geometryOptions: GeometryOptions = GeometryOptions()
 ) {
     /**
      * Returns true if any non-default design parameter or custom user prompt is active.
@@ -116,6 +177,8 @@ data class AiDesignOptions(
         complexity != Complexity.AUTO ||
         fidelity != Fidelity.INSPIRED ||
         visualDensity != VisualDensity.AUTO ||
+        modelCapability != ModelCapability.STANDARD ||
+        geometryOptions != GeometryOptions() ||
         !style.isNullOrBlank() ||
         !color.isNullOrBlank() ||
         !shape.isNullOrBlank() ||
@@ -135,7 +198,7 @@ data class AiDesignOptions(
         val sb = StringBuilder()
         sb.append("### USER DESIGN PARAMETERS & PREFERENCES:\n")
         sb.append("- **CREATIVITY**: ${creativity.promptDescription}\n")
-        sb.append("- **COMPLEXITY**: ${complexity.promptDescription}\n")
+        sb.append("- **COMPLEXITY**: ${complexity.promptDescription} (Budget: ${complexity.budget.minLayers}..${complexity.budget.maxLayers} layers, up to ${complexity.budget.maxSvgNodes} SVG nodes)\n")
         sb.append("- **FIDELITY**: ${fidelity.promptDescription}\n")
         sb.append("- **VISUAL DENSITY**: ${visualDensity.promptDescription}\n")
         if (!style.isNullOrBlank()) sb.append("- **STYLE**: $style\n")
@@ -165,6 +228,143 @@ Interpret this request creatively. The user request governs the visual design de
 }
 
 /**
+ * Pluggable strategy contract for category-specific AI prompt synthesis.
+ * Follows the Strategy & Open-Closed design principles.
+ */
+interface ComponentPromptStrategy {
+    val supportedCategories: Set<CategoryType>
+    fun canHandle(control: String, category: String): Boolean
+    fun generatePrompt(
+        control: String,
+        category: String,
+        widthDp: Int,
+        heightDp: Int,
+        options: AiDesignOptions
+    ): String
+}
+
+object TouchpadPromptStrategy : ComponentPromptStrategy {
+    override val supportedCategories = setOf(CategoryType.STICKS)
+    override fun canHandle(control: String, category: String): Boolean {
+        val ctrl = ControlKey.fromIdentifier(control)
+        return ctrl == ControlKey.LTP || ctrl == ControlKey.RTP ||
+            (ctrl?.componentType == ComponentType.TOUCHPAD && ctrl.categoryType == CategoryType.STICKS)
+    }
+
+    override fun generatePrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String =
+        NxprcAiPromptBuilder.generateTouchpadPrompt(control, category, widthDp, heightDp, options)
+}
+
+object StickButtonPromptStrategy : ComponentPromptStrategy {
+    override val supportedCategories = setOf(CategoryType.STICKS)
+    override fun canHandle(control: String, category: String): Boolean {
+        val ctrl = ControlKey.fromIdentifier(control)
+        return ctrl == ControlKey.LSB || ctrl == ControlKey.RSB ||
+            (ctrl?.componentType == ComponentType.BUTTON && ctrl.categoryType == CategoryType.STICKS)
+    }
+
+    override fun generatePrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String =
+        NxprcAiPromptBuilder.generateStickButtonPrompt(control, category, widthDp, heightDp, options)
+}
+
+object TriggerPromptStrategy : ComponentPromptStrategy {
+    override val supportedCategories = setOf(CategoryType.TRIGGERS)
+    override fun canHandle(control: String, category: String): Boolean {
+        val catType = CategoryType.fromIdentifier(category)
+            ?: CategoryManager.findCategoryForControl(control)?.type
+        return catType == CategoryType.TRIGGERS
+    }
+
+    override fun generatePrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String =
+        NxprcAiPromptBuilder.generateTriggerPrompt(control, category, widthDp, heightDp, options)
+}
+
+object BumperPromptStrategy : ComponentPromptStrategy {
+    override val supportedCategories = setOf(CategoryType.BUMPERS)
+    override fun canHandle(control: String, category: String): Boolean {
+        val catType = CategoryType.fromIdentifier(category)
+            ?: CategoryManager.findCategoryForControl(control)?.type
+        return catType == CategoryType.BUMPERS
+    }
+
+    override fun generatePrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String =
+        NxprcAiPromptBuilder.generateBumperPrompt(control, category, widthDp, heightDp, options)
+}
+
+object DpadPromptStrategy : ComponentPromptStrategy {
+    override val supportedCategories = setOf(CategoryType.DPAD)
+    override fun canHandle(control: String, category: String): Boolean {
+        val catType = CategoryType.fromIdentifier(category)
+            ?: CategoryManager.findCategoryForControl(control)?.type
+        return catType == CategoryType.DPAD
+    }
+
+    override fun generatePrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String =
+        NxprcAiPromptBuilder.generateDpadPrompt(control, category, widthDp, heightDp, options)
+}
+
+object StickPromptStrategy : ComponentPromptStrategy {
+    override val supportedCategories = setOf(CategoryType.STICKS)
+    override fun canHandle(control: String, category: String): Boolean {
+        val ctrl = ControlKey.fromIdentifier(control)
+        if (ctrl == ControlKey.LTP || ctrl == ControlKey.RTP || ctrl == ControlKey.LSB || ctrl == ControlKey.RSB) return false
+        val catType = CategoryType.fromIdentifier(category)
+            ?: CategoryManager.findCategoryForControl(control)?.type
+        return catType == CategoryType.STICKS
+    }
+
+    override fun generatePrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String =
+        NxprcAiPromptBuilder.generateStickPrompt(control, category, widthDp, heightDp, options)
+}
+
+object SystemPromptStrategy : ComponentPromptStrategy {
+    override val supportedCategories = setOf(CategoryType.SYSTEM, CategoryType.MACROS)
+    override fun canHandle(control: String, category: String): Boolean {
+        val catType = CategoryType.fromIdentifier(category)
+            ?: CategoryManager.findCategoryForControl(control)?.type
+        return catType == CategoryType.SYSTEM || catType == CategoryType.MACROS
+    }
+
+    override fun generatePrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String =
+        NxprcAiPromptBuilder.generateSystemPrompt(control, category, widthDp, heightDp, options)
+}
+
+object AbxyPromptStrategy : ComponentPromptStrategy {
+    override val supportedCategories = setOf(CategoryType.ABXY)
+    override fun canHandle(control: String, category: String): Boolean {
+        val catType = CategoryType.fromIdentifier(category)
+            ?: CategoryManager.findCategoryForControl(control)?.type
+        return catType == CategoryType.ABXY || catType == null
+    }
+
+    override fun generatePrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String =
+        NxprcAiPromptBuilder.generateAbxyPrompt(control, category, widthDp, heightDp, options)
+}
+
+/**
+ * Authoritative registry of component prompt synthesis strategies.
+ * Provides polymorphic strategy resolution for virtual controller prompts.
+ */
+object ComponentPromptRegistry {
+    private val strategies: List<ComponentPromptStrategy> = listOf(
+        TouchpadPromptStrategy,
+        StickButtonPromptStrategy,
+        TriggerPromptStrategy,
+        BumperPromptStrategy,
+        DpadPromptStrategy,
+        StickPromptStrategy,
+        SystemPromptStrategy,
+        AbxyPromptStrategy
+    )
+
+    fun resolveStrategy(control: String, category: String): ComponentPromptStrategy {
+        return strategies.firstOrNull { it.canHandle(control, category) } ?: AbxyPromptStrategy
+    }
+
+    fun getAllStrategies(): List<ComponentPromptStrategy> = strategies
+}
+
+/**
  * High-performance, modular AI Prompt Builder for NEXPAD Virtual Controller Components.
  * Generates compact, token-efficient generation protocols engineered for frontier and compact LLMs alike.
  */
@@ -180,29 +380,15 @@ object NxprcAiPromptBuilder {
         heightDp: Int,
         options: AiDesignOptions = AiDesignOptions()
     ): String {
-        val ctrl = ControlKey.fromIdentifier(control)
-        if (ctrl == ControlKey.LTP || ctrl == ControlKey.RTP ||
-            (ctrl?.componentType == ComponentType.TOUCHPAD && ctrl.categoryType == CategoryType.STICKS)) {
-            return generateTouchpadPrompt(control, category, widthDp, heightDp, options)
+        val effectiveOptions = if (options.modelCapability.syntaxSkeletonRecommended && !options.includeSyntaxSkeleton) {
+            options.copy(includeSyntaxSkeleton = true)
+        } else {
+            options
         }
-
-        if (ctrl == ControlKey.LSB || ctrl == ControlKey.RSB ||
-            (ctrl?.componentType == ComponentType.BUTTON && ctrl.categoryType == CategoryType.STICKS)) {
-            return generateStickButtonPrompt(control, category, widthDp, heightDp, options)
-        }
-
-        val catType = CategoryType.fromIdentifier(category)
-            ?: CategoryManager.findCategoryForControl(control)?.type
-        return when (catType) {
-            CategoryType.TRIGGERS -> generateTriggerPrompt(control, category, widthDp, heightDp, options)
-            CategoryType.BUMPERS -> generateBumperPrompt(control, category, widthDp, heightDp, options)
-            CategoryType.DPAD -> generateDpadPrompt(control, category, widthDp, heightDp, options)
-            CategoryType.STICKS -> generateStickPrompt(control, category, widthDp, heightDp, options)
-            CategoryType.SYSTEM,
-            CategoryType.MACROS -> generateSystemPrompt(control, category, widthDp, heightDp, options)
-            CategoryType.ABXY,
-            null -> generateAbxyPrompt(control, category, widthDp, heightDp, options)
-        }
+        val effectiveWidth = effectiveOptions.geometryOptions.widthDp ?: widthDp
+        val effectiveHeight = effectiveOptions.geometryOptions.heightDp ?: heightDp
+        val strategy = ComponentPromptRegistry.resolveStrategy(control, category)
+        return strategy.generatePrompt(control, category, effectiveWidth, effectiveHeight, effectiveOptions)
     }
 
     /**
@@ -328,7 +514,7 @@ Output Format:        STRICT  (Single ```html ... ``` block, zero markdown conve
      - 10+: Center typography letterform & specular gloss reflections (::before/::after)
    ⚠️ The Hard Requirement: Opaque surface plates MUST sit underneath vector artwork and typography. In HTML DOM, declare face plate FIRST, embedded `<svg>` SECOND, and label `<span>` THIRD. Opaque surfaces must not unintentionally occlude required artwork or text.
 6. **Text must be real DOM text without rotation [GLOBAL-REQUIRED]**: Labels and markings in unrotated `<span>` (`NO TEXT ROTATION`). When iconography is needed, use SVG/vector graphics; do not add text only because the component is a button.
-7. **Stable CSS only [GLOBAL-REQUIRED]**: Do not use `@media`, `@supports`, `:hover`, `:focus`, or `@keyframes`. Press feedback uses `.$rootClass:active` with spring micro-physics.
+7. **Stable CSS only [GLOBAL-REQUIRED]**: Do not use `@media`, `@supports`, `:hover`, or `:focus`. CSS transitions and layout animations are prohibited. For idle/ambient animation loops (pulsing, subtle rotation, shimmer), standard CSS `@keyframes` on transform/opacity properties are supported by the engine. Press feedback uses `.$rootClass:active` with spring micro-physics.
 8. **Optical filters [GLOBAL-REQUIRED]**: GPU `filter: blur()`, `brightness()`, `contrast()`, `saturate()`, `hue-rotate()`. Do not use `backdrop-filter` or `mix-blend-mode`.
 9. **Tactile active interaction [COMPONENT-REQUIRED]**: Always define `.$rootClass:active { transform: scale(...) translateY(...); }`.
 10. **Tactile spring micro-physics [COMPONENT-REQUIRED]**: Component MUST declare spring variables in `:root`:
@@ -349,9 +535,10 @@ Output Format:        STRICT  (Single ```html ... ``` block, zero markdown conve
 - SVG Transforms & Group Matrices: Native support for `<g transform="translate(x, y) rotate(deg)">` and direct `<path transform="...">`.
 - `calc()` and `aspect-ratio`: Dynamic child dimensions.
 - Flexbox: Flow and alignment (`display: flex`, `gap`, `justify-content`, `align-items`).
+- Ambient `@keyframes`: Supported for transform, opacity, scale, and rotate property animations.
 
 #### ❌ NOT SUPPORTED:
-- `mix-blend-mode`, `backdrop-filter`, `@keyframes`, `transition:`, `mask`, `display: grid`.
+- `mix-blend-mode`, `backdrop-filter`, `transition:`, `mask`, `display: grid`, layout-property keyframes.
 
 ### SECTION 7 — ARCHITECTURAL PATTERN: HTML/CSS BUTTON SHELL + EMBEDDED SVG VECTOR EMBLEM
 When the user requests a character, hero, creature, vehicle, weapon, insignia, or intricate graphic:
@@ -425,12 +612,12 @@ ${NxprcPresets.getSyntaxSkeleton(control, category, widthDp, heightDp)}
 """.trimIndent()
     }
 
-    private fun generateAbxyPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
-        val (colorName, hexCode, rgbGlow, coreGrad) = when (control.uppercase()) {
-            NexpadKeys.X -> Quadruple("Vibrant Sapphire Blue", "#00B0FF", "rgba(0, 176, 255, 0.6)", "linear-gradient(145deg, #0284c7 0%, #0369a1 50%, #0c4a6e 100%)")
-            NexpadKeys.Y -> Quadruple("Radiant Solar Yellow", "#FFCC00", "rgba(255, 204, 0, 0.6)", "linear-gradient(145deg, #eab308 0%, #ca8a04 50%, #713f12 100%)")
-            NexpadKeys.B -> Quadruple("Vibrant Crimson Red", "#FF3366", "rgba(255, 51, 102, 0.6)", "linear-gradient(145deg, #f43f5e 0%, #e11d48 50%, #881337 100%)")
-            else -> Quadruple("Vibrant Emerald Green", "#4ADE80", "rgba(74, 222, 128, 0.6)", "linear-gradient(145deg, #10b981 0%, #059669 50%, #047857 100%)")
+    internal fun generateAbxyPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
+        val profile = when (control.uppercase()) {
+            NexpadKeys.X -> ColorProfile("Vibrant Sapphire Blue", "#00B0FF", "rgba(0, 176, 255, 0.6)", "linear-gradient(145deg, #0284c7 0%, #0369a1 50%, #0c4a6e 100%)")
+            NexpadKeys.Y -> ColorProfile("Radiant Solar Yellow", "#FFCC00", "rgba(255, 204, 0, 0.6)", "linear-gradient(145deg, #eab308 0%, #ca8a04 50%, #713f12 100%)")
+            NexpadKeys.B -> ColorProfile("Vibrant Crimson Red", "#FF3366", "rgba(255, 51, 102, 0.6)", "linear-gradient(145deg, #f43f5e 0%, #e11d48 50%, #881337 100%)")
+            else -> ColorProfile("Vibrant Emerald Green", "#4ADE80", "rgba(74, 222, 128, 0.6)", "linear-gradient(145deg, #10b981 0%, #059669 50%, #047857 100%)")
         }
 
         return """
@@ -442,8 +629,8 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Button Key [COMPONENT-REQUIRED]**: $control (Standard Gamepad Face Button)
 - **Category [GLOBAL-REQUIRED]**: $category
 - **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
-- **Standard Color Profile [RECOMMENDED]**: $colorName (Accent: $hexCode, Glow: $rgbGlow)
-- **Standard Core [RECOMMENDED]**: $coreGrad
+- **Standard Color Profile [RECOMMENDED]**: ${profile.name} (Accent: ${profile.hexCode}, Glow: ${profile.glowRgba})
+- **Standard Core [RECOMMENDED]**: ${profile.coreGradient}
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Momentary discrete user actuation with tactile depression and instant spring release.
@@ -463,7 +650,7 @@ ${engineBoundaries("nexpad-btn")}
 ### USER CUSTOMIZATION SCHEMA:
 The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
 - **STYLE**: [e.g. Cyberpunk 2077 / Glassmorphism / Brushed Gunmetal / Retro Arcade / Minimal Flat / Anime Mecha / Custom]
-- **COLOR / ACCENT**: [e.g. Neon cyan & dark obsidian / Crimson & carbon / Custom palette (Default: $hexCode)]
+- **COLOR / ACCENT**: [e.g. Neon cyan & dark obsidian / Crimson & carbon / Custom palette (Default: ${profile.hexCode})]
 - **SHAPE / SILHOUETTE**: [e.g. Faceted octagon / Smooth capsule / Organic shield / Asymmetric shard (Default: Circular)]
 - **EMBLEM / GRAPHIC (OPTIONAL)**: [e.g. Embedded SVG vector emblem (`<svg viewBox="0 0 100 100"><path d="..."/></svg>`) for character art, hero logos, vehicle silhouettes, or intricate crests]
 - **LABEL / GLYPH**: [e.g. "$control" / Custom text / SVG icon emblem (Default: "$control")]
@@ -483,7 +670,7 @@ Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``
 """.trimIndent()
     }
 
-    private fun generateDpadPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
+    internal fun generateDpadPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         val arrowGlyph = when (control.uppercase()) {
             NexpadKeys.DOWN -> "▼"
             NexpadKeys.LEFT -> "◀"
@@ -539,7 +726,7 @@ Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``
 """.trimIndent()
     }
 
-    private fun generateTriggerPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
+    internal fun generateTriggerPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         return """
 ${genAiHeader()}
 
@@ -587,7 +774,7 @@ Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``
 """.trimIndent()
     }
 
-    private fun generateBumperPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String = """
+    internal fun generateBumperPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String = """
 ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Shoulder Bumper for NEXPAD.
@@ -631,7 +818,7 @@ ${renderUserRequest(options)}
 Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
 """.trimIndent()
 
-    private fun generateStickPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
+    internal fun generateStickPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         return """
 ${genAiHeader()}
 
@@ -680,7 +867,7 @@ Before outputting, verify your component against this checklist:
 - [ ] NO Center Click Button: The analog stick has NO center click button or L3/R3 marking. It is labeled "$control" in an unrotated `<span>` (or clean vector/directional art). Stick click is handled separately by LSB/RSB.
 - [ ] Complex Graphics Architecture: If a character, emblem, or complex graphic is requested on the thumb cap, uses an embedded `<svg>` vector element inside `<div class="stick-cap">` with clean `<path d="...">` rather than brittle CSS `<div>` hacks. For vector glow, use an underlying CSS `<span>` (no SVG `<filter>` graphs).
 - [ ] Console Realism: Authentic industrial materials (matte charcoal, rubberized dish, physical shadows) rather than unsolicited neon glow.
-- [ ] No Scripts or Page CSS: Zero JavaScript, zero CSS keyframes animations, zero hover/pointer event handlers.
+- [ ] No Scripts or Page CSS: Zero JavaScript, zero layout animations/transitions, zero hover/pointer event handlers.
 - [ ] Compiler Safety: Exactly one root `<button class="stick-btn">` element; all px dimensions explicit.
 
 ### USER CUSTOMIZATION SCHEMA:
@@ -703,7 +890,7 @@ Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``
 """.trimIndent()
     }
 
-    private fun generateStickButtonPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
+    internal fun generateStickButtonPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         val clickLabel = if (control.uppercase() == NexpadKeys.RSB || control.uppercase() == "RSB") "Right Stick Click (RSB / R3)" else "Left Stick Click (LSB / L3)"
 
         return """
@@ -758,7 +945,7 @@ Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``
 """.trimIndent()
     }
 
-    private fun generateTouchpadPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
+    internal fun generateTouchpadPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         val isLeft = control.equals("LTP", ignoreCase = true)
         val padRole = if (isLeft) "Left Touch Movement Pad (Floating Dynamic-Center Stick)" else "Right Touch Camera Look Pad (Free-Look Swipe Trackpad)"
         val interactionDesc = if (isLeft) {
@@ -800,7 +987,7 @@ Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``
 """.trimIndent()
     }
 
-    private fun generateSystemPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String = """
+    internal fun generateSystemPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String = """
 ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller System/Utility Button for NEXPAD.
@@ -846,6 +1033,4 @@ ${renderUserRequest(options)}
 ### OUTPUT FORMAT CONTRACT:
 Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
 """.trimIndent()
-
-    private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 }

@@ -88,6 +88,11 @@ object NxprcHtmlCssConverter {
         return clean
     }
 
+    /**
+     * Normalizes the source HTML through the AI preprocessing pipeline.
+     */
+    fun normalize(source: String, rootClassHint: String? = null): String = normalizeAiHtml(source, rootClassHint)
+
     private fun extractCleanMarkup(source: String): String {
         var clean = source.trim()
 
@@ -392,17 +397,18 @@ object NxprcHtmlCssConverter {
 
         // 1. Identify all SVG vector elements in the DOM tree
         val svgNodes = root.findByTag("svg")
-        if (svgNodes.isEmpty()) return html
-
         val svgIdentifiers = mutableSetOf<String>()
-        svgIdentifiers.add("svg")
-        for (svg in svgNodes) {
-            svg.id?.let { svgIdentifiers.add("#${it.lowercase()}") }
-            svg.classNames.forEach { svgIdentifiers.add(".${it.lowercase()}") }
+        if (svgNodes.isNotEmpty()) {
+            svgIdentifiers.add("svg")
+            for (svg in svgNodes) {
+                svg.id?.let { svgIdentifiers.add("#${it.lowercase()}") }
+                svg.classNames.forEach { svgIdentifiers.add(".${it.lowercase()}") }
+            }
         }
 
         // 2. Identify pure surface / container elements (elements with no SVG children and no direct text)
         fun isDescendantOfAny(node: DomNode, targets: List<DomNode>): Boolean {
+            if (targets.isEmpty()) return false
             var curr = node.parent
             while (curr != null) {
                 if (targets.contains(curr)) return true
@@ -412,19 +418,37 @@ object NxprcHtmlCssConverter {
         }
 
         val surfaceIdentifiers = mutableSetOf<String>()
-        fun scanSurfaces(node: DomNode) {
+        val foregroundIdentifiers = mutableSetOf<String>()
+        foregroundIdentifiers.addAll(svgIdentifiers)
+
+        fun scanElements(node: DomNode) {
             val isRoot = node.tag.equals("button", true) || node.tag.equals("root", true) || node.tag.equals("body", true)
             val isSvgOrDescendant = node.tag.equals("svg", true) || isDescendantOfAny(node, svgNodes)
             val hasSvgChild = node.findByTag("svg").isNotEmpty()
             val hasDirectText = node.textContent.isNotBlank()
 
-            if (!isRoot && !isSvgOrDescendant && !hasSvgChild && !hasDirectText) {
-                node.id?.let { surfaceIdentifiers.add("#${it.lowercase()}") }
-                node.classNames.forEach { surfaceIdentifiers.add(".${it.lowercase()}") }
+            val role = (node.attributes["data-layer-role"] ?: node.attributes["data-role"])?.trim()?.lowercase()
+            when (role) {
+                "artwork", "detail", "label" -> {
+                    node.id?.let { foregroundIdentifiers.add("#${it.lowercase()}") }
+                    node.classNames.forEach { foregroundIdentifiers.add(".${it.lowercase()}") }
+                }
+                "background", "surface", "base", "socket" -> {
+                    node.id?.let { surfaceIdentifiers.add("#${it.lowercase()}") }
+                    node.classNames.forEach { surfaceIdentifiers.add(".${it.lowercase()}") }
+                }
+                else -> {
+                    if (!isRoot && !isSvgOrDescendant && !hasSvgChild && !hasDirectText) {
+                        node.id?.let { surfaceIdentifiers.add("#${it.lowercase()}") }
+                        node.classNames.forEach { surfaceIdentifiers.add(".${it.lowercase()}") }
+                    }
+                }
             }
-            node.children.forEach { scanSurfaces(it) }
+            node.children.forEach { scanElements(it) }
         }
-        scanSurfaces(root)
+        scanElements(root)
+
+        if (foregroundIdentifiers.isEmpty() || surfaceIdentifiers.isEmpty()) return html
 
         // 3. Scan CSS rules across all <style> blocks
         val styleTagRegex = Regex("""<style[^>]*>([\s\S]*?)</style>""", RegexOption.IGNORE_CASE)
@@ -444,17 +468,17 @@ object NxprcHtmlCssConverter {
             }
         }
 
-        // Find the lowest explicit z-index among SVG vector layers
-        val minSvgZ = allRules.filter { r ->
-            r.zIndex != null && svgIdentifiers.any { r.selector.lowercase().contains(it) }
+        // Find the lowest explicit z-index among foreground (SVG / artwork / detail / label) layers
+        val minForegroundZ = allRules.filter { r ->
+            r.zIndex != null && foregroundIdentifiers.any { r.selector.lowercase().contains(it) }
         }.mapNotNull { it.zIndex }.minOrNull() ?: DEFAULT_SVG_MIN_Z_INDEX
 
-        // Find non-SVG container rules with a background and z-index >= minSvgZ
+        // Find non-SVG container rules with a background and z-index >= minForegroundZ
         val inversionSelectors = mutableSetOf<String>()
         for (r in allRules) {
-            if (r.zIndex != null && r.zIndex >= minSvgZ) {
+            if (r.zIndex != null && r.zIndex >= minForegroundZ) {
                 val hasBg = r.body.contains("background", ignoreCase = true) || r.body.contains("background-color", ignoreCase = true)
-                val matchesSvg = svgIdentifiers.any { r.selector.lowercase().contains(it) }
+                val matchesForeground = foregroundIdentifiers.any { r.selector.lowercase().contains(it) }
                 val isPseudoGloss = r.selector.contains("::before") || r.selector.contains("::after")
                 val isTranslucentOrOverlay = r.body.contains("opacity", ignoreCase = true) ||
                     r.body.contains("rgba", ignoreCase = true) ||
@@ -463,7 +487,7 @@ object NxprcHtmlCssConverter {
                     r.body.contains("pointer-events", ignoreCase = true) ||
                     r.body.contains("backdrop-filter", ignoreCase = true)
 
-                if (!matchesSvg && !isPseudoGloss && hasBg && !isTranslucentOrOverlay) {
+                if (!matchesForeground && !isPseudoGloss && hasBg && !isTranslucentOrOverlay) {
                     val isSurface = surfaceIdentifiers.any { r.selector.lowercase().contains(it) }
                     val isClassOrId = r.selector.trim().startsWith(".") || r.selector.trim().startsWith("#")
                     if (isSurface || isClassOrId) {
@@ -475,7 +499,7 @@ object NxprcHtmlCssConverter {
 
         if (inversionSelectors.isEmpty()) return html
 
-        val targetZ = maxOf(MIN_REPAIRED_SURFACE_Z_INDEX, minSvgZ - Z_INDEX_CLEARANCE_STEP)
+        val targetZ = maxOf(MIN_REPAIRED_SURFACE_Z_INDEX, minForegroundZ - Z_INDEX_CLEARANCE_STEP)
         return styleTagRegex.replace(html) { match ->
             var css = match.groupValues[1]
             for (invSel in inversionSelectors) {
