@@ -1487,7 +1487,8 @@ class NxprcPromptTest {
 
         // Verify explicit default shapes for each category
         val abxy = DesignResolver.resolve("A", "BUTTON", AiDesignOptions())
-        assertTrue(abxy.shape.value.contains("Rounded Squircle"), "ABXY default shape should be squircle")
+        assertTrue(abxy.shape.value.contains("Circular Dome"), "ABXY default shape should be circular dome")
+        assertTrue(abxy.shape.value.contains("50%"), "ABXY default shape should specify border-radius: 50%")
 
         val dpad = DesignResolver.resolve("UP", "DPAD", AiDesignOptions())
         assertTrue(dpad.shape.value.contains("Directional Cross"), "Dpad default shape should be directional cross")

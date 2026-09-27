@@ -368,7 +368,7 @@ object CategoryDefaultsRegistry {
                     else -> ColorProfile("Vibrant Emerald Green", "#4ADE80", "rgba(74, 222, 128, 0.6)", "linear-gradient(145deg, #10b981 0%, #059669 50%, #047857 100%)")
                 }
                 ComponentDefaults(
-                    shape = "Rounded Squircle (border-radius: 24–28px)",
+                    shape = "Circular Dome (border-radius: 50%)",
                     material = "Molded Polycarbonate",
                     style = "Modern Console Realism",
                     lighting = "Top-left directional with soft specular highlight",
