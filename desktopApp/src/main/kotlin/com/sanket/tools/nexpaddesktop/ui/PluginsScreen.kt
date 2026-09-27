@@ -107,7 +107,6 @@ fun PluginsScreen(
     val defaultCtrl = ControlKey.A
     var selectedCategory by remember { mutableStateOf(defaultCtrl.categoryType.id) }
     var selectedButtonKey by remember { mutableStateOf(defaultCtrl.key) }
-
     var htmlSource by remember { mutableStateOf(NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A) }
     var componentId by remember { mutableStateOf(defaultCtrl.defaultId) }
     var componentName by remember { mutableStateOf(defaultCtrl.defaultName) }

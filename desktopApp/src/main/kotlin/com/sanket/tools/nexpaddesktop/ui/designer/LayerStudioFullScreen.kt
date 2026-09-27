@@ -5,6 +5,7 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Refresh
@@ -1060,7 +1061,7 @@ fun LayerStudioFullScreen(
                         modifier = Modifier.height(30.dp)
                     ) {
                         Icon(
-                            Icons.Default.Send,
+                            Icons.AutoMirrored.Filled.Send,
                             contentDescription = null,
                             tint = if (isPushEnabled) Color.Black else Color.White.copy(alpha = 0.35f),
                             modifier = Modifier.size(13.dp)

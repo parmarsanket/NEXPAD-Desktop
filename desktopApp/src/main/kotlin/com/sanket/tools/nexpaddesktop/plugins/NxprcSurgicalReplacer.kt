@@ -106,7 +106,12 @@ object NxprcSurgicalReplacer {
         if ((isSvg(clean) && !clean.contains("<span")) || layer is CanvasLayer.VectorPath) {
             val result = applySvgReplacement(originalHtml, clean)
             return if (result != null) {
-                SurgicalResult(true, result, "Vector emblem (Layer #$layerIndex) surgically updated.", layerIndex)
+                try {
+                    val compiled = NxprcHtmlCssConverter.convert(result, doc.manifest.id, doc.manifest.name)
+                    SurgicalResult(true, result, "Vector emblem (Layer #$layerIndex) surgically updated (${compiled.canvas.layers.size} layers).", layerIndex)
+                } catch (e: Exception) {
+                    SurgicalResult(false, originalHtml, "SVG syntax or compilation error: ${e.message}", layerIndex)
+                }
             } else {
                 SurgicalResult(false, originalHtml, "Could not inject SVG into HTML document.", layerIndex)
             }
@@ -125,17 +130,17 @@ object NxprcSurgicalReplacer {
 
         // Step 3B: Apply CSS rules or declarations
         val updatedHtml = if (cssOnly.isNotBlank()) {
-            applyCssReplacement(htmlWithMarkup, cssOnly, layerIndex, layer)
+            applyCssReplacement(htmlWithMarkup, cssOnly, layerIndex, layer, doc)
         } else {
             htmlWithMarkup
         }
 
         if (updatedHtml != null) {
             return try {
-                NxprcHtmlCssConverter.convert(updatedHtml, doc.manifest.id, doc.manifest.name)
-                SurgicalResult(true, updatedHtml, "Layer #$layerIndex surgically updated and recompiled.", layerIndex)
+                val compiled = NxprcHtmlCssConverter.convert(updatedHtml, doc.manifest.id, doc.manifest.name)
+                SurgicalResult(true, updatedHtml, "Layer #$layerIndex surgically updated (${compiled.canvas.layers.size} layers).", layerIndex)
             } catch (e: Exception) {
-                SurgicalResult(true, updatedHtml, "CSS updated (Warning: ${e.message})", layerIndex)
+                SurgicalResult(false, originalHtml, "Recompilation failed: ${e.message}", layerIndex)
             }
         }
 
@@ -177,29 +182,52 @@ object NxprcSurgicalReplacer {
 
     private fun applySvgReplacement(html: String, svgInput: String): String? {
         val trimmed = svgInput.trim()
-        val svgRegex = Regex("""<svg[\s\S]*?<\/svg>""", RegexOption.IGNORE_CASE)
+        val svgBlockRegex = Regex("""<svg[\s\S]*?<\/svg>""", RegexOption.IGNORE_CASE)
+        val fullSvgInInput = svgBlockRegex.find(trimmed)
 
-        if (trimmed.startsWith("<svg", ignoreCase = true) && trimmed.contains("</svg>", ignoreCase = true)) {
-            // Full <svg>...</svg> provided
-            return if (svgRegex.containsMatchIn(html)) {
-                svgRegex.replaceFirst(html, trimmed)
+        if (fullSvgInInput != null) {
+            val newSvg = fullSvgInInput.value
+            // If the original HTML already has an <svg>...</svg>, replace it
+            val existingSvgMatch = svgBlockRegex.find(html)
+            if (existingSvgMatch != null) {
+                // If existing <svg> has class="..." and new <svg> doesn't, preserve class
+                val existingTag = Regex("""<svg([^>]*)>""", RegexOption.IGNORE_CASE).find(existingSvgMatch.value)
+                val newTag = Regex("""<svg([^>]*)>""", RegexOption.IGNORE_CASE).find(newSvg)
+                val finalSvg = if (existingTag != null && newTag != null) {
+                    val existingAttrs = existingTag.groupValues[1]
+                    val newAttrs = newTag.groupValues[1]
+                    val classMatch = Regex("""class=["']([^"']+)["']""", RegexOption.IGNORE_CASE).find(existingAttrs)
+                    if (classMatch != null && !newAttrs.contains("class=", ignoreCase = true)) {
+                        newSvg.replaceFirst(newTag.value, "<svg ${classMatch.value}$newAttrs>")
+                    } else {
+                        newSvg
+                    }
+                } else {
+                    newSvg
+                }
+                return html.replaceRange(existingSvgMatch.range, finalSvg)
             } else {
-                insertInsideButton(html, trimmed)
+                return insertInsideButton(html, newSvg)
             }
         }
 
-        // Bare SVG shape(s) provided, e.g. <path .../> or <circle .../>
-        if (svgRegex.containsMatchIn(html)) {
+        // Bare SVG shape(s) provided (e.g. <path .../> or <circle .../>)
+        val cleanShapes = trimmed
+            .replace(Regex("""<!--[\s\S]*?-->"""), "")
+            .trim()
+
+        val existingSvgMatch = svgBlockRegex.find(html)
+        if (existingSvgMatch != null) {
             val innerSvgRegex = Regex("""(<svg[^>]*>)([\s\S]*?)(<\/svg>)""", RegexOption.IGNORE_CASE)
             return innerSvgRegex.replace(html) { match ->
-                "${match.groupValues[1]}\n        $trimmed\n    ${match.groupValues[3]}"
+                "${match.groupValues[1]}\n        $cleanShapes\n    ${match.groupValues[3]}"
             }
         }
 
-        // No <svg> tag in HTML: wrap the shapes in a standard 24x24 scalable SVG and insert
+        // No <svg> tag in HTML: wrap the shapes in a standard scalable SVG and insert
         val wrappedSvg = """
-    <svg viewBox="0 0 24 24" width="36" height="36" style="position: absolute; pointer-events: none;">
-        $trimmed
+    <svg viewBox="0 0 96 96" width="96px" height="96px" style="position: absolute; pointer-events: none;">
+        $cleanShapes
     </svg>
 """.trimIndent()
         return insertInsideButton(html, wrappedSvg)
@@ -225,7 +253,8 @@ object NxprcSurgicalReplacer {
         html: String,
         cssInput: String,
         layerIndex: Int,
-        layer: CanvasLayer?
+        layer: CanvasLayer?,
+        doc: NxprcDocument? = null
     ): String? {
         val styleRegex = Regex("""(<style[^>]*>)([\s\S]*?)(<\/style>)""", RegexOption.IGNORE_CASE)
         val styleMatch = styleRegex.find(html)
@@ -236,10 +265,10 @@ object NxprcSurgicalReplacer {
         val primaryButtonSelector = findPrimaryButtonSelector(html)
 
         val updatedCss = if (isInputBlockRule) {
-            applyCssBlockRules(originalCss, cssInput, layerIndex, layer, primaryButtonSelector, html)
+            applyCssBlockRules(originalCss, cssInput, layerIndex, layer, primaryButtonSelector, html, doc)
         } else {
             // Bare declarations, e.g. "background: #ff0055; border: 2px solid white;"
-            applyBareCssDeclarations(originalCss, cssInput, layerIndex, layer, primaryButtonSelector, html)
+            applyBareCssDeclarations(originalCss, cssInput, layerIndex, layer, primaryButtonSelector, html, doc)
         }
 
         return if (styleMatch != null) {
@@ -312,6 +341,114 @@ object NxprcSurgicalReplacer {
         return "$primaryButtonSelector .btn-label"
     }
 
+    fun findAfterSelectors(css: String): List<String> {
+        val rules = parseCssRules(css)
+        return rules.map { it.first }.filter { it.contains("::after") }
+    }
+
+    fun findBeforeSelectors(css: String): List<String> {
+        val rules = parseCssRules(css)
+        return rules.map { it.first }.filter { it.contains("::before") }
+    }
+
+    fun findSelectorsWithInsetShadow(css: String): List<String> {
+        val rules = parseCssRules(css)
+        val result = mutableListOf<String>()
+        for ((sel, body) in rules) {
+            val lowerBody = body.lowercase()
+            if (lowerBody.contains("box-shadow") && lowerBody.contains("inset")) {
+                result.add(sel)
+            }
+        }
+        return result
+    }
+
+    fun collectCandidateBoxSelectors(html: String, css: String, primaryButtonSelector: String): List<String> {
+        val candidates = mutableListOf<String>()
+        val rules = parseCssRules(css)
+        val ruleMap = rules.toMap()
+
+        fun hasBoxStyles(body: String?): Boolean {
+            if (body == null) return false
+            val lower = body.lowercase()
+            return lower.contains("background") || lower.contains("border") || lower.contains("box-shadow")
+        }
+
+        fun findRuleFor(selector: String): String? {
+            if (ruleMap.containsKey(selector)) return selector
+            val escaped = Regex.escape(selector)
+            return rules.firstOrNull { Regex("""(?:^|\s|,)$escaped(?:\s|,|$)""").containsMatchIn(it.first) }?.first
+        }
+
+        // 1. Root button ::before
+        val rootBefore = findRuleFor("$primaryButtonSelector::before")
+            ?: rules.firstOrNull { it.first.contains("::before") && !it.first.contains(" ") }?.first
+        if (rootBefore != null && hasBoxStyles(ruleMap[rootBefore])) {
+            candidates.add(rootBefore)
+        }
+
+        // 2. Root button itself
+        val rootRule = findRuleFor(primaryButtonSelector)
+        if (rootRule != null && hasBoxStyles(ruleMap[rootRule])) {
+            candidates.add(rootRule)
+        }
+
+        // 3. Child elements inside <button>...</button>
+        val buttonContentMatch = Regex("""<button[^>]*>([\s\S]*?)<\/button>""", RegexOption.IGNORE_CASE).find(html)
+        val innerHtml = buttonContentMatch?.groupValues?.get(1) ?: html
+
+        val elementRegex = Regex("""<(div|span|section|i|b|p)\b[^>]*class=["']([^"']+)["'][^>]*>""", RegexOption.IGNORE_CASE)
+        val childClasses = mutableListOf<String>()
+        for (m in elementRegex.findAll(innerHtml)) {
+            val tag = m.groupValues[1].lowercase()
+            val classes = m.groupValues[2].trim().split(Regex("""\s+""")).filter { it.isNotBlank() }
+            for (cls in classes) {
+                if (tag == "span" && (cls.contains("label") || cls.contains("text") || cls.contains("glyph"))) continue
+                if (!childClasses.contains(cls)) {
+                    childClasses.add(cls)
+                }
+            }
+        }
+
+        for (cls in childClasses) {
+            val classSelector = ".$cls"
+            // Child element itself
+            val childRule = rules.firstOrNull { it.first.contains(cls) && !it.first.contains("::") && !it.first.contains(":") }?.first
+                ?: classSelector
+            if (hasBoxStyles(ruleMap[childRule]) || childRule == classSelector) {
+                if (!candidates.contains(childRule)) candidates.add(childRule)
+            }
+
+            // Child ::before
+            val childBefore = rules.firstOrNull { it.first.contains(cls) && it.first.contains("::before") }?.first
+            if (childBefore != null && hasBoxStyles(ruleMap[childBefore])) {
+                if (!candidates.contains(childBefore)) candidates.add(childBefore)
+            }
+
+            // Child ::after (only if NOT gloss)
+            val childAfter = rules.firstOrNull { it.first.contains(cls) && it.first.contains("::after") }?.first
+            if (childAfter != null && hasBoxStyles(ruleMap[childAfter])) {
+                val body = ruleMap[childAfter] ?: ""
+                val isGloss = body.contains("ellipse", ignoreCase = true) || body.contains("rotate", ignoreCase = true)
+                if (!isGloss && !candidates.contains(childAfter)) {
+                    candidates.add(childAfter)
+                }
+            }
+        }
+
+        // 4. Root button ::after (only if NOT gloss)
+        val rootAfter = findRuleFor("$primaryButtonSelector::after")
+        if (rootAfter != null && hasBoxStyles(ruleMap[rootAfter])) {
+            val body = ruleMap[rootAfter] ?: ""
+            val isGloss = body.contains("ellipse", ignoreCase = true) || body.contains("rotate", ignoreCase = true)
+            if (!isGloss && !candidates.contains(rootAfter)) {
+                candidates.add(rootAfter)
+            }
+        }
+
+        return candidates
+    }
+
     /**
      * Handles CSS input formatted as full rules: `selector { ... }`.
      */
@@ -321,16 +458,17 @@ object NxprcSurgicalReplacer {
         layerIndex: Int,
         layer: CanvasLayer?,
         primaryButtonSelector: String,
-        html: String
+        html: String,
+        doc: NxprcDocument? = null
     ): String {
         val parsedRules = parseCssRules(rulesInput)
         if (parsedRules.isEmpty()) {
-            return applyBareCssDeclarations(css, rulesInput, layerIndex, layer, primaryButtonSelector, html)
+            return applyBareCssDeclarations(css, rulesInput, layerIndex, layer, primaryButtonSelector, html, doc)
         }
 
         var workingCss = css
         for ((rawSelector, ruleBody) in parsedRules) {
-            val targetSelector = resolveTargetSelector(rawSelector, layerIndex, layer, primaryButtonSelector, workingCss, html)
+            val targetSelector = resolveTargetSelector(rawSelector, layerIndex, layer, primaryButtonSelector, workingCss, html, doc)
 
             // Flexible regex matching the selector even if whitespace / indentation differs
             val escapedParts = targetSelector.trim().split(Regex("""\s+""")).map { Regex.escape(it) }
@@ -371,54 +509,90 @@ object NxprcSurgicalReplacer {
      * Maps user/AI provided selector (which might be synthetic like `.layer-14-glyph` or `.layer-0-SOCKET`)
      * to the actual selector that exists in the CSS stylesheet.
      */
-    private fun resolveTargetSelector(
+    fun resolveTargetSelector(
         rawSelector: String,
         layerIndex: Int,
         layer: CanvasLayer?,
         primaryButtonSelector: String,
         existingCss: String,
-        html: String
+        html: String,
+        doc: NxprcDocument? = null
     ): String {
         val trimmed = rawSelector.trim()
 
-        // If the selector already directly exists in the stylesheet, keep it as is
-        if (existingCss.contains(trimmed)) {
-            return trimmed
+        // 1. If non-synthetic selector directly exists in stylesheet, keep it
+        if (trimmed.isNotBlank() && !trimmed.startsWith(".layer-")) {
+            val rules = parseCssRules(existingCss)
+            val directMatch = rules.firstOrNull { it.first == trimmed }?.first
+                ?: rules.firstOrNull { it.first.endsWith(trimmed) || it.first.contains(trimmed) }?.first
+            if (directMatch != null) {
+                return directMatch
+            }
         }
 
         val lower = trimmed.lowercase()
 
-        // Pseudo-elements (::before or ::after)
-        if (lower.contains("::before") || lower.contains("gloss")) {
-            val beforeMatch = Regex("""([^\r\n{}]*::before[^\r\n{}]*)\s*\{""").find(existingCss)
-            if (beforeMatch != null) {
-                return beforeMatch.groupValues[1].trim()
+        // 2. SVG element / VectorPath
+        if (layer is CanvasLayer.VectorPath || lower.contains("icon") || lower.contains("emblem") || lower.contains("svg")) {
+            val svgClassMatch = Regex("""<svg[^>]*class=["']([^"']+)["']""", RegexOption.IGNORE_CASE).find(html)
+            if (svgClassMatch != null) {
+                val cls = svgClassMatch.groupValues[1].trim().split(Regex("""\s+""")).firstOrNull { it.isNotBlank() }
+                if (cls != null) {
+                    val cssRule = Regex("""([^\r\n{}]*\.$cls[^\r\n{}]*)\s*\{""").find(existingCss)
+                    if (cssRule != null) return cssRule.groupValues[1].trim()
+                    return ".$cls"
+                }
             }
-            return "$primaryButtonSelector::before"
-        }
-        if (lower.contains("::after")) {
-            val afterMatch = Regex("""([^\r\n{}]*::after[^\r\n{}]*)\s*\{""").find(existingCss)
-            if (afterMatch != null) {
-                return afterMatch.groupValues[1].trim()
-            }
-            return "$primaryButtonSelector::after"
+            return "$primaryButtonSelector svg"
         }
 
-        // Text / Glyph layer
+        // 3. Text / Glyph layer
         if (lower.contains("glyph") || lower.contains("text") || layer is CanvasLayer.CenterGlyph || layer is CanvasLayer.TextLayer) {
             return findTextSelector(existingCss, html, primaryButtonSelector)
         }
 
-        // Keycap / Core child elements
-        if (lower.contains("keycap") || lower.contains("core") || lower.contains("cap") || lower.contains("surface")) {
-            val coreMatch = Regex("""([^\r\n{}]*(?:btn-core|core|keycap|cap|surface)[^\r\n{}]*)\s*\{""", RegexOption.IGNORE_CASE).find(existingCss)
-            if (coreMatch != null) {
-                return coreMatch.groupValues[1].trim()
+        // 4. Gloss Reflection / ::after
+        if (lower.contains("::after") || layer is CanvasLayer.GlossReflection) {
+            val afterSelectors = findAfterSelectors(existingCss)
+            if (afterSelectors.isNotEmpty()) {
+                if (afterSelectors.size == 1) return afterSelectors.first()
+
+                val rules = parseCssRules(existingCss).toMap()
+                val glossAfter = afterSelectors.firstOrNull { sel ->
+                    val b = rules[sel]?.lowercase() ?: ""
+                    b.contains("ellipse") || b.contains("radial-gradient") || b.contains("rotate")
+                }
+                if (glossAfter != null) return glossAfter
+
+                return afterSelectors.last()
             }
-            return "$primaryButtonSelector .btn-core"
+            return "$primaryButtonSelector::after"
         }
 
-        // Glow ring layer -> usually attached to primary button or ::before/::after
+        // 5. Explicit ::before
+        if (lower.contains("::before")) {
+            val beforeSelectors = findBeforeSelectors(existingCss)
+            if (beforeSelectors.isNotEmpty()) {
+                return beforeSelectors.first()
+            }
+            return "$primaryButtonSelector::before"
+        }
+
+        // 6. Cavity / InnerShadow
+        if (lower.contains("cavity") || layer is CanvasLayer.InnerShadow) {
+            val insetSelectors = findSelectorsWithInsetShadow(existingCss)
+            if (insetSelectors.isNotEmpty()) {
+                val innerRank = doc?.canvas?.layers?.take(layerIndex + 1)?.count { it is CanvasLayer.InnerShadow }?.minus(1)?.coerceAtLeast(0) ?: 0
+                return insetSelectors.getOrNull(innerRank.coerceIn(0, insetSelectors.lastIndex)) ?: insetSelectors.first()
+            }
+            val boxes = collectCandidateBoxSelectors(html, existingCss, primaryButtonSelector)
+            if (boxes.isNotEmpty()) {
+                return boxes.lastOrNull { it.contains("core", ignoreCase = true) } ?: boxes.first()
+            }
+            return primaryButtonSelector
+        }
+
+        // 7. Glow ring layer
         if (lower.contains("glow") || layer is CanvasLayer.GlowRing) {
             val glowMatch = Regex("""([^\r\n{}]*(?:btn-glow|glow)[^\r\n{}]*)\s*\{""", RegexOption.IGNORE_CASE).find(existingCss)
             if (glowMatch != null) {
@@ -427,20 +601,40 @@ object NxprcSurgicalReplacer {
             return primaryButtonSelector
         }
 
-        // Synthetic studio selectors like `.layer-0-SOCKET`, `.layer-0-bezel`, `.layer-X`
-        if (trimmed.startsWith(".layer-")) {
-            if (layerIndex == 0 || layer is CanvasLayer.BezelSocket || layer is CanvasLayer.BoxLayer) {
-                if (layerIndex > 0) {
-                    val coreMatch = Regex("""([^\r\n{}]*(?:btn-core|core|keycap|cap|surface)[^\r\n{}]*)\s*\{""", RegexOption.IGNORE_CASE).find(existingCss)
-                    if (coreMatch != null) {
-                        return coreMatch.groupValues[1].trim()
-                    }
-                }
-                return primaryButtonSelector
+        // 8. Molded Bezel Socket
+        if (lower.contains("bezel") || lower.contains("socket") || layer is CanvasLayer.BezelSocket) {
+            val bezelMatch = Regex("""([^\r\n{}]*(?:bezel|socket)[^\r\n{}]*)\s*\{""", RegexOption.IGNORE_CASE).find(existingCss)
+            if (bezelMatch != null) {
+                return bezelMatch.groupValues[1].trim()
+            }
+            val boxes = collectCandidateBoxSelectors(html, existingCss, primaryButtonSelector)
+            if (boxes.isNotEmpty()) return boxes.first()
+            return primaryButtonSelector
+        }
+
+        // 9. BoxLayer, GradientShape, or generic .layer- selector
+        val candidateBoxes = collectCandidateBoxSelectors(html, existingCss, primaryButtonSelector)
+        if (candidateBoxes.isNotEmpty()) {
+            val boxRank = doc?.canvas?.layers?.take(layerIndex + 1)?.count {
+                it is CanvasLayer.BoxLayer || it is CanvasLayer.GradientShape
+            }?.minus(1)?.coerceAtLeast(0) ?: layerIndex.coerceIn(0, candidateBoxes.lastIndex)
+
+            val matchedBox = candidateBoxes.getOrNull(boxRank.coerceIn(0, candidateBoxes.lastIndex))
+            if (matchedBox != null) {
+                return matchedBox
             }
         }
 
-        return trimmed
+        // 10. Fallback heuristics if candidate boxes was empty
+        if (lower.contains("keycap") || lower.contains("core") || lower.contains("cap") || lower.contains("surface")) {
+            val coreMatch = Regex("""([^\r\n{}]*(?:btn-core|core|keycap|cap|surface)[^\r\n{}]*)\s*\{""", RegexOption.IGNORE_CASE).find(existingCss)
+            if (coreMatch != null) {
+                return coreMatch.groupValues[1].trim()
+            }
+            return "$primaryButtonSelector .btn-core"
+        }
+
+        return primaryButtonSelector
     }
 
     /**
@@ -453,26 +647,10 @@ object NxprcSurgicalReplacer {
         layerIndex: Int,
         layer: CanvasLayer?,
         primaryButtonSelector: String,
-        html: String
+        html: String,
+        doc: NxprcDocument? = null
     ): String {
-        val targetSelector = when {
-            layer is CanvasLayer.GlossReflection || layer?.javaClass?.simpleName?.contains("Gloss") == true -> {
-                val beforeMatch = Regex("""([^\r\n{}]*::before[^\r\n{}]*)\s*\{""").find(css)
-                beforeMatch?.groupValues?.get(1)?.trim() ?: "$primaryButtonSelector::before"
-            }
-            layer is CanvasLayer.InnerShadow || layer?.javaClass?.simpleName?.contains("Shadow") == true -> {
-                val afterMatch = Regex("""([^\r\n{}]*::after[^\r\n{}]*)\s*\{""").find(css)
-                afterMatch?.groupValues?.get(1)?.trim() ?: primaryButtonSelector
-            }
-            layer is CanvasLayer.CenterGlyph || layer is CanvasLayer.TextLayer || layer?.javaClass?.simpleName?.contains("Glyph") == true || layer?.javaClass?.simpleName?.contains("Text") == true -> {
-                findTextSelector(css, html, primaryButtonSelector)
-            }
-            layer is CanvasLayer.BoxLayer && layerIndex > 0 -> {
-                val coreMatch = Regex("""([^\r\n{}]*(?:btn-core|core|keycap|cap|surface)[^\r\n{}]*)\s*\{""", RegexOption.IGNORE_CASE).find(css)
-                coreMatch?.groupValues?.get(1)?.trim() ?: "$primaryButtonSelector .btn-core"
-            }
-            else -> primaryButtonSelector
-        }
+        val targetSelector = resolveTargetSelector("", layerIndex, layer, primaryButtonSelector, css, html, doc)
 
         val escapedParts = targetSelector.trim().split(Regex("""\s+""")).map { Regex.escape(it) }
         val selectorPattern = escapedParts.joinToString("""\s+""")

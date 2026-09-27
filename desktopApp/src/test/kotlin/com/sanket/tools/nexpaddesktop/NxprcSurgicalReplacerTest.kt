@@ -3,6 +3,8 @@ package com.sanket.tools.nexpaddesktop
 import com.sanket.tools.nexpad.nxprc.CanvasLayer
 import com.sanket.tools.nexpad.nxprc.NxprcDocument
 import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
+import com.sanket.tools.nexpaddesktop.plugins.NxprcLayerCodeGenerator
+import com.sanket.tools.nexpaddesktop.plugins.NxprcPresets
 import com.sanket.tools.nexpaddesktop.plugins.NxprcSurgicalReplacer
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -315,6 +317,163 @@ box-shadow: 0 4px 8px black;
         val updatedGlyph = updatedDoc.canvas.layers.filterIsInstance<CanvasLayer.CenterGlyph>().first()
         assertEquals("X", updatedGlyph.text, "CenterGlyph text must update from 'A' to 'X'")
         assertEquals(44.0f, updatedGlyph.fontSizeSp)
+    }
+
+    @Test
+    fun testApplyDirectEditSnippetOnAllLayersOfPreset() {
+        val html = NxprcPresets.PRESET_NEO_TACTILE_A
+        val initialDoc = NxprcHtmlCssConverter.convert(html, "rc.action_a", "Action A")
+        for (i in initialDoc.canvas.layers.indices) {
+            val layer = initialDoc.canvas.layers[i]
+            val details = NxprcLayerCodeGenerator.getLayerDetails(i, layer, initialDoc)
+            val modifiedSnippet = if (details.codeSnippet.contains("background:")) {
+                details.codeSnippet.replace(Regex("""background:\s*[^;]+;"""), "background: #FF0055;")
+            } else if (details.codeSnippet.contains("color:")) {
+                details.codeSnippet.replace(Regex("""color:\s*[^;]+;"""), "color: #FF0055;")
+            } else if (details.codeSnippet.contains("box-shadow:")) {
+                details.codeSnippet.replace(Regex("""box-shadow:\s*[^;]+;"""), "box-shadow: 0 0 50px #FF0055;")
+            } else {
+                details.codeSnippet
+            }
+
+            val result = NxprcSurgicalReplacer.applySurgicalChange(
+                originalHtml = html,
+                layerIndex = i,
+                layer = layer,
+                doc = initialDoc,
+                replacementInput = modifiedSnippet
+            )
+            println("Layer $i (${details.title}): success=${result.success}, msg=${result.message}")
+            assertTrue(result.success, "Layer $i (${details.title}) surgical apply failed: ${result.message}")
+            if (modifiedSnippet.contains("#FF0055")) {
+                assertTrue(
+                    result.updatedHtml.contains("#FF0055"),
+                    "Layer $i (${details.title}) updatedHtml did not contain #FF0055!\nSnippet:\n$modifiedSnippet\nUpdated HTML:\n${result.updatedHtml}"
+                )
+            }
+            val recompiled = NxprcHtmlCssConverter.convert(result.updatedHtml, "rc.action_a", "Action A")
+            assertNotNull(recompiled, "Recompiled doc must not be null for layer $i")
+        }
+    }
+
+    @Test
+    fun testShinobiButtonSurgicalLayerUpdates() {
+        val shinobiHtml = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --spring-damping: 0.68;
+    --spring-stiffness: 440;
+    --press-scale: 0.92;
+    --nx-glow: rgba(249, 115, 22, 0.65);
+  }
+  .nexpad-btn {
+    position: relative;
+    width: 96px;
+    height: 96px;
+  }
+  .btn-base {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 36%, #3a3f4d 0%, #20242c 55%, #13151b 100%);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.78);
+  }
+  .btn-base::before {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border-radius: 50%;
+    background: #2b303c;
+  }
+  .btn-base::after {
+    content: "";
+    position: absolute;
+    inset: 7px;
+    border-radius: 50%;
+    background: #0a0b0e;
+    box-shadow: 0 0 22px var(--nx-glow);
+  }
+  .btn-core {
+    position: absolute;
+    inset: 12px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 45% 35%, #2a2e39 0%, #15171d 70%, #0d0e12 100%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+  .btn-core::after {
+    content: "";
+    position: absolute;
+    top: 5%;
+    left: 14%;
+    width: 72%;
+    height: 38%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.55) 0%, transparent 70%);
+  }
+  .shuriken-emblem {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+  }
+  .btn-label {
+    position: absolute;
+    font-size: 34px;
+    color: #ffffff;
+  }
+  .nexpad-btn:active {
+    transform: scale(0.92) translateY(3px);
+  }
+</style>
+</head>
+<body>
+  <button class="nexpad-btn" data-control="A" data-category="BUTTON" data-name="Shinobi Face Button A">
+    <div class="btn-base"></div>
+    <div class="btn-core"></div>
+    <svg class="shuriken-emblem" viewBox="0 0 100 100">
+      <path d="M 50 8 C 53 26 56 36 68 40 Z" fill="#fdba74"/>
+    </svg>
+    <span class="btn-label">A</span>
+  </button>
+</body>
+</html>
+""".trimIndent()
+
+        val initialDoc = NxprcHtmlCssConverter.convert(shinobiHtml, "rc.shinobi_a", "Shinobi A")
+        for (i in initialDoc.canvas.layers.indices) {
+            val layer = initialDoc.canvas.layers[i]
+            val details = NxprcLayerCodeGenerator.getLayerDetails(i, layer, initialDoc)
+            val modifiedSnippet = if (details.codeSnippet.contains("background:")) {
+                details.codeSnippet.replace(Regex("""background:\s*[^;]+;"""), "background: #00E5FF;")
+            } else if (details.codeSnippet.contains("color:")) {
+                details.codeSnippet.replace(Regex("""color:\s*[^;]+;"""), "color: #00E5FF;")
+            } else if (details.codeSnippet.contains("fill=")) {
+                details.codeSnippet.replace(Regex("""fill="[^"]+""""), "fill=\"#00E5FF\"")
+            } else {
+                details.codeSnippet
+            }
+
+            val result = NxprcSurgicalReplacer.applySurgicalChange(
+                originalHtml = shinobiHtml,
+                layerIndex = i,
+                layer = layer,
+                doc = initialDoc,
+                replacementInput = modifiedSnippet
+            )
+            println("Shinobi Layer $i (${details.title}): success=${result.success}, msg=${result.message}")
+            assertTrue(result.success, "Shinobi Layer $i (${details.title}) surgical apply failed: ${result.message}")
+            if (modifiedSnippet.contains("#00E5FF")) {
+                assertTrue(
+                    result.updatedHtml.contains("#00E5FF"),
+                    "Shinobi Layer $i (${details.title}) updatedHtml did not contain #00E5FF!\nSnippet:\n$modifiedSnippet\nUpdated HTML:\n${result.updatedHtml}"
+                )
+            }
+            val recompiled = NxprcHtmlCssConverter.convert(result.updatedHtml, "rc.shinobi_a", "Shinobi A")
+            assertNotNull(recompiled, "Recompiled doc must not be null for Shinobi layer $i")
+        }
     }
 }
 
