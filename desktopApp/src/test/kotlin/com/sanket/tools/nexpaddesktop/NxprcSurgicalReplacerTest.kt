@@ -475,5 +475,229 @@ box-shadow: 0 4px 8px black;
             assertNotNull(recompiled, "Recompiled doc must not be null for Shinobi layer $i")
         }
     }
+
+    @Test
+    fun testRgbButtonSurgicalDiffusionLayerUpdate() {
+        val rgbHtml = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+:root {
+  --spring-damping: 0.68;
+  --spring-stiffness: 440;
+  --press-scale: 0.94;
+
+  --rgb-red: #ff3158;
+  --rgb-green: #42ff8a;
+  --rgb-blue: #3d8bff;
+}
+
+.nexpad-btn {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+
+  background:
+    radial-gradient(
+      circle at 32% 28%,
+      rgba(255,255,255,0.38) 0%,
+      rgba(255,255,255,0.08) 18%,
+      transparent 35%
+    ),
+    radial-gradient(
+      circle at 50% 45%,
+      rgba(255,255,255,0.08) 0%,
+      transparent 48%
+    ),
+    linear-gradient(
+      145deg,
+      #20252d 0%,
+      #11151b 52%,
+      #080a0e 100%
+    );
+
+  box-shadow:
+    0 8px 18px rgba(0,0,0,0.65),
+    0 2px 5px rgba(0,0,0,0.5),
+    inset 0 2px 3px rgba(255,255,255,0.28),
+    inset 0 -7px 12px rgba(0,0,0,0.75);
+
+  transform-origin: center;
+}
+
+/* RGB illumination ring */
+.nexpad-btn::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 5px;
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+
+  background:
+    conic-gradient(
+      from 0deg,
+      var(--rgb-red),
+      var(--rgb-green),
+      var(--rgb-blue),
+      var(--rgb-red)
+    );
+
+  box-shadow:
+    0 0 5px rgba(255,255,255,0.35),
+    0 0 14px rgba(65,145,255,0.32),
+    inset 0 1px 2px rgba(255,255,255,0.4);
+
+  animation: rgbRotate 5s linear infinite;
+  opacity: 0.9;
+}
+
+/* Main circular button face */
+.nexpad-btn::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle at 34% 26%,
+      rgba(255,255,255,0.46) 0%,
+      rgba(255,255,255,0.1) 15%,
+      transparent 32%
+    ),
+    linear-gradient(
+      145deg,
+      #4d5560 0%,
+      #252b34 35%,
+      #11151c 72%,
+      #090b10 100%
+    );
+
+  box-shadow:
+    inset 0 3px 4px rgba(255,255,255,0.24),
+    inset 0 -8px 10px rgba(0,0,0,0.72),
+    0 2px 5px rgba(0,0,0,0.65);
+
+  z-index: 2;
+}
+
+/* Real DOM label */
+.btn-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 96px;
+  height: 96px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  z-index: 3;
+
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+
+  color: #ffffff;
+
+  text-shadow:
+    0 1px 1px rgba(0,0,0,0.95),
+    0 2px 4px rgba(0,0,0,0.8),
+    0 0 8px rgba(255,255,255,0.18);
+}
+
+.nexpad-btn:active {
+  transform: scale(var(--press-scale)) translateY(2px);
+}
+</style>
+</head>
+<body>
+<button
+  class="nexpad-btn"
+  data-control="A"
+  data-category="BUTTON"
+  data-name="RGB A Button"
+>
+  <span class="btn-label">A</span>
+</button>
+</body>
+</html>
+""".trimIndent()
+
+        val doc = NxprcHtmlCssConverter.convert(rgbHtml, "rc.rgb_a", "RGB A")
+
+        // 1. Verify prompt generation includes full component source code context & target selector
+        val prompt = NxprcLayerCodeGenerator.generateLayerAiPrompt(
+            layerIndex = 1,
+            layer = doc.canvas.layers[1],
+            doc = doc,
+            userInstruction = "make this color only green shaders",
+            htmlSource = rgbHtml
+        )
+        assertTrue(prompt.contains("FULL COMPONENT SOURCE CODE"), "Prompt must contain full source code context")
+        assertTrue(prompt.contains(".nexpad-btn::before"), "Prompt must identify .nexpad-btn::before as target selector")
+
+        // 2. Apply the AI's green conic-gradient replacement for Layer 1 (.layer-1-DIFFUSION)
+        val aiSnippet = """
+.layer-1-DIFFUSION {
+  position: absolute;
+  width: 86px;
+  height: 86px;
+  border-radius: 43px;
+  background: conic-gradient(
+    from 0deg,
+    #0B3D25,
+    #16A05D,
+    #42FF8A,
+    #0F6B3C,
+    #7AFFA8,
+    #168A4D,
+    #0B3D25
+  );
+  box-shadow:
+    0px 0px 5px 0px rgba(74, 222, 128, 0.38),
+    0px 0px 14px 0px rgba(34, 197, 94, 0.34),
+    inset 0px 1px 2px 0px rgba(210, 255, 225, 0.42);
+  opacity: 0.9;
+}
+""".trimIndent()
+
+        val result = NxprcSurgicalReplacer.applySurgicalChange(
+            originalHtml = rgbHtml,
+            layerIndex = 1,
+            layer = doc.canvas.layers[1],
+            doc = doc,
+            replacementInput = aiSnippet
+        )
+
+        assertTrue(result.success, "Surgical apply of green shaders failed: ${result.message}")
+        assertTrue(result.updatedHtml.contains("#0B3D25"), "Updated HTML must contain new green gradient stop")
+        assertTrue(result.updatedHtml.contains(".nexpad-btn::before"), "Updated HTML must preserve .nexpad-btn::before rule")
+
+        // 3. Verify recompiled doc compiles cleanly and Layer 1 contains the new fills
+        val recompiled = NxprcHtmlCssConverter.convert(result.updatedHtml, "rc.rgb_a", "RGB A")
+        assertNotNull(recompiled, "Recompiled document must not be null")
+        val updatedLayer = recompiled.canvas.layers[1] as CanvasLayer.BoxLayer
+        println("Updated Layer 1 fills: ${updatedLayer.fills}")
+    }
 }
 

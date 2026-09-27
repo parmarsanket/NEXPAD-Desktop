@@ -861,7 +861,8 @@ fun LayerStudioFullScreen(
                                             layerIndex = safeSelectedIndex,
                                             layer = selectedLayer,
                                             doc = document,
-                                            userInstruction = userAiPrompt
+                                            userInstruction = userAiPrompt,
+                                            htmlSource = htmlSource
                                         )
                                         Toolkit.getDefaultToolkit().systemClipboard.setContents(
                                             StringSelection(surgicalPrompt),

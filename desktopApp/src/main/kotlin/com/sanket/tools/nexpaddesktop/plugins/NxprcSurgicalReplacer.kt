@@ -380,17 +380,17 @@ object NxprcSurgicalReplacer {
             return rules.firstOrNull { Regex("""(?:^|\s|,)$escaped(?:\s|,|$)""").containsMatchIn(it.first) }?.first
         }
 
-        // 1. Root button ::before
+        // 1. Root button itself (SURFACE - LayerStack.SURFACE = 3000)
+        val rootRule = findRuleFor(primaryButtonSelector)
+        if (rootRule != null && hasBoxStyles(ruleMap[rootRule])) {
+            candidates.add(rootRule)
+        }
+
+        // 2. Root button ::before (BEFORE - LayerStack.BEFORE = 4000)
         val rootBefore = findRuleFor("$primaryButtonSelector::before")
             ?: rules.firstOrNull { it.first.contains("::before") && !it.first.contains(" ") }?.first
         if (rootBefore != null && hasBoxStyles(ruleMap[rootBefore])) {
             candidates.add(rootBefore)
-        }
-
-        // 2. Root button itself
-        val rootRule = findRuleFor(primaryButtonSelector)
-        if (rootRule != null && hasBoxStyles(ruleMap[rootRule])) {
-            candidates.add(rootRule)
         }
 
         // 3. Child elements inside <button>...</button>

@@ -366,43 +366,73 @@ object NxprcLayerCodeGenerator {
 
     /**
      * Constructs a surgical single-layer AI prompt with strict boundaries.
-     * The model is instructed to modify or replace ONLY this layer without hallucinating
-     * changes to working layers or returning a monolithic button rewrite.
+     * The model is provided with the full component source code for complete context
+     * (palette, CSS custom properties, lighting harmony) along with the isolated target layer,
+     * its exact target selector in source, and strict output constraints.
      */
     fun generateLayerAiPrompt(
         layerIndex: Int,
         layer: CanvasLayer,
         doc: NxprcDocument,
-        userInstruction: String
+        userInstruction: String,
+        htmlSource: String? = null
     ): String {
         val details = getLayerDetails(layerIndex, layer, doc)
         val w = doc.manifest.widthDp
         val h = doc.manifest.heightDp
 
-        return """
-# NEXPAD SURGICAL SINGLE-LAYER MODIFICATION TASK
+        val targetSelector = if (!htmlSource.isNullOrBlank()) {
+            val primaryButtonSelector = NxprcSurgicalReplacer.findPrimaryButtonSelector(htmlSource)
+            val styleRegex = Regex("""<style[^>]*>([\s\S]*?)<\/style>""", RegexOption.IGNORE_CASE)
+            val css = styleRegex.find(htmlSource)?.groupValues?.get(1) ?: ""
+            NxprcSurgicalReplacer.resolveTargetSelector(
+                rawSelector = "",
+                layerIndex = layerIndex,
+                layer = layer,
+                primaryButtonSelector = primaryButtonSelector,
+                existingCss = css,
+                html = htmlSource,
+                doc = doc
+            )
+        } else {
+            details.title
+        }
 
-## TARGET COMPONENT CONTEXT
-- Gamepad Button: ${doc.manifest.defaultControl} (${doc.manifest.category})
-- Canvas Size: ${w}x${h}dp (ViewBox: ${doc.canvas.viewBoxWidth.toInt()}x${doc.canvas.viewBoxHeight.toInt()})
-- Target Layer Index: #$layerIndex
-- Layer Name: ${details.title}
-- Layer Classification: ${details.categoryBadge}
-
-## CURRENT LAYER DECOMPOSED CODE
-```css
-${details.codeSnippet}
-```
-
-## USER MODIFICATION REQUEST
-"${userInstruction.ifBlank { "Refine and improve this layer with higher visual fidelity matching cyberpunk/tactile gamepad style" }}"
-
-## STRICT CONTRACT & OUTPUT CONSTRAINTS
-1. Output ONLY the replacement CSS rule or SVG element for this single layer (Layer #$layerIndex).
-2. Do NOT regenerate or output the outer <button> wrapper, the root layout, or any other layers.
-3. Keep coordinates and dimensions compatible with the parent ${w}x${h}dp button container.
-4. If modifying SVG paths, use standard SVG path syntax (M, L, C, Q, Z).
-5. Output pure code without conversational markdown filler.
-""".trimIndent()
+        return buildString {
+            appendLine("# NEXPAD SURGICAL SINGLE-LAYER MODIFICATION TASK")
+            appendLine()
+            appendLine("## TARGET COMPONENT CONTEXT")
+            appendLine("- Gamepad Button: ${doc.manifest.defaultControl} (${doc.manifest.category})")
+            appendLine("- Canvas Size: ${w}x${h}dp (ViewBox: ${doc.canvas.viewBoxWidth.toInt()}x${doc.canvas.viewBoxHeight.toInt()})")
+            appendLine("- Target Layer Index: #$layerIndex")
+            appendLine("- Layer Name: ${details.title}")
+            appendLine("- Layer Classification: ${details.categoryBadge}")
+            if (targetSelector.isNotBlank() && targetSelector != details.title) {
+                appendLine("- Target CSS Selector in Source: `$targetSelector`")
+            }
+            appendLine()
+            appendLine("## CURRENT LAYER DECOMPOSED CODE")
+            appendLine("```css")
+            appendLine(details.codeSnippet)
+            appendLine("```")
+            appendLine()
+            if (!htmlSource.isNullOrBlank()) {
+                appendLine("## FULL COMPONENT SOURCE CODE (FOR PALETTE, VARIABLES & THEME HARMONY)")
+                appendLine("```html")
+                appendLine(htmlSource.trim())
+                appendLine("```")
+                appendLine()
+            }
+            appendLine("## USER MODIFICATION REQUEST")
+            appendLine("\"${userInstruction.ifBlank { "Refine and improve this layer with higher visual fidelity matching the parent component style" }}\"")
+            appendLine()
+            appendLine("## STRICT CONTRACT & OUTPUT CONSTRAINTS")
+            appendLine("1. Output ONLY the replacement CSS rule (targeting `$targetSelector` or `.layer-$layerIndex-${details.categoryBadge}`) or SVG element for this single layer (Layer #$layerIndex).")
+            appendLine("2. Harmonize colors, gradients, lighting, and effects with the parent component's palette and CSS custom properties.")
+            appendLine("3. Do NOT output the outer <button> wrapper, the root layout, or any other layers.")
+            appendLine("4. Keep coordinates and dimensions compatible with the parent ${w}x${h}dp button container.")
+            appendLine("5. If modifying SVG paths, use standard SVG path syntax (M, L, C, Q, Z).")
+            appendLine("6. Output pure code without conversational markdown filler.")
+        }.trimEnd()
     }
 }
