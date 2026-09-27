@@ -33,6 +33,9 @@ dependencies {
     implementation("androidx.navigation3:navigation3-runtime:1.1.0")
     implementation("org.jetbrains.androidx.navigation3:navigation3-ui:1.1.1")
 
+    // Reorderable Drag and Drop
+    implementation(libs.reorderable)
+
     testImplementation(libs.junit)
     testImplementation(libs.kotlin.test)
 }

@@ -762,4 +762,61 @@ object NxprcSurgicalReplacer {
         }
         return map
     }
+
+    /**
+     * Updates or injects `z-index: $newZIndex;` into the CSS rule corresponding to [layer] in [originalHtml].
+     * Preserves all other CSS properties, selectors, and comments.
+     */
+    fun updateLayerZIndexInHtml(
+        originalHtml: String,
+        layerIndex: Int,
+        layer: CanvasLayer?,
+        doc: NxprcDocument,
+        newZIndex: Int
+    ): String {
+        val styleRegex = Regex("""(<style[^>]*>)([\s\S]*?)(<\/style>)""", RegexOption.IGNORE_CASE)
+        val styleMatch = styleRegex.find(originalHtml) ?: return originalHtml
+        val originalCss = styleMatch.groupValues[2]
+
+        val primaryButtonSelector = findPrimaryButtonSelector(originalHtml)
+        val targetSelector = resolveTargetSelector("", layerIndex, layer, primaryButtonSelector, originalCss, originalHtml, doc)
+
+        val escapedParts = targetSelector.trim().split(Regex("""\s+""")).map { Regex.escape(it) }
+        val selectorPattern = escapedParts.joinToString("""\s+""")
+        val ruleRegex = Regex("""([^\r\n{}]*$selectorPattern\s*\{)([\s\S]*?)(\})""")
+
+        val updatedCss = if (ruleRegex.containsMatchIn(originalCss)) {
+            ruleRegex.replace(originalCss) { m ->
+                val existingBody = m.groupValues[2]
+                val mergedBody = mergeDeclarations(existingBody, "z-index: $newZIndex;")
+                "${m.groupValues[1]}\n$mergedBody\n${m.groupValues[3]}"
+            }
+        } else {
+            val formattedBody = mergeDeclarations("", "z-index: $newZIndex;")
+            originalCss.trimEnd() + "\n\n$targetSelector {\n$formattedBody\n}\n"
+        }
+
+        return styleRegex.replaceFirst(originalHtml, "${styleMatch.groupValues[1]}$updatedCss${styleMatch.groupValues[3]}")
+    }
+
+    /**
+     * Synchronizes CSS `z-index` for all distinct identifiable layers in [doc] within [originalHtml].
+     */
+    fun syncLayersZIndexInHtml(
+        originalHtml: String,
+        doc: NxprcDocument
+    ): String {
+        var currentHtml = originalHtml
+        val layers = doc.canvas.layers
+        for (i in layers.indices) {
+            currentHtml = updateLayerZIndexInHtml(
+                originalHtml = currentHtml,
+                layerIndex = i,
+                layer = layers[i],
+                doc = doc,
+                newZIndex = i
+            )
+        }
+        return currentHtml
+    }
 }

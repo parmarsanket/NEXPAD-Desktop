@@ -370,4 +370,131 @@ class NxprcLayerStudioTest {
         assertFalse(hasUnsavedChanges)
         assertTrue(parentHtml.contains("#00FF00"), "Parent HTML must contain saved change")
     }
+
+    @Test
+    fun updateLayerZIndexInHtmlInjectsAndUpdatesZIndex() {
+        val originalHtml = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+            <style>
+            .nexpad-btn {
+                position: relative;
+                width: 96px;
+                height: 96px;
+                background: #101010;
+            }
+            .nexpad-btn::before {
+                content: '';
+                position: absolute;
+                background: #222222;
+                z-index: 1;
+            }
+            .nexpad-btn .btn-label {
+                position: absolute;
+                color: #ffffff;
+            }
+            </style>
+            </head>
+            <body>
+            <button class="nexpad-btn">
+                <span class="btn-label">A</span>
+            </button>
+            </body>
+            </html>
+        """.trimIndent()
+
+        val doc = NxprcHtmlCssConverter.convert(
+            source = originalHtml,
+            id = "rc.test_btn",
+            name = "Test Button",
+            category = "BUTTON",
+            defaultControl = "A"
+        )
+
+        // 1. Update layer with existing z-index (::before at z-index 1 -> change to 5)
+        val beforeLayer = doc.canvas.layers.getOrNull(1)
+        val updatedHtml1 = NxprcSurgicalReplacer.updateLayerZIndexInHtml(
+            originalHtml = originalHtml,
+            layerIndex = 1,
+            layer = beforeLayer,
+            doc = doc,
+            newZIndex = 5
+        )
+        assertTrue(updatedHtml1.contains("z-index: 5;"), "Updated HTML must contain new z-index: 5")
+
+        // 2. Inject z-index into layer that had none (.btn-label -> newZIndex = 10)
+        val labelLayer = doc.canvas.layers.lastOrNull()
+        val updatedHtml2 = NxprcSurgicalReplacer.updateLayerZIndexInHtml(
+            originalHtml = originalHtml,
+            layerIndex = doc.canvas.layers.lastIndex,
+            layer = labelLayer,
+            doc = doc,
+            newZIndex = 10
+        )
+        assertTrue(updatedHtml2.contains("z-index: 10;"), "Updated HTML must have injected z-index: 10")
+    }
+
+    @Test
+    fun syncLayersZIndexInHtmlSynchronizesAllLayers() {
+        val originalHtml = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+            <style>
+            .nexpad-btn {
+                position: relative;
+                width: 96px;
+                height: 96px;
+                background: #111111;
+            }
+            .nexpad-btn .glow {
+                position: absolute;
+                box-shadow: 0 0 10px #00F0FF;
+            }
+            .nexpad-btn .cap {
+                position: absolute;
+                background: #333333;
+            }
+            .nexpad-btn .btn-label {
+                position: absolute;
+                color: #ffffff;
+            }
+            </style>
+            </head>
+            <body>
+            <button class="nexpad-btn">
+                <div class="glow"></div>
+                <div class="cap"></div>
+                <span class="btn-label">A</span>
+            </button>
+            </body>
+            </html>
+        """.trimIndent()
+
+        val doc = NxprcHtmlCssConverter.convert(
+            source = originalHtml,
+            id = "rc.test_btn",
+            name = "Test Button",
+            category = "BUTTON",
+            defaultControl = "A"
+        )
+
+        // Reverse layers order: simulate dragging top layer to bottom
+        val reversedLayers = doc.canvas.layers.reversed()
+        val reorderedDoc = doc.copy(
+            canvas = doc.canvas.copy(layers = reversedLayers)
+        )
+
+        val syncedHtml = NxprcSurgicalReplacer.syncLayersZIndexInHtml(originalHtml, reorderedDoc)
+
+        // All layers should now have z-index corresponding to their new index (0 .. N-1)
+        for (i in reorderedDoc.canvas.layers.indices) {
+            assertTrue(
+                syncedHtml.contains("z-index: $i;"),
+                "Synced HTML must contain z-index: $i for layer $i in reordered document"
+            )
+        }
+    }
 }
+

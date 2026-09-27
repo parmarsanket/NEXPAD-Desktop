@@ -3,6 +3,9 @@ package com.sanket.tools.nexpaddesktop.ui.designer
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -22,6 +25,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import com.sanket.tools.nexpad.nxprc.CanvasLayer
 import com.sanket.tools.nexpad.nxprc.NxprcDocument
 import com.sanket.tools.nexpaddesktop.plugins.LayerDetails
@@ -67,6 +72,16 @@ fun LayerStudioFullScreen(
     var currentHtml by remember(htmlSource) { mutableStateOf(htmlSource) }
     var currentDoc by remember(document) { mutableStateOf(document) }
     var hasUnsavedChanges by remember { mutableStateOf(false) }
+
+    // Stable layer IDs for animated reorderable list
+    var layerIds by remember(document) {
+        mutableStateOf(document.canvas.layers.indices.map { "layer_id_$it" })
+    }
+    if (layerIds.size != currentDoc.canvas.layers.size) {
+        layerIds = currentDoc.canvas.layers.indices.map { "layer_id_$it" }
+    }
+
+    val layerLazyListState = rememberLazyListState()
 
     val layers = currentDoc.canvas.layers
     val totalLayers = layers.size
@@ -333,7 +348,7 @@ fun LayerStudioFullScreen(
                 // =====================================================================
                 Column(
                     modifier = Modifier
-                        .width(310.dp)
+                        .width(325.dp)
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(10.dp))
                         .background(Color(0xFF090D18))
@@ -388,15 +403,96 @@ fun LayerStudioFullScreen(
                         }
                     }
 
-                    // Scrollable Layer Stack
-                    val rawIndices = (0 until totalLayers).toList()
-                    val orderedIndices = if (reverseStackOrder) rawIndices.reversed() else rawIndices
-                    val filteredIndices = orderedIndices.filter { idx ->
-                        val layer = layers[idx]
-                        val details = NxprcLayerCodeGenerator.getLayerDetails(idx, layer, currentDoc)
-                        val matchesCat = selectedCategoryFilter == "ALL" || details.categoryBadge.equals(selectedCategoryFilter, ignoreCase = true)
-                        val matchesSearch = searchQuery.isBlank() || details.title.contains(searchQuery, ignoreCase = true) || details.categoryBadge.contains(searchQuery, ignoreCase = true)
-                        matchesCat && matchesSearch
+                    // Scrollable Layer Stack with Reorderable Drag and Drop
+                    val allLayerItems = currentDoc.canvas.layers.mapIndexed { idx, layer ->
+                        LayerStackItem(
+                            layerIndex = idx,
+                            id = layerIds.getOrElse(idx) { "layer_id_$idx" },
+                            layer = layer
+                        )
+                    }
+                    val orderedLayerItems = if (reverseStackOrder) allLayerItems.reversed() else allLayerItems
+                    val canReorder = selectedCategoryFilter == "ALL" && searchQuery.isBlank()
+                    val filteredLayerItems = if (!canReorder) {
+                        orderedLayerItems.filter { item ->
+                            val details = NxprcLayerCodeGenerator.getLayerDetails(item.layerIndex, item.layer, currentDoc)
+                            val matchesCat = selectedCategoryFilter == "ALL" || details.categoryBadge.equals(selectedCategoryFilter, ignoreCase = true)
+                            val matchesSearch = searchQuery.isBlank() || details.title.contains(searchQuery, ignoreCase = true) || details.categoryBadge.contains(searchQuery, ignoreCase = true)
+                            matchesCat && matchesSearch
+                        }
+                    } else {
+                        orderedLayerItems
+                    }
+
+                    val reorderableLazyListState = rememberReorderableLazyListState(
+                        lazyListState = layerLazyListState
+                    ) { from, to ->
+                        val fromKey = from.key as? String ?: return@rememberReorderableLazyListState
+                        val toKey = to.key as? String ?: return@rememberReorderableLazyListState
+                        if (!canReorder) return@rememberReorderableLazyListState
+
+                        val fromVisualIdx = orderedLayerItems.indexOfFirst { it.id == fromKey }
+                        val toVisualIdx = orderedLayerItems.indexOfFirst { it.id == toKey }
+                        if (fromVisualIdx != -1 && toVisualIdx != -1 && fromVisualIdx != toVisualIdx) {
+                            val newVisualList = orderedLayerItems.toMutableList().apply {
+                                add(toVisualIdx, removeAt(fromVisualIdx))
+                            }
+                            val newUnderlyingList = if (reverseStackOrder) newVisualList.reversed() else newVisualList
+                            val fromLayerIdx = orderedLayerItems[fromVisualIdx].layerIndex
+                            val toLayerIdx = newUnderlyingList.indexOfFirst { it.id == fromKey }
+
+                            layerIds = newUnderlyingList.map { it.id }
+                            currentDoc = currentDoc.copy(
+                                canvas = currentDoc.canvas.copy(
+                                    layers = newUnderlyingList.map { it.layer }
+                                )
+                            )
+
+                            val newSelected = remapIndex(safeSelectedIndex, fromLayerIdx, toLayerIdx)
+                            if (newSelected != safeSelectedIndex) {
+                                onSelectedLayerChange(newSelected)
+                            }
+                            val currentSolo = soloLayerIndex
+                            if (currentSolo != null) {
+                                val newSolo = remapIndex(currentSolo, fromLayerIdx, toLayerIdx)
+                                if (newSolo != currentSolo) {
+                                    onSoloLayerChange(newSolo)
+                                }
+                            }
+                            val newActive = activeLayerIndices.map { remapIndex(it, fromLayerIdx, toLayerIdx) }.toSet()
+                            if (newActive != activeLayerIndices) {
+                                onActiveLayersChange(newActive)
+                            }
+                        }
+                    }
+
+                    var isAnyItemDragging by remember { mutableStateOf(false) }
+                    LaunchedEffect(reorderableLazyListState.isAnyItemDragging) {
+                        val dragging = reorderableLazyListState.isAnyItemDragging
+                        if (isAnyItemDragging && !dragging) {
+                            // Drag gesture completed: synchronize CSS z-index for all layers in currentHtml
+                            currentHtml = NxprcSurgicalReplacer.syncLayersZIndexInHtml(currentHtml, currentDoc)
+                            hasUnsavedChanges = true
+                            onFeedback("Reordered layers • Synchronized z-index in HTML/CSS")
+                        }
+                        isAnyItemDragging = dragging
+                    }
+
+                    if (!canReorder) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color(0xFF1E293B).copy(alpha = 0.6f))
+                                .padding(horizontal = 6.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "ℹ️ Drag-reorder paused during filter • Switch to ALL",
+                                color = Color(0xFF94A3B8),
+                                fontSize = 9.sp
+                            )
+                        }
                     }
 
                     Box(
@@ -404,141 +500,193 @@ fun LayerStudioFullScreen(
                             .fillMaxWidth()
                             .weight(1f)
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(rememberScrollState()),
+                        LazyColumn(
+                            state = layerLazyListState,
+                            modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            filteredIndices.forEach { idx ->
-                                val layer = layers[idx]
-                                val isActive = idx in activeLayerIndices
-                                val isSolo = soloLayerIndex == idx
-                                val isSelected = safeSelectedIndex == idx
-                                val details = remember(idx, layer, currentDoc) {
-                                    NxprcLayerCodeGenerator.getLayerDetails(idx, layer, currentDoc)
-                                }
-
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(
-                                            when {
-                                                isSelected -> Color(0xFF13223A)
-                                                isSolo -> Color(0xFF281D10)
-                                                !isActive -> Color(0xFF0C0F16)
-                                                else -> Color(0xFF0F1524)
-                                            }
-                                        )
-                                        .border(
-                                            width = if (isSelected) 1.5.dp else 1.dp,
-                                            color = when {
-                                                isSelected -> NeonPalette.Cyan
-                                                isSolo -> Color(0xFFF59E0B)
-                                                !isActive -> Color(0xFF1B1E28)
-                                                else -> Color(0xFF1E283E)
-                                            },
-                                            shape = RoundedCornerShape(8.dp)
-                                        )
-                                        .clickable { onSelectedLayerChange(idx) }
-                                        .padding(horizontal = 8.dp, vertical = 6.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    // 1. Mute Toggle Button
-                                    Box(
-                                        modifier = Modifier
-                                            .size(26.dp)
-                                            .clip(RoundedCornerShape(4.dp))
-                                            .background(if (isActive) Color(0xFF0B2F25) else Color(0xFF2A1215))
-                                            .border(1.dp, if (isActive) Color(0xFF10B981) else Color(0xFF7F1D1D), RoundedCornerShape(4.dp))
-                                            .clickable {
-                                                val newSet = if (isActive) activeLayerIndices - idx else activeLayerIndices + idx
-                                                onActiveLayersChange(newSet)
-                                                onFeedback(if (isActive) "Layer #$idx muted (cleanly omitted)" else "Layer #$idx activated")
-                                            },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(text = if (isActive) "👁️" else "🚫", fontSize = 11.sp)
+                            items(
+                                items = filteredLayerItems,
+                                key = { it.id }
+                            ) { item ->
+                                ReorderableItem(
+                                    state = reorderableLazyListState,
+                                    key = item.id,
+                                    enabled = canReorder
+                                ) { isDragging ->
+                                    val idx = item.layerIndex
+                                    val layer = item.layer
+                                    val isActive = idx in activeLayerIndices
+                                    val isSolo = soloLayerIndex == idx
+                                    val isSelected = safeSelectedIndex == idx
+                                    val details = remember(idx, layer, currentDoc) {
+                                        NxprcLayerCodeGenerator.getLayerDetails(idx, layer, currentDoc)
                                     }
 
-                                    // 2. Visual Isolated Skia Thumbnail
-                                    Box(
+                                    Row(
                                         modifier = Modifier
-                                            .size(46.dp)
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(Color(0xFF05070C))
-                                            .border(1.dp, Color(0xFF1E273A), RoundedCornerShape(6.dp))
-                                            .alpha(if (isActive) 1f else 0.4f),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        NxprcCanvasPreview(
-                                            document = currentDoc,
-                                            activeLayersOnly = listOf(layer),
-                                            sizeDp = 42
-                                        )
-                                    }
-
-                                    // 3. Layer Info & Badge
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(5.dp)
-                                        ) {
-                                            Text(
-                                                text = "#$idx",
-                                                color = Color.White.copy(alpha = 0.5f),
-                                                fontFamily = FontFamily.Monospace,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 10.5.sp
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(
+                                                when {
+                                                    isDragging -> Color(0xFF162D4A)
+                                                    isSelected -> Color(0xFF13223A)
+                                                    isSolo -> Color(0xFF281D10)
+                                                    !isActive -> Color(0xFF0C0F16)
+                                                    else -> Color(0xFF0F1524)
+                                                }
                                             )
-
-                                            val badgeCol = Color(details.badgeColor)
+                                            .border(
+                                                width = if (isDragging) 2.dp else if (isSelected) 1.5.dp else 1.dp,
+                                                color = when {
+                                                    isDragging -> NeonPalette.Cyan
+                                                    isSelected -> NeonPalette.Cyan
+                                                    isSolo -> Color(0xFFF59E0B)
+                                                    !isActive -> Color(0xFF1B1E28)
+                                                    else -> Color(0xFF1E283E)
+                                                },
+                                                shape = RoundedCornerShape(8.dp)
+                                            )
+                                            .clickable { onSelectedLayerChange(idx) }
+                                            .padding(horizontal = 6.dp, vertical = 6.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // 0. Drag Grip Handle
+                                        if (canReorder) {
                                             Box(
                                                 modifier = Modifier
-                                                    .clip(RoundedCornerShape(3.dp))
-                                                    .background(badgeCol.copy(alpha = if (isActive) 0.2f else 0.08f))
-                                                    .border(1.dp, badgeCol.copy(alpha = if (isActive) 0.8f else 0.3f), RoundedCornerShape(3.dp))
-                                                    .padding(horizontal = 4.dp, vertical = 1.dp)
+                                                    .draggableHandle()
+                                                    .size(22.dp)
+                                                    .clip(RoundedCornerShape(4.dp))
+                                                    .background(if (isDragging) NeonPalette.Cyan.copy(alpha = 0.2f) else Color(0xFF141A29))
+                                                    .border(
+                                                        0.5.dp,
+                                                        if (isDragging) NeonPalette.Cyan else Color(0xFF2A364E),
+                                                        RoundedCornerShape(4.dp)
+                                                    ),
+                                                contentAlignment = Alignment.Center
                                             ) {
                                                 Text(
-                                                    text = details.categoryBadge,
-                                                    color = if (isActive) badgeCol else badgeCol.copy(alpha = 0.4f),
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontSize = 8.5.sp
+                                                    text = "⠿",
+                                                    color = if (isDragging) NeonPalette.Cyan else Color(0xFF64748B),
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.Bold
                                                 )
-                                            }
-
-                                            if (!isActive) {
-                                                Text("(MUTED)", color = Color(0xFFEF4444), fontSize = 9.sp, fontWeight = FontWeight.Bold)
                                             }
                                         }
 
-                                        Text(
-                                            text = details.title,
-                                            color = if (isActive) Color.White else Color.White.copy(alpha = 0.4f),
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                            fontSize = 11.sp,
-                                            maxLines = 1
-                                        )
-                                    }
+                                        // 1. Mute Toggle Button
+                                        Box(
+                                            modifier = Modifier
+                                                .size(24.dp)
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(if (isActive) Color(0xFF0B2F25) else Color(0xFF2A1215))
+                                                .border(1.dp, if (isActive) Color(0xFF10B981) else Color(0xFF7F1D1D), RoundedCornerShape(4.dp))
+                                                .clickable {
+                                                    val newSet = if (isActive) activeLayerIndices - idx else activeLayerIndices + idx
+                                                    onActiveLayersChange(newSet)
+                                                    onFeedback(if (isActive) "Layer #$idx muted (cleanly omitted)" else "Layer #$idx activated")
+                                                },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(text = if (isActive) "👁️" else "🚫", fontSize = 10.sp)
+                                        }
 
-                                    // 4. Solo Button
-                                    Box(
-                                        modifier = Modifier
-                                            .size(26.dp)
-                                            .clip(RoundedCornerShape(4.dp))
-                                            .background(if (isSolo) Color(0xFFD97706) else Color(0xFF182030))
-                                            .border(1.dp, if (isSolo) Color(0xFFFBBF24) else Color(0xFF2A364E), RoundedCornerShape(4.dp))
-                                            .clickable {
-                                                val newSolo = if (isSolo) null else idx
-                                                onSoloLayerChange(newSolo)
-                                                onFeedback(if (newSolo != null) "Soloing Layer #$idx in workspace" else "Exited solo mode")
-                                            },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text("🎯", fontSize = 11.sp)
+                                        // 2. Visual Isolated Skia Thumbnail
+                                        Box(
+                                            modifier = Modifier
+                                                .size(44.dp)
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(Color(0xFF05070C))
+                                                .border(1.dp, Color(0xFF1E273A), RoundedCornerShape(6.dp))
+                                                .alpha(if (isActive) 1f else 0.4f),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            NxprcCanvasPreview(
+                                                document = currentDoc,
+                                                activeLayersOnly = listOf(layer),
+                                                sizeDp = 40
+                                            )
+                                        }
+
+                                        // 3. Layer Info & Badge
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                Text(
+                                                    text = "#$idx",
+                                                    color = Color.White.copy(alpha = 0.5f),
+                                                    fontFamily = FontFamily.Monospace,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 10.sp
+                                                )
+
+                                                // Z-index indicator badge
+                                                Box(
+                                                    modifier = Modifier
+                                                        .clip(RoundedCornerShape(3.dp))
+                                                        .background(NeonPalette.Cyan.copy(alpha = 0.12f))
+                                                        .border(0.5.dp, NeonPalette.Cyan.copy(alpha = 0.4f), RoundedCornerShape(3.dp))
+                                                        .padding(horizontal = 3.dp, vertical = 0.5.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "Z:$idx",
+                                                        color = NeonPalette.Cyan,
+                                                        fontFamily = FontFamily.Monospace,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 8.sp
+                                                    )
+                                                }
+
+                                                val badgeCol = Color(details.badgeColor)
+                                                Box(
+                                                    modifier = Modifier
+                                                        .clip(RoundedCornerShape(3.dp))
+                                                        .background(badgeCol.copy(alpha = if (isActive) 0.2f else 0.08f))
+                                                        .border(1.dp, badgeCol.copy(alpha = if (isActive) 0.8f else 0.3f), RoundedCornerShape(3.dp))
+                                                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                                                ) {
+                                                    Text(
+                                                        text = details.categoryBadge,
+                                                        color = if (isActive) badgeCol else badgeCol.copy(alpha = 0.4f),
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 8.5.sp
+                                                    )
+                                                }
+
+                                                if (!isActive) {
+                                                    Text("(MUTED)", color = Color(0xFFEF4444), fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+
+                                            Text(
+                                                text = details.title,
+                                                color = if (isActive) Color.White else Color.White.copy(alpha = 0.4f),
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                fontSize = 10.5.sp,
+                                                maxLines = 1
+                                            )
+                                        }
+
+                                        // 4. Solo Button
+                                        Box(
+                                            modifier = Modifier
+                                                .size(24.dp)
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(if (isSolo) Color(0xFFD97706) else Color(0xFF182030))
+                                                .border(1.dp, if (isSolo) Color(0xFFFBBF24) else Color(0xFF2A364E), RoundedCornerShape(4.dp))
+                                                .clickable {
+                                                    val newSolo = if (isSolo) null else idx
+                                                    onSoloLayerChange(newSolo)
+                                                    onFeedback(if (newSolo != null) "Soloing Layer #$idx in workspace" else "Exited solo mode")
+                                                },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text("🎯", fontSize = 10.sp)
+                                        }
                                     }
                                 }
                             }
@@ -1159,3 +1307,17 @@ fun LayerStudioFullScreen(
         }
     }
 }
+
+private data class LayerStackItem(
+    val layerIndex: Int,
+    val id: String,
+    val layer: CanvasLayer
+)
+
+private fun remapIndex(idx: Int, from: Int, to: Int): Int = when {
+    idx == from -> to
+    from < to && idx in (from + 1)..to -> idx - 1
+    from > to && idx in to until from -> idx + 1
+    else -> idx
+}
+
