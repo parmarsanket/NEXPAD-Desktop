@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -493,6 +494,13 @@ fun LayerStudioFullScreen(
                                 fontSize = 9.sp
                             )
                         }
+                    } else {
+                        Text(
+                            text = "💡 Drag ⠿ grip or long-press layer to reorder",
+                            color = Color(0xFF64748B),
+                            fontSize = 9.sp,
+                            modifier = Modifier.padding(horizontal = 2.dp)
+                        )
                     }
 
                     Box(
@@ -522,10 +530,19 @@ fun LayerStudioFullScreen(
                                     val details = remember(idx, layer, currentDoc) {
                                         NxprcLayerCodeGenerator.getLayerDetails(idx, layer, currentDoc)
                                     }
+                                    val dragScale by animateFloatAsState(
+                                        targetValue = if (isDragging) 1.025f else 1.0f,
+                                        label = "layerDragScale"
+                                    )
 
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
+                                            .graphicsLayer {
+                                                scaleX = dragScale
+                                                scaleY = dragScale
+                                                shadowElevation = if (isDragging) 12f else 0f
+                                            }
                                             .clip(RoundedCornerShape(8.dp))
                                             .background(
                                                 when {
@@ -546,6 +563,11 @@ fun LayerStudioFullScreen(
                                                     else -> Color(0xFF1E283E)
                                                 },
                                                 shape = RoundedCornerShape(8.dp)
+                                            )
+                                            .then(
+                                                if (canReorder) {
+                                                    Modifier.longPressDraggableHandle()
+                                                } else Modifier
                                             )
                                             .clickable { onSelectedLayerChange(idx) }
                                             .padding(horizontal = 6.dp, vertical = 6.dp),
