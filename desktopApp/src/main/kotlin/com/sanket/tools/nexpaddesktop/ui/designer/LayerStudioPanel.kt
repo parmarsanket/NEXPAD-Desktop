@@ -44,6 +44,7 @@ fun LayerStudioPanel(
     selectedLayerIndex: Int,
     onSelectedLayerChange: (Int) -> Unit,
     onHtmlChange: ((String) -> Unit)? = null,
+    onSaveHtml: ((String) -> Unit)? = null,
     onOpenFullScreen: () -> Unit = {},
     onFeedback: (String) -> Unit,
     modifier: Modifier = Modifier

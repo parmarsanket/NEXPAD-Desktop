@@ -3,6 +3,7 @@ package com.sanket.tools.nexpaddesktop
 import com.sanket.tools.nexpad.nxprc.*
 import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
 import com.sanket.tools.nexpaddesktop.plugins.NxprcLayerCodeGenerator
+import com.sanket.tools.nexpaddesktop.plugins.NxprcSurgicalReplacer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -293,5 +294,80 @@ class NxprcLayerStudioTest {
         val previewLayers = resolvePreviewLayers(doc.canvas.layers, activeIndices, soloIndex)
         assertEquals(null, previewLayers, "Sandbox previewLayers must be null (rendering all layers)")
         assertEquals(totalLayers, activeIndices.size, "All layers must be active after exiting Layer Studio")
+    }
+
+    @Test
+    fun testLayerStudioTransactionalSandboxedEditing() {
+        val originalHtml = NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A
+        var parentHtml = originalHtml
+        var parentDoc = NxprcHtmlCssConverter.convert(
+            source = parentHtml,
+            id = "rc.action_a",
+            name = "Action A Button",
+            category = "BUTTON",
+            defaultControl = "A"
+        )
+
+        // Simulate opening Layer Studio
+        var studioHtml = parentHtml
+        var studioDoc = parentDoc
+        var hasUnsavedChanges = false
+
+        // Target Layer 1 (Diffusion layer)
+        val targetLayer = studioDoc.canvas.layers[1]
+
+        val replacementCode = """
+            .nexpad-btn::before {
+              background: #00FF00;
+              opacity: 0.9;
+            }
+        """.trimIndent()
+
+        val surgicalResult = NxprcSurgicalReplacer.applySurgicalChange(
+            originalHtml = studioHtml,
+            layerIndex = 1,
+            layer = targetLayer,
+            doc = studioDoc,
+            replacementInput = replacementCode
+        )
+
+        assertTrue(surgicalResult.success, "Surgical apply must succeed: ${surgicalResult.message}")
+        studioHtml = surgicalResult.updatedHtml
+        studioDoc = NxprcHtmlCssConverter.convert(
+            source = studioHtml,
+            id = studioDoc.manifest.id,
+            name = studioDoc.manifest.name,
+            category = studioDoc.manifest.category,
+            defaultControl = studioDoc.manifest.defaultControl
+        )
+        hasUnsavedChanges = true
+
+        // 1. Verify studio live preview & export reflects the staged green change
+        assertTrue(studioHtml.contains("#00FF00"), "Studio HTML must contain staged green color")
+        assertNotNull(studioDoc)
+
+        // 2. Scenario A: User pushes/exports stagedDoc, but returns to studio WITHOUT clicking Save Changes
+        // Notice parentHtml and parentDoc are still 100% UNCHANGED
+        assertFalse(parentHtml.contains("#00FF00"), "Parent HTML must NOT contain unstaged change")
+        assertEquals(originalHtml, parentHtml, "Parent HTML must remain completely untouched if not saved")
+
+        // 3. Scenario B: User explicitly clicks '💾 Save Changes'
+        val onSaveHtml: (String) -> Unit = { savedHtml ->
+            parentHtml = savedHtml
+            parentDoc = NxprcHtmlCssConverter.convert(
+                source = savedHtml,
+                id = "rc.action_a",
+                name = "Action A Button",
+                category = "BUTTON",
+                defaultControl = "A"
+            )
+        }
+
+        onSaveHtml(studioHtml)
+        hasUnsavedChanges = false
+
+        // Now parent has committed the change
+        assertFalse(hasUnsavedChanges)
+        assertTrue(parentHtml.contains("#00FF00"), "Parent HTML must contain saved change")
     }
 }

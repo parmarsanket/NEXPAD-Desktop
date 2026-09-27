@@ -674,7 +674,7 @@ fun PluginsScreen(
                 onSoloLayerChange = { soloLayerIndex = it },
                 selectedLayerIndex = selectedLayerIndex,
                 onSelectedLayerChange = { selectedLayerIndex = it },
-                onHtmlChange = { newHtml ->
+                onSaveHtml = { newHtml ->
                     htmlSource = newHtml
                     try {
                         val immediateDoc = NxprcHtmlCssConverter.convert(
@@ -722,7 +722,7 @@ fun PluginsScreen(
                     }
                 },
                 isPushEnabled = activeTransport != ActiveTransport.NONE,
-                pushLabel = if (activeTransport != ActiveTransport.NONE) "Push via ${activeTransport.displayName} (${compiledDoc.canvas.layers.size} L)" else "No Phone Connected",
+                pushLabel = if (activeTransport != ActiveTransport.NONE) "Push via ${activeTransport.displayName}" else "No Phone Connected",
                 onFeedback = { promptCopiedBanner = it },
                 onClose = handleCloseLayerStudio
             )

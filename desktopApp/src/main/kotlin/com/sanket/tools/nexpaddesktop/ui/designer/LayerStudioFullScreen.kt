@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.nxprc.CanvasLayer
 import com.sanket.tools.nexpad.nxprc.NxprcDocument
 import com.sanket.tools.nexpaddesktop.plugins.LayerDetails
+import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
 import com.sanket.tools.nexpaddesktop.plugins.NxprcLayerCodeGenerator
 import com.sanket.tools.nexpaddesktop.plugins.NxprcSurgicalReplacer
 import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
@@ -51,6 +52,7 @@ fun LayerStudioFullScreen(
     selectedLayerIndex: Int,
     onSelectedLayerChange: (Int) -> Unit,
     onHtmlChange: ((String) -> Unit)? = null,
+    onSaveHtml: ((String) -> Unit)? = null,
     onExportDoc: (NxprcDocument) -> Unit,
     onPushAdbDoc: (NxprcDocument) -> Unit,
     isPushEnabled: Boolean = true,
@@ -58,14 +60,22 @@ fun LayerStudioFullScreen(
     onFeedback: (String) -> Unit,
     onClose: () -> Unit
 ) {
-    val layers = document.canvas.layers
+    // Transactional Sandboxed State:
+    // Surgical edits modify currentHtml and currentDoc locally for real-time live preview in Layer Studio.
+    // They are ONLY committed to the main editor when user explicitly clicks "💾 Save Changes".
+    // If the user returns to studio without saving, all staged modifications are discarded.
+    var currentHtml by remember(htmlSource) { mutableStateOf(htmlSource) }
+    var currentDoc by remember(document) { mutableStateOf(document) }
+    var hasUnsavedChanges by remember { mutableStateOf(false) }
+
+    val layers = currentDoc.canvas.layers
     val totalLayers = layers.size
 
     val safeSelectedIndex = selectedLayerIndex.coerceIn(0, maxOf(0, totalLayers - 1))
     val selectedLayer = layers.getOrNull(safeSelectedIndex)
-    val selectedDetails = remember(safeSelectedIndex, selectedLayer, document) {
+    val selectedDetails = remember(safeSelectedIndex, selectedLayer, currentDoc) {
         if (selectedLayer != null) {
-            NxprcLayerCodeGenerator.getLayerDetails(safeSelectedIndex, selectedLayer, document)
+            NxprcLayerCodeGenerator.getLayerDetails(safeSelectedIndex, selectedLayer, currentDoc)
         } else null
     }
 
@@ -83,29 +93,29 @@ fun LayerStudioFullScreen(
     var userAiPrompt by remember(safeSelectedIndex) { mutableStateOf("") }
     var replacementCode by remember(safeSelectedIndex) { mutableStateOf("") }
 
-    // Pre-computed filtered export doc (non-destructive exclusion)
-    val exportDoc = remember(document, activeLayerIndices) {
-        if (activeLayerIndices.size == document.canvas.layers.size) {
-            document
+    // Pre-computed filtered export doc (non-destructive exclusion from staged document)
+    val exportDoc = remember(currentDoc, activeLayerIndices) {
+        if (activeLayerIndices.size == currentDoc.canvas.layers.size) {
+            currentDoc
         } else {
-            document.copy(
-                canvas = document.canvas.copy(
-                    layers = document.canvas.layers.filterIndexed { idx, _ -> idx in activeLayerIndices }
+            currentDoc.copy(
+                canvas = currentDoc.canvas.copy(
+                    layers = currentDoc.canvas.layers.filterIndexed { idx, _ -> idx in activeLayerIndices }
                 )
             )
         }
     }
 
     // Composite preview layers: solo overrides active set
-    val previewLayers = remember(document, activeLayerIndices, soloLayerIndex) {
+    val previewLayers = remember(currentDoc, activeLayerIndices, soloLayerIndex) {
         val soloIdx = soloLayerIndex
         when {
             soloIdx != null -> {
-                val solo = document.canvas.layers.getOrNull(soloIdx)
+                val solo = currentDoc.canvas.layers.getOrNull(soloIdx)
                 if (solo != null) listOf(solo) else null
             }
-            activeLayerIndices.size < document.canvas.layers.size -> {
-                document.canvas.layers.filterIndexed { idx, _ -> idx in activeLayerIndices }
+            activeLayerIndices.size < currentDoc.canvas.layers.size -> {
+                currentDoc.canvas.layers.filterIndexed { idx, _ -> idx in activeLayerIndices }
             }
             else -> null
         }
@@ -151,7 +161,7 @@ fun LayerStudioFullScreen(
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = document.manifest.defaultControl,
+                            text = currentDoc.manifest.defaultControl,
                             color = NeonPalette.Cyan,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp
@@ -160,13 +170,13 @@ fun LayerStudioFullScreen(
 
                     Column {
                         Text(
-                            text = "${document.manifest.name.uppercase()} — LAYER STUDIO",
+                            text = "${currentDoc.manifest.name.uppercase()} — LAYER STUDIO",
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )
                         Text(
-                            text = "Category: ${document.manifest.category} • Canvas: ${document.manifest.widthDp}x${document.manifest.heightDp}dp • Skia GPU Vector Engine",
+                            text = "Category: ${currentDoc.manifest.category} • Canvas: ${currentDoc.manifest.widthDp}x${currentDoc.manifest.heightDp}dp • Skia GPU Vector Engine",
                             color = Color.White.copy(alpha = 0.55f),
                             fontSize = 10.5.sp
                         )
@@ -178,6 +188,24 @@ fun LayerStudioFullScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    // Staged Unsaved Edits Pill
+                    if (hasUnsavedChanges) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFF451A03))
+                                .border(1.dp, Color(0xFFF59E0B), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = "● Staged Unsaved Edits",
+                                color = Color(0xFFFBBF24),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
                     // Active Count Pill
                     Box(
                         modifier = Modifier
@@ -271,7 +299,12 @@ fun LayerStudioFullScreen(
 
                     // Close & Return
                     Button(
-                        onClick = onClose,
+                        onClick = {
+                            if (hasUnsavedChanges) {
+                                onFeedback("ℹ️ Returned without saving: unstaged edits discarded.")
+                            }
+                            onClose()
+                        },
                         shape = RoundedCornerShape(6.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
@@ -360,7 +393,7 @@ fun LayerStudioFullScreen(
                     val orderedIndices = if (reverseStackOrder) rawIndices.reversed() else rawIndices
                     val filteredIndices = orderedIndices.filter { idx ->
                         val layer = layers[idx]
-                        val details = NxprcLayerCodeGenerator.getLayerDetails(idx, layer, document)
+                        val details = NxprcLayerCodeGenerator.getLayerDetails(idx, layer, currentDoc)
                         val matchesCat = selectedCategoryFilter == "ALL" || details.categoryBadge.equals(selectedCategoryFilter, ignoreCase = true)
                         val matchesSearch = searchQuery.isBlank() || details.title.contains(searchQuery, ignoreCase = true) || details.categoryBadge.contains(searchQuery, ignoreCase = true)
                         matchesCat && matchesSearch
@@ -382,8 +415,8 @@ fun LayerStudioFullScreen(
                                 val isActive = idx in activeLayerIndices
                                 val isSolo = soloLayerIndex == idx
                                 val isSelected = safeSelectedIndex == idx
-                                val details = remember(idx, layer, document) {
-                                    NxprcLayerCodeGenerator.getLayerDetails(idx, layer, document)
+                                val details = remember(idx, layer, currentDoc) {
+                                    NxprcLayerCodeGenerator.getLayerDetails(idx, layer, currentDoc)
                                 }
 
                                 Row(
@@ -441,7 +474,7 @@ fun LayerStudioFullScreen(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         NxprcCanvasPreview(
-                                            document = document,
+                                            document = currentDoc,
                                             activeLayersOnly = listOf(layer),
                                             sizeDp = 42
                                         )
@@ -620,7 +653,7 @@ fun LayerStudioFullScreen(
                         val scaledSize = if (isAutoFit) autoFitSize else (220 * zoomScale).toInt()
 
                         NxprcCanvasPreview(
-                            document = document,
+                            document = currentDoc,
                             activeLayersOnly = previewLayers,
                             sizeDp = scaledSize
                         )
@@ -652,7 +685,7 @@ fun LayerStudioFullScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     NxprcCanvasPreview(
-                                        document = document,
+                                        document = currentDoc,
                                         activeLayersOnly = listOf(selectedLayer),
                                         sizeDp = 104
                                     )
@@ -860,9 +893,9 @@ fun LayerStudioFullScreen(
                                         val surgicalPrompt = NxprcLayerCodeGenerator.generateLayerAiPrompt(
                                             layerIndex = safeSelectedIndex,
                                             layer = selectedLayer,
-                                            doc = document,
+                                            doc = currentDoc,
                                             userInstruction = userAiPrompt,
-                                            htmlSource = htmlSource
+                                            htmlSource = currentHtml
                                         )
                                         Toolkit.getDefaultToolkit().systemClipboard.setContents(
                                             StringSelection(surgicalPrompt),
@@ -946,7 +979,7 @@ fun LayerStudioFullScreen(
                                 )
                             )
 
-                            // Apply & Update Live Preview Button
+                            // Apply & Update Live Preview Button (Staged Sandboxed Update)
                             Button(
                                 onClick = {
                                     if (replacementCode.isBlank()) {
@@ -954,15 +987,28 @@ fun LayerStudioFullScreen(
                                         return@Button
                                     }
                                     val result = NxprcSurgicalReplacer.applySurgicalChange(
-                                        originalHtml = htmlSource,
+                                        originalHtml = currentHtml,
                                         layerIndex = safeSelectedIndex,
                                         layer = selectedLayer,
-                                        doc = document,
+                                        doc = currentDoc,
                                         replacementInput = replacementCode
                                     )
                                     if (result.success) {
-                                        onHtmlChange?.invoke(result.updatedHtml)
-                                        onFeedback("✓ ${result.message} Live preview updated!")
+                                        try {
+                                            val recompiled = NxprcHtmlCssConverter.convert(
+                                                source = result.updatedHtml,
+                                                id = currentDoc.manifest.id,
+                                                name = currentDoc.manifest.name,
+                                                category = currentDoc.manifest.category,
+                                                defaultControl = currentDoc.manifest.defaultControl
+                                            )
+                                            currentHtml = result.updatedHtml
+                                            currentDoc = recompiled
+                                            hasUnsavedChanges = true
+                                            onFeedback("✓ ${result.message} Live preview updated (Staged — click '💾 Save Changes' to keep)!")
+                                        } catch (e: Exception) {
+                                            onFeedback("⚠️ Recompilation failed: ${e.message}")
+                                        }
                                     } else {
                                         onFeedback("⚠️ ${result.message}")
                                     }
@@ -1015,13 +1061,16 @@ fun LayerStudioFullScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "ℹ️ Non-Destructive Muting Active:",
-                        color = Color(0xFF34D399),
+                        text = if (hasUnsavedChanges) "⚠️ Unsaved Staged Changes:" else "ℹ️ Sandboxed Studio Editing:",
+                        color = if (hasUnsavedChanges) Color(0xFFFBBF24) else Color(0xFF34D399),
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp
                     )
                     Text(
-                        text = "Deactivated layers are cleanly excluded from live render and device binaries, but code is never deleted.",
+                        text = if (hasUnsavedChanges)
+                            "Live preview & exports reflect staged edits. Click '💾 Save Changes' to commit to HTML editor, or 'Return to Studio' to discard."
+                        else
+                            "Surgical edits preview live. Export or push anytime; code remains unchanged in HTML until saved.",
                         color = Color.White.copy(alpha = 0.65f),
                         fontSize = 10.5.sp
                     )
@@ -1031,6 +1080,31 @@ fun LayerStudioFullScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // 💾 Save Changes Button
+                    Button(
+                        onClick = {
+                            val saveCallback = onSaveHtml ?: onHtmlChange
+                            saveCallback?.invoke(currentHtml)
+                            hasUnsavedChanges = false
+                            onFeedback("✓ All surgical changes saved to HTML editor!")
+                        },
+                        enabled = hasUnsavedChanges,
+                        shape = RoundedCornerShape(6.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF10B981),
+                            disabledContainerColor = Color(0xFF1E293B)
+                        ),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Text(
+                            text = if (hasUnsavedChanges) "💾 Save Changes" else "✓ Saved",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (hasUnsavedChanges) Color.Black else Color.White.copy(alpha = 0.35f)
+                        )
+                    }
+
                     // Quick Export .nxprc
                     Button(
                         onClick = { onExportDoc(exportDoc) },
@@ -1069,7 +1143,12 @@ fun LayerStudioFullScreen(
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            text = pushLabel ?: "Push to Phone (${exportDoc.canvas.layers.size} L)",
+                            text = if (isPushEnabled) {
+                                val base = pushLabel ?: "Push to Phone"
+                                "$base (${exportDoc.canvas.layers.size} L)"
+                            } else {
+                                pushLabel ?: "No Phone Connected"
+                            },
                             fontSize = 11.sp,
                             color = if (isPushEnabled) Color.Black else Color.White.copy(alpha = 0.35f),
                             fontWeight = FontWeight.Bold
