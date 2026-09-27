@@ -29,6 +29,7 @@ import com.sanket.tools.nexpad.nxprc.NxprcDocument
 import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpaddesktop.connection.ActiveTransport
 import com.sanket.tools.nexpaddesktop.plugins.DesktopPluginManager
+import com.sanket.tools.nexpaddesktop.plugins.NxprcComponentDetector
 import com.sanket.tools.nexpaddesktop.plugins.NxprcExporter
 import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
 import com.sanket.tools.nexpaddesktop.plugins.UniversalPushManager
@@ -172,21 +173,52 @@ fun PluginsScreen(
         }
     }
 
-    LaunchedEffect(htmlSource, componentId, componentName, category, defaultControl) {
+    LaunchedEffect(htmlSource) {
         delay(350) // Debounce keystrokes
         withContext(Dispatchers.Default) {
+            val detected = NxprcComponentDetector.detect(
+                html = htmlSource,
+                fallbackCategory = category,
+                fallbackControl = defaultControl,
+                fallbackId = componentId,
+                fallbackName = componentName,
+                fallbackWidthDp = targetWidthDp,
+                fallbackHeightDp = targetHeightDp
+            )
             try {
                 val doc = NxprcHtmlCssConverter.convert(
                     source = htmlSource,
-                    id = componentId,
-                    name = componentName,
-                    category = category,
-                    defaultControl = defaultControl
+                    id = detected.componentId,
+                    name = detected.componentName,
+                    category = detected.category,
+                    defaultControl = detected.defaultControl
                 )
                 compiledDoc = doc
                 compileError = null
             } catch (e: Exception) {
                 compileError = e.message ?: "Compilation error"
+            }
+
+            if (detected.isExplicitlyDefined) {
+                withContext(Dispatchers.Main) {
+                    val controlChanged = defaultControl != detected.defaultControl || category != detected.category
+                    defaultControl = detected.defaultControl
+                    category = detected.category
+                    componentId = detected.componentId
+                    componentName = detected.componentName
+                    targetWidthDp = detected.widthDp
+                    targetHeightDp = detected.heightDp
+
+                    detected.categoryType?.let { cat ->
+                        if (selectedCategory != cat.id) selectedCategory = cat.id
+                    }
+                    detected.controlKey?.let { ctrl ->
+                        if (selectedButtonKey != ctrl.key) selectedButtonKey = ctrl.key
+                    }
+                    if (controlChanged) {
+                        promptCopiedBanner = "✓ Auto-detected: ${detected.componentName} (${detected.defaultControl} • ${detected.category})"
+                    }
+                }
             }
         }
     }
@@ -1109,6 +1141,14 @@ private fun LiveSandboxPane(
 ) {
     var stickDeflection by remember { mutableStateOf(Pair(0f, 0f)) }
 
+    // Effective metadata from compiled document (authoritative source of truth)
+    val effCategory = compiledDoc.manifest.category.ifBlank { category }
+    val effControl = compiledDoc.manifest.defaultControl.ifBlank { defaultControl }
+    val effId = compiledDoc.manifest.id.ifBlank { componentId }
+    val effName = compiledDoc.manifest.name.ifBlank { componentName }
+    val effWidthDp = if (compiledDoc.manifest.widthDp > 0) compiledDoc.manifest.widthDp else targetWidthDp
+    val effHeightDp = if (compiledDoc.manifest.heightDp > 0) compiledDoc.manifest.heightDp else targetHeightDp
+
     Column(
         modifier = modifier
             .glassCard()
@@ -1163,7 +1203,7 @@ private fun LiveSandboxPane(
             val maxBoxW = maxWidth * 0.95f
             val maxBoxH = maxHeight * 0.96f
 
-            val aspect = targetWidthDp.toFloat() / targetHeightDp.toFloat()
+            val aspect = effWidthDp.toFloat() / effHeightDp.toFloat()
             val idealDimension = (maxBoxH * 0.88f).coerceIn(160.dp, 460.dp)
             val (boxW, boxH) = if (aspect >= 1.0f) {
                 val w = minOf(maxBoxW, idealDimension * aspect, 460.dp)
@@ -1212,9 +1252,9 @@ private fun LiveSandboxPane(
         }
 
         // Live Animation & Physics Stats Strip
-        val isStick = category.equals("JOYSTICK", ignoreCase = true) ||
-                category.equals("TOUCHPAD", ignoreCase = true) ||
-                defaultControl.uppercase() in listOf(
+        val isStick = effCategory.equals("JOYSTICK", ignoreCase = true) ||
+                effCategory.equals("TOUCHPAD", ignoreCase = true) ||
+                effControl.uppercase() in listOf(
                     com.sanket.tools.nexpad.category.ControlKey.LS.key,
                     com.sanket.tools.nexpad.category.ControlKey.RS.key,
                     com.sanket.tools.nexpad.category.ControlKey.LTP.key,
@@ -1237,7 +1277,7 @@ private fun LiveSandboxPane(
                 val dy = stickDeflection.second
                 val xStr = if (dx >= 0f) "+${"%.2f".format(dx)}" else "%.2f".format(dx)
                 val yStr = if (dy >= 0f) "+${"%.2f".format(dy)}" else "%.2f".format(dy)
-                val isRightStick = defaultControl.uppercase() in listOf(
+                val isRightStick = effControl.uppercase() in listOf(
                     com.sanket.tools.nexpad.category.ControlKey.RS.key,
                     com.sanket.tools.nexpad.category.ControlKey.RTP.key
                 ) || compiledDoc.manifest.id.contains("rtp", ignoreCase = true)
@@ -1277,10 +1317,10 @@ private fun LiveSandboxPane(
                         .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
                         .padding(horizontal = 5.dp, vertical = 2.dp)
                 ) {
-                    Text(text = componentId, color = NeonPalette.Cyan, fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                    Text(text = effId, color = NeonPalette.Cyan, fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
                 }
                 Text(
-                    text = componentName,
+                    text = effName,
                     color = Color.White,
                     fontSize = 10.5.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -1293,9 +1333,9 @@ private fun LiveSandboxPane(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "Key: $defaultControl", color = Color(0xFF4ADE80), fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+                Text(text = "Key: $effControl", color = Color(0xFF4ADE80), fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
                 Text(text = "•", color = Color.White.copy(alpha = 0.3f), fontSize = 10.sp)
-                Text(text = category, color = Color.White.copy(alpha = 0.7f), fontSize = 10.sp)
+                Text(text = effCategory, color = Color.White.copy(alpha = 0.7f), fontSize = 10.sp)
             }
         }
 
