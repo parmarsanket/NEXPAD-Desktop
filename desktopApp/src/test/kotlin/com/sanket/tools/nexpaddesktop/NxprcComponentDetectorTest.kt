@@ -266,4 +266,28 @@ class NxprcComponentDetectorTest {
         assertEquals("rc.stick_rs", detected.componentId)
         assertEquals(130, detected.widthDp)
     }
+
+    @Test
+    fun testMacroDetectionAndReferenceTemplate() {
+        // Verify reference template for M1 returns Macro paddle code
+        val template = com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.getReferenceTemplate("M1", "MACROS")
+        assertTrue("Template should contain M1", template.contains("M1"))
+        assertTrue("Template should declare MACRO category", template.contains("data-category=\"MACRO\""))
+
+        // Verify detection on Macro template
+        val detected = NxprcComponentDetector.detect(
+            html = template,
+            fallbackCategory = "BUTTON",
+            fallbackControl = "A",
+            fallbackId = "rc.action_a",
+            fallbackName = "Action A Button"
+        )
+
+        assertTrue(detected.isExplicitlyDefined)
+        assertEquals(ControlKey.M1, detected.controlKey)
+        assertEquals("M1", detected.defaultControl)
+        assertEquals("MACRO", detected.category)
+        assertEquals(CategoryType.MACROS, detected.categoryType)
+        assertEquals("rc.macro_m1", detected.componentId)
+    }
 }

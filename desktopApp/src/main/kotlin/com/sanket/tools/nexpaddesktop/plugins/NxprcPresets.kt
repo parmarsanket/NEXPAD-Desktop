@@ -1775,6 +1775,111 @@ object NxprcPresets {
 </html>
 """.trimIndent()
 
+    val PRESET_SYSTEM_SHARE = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --spring-damping: 0.78;
+    --spring-stiffness: 500;
+    --press-scale: 0.93;
+  }
+  .system-share-btn {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 35%, #2a303f 0%, #12151d 70%, #050608 100%);
+    border: 2px solid #455064;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.8), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -6px 12px rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .share-symbol {
+    font-size: 28px;
+    font-weight: 900;
+    color: #FFFFFF;
+    text-shadow: 0 0 14px rgba(255, 255, 255, 0.9), 0 2px 4px rgba(0,0,0,0.95);
+  }
+  .system-share-btn:active {
+    transform: scale(0.93) translateY(2px);
+  }
+</style>
+</head>
+<body>
+  <button class="system-btn system-share-btn" data-control="SHARE" data-category="SYSTEM" data-name="System Share">
+    <span class="share-symbol">⇪</span>
+  </button>
+</body>
+</html>
+""".trimIndent()
+
+    fun createPresetMacroPaddle(control: String = "M1"): String = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --spring-damping: 0.72;
+    --spring-stiffness: 480;
+    --press-scale: 0.94;
+    --macro-accent: #F59E0B;
+  }
+  .macro-paddle {
+    position: relative;
+    width: 72px;
+    height: 72px;
+    border-radius: 16px;
+    background: radial-gradient(circle at 40% 30%, #232936 0%, #12161f 65%, #080a0f 100%);
+    border: 2px solid #3b4559;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.25), inset 0 -4px 10px rgba(0, 0, 0, 0.85);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+  .macro-paddle::before {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    border-radius: 12px;
+    border: 1px dashed rgba(245, 158, 11, 0.35);
+  }
+  .macro-bolt {
+    font-size: 14px;
+    color: var(--macro-accent);
+    text-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+  }
+  .macro-label {
+    font-size: 20px;
+    font-weight: 900;
+    color: #FFFFFF;
+    text-shadow: 0 0 10px rgba(245, 158, 11, 0.8), 0 2px 4px rgba(0, 0, 0, 0.9);
+  }
+  .macro-paddle:active {
+    transform: scale(0.94) translateY(2px);
+  }
+</style>
+</head>
+<body>
+  <button class="macro-paddle" data-control="$control" data-category="MACRO" data-name="Paddle $control">
+    <span class="macro-bolt">⚡</span>
+    <span class="macro-label">$control</span>
+  </button>
+</body>
+</html>
+""".trimIndent()
+
+    val PRESET_MACRO_M1 get() = createPresetMacroPaddle("M1")
+    val PRESET_MACRO_M2 get() = createPresetMacroPaddle("M2")
+    val PRESET_MACRO_M3 get() = createPresetMacroPaddle("M3")
+    val PRESET_MACRO_M4 get() = createPresetMacroPaddle("M4")
+
     /**
      * Returns the optional reference template (document structure guide only) for any controller button key.
      * Templates are REFERENCE ONLY — do not treat them as 100% NXPRC-compliant HTML.
@@ -1788,8 +1893,8 @@ object NxprcPresets {
 
     private fun getReferenceTemplateInternal(control: String, category: String): String {
         val ctrl = ControlKey.fromIdentifier(control)
-        val catType = CategoryType.fromIdentifier(category)
-            ?: ctrl?.categoryType
+        val catType = ctrl?.categoryType
+            ?: CategoryType.fromIdentifier(category)
             ?: CategoryManager.findCategoryForControl(control)?.type
 
         if (catType != null && catType != CategoryType.ABXY) {
@@ -1811,10 +1916,17 @@ object NxprcPresets {
                     ControlKey.RTP -> PRESET_TOUCHPAD_RTP
                     else -> PRESET_THUMBSTICK_LS
                 }
-                CategoryType.SYSTEM, CategoryType.MACROS -> when (ctrl) {
+                CategoryType.SYSTEM -> when (ctrl) {
                     ControlKey.BACK -> PRESET_SYSTEM_VIEW
                     ControlKey.GUIDE -> PRESET_SYSTEM_HOME
+                    ControlKey.SHARE -> PRESET_SYSTEM_SHARE
                     else -> PRESET_SYSTEM_MENU
+                }
+                CategoryType.MACROS -> when (ctrl) {
+                    ControlKey.M2 -> createPresetMacroPaddle("M2")
+                    ControlKey.M3 -> createPresetMacroPaddle("M3")
+                    ControlKey.M4 -> createPresetMacroPaddle("M4")
+                    else -> createPresetMacroPaddle(ctrl?.key ?: "M1")
                 }
                 CategoryType.ABXY -> getReferenceTemplateInternal(control, "BUTTON")
             }
@@ -1843,6 +1955,11 @@ object NxprcPresets {
             ControlKey.START -> PRESET_SYSTEM_MENU
             ControlKey.BACK -> PRESET_SYSTEM_VIEW
             ControlKey.GUIDE -> PRESET_SYSTEM_HOME
+            ControlKey.SHARE -> PRESET_SYSTEM_SHARE
+            ControlKey.M1 -> createPresetMacroPaddle("M1")
+            ControlKey.M2 -> createPresetMacroPaddle("M2")
+            ControlKey.M3 -> createPresetMacroPaddle("M3")
+            ControlKey.M4 -> createPresetMacroPaddle("M4")
             else -> PRESET_NEO_TACTILE_A
         }
     }

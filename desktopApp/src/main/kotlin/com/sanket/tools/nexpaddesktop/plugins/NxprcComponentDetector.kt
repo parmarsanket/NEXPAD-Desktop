@@ -118,8 +118,11 @@ object NxprcComponentDetector {
                     CategoryType.STICKS -> "JOYSTICK"
                     CategoryType.TRIGGERS -> "TRIGGER"
                     CategoryType.BUMPERS -> "BUMPER"
+                    CategoryType.MACROS -> "MACRO"
                     else -> rawCategory.uppercase()
                 }
+            } else if (resolvedControl.categoryType == CategoryType.MACROS) {
+                "MACRO"
             } else compType
 
             return DetectedComponent(

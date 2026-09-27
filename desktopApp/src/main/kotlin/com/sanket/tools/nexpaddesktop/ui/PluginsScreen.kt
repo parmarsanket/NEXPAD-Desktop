@@ -198,47 +198,26 @@ fun PluginsScreen(
             } catch (e: Exception) {
                 compileError = e.message ?: "Compilation error"
             }
-
-            if (detected.isExplicitlyDefined) {
-                withContext(Dispatchers.Main) {
-                    val controlChanged = defaultControl != detected.defaultControl || category != detected.category
-                    defaultControl = detected.defaultControl
-                    category = detected.category
-                    componentId = detected.componentId
-                    componentName = detected.componentName
-                    targetWidthDp = detected.widthDp
-                    targetHeightDp = detected.heightDp
-
-                    detected.categoryType?.let { cat ->
-                        if (selectedCategory != cat.id) selectedCategory = cat.id
-                    }
-                    detected.controlKey?.let { ctrl ->
-                        if (selectedButtonKey != ctrl.key) selectedButtonKey = ctrl.key
-                    }
-                    if (controlChanged) {
-                        promptCopiedBanner = "✓ Auto-detected: ${detected.componentName} (${detected.defaultControl} • ${detected.category})"
-                    }
-                }
-            }
         }
     }
 
     val handleSelectButton: (SubCategoryDefinition) -> Unit = { btn ->
         selectedButtonKey = btn.key
         defaultControl = btn.key
-        category = btn.componentType.name
+        val btnCat = if (btn.categoryType == CategoryType.MACROS) "MACRO" else btn.componentType.name
+        category = btnCat
         componentId = btn.defaultId
         componentName = btn.defaultName
         targetWidthDp = btn.defaultWidthDp
         targetHeightDp = btn.defaultHeightDp
-        val newSource = btn.starterHtmlPreset ?: NxprcHtmlCssConverter.getReferenceTemplate(btn.key, btn.componentType.name)
+        val newSource = btn.starterHtmlPreset ?: NxprcHtmlCssConverter.getReferenceTemplate(btn.key, btn.categoryType.id)
         htmlSource = newSource
         try {
             val newDoc = NxprcHtmlCssConverter.convert(
                 source = newSource,
                 id = btn.defaultId,
                 name = btn.defaultName,
-                category = btn.componentType.name,
+                category = btnCat,
                 defaultControl = btn.key
             )
             compiledDoc = newDoc

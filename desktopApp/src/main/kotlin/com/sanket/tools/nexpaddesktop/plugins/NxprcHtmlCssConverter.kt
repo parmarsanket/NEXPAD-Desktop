@@ -540,6 +540,11 @@ object NxprcHtmlCssConverter {
     val PRESET_STICK_BUTTON_RSB get() = NxprcPresets.PRESET_STICK_BUTTON_RSB
     val PRESET_TOUCHPAD_LTP get() = NxprcPresets.PRESET_TOUCHPAD_LTP
     val PRESET_TOUCHPAD_RTP get() = NxprcPresets.PRESET_TOUCHPAD_RTP
+    val PRESET_SYSTEM_SHARE get() = NxprcPresets.PRESET_SYSTEM_SHARE
+    val PRESET_MACRO_M1 get() = NxprcPresets.PRESET_MACRO_M1
+    val PRESET_MACRO_M2 get() = NxprcPresets.PRESET_MACRO_M2
+    val PRESET_MACRO_M3 get() = NxprcPresets.PRESET_MACRO_M3
+    val PRESET_MACRO_M4 get() = NxprcPresets.PRESET_MACRO_M4
 
     /** Reference templates (structure guide only) delegated to [NxprcPresets]. */
     fun getReferenceTemplate(control: String): String = NxprcPresets.getReferenceTemplate(control)
