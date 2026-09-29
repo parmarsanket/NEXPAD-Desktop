@@ -400,10 +400,10 @@ object NxprcAuditService {
                                     gLayer.fill(shape)
                                 }
                                 is FillBrush.SweepGradient -> {
-                                    val gcx = boxX + boxW / 2f
-                                    val gcy = boxY + boxH / 2f
+                                    val gcx = boxX + boxW * fill.centerXRatio
+                                    val gcy = boxY + boxH * fill.centerYRatio
                                     val (fractions, colors) = sanitizeFractionsAndColors(fill.stops, fill.colors, layer.opacity)
-                                    val startAngleRad = Math.toRadians((fill.startAngleDegrees).toDouble()).toFloat()
+                                    val startAngleRad = Math.toRadians((fill.startAngleDegrees - 90.0)).toFloat()
                                     gLayer.paint = ConicGradientPaint(gcx, gcy, startAngleRad, colors, fractions)
                                     val shape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval, layer.pathData, layer.shapeType, layer.polygonSides)
                                     gLayer.fill(shape)
@@ -451,7 +451,7 @@ object NxprcAuditService {
                                     (shadow.color and 0xFF).toInt(),
                                     alpha
                                 )
-                                val blur = (shadow.blurRadius.takeIf { it > 0f } ?: 3.5f) * density
+                                val blur = shadow.blurRadius * density
                                 val sp = shadow.spreadRadius * density
                                 val sx = shadow.offsetX * density
                                 val sy = shadow.offsetY * density
@@ -616,7 +616,7 @@ object NxprcAuditService {
                                 val gcx = shapeLeft + shapeW * fill.centerXRatio
                                 val gcy = shapeTop + shapeH * fill.centerYRatio
                                 val (fractions, colors) = sanitizeFractionsAndColors(fill.stops, fill.colors, shapeAlpha)
-                                val startAngleRad = Math.toRadians(fill.startAngleDegrees.toDouble()).toFloat()
+                                val startAngleRad = Math.toRadians((fill.startAngleDegrees - 90.0)).toFloat()
                                 gLayer.paint = ConicGradientPaint(gcx, gcy, startAngleRad, colors, fractions)
                             }
                         }

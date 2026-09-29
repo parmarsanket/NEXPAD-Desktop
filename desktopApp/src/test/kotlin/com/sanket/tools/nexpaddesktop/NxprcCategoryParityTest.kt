@@ -1133,7 +1133,7 @@ body {
                                     }.toTypedArray()
                                     val fractions = fill.stops.takeIf { it.size == fill.colors.size && it.size >= 2 }?.toFloatArray()
                                         ?: FloatArray(fill.colors.size) { it.toFloat() / (fill.colors.size - 1).coerceAtLeast(1) }
-                                    val startAngleRad = Math.toRadians(fill.startAngleDegrees.toDouble()).toFloat()
+                                    val startAngleRad = Math.toRadians((fill.startAngleDegrees - 90.0)).toFloat()
                                     gLayer.paint = ConicGradientPaint(gcx, gcy, startAngleRad, colors, fractions)
                                 }
                                 else -> {}

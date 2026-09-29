@@ -762,21 +762,36 @@ fun NxprcCanvasPreview(
                                             val hWidth = (boxWidth - spreadPx * 2f).coerceAtLeast(0f)
                                             val hHeight = (boxHeight - spreadPx * 2f).coerceAtLeast(0f)
 
-                                            val holeRRect = if (isOval) {
-                                                SkRRect.makeOvalXYWH(hLeft, hTop, hWidth, hHeight)
-                                            } else if (hasVariableCorners) {
-                                                val hTl = (tl - spreadPx).coerceAtLeast(0f)
-                                                val hTr = (tr - spreadPx).coerceAtLeast(0f)
-                                                val hBr = (br - spreadPx).coerceAtLeast(0f)
-                                                val hBl = (bl - spreadPx).coerceAtLeast(0f)
-                                                SkRRect.makeComplexXYWH(hLeft, hTop, hWidth, hHeight, floatArrayOf(hTl, hTl, hTr, hTr, hBr, hBr, hBl, hBl))
-                                            } else {
-                                                val hRadius = (tl - spreadPx).coerceAtLeast(0f)
-                                                SkRRect.makeXYWH(hLeft, hTop, hWidth, hHeight, hRadius)
-                                            }
-
                                             val margin = blurPx * 3f + kotlin.math.abs(sOffset.x) + kotlin.math.abs(sOffset.y) + 32f
-                                            val outerRect = SkRect.makeLTRB(boxLeft - margin, boxTop - margin, boxLeft + boxWidth + margin, boxTop + boxHeight + margin)
+                                            val insetPath = Path().apply {
+                                                fillType = PathFillType.EvenOdd
+                                                addRect(Rect(boxLeft - margin, boxTop - margin, boxLeft + boxWidth + margin, boxTop + boxHeight + margin))
+                                                if (isOval) {
+                                                    addOval(Rect(hLeft, hTop, hLeft + hWidth, hTop + hHeight))
+                                                } else if (hasVariableCorners) {
+                                                    val hTl = (tl - spreadPx).coerceAtLeast(0f)
+                                                    val hTr = (tr - spreadPx).coerceAtLeast(0f)
+                                                    val hBr = (br - spreadPx).coerceAtLeast(0f)
+                                                    val hBl = (bl - spreadPx).coerceAtLeast(0f)
+                                                    addRoundRect(
+                                                        androidx.compose.ui.geometry.RoundRect(
+                                                            rect = Rect(hLeft, hTop, hLeft + hWidth, hTop + hHeight),
+                                                            topLeft = CornerRadius(hTl, hTl),
+                                                            topRight = CornerRadius(hTr, hTr),
+                                                            bottomRight = CornerRadius(hBr, hBr),
+                                                            bottomLeft = CornerRadius(hBl, hBl)
+                                                        )
+                                                    )
+                                                } else {
+                                                    val hRadius = (tl - spreadPx).coerceAtLeast(0f)
+                                                    addRoundRect(
+                                                        androidx.compose.ui.geometry.RoundRect(
+                                                            rect = Rect(hLeft, hTop, hLeft + hWidth, hTop + hHeight),
+                                                            cornerRadius = CornerRadius(hRadius, hRadius)
+                                                        )
+                                                    )
+                                                }
+                                            }
 
                                             val skCanvas = drawContext.canvas.skiaCanvas
                                             val skPaint = SkPaint().apply {
@@ -791,8 +806,7 @@ fun NxprcCanvasPreview(
                                             skCanvas.save()
                                             try {
                                                 skCanvas.clipRRect(elementRRect, SkClipMode.INTERSECT, true)
-                                                skCanvas.clipRRect(holeRRect, SkClipMode.DIFFERENCE, true)
-                                                skCanvas.drawRect(outerRect, skPaint)
+                                                skCanvas.drawPath(insetPath.asSkiaPath(), skPaint)
                                             } finally {
                                                 skCanvas.restore()
                                                 skPaint.close()
@@ -1338,25 +1352,30 @@ private fun createBrush(fill: FillBrush, size: Size, topLeft: Offset = Offset.Ze
         is FillBrush.SweepGradient -> {
             val cx = topLeft.x + size.width * fill.centerXRatio
             val cy = topLeft.y + size.height * fill.centerYRatio
-            if (fill.startAngleDegrees != 0f && fill.colors.size >= 2) {
-                val shift = ((fill.startAngleDegrees % 360f + 360f) % 360f) / 360f
+            if (fill.colors.size >= 2) {
+                // In CSS conic-gradient, 0deg points North (12 o'clock / -Y).
+                // Compose Brush.sweepGradient starts at East (3 o'clock / +X).
+                // Therefore: standard_angle = css_angle - 90deg.
+                val startPos = (((fill.startAngleDegrees - 90f) % 360f + 360f) % 360f) / 360f
                 val n = fill.colors.size
                 val rawStops = if (fill.stops.size == n) fill.stops else List(n) { it.toFloat() / (n - 1) }
-                val samples = 36
+                val samples = 72
                 val sampleStops = FloatArray(samples + 1) { it.toFloat() / samples }
                 val colorStops = sampleStops.map { s ->
-                    val origPos = (s - shift + 1.0f) % 1.0f
+                    val origPos = (s - startPos + 1.0f) % 1.0f
                     s to sampleGradientColor(fill.colors, rawStops, origPos)
                 }.toTypedArray()
                 Brush.sweepGradient(
                     colorStops = colorStops,
                     center = Offset(cx, cy)
                 )
-            } else {
+            } else if (fill.colors.isNotEmpty()) {
                 Brush.sweepGradient(
                     colors = fill.colors.map { Color(it) },
                     center = Offset(cx, cy)
                 )
+            } else {
+                SolidColor(Color.Transparent)
             }
         }
     }
