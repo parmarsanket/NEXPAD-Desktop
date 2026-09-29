@@ -1029,14 +1029,21 @@ fun NxprcCanvasPreview(
                                 val hWidth = buttonW
                                 val hHeight = buttonH
 
-                                val holeRRect = if (rootIsOval) {
-                                    SkRRect.makeOvalXYWH(hLeft, hTop, hWidth, hHeight)
-                                } else {
-                                    SkRRect.makeXYWH(hLeft, hTop, hWidth, hHeight, rootTl)
-                                }
-
                                 val margin = blurPx * 3f + kotlin.math.abs(sOffset.y) + 32f
-                                val outerRect = SkRect.makeLTRB(buttonLeft - margin, buttonTop - margin, buttonLeft + buttonW + margin, buttonTop + buttonH + margin)
+                                val insetPath = Path().apply {
+                                    fillType = PathFillType.EvenOdd
+                                    addRect(Rect(buttonLeft - margin, buttonTop - margin, buttonLeft + buttonW + margin, buttonTop + buttonH + margin))
+                                    if (rootIsOval) {
+                                        addOval(Rect(hLeft, hTop, hLeft + hWidth, hTop + hHeight))
+                                    } else {
+                                        addRoundRect(
+                                            androidx.compose.ui.geometry.RoundRect(
+                                                rect = Rect(hLeft, hTop, hLeft + hWidth, hTop + hHeight),
+                                                cornerRadius = CornerRadius(rootTl, rootTl)
+                                            )
+                                        )
+                                    }
+                                }
 
                                 val skPaint = SkPaint().apply {
                                     this.color = shadowColorArgb
@@ -1050,8 +1057,7 @@ fun NxprcCanvasPreview(
                                 skCanvas.save()
                                 try {
                                     skCanvas.clipRRect(elementRRect, SkClipMode.INTERSECT, true)
-                                    skCanvas.clipRRect(holeRRect, SkClipMode.DIFFERENCE, true)
-                                    skCanvas.drawRect(outerRect, skPaint)
+                                    skCanvas.drawPath(insetPath.asSkiaPath(), skPaint)
                                 } finally {
                                     skCanvas.restore()
                                     skPaint.close()
