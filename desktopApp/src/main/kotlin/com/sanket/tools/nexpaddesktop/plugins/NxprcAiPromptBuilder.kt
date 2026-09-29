@@ -240,15 +240,42 @@ data class AiDesignOptions(
 
     /**
      * Formats the user's free-form request prompt with creative interpretation guidance.
+     * When no user request is provided, instructs the AI to ASK the user first instead of
+     * silently generating a generic default design.
      */
-    fun formatUserRequest(): String = """
+    fun formatUserRequest(): String {
+        if (userRequest.isNotBlank()) {
+            return """
 ### USER DESIGN REQUEST:
 <user_request>
-${userRequest.ifBlank { "Create an authentic, high-quality virtual controller component adhering to the specified design parameters." }}
+$userRequest
 </user_request>
 
 Interpret this request creatively. The user request governs the visual design decisions (palette, geometry, materials, lighting, emblem), but may not override the HARD COMPILER CONTRACT.
 """.trimIndent()
+        }
+
+        // No user request supplied — instruct AI to ask before generating anything.
+        return """
+### ⚠️ NO DESIGN REQUEST PROVIDED — INTERACTIVE MODE:
+The user has not yet described what button they want to create.
+
+**DO NOT generate any HTML/CSS code yet.**
+
+Instead, greet the user warmly and ask them what kind of button they'd like to design. For example, ask:
+
+> "Hi! I'm ready to design your NEXPAD controller button. What style or theme are you going for? You can describe:
+> - **Visual style** (e.g. Cyberpunk neon, Glassmorphism, Retro arcade, Anime mecha, Brushed metal, Minimal flat…)
+> - **Color palette** (e.g. Crimson & carbon, Neon cyan & dark obsidian, Gold & midnight blue…)
+> - **Shape / silhouette** (e.g. Rounded circle, Faceted hexagon, Shield, Organic shard…)
+> - **Emblem or graphic** (e.g. a skull, flame, lightning bolt, custom logo…)
+> - **Any special idea** (e.g. 'make it look like a glowing rune', 'a cracked gemstone', 'a sci-fi panel button')
+>
+> Just describe what you have in mind and I'll create it for you!"
+
+Wait for the user's reply before writing any code.
+""".trimIndent()
+    }
 }
 
 /**
@@ -1017,6 +1044,15 @@ $defaultProfileBody
 
     private fun renderUserRequest(options: AiDesignOptions): String = options.formatUserRequest()
 
+    /**
+     * Returns the output format contract line. Suppressed (empty) when no user request is set,
+     * so the AI's final instruction is the interactive "ask first" message rather than "output HTML".
+     */
+    private fun renderOutputContract(options: AiDesignOptions): String {
+        if (options.userRequest.isBlank()) return ""
+        return "### OUTPUT FORMAT CONTRACT:\nReturn ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text."
+    }
+
     private fun renderStarterTemplate(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         if (!options.includeSyntaxSkeleton) return ""
         return """
@@ -1088,8 +1124,7 @@ ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
 
 ${renderUserRequest(options)}
 
-### OUTPUT FORMAT CONTRACT:
-Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
+${renderOutputContract(options)}
 """.trimIndent()
     }
 
@@ -1151,8 +1186,7 @@ ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
 
 ${renderUserRequest(options)}
 
-### OUTPUT FORMAT CONTRACT:
-Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
+${renderOutputContract(options)}
 """.trimIndent()
     }
 
@@ -1206,8 +1240,7 @@ ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
 
 ${renderUserRequest(options)}
 
-### OUTPUT FORMAT CONTRACT:
-Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
+${renderOutputContract(options)}
 """.trimIndent()
     }
 
@@ -1259,8 +1292,7 @@ ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
 
 ${renderUserRequest(options)}
 
-### OUTPUT FORMAT CONTRACT:
-Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
+${renderOutputContract(options)}
 """.trimIndent()
     }
 
@@ -1338,8 +1370,7 @@ ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
 
 ${renderUserRequest(options)}
 
-### OUTPUT FORMAT CONTRACT:
-Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
+${renderOutputContract(options)}
 """.trimIndent()
     }
 
@@ -1401,8 +1432,7 @@ ${renderStarterTemplate(control, "BUTTON", widthDp, heightDp, options)}
 
 ${renderUserRequest(options)}
 
-### OUTPUT FORMAT CONTRACT:
-Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
+${renderOutputContract(options)}
 """.trimIndent()
     }
 
@@ -1459,8 +1489,7 @@ ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
 
 ${renderUserRequest(options)}
 
-### OUTPUT FORMAT CONTRACT:
-Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
+${renderOutputContract(options)}
 """.trimIndent()
     }
 
@@ -1515,8 +1544,7 @@ ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
 
 ${renderUserRequest(options)}
 
-### OUTPUT FORMAT CONTRACT:
-Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
+${renderOutputContract(options)}
 """.trimIndent()
     }
 }

@@ -35,6 +35,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.nxprc.*
+import org.jetbrains.skia.ClipMode as SkClipMode
+import org.jetbrains.skia.FilterBlurMode as SkFilterBlurMode
+import org.jetbrains.skia.MaskFilter as SkMaskFilter
+import org.jetbrains.skia.Paint as SkPaint
+import org.jetbrains.skia.RRect as SkRRect
+import org.jetbrains.skia.Rect as SkRect
 
 /**
  * Professional 3-zone gaming speed-to-distance transfer function.
@@ -589,58 +595,69 @@ fun NxprcCanvasPreview(
                                         addOval(Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight))
                                     }
 
+                                    val elementRRect = if (isOval) {
+                                        SkRRect.makeOvalXYWH(boxLeft, boxTop, boxWidth, boxHeight)
+                                    } else if (hasVariableCorners) {
+                                        SkRRect.makeComplexXYWH(boxLeft, boxTop, boxWidth, boxHeight, floatArrayOf(tl, tl, tr, tr, br, br, bl, bl))
+                                    } else {
+                                        SkRRect.makeXYWH(boxLeft, boxTop, boxWidth, boxHeight, tl)
+                                    }
+
                                     // 1. Outset box shadows (drawn bottom-to-top per CSS spec)
                                     layer.boxShadows.filter { !it.isInset }.reversed().forEach { shadow ->
                                         val shadowOffset = Offset(shadow.offsetX * pxPerUnit, shadow.offsetY * pxPerUnit)
                                         val sColor = Color(shadow.color)
                                         val spreadPx = shadow.spreadRadius * pxPerUnit
-                                        // Approximate browser Gaussian blur with low-alpha
-                                        // expanding shells. A single opaque shell produced
-                                        // the visible concentric bands in the parity PNG.
                                         val blurPx = shadow.blurRadius * pxPerUnit
-                                        val steps = if (blurPx > 0f) 8 else 1
-                                        for (step in 1..steps) {
-                                            val t = step.toFloat() / steps
-                                            val extent = spreadPx + blurPx * t
-                                            val alpha = sColor.alpha * subAlpha * (if (blurPx > 0f) (1f - t) * 0.22f else 1f)
-                                            val shadowColor = sColor.copy(alpha = alpha.coerceIn(0f, 1f))
-                                            if (isPolygon && isOval) {
-                                                clipPath(ovalClipPath) {
-                                                    drawPath(polygonPath, color = shadowColor)
-                                                }
-                                            } else if (isPolygon && hasVariableCorners) {
-                                                clipPath(variablePath) {
-                                                    drawPath(polygonPath, color = shadowColor)
-                                                }
-                                            } else if (isPolygon) {
-                                                drawPath(polygonPath, color = shadowColor)
-                                            } else if (isOval) {
-                                                drawOval(color = shadowColor,
-                                                    topLeft = Offset(boxLeft + shadowOffset.x - extent, boxTop + shadowOffset.y - extent),
-                                                    size = Size(boxWidth + extent * 2f, boxHeight + extent * 2f))
-                                            } else if (hasVariableCorners) {
-                                                val shadowPath = Path().apply {
-                                                    addRoundRect(androidx.compose.ui.geometry.RoundRect(
-                                                        rect = Rect(boxLeft + shadowOffset.x - extent, boxTop + shadowOffset.y - extent,
-                                                            boxLeft + boxWidth + shadowOffset.x + extent, boxTop + boxHeight + shadowOffset.y + extent),
-                                                        topLeft = CornerRadius(tl + extent, tl + extent),
-                                                        topRight = CornerRadius(tr + extent, tr + extent),
-                                                        bottomRight = CornerRadius(br + extent, br + extent),
-                                                        bottomLeft = CornerRadius(bl + extent, bl + extent)))
-                                                }
-                                                drawPath(shadowPath, color = shadowColor)
-                                            } else {
-                                                drawRoundRect(color = shadowColor,
-                                                    topLeft = Offset(boxLeft + shadowOffset.x - extent, boxTop + shadowOffset.y - extent),
-                                                    size = Size(boxWidth + extent * 2f, boxHeight + extent * 2f),
-                                                    cornerRadius = CornerRadius(tl + extent, tl + extent))
+                                        val effAlpha = (sColor.alpha * subAlpha).coerceIn(0f, 1f)
+                                        if (effAlpha <= 0.001f) return@forEach
+                                        val shadowColorArgb = sColor.copy(alpha = effAlpha).toArgb()
+
+                                        val sLeft = boxLeft + shadowOffset.x - spreadPx
+                                        val sTop = boxTop + shadowOffset.y - spreadPx
+                                        val sWidth = (boxWidth + spreadPx * 2f).coerceAtLeast(0f)
+                                        val sHeight = (boxHeight + spreadPx * 2f).coerceAtLeast(0f)
+
+                                        val shadowRRect = if (isOval) {
+                                            SkRRect.makeOvalXYWH(sLeft, sTop, sWidth, sHeight)
+                                        } else if (hasVariableCorners) {
+                                            val sTl = (tl + spreadPx).coerceAtLeast(0f)
+                                            val sTr = (tr + spreadPx).coerceAtLeast(0f)
+                                            val sBr = (br + spreadPx).coerceAtLeast(0f)
+                                            val sBl = (bl + spreadPx).coerceAtLeast(0f)
+                                            SkRRect.makeComplexXYWH(sLeft, sTop, sWidth, sHeight, floatArrayOf(sTl, sTl, sTr, sTr, sBr, sBr, sBl, sBl))
+                                        } else {
+                                            val sRadius = (tl + spreadPx).coerceAtLeast(0f)
+                                            SkRRect.makeXYWH(sLeft, sTop, sWidth, sHeight, sRadius)
+                                        }
+
+                                        val skCanvas = drawContext.canvas.skiaCanvas
+                                        val skPaint = SkPaint().apply {
+                                            color = shadowColorArgb
+                                            if (blurPx > 0f) {
+                                                maskFilter = SkMaskFilter.makeBlur(
+                                                    SkFilterBlurMode.NORMAL,
+                                                    (blurPx / 2f).coerceAtLeast(0.5f)
+                                                )
                                             }
+                                        }
+                                        skCanvas.save()
+                                        try {
+                                            if (!isPolygon) {
+                                                skCanvas.clipRRect(elementRRect, SkClipMode.DIFFERENCE, true)
+                                                skCanvas.drawRRect(shadowRRect, skPaint)
+                                            } else {
+                                                skCanvas.drawRRect(shadowRRect, skPaint)
+                                            }
+                                        } finally {
+                                            skCanvas.restore()
+                                            skPaint.close()
                                         }
                                     }
 
                                     // 2. Main surface fills (stacked bottom-to-top per CSS painter's algorithm)
                                     val allBrushes = if (layer.fills.isNotEmpty()) {
-                                        layer.fills.reversed().map { createBrush(it, Size(boxWidth, boxHeight), Offset(boxLeft, boxTop)) }
+                                        layer.fills.map { createBrush(it, Size(boxWidth, boxHeight), Offset(boxLeft, boxTop)) }
                                     } else {
                                         listOf(createBrush(layer.fill, Size(boxWidth, boxHeight), Offset(boxLeft, boxTop)))
                                     }
@@ -730,47 +747,55 @@ fun NxprcCanvasPreview(
                                     // 4. Inset box shadows
                                     val insets = layer.boxShadows.filter { it.isInset }
                                     if (insets.isNotEmpty()) {
-                                        val shapeClipPath = Path().apply {
-                                            if (isPolygon) {
-                                                addPath(polygonPath)
-                                            } else if (isOval) {
-                                                addOval(Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight))
+                                        insets.forEach { shadow ->
+                                            val inColor = Color(shadow.color)
+                                            val inAlpha = (inColor.alpha * subAlpha).coerceIn(0f, 1f)
+                                            if (inAlpha <= 0.001f) return@forEach
+                                            val shadowColorArgb = inColor.copy(alpha = inAlpha).toArgb()
+
+                                            val sOffset = Offset(shadow.offsetX * pxPerUnit, shadow.offsetY * pxPerUnit)
+                                            val spreadPx = shadow.spreadRadius * pxPerUnit
+                                            val blurPx = shadow.blurRadius * pxPerUnit
+
+                                            val hLeft = boxLeft + sOffset.x + spreadPx
+                                            val hTop = boxTop + sOffset.y + spreadPx
+                                            val hWidth = (boxWidth - spreadPx * 2f).coerceAtLeast(0f)
+                                            val hHeight = (boxHeight - spreadPx * 2f).coerceAtLeast(0f)
+
+                                            val holeRRect = if (isOval) {
+                                                SkRRect.makeOvalXYWH(hLeft, hTop, hWidth, hHeight)
                                             } else if (hasVariableCorners) {
-                                                addPath(variablePath)
+                                                val hTl = (tl - spreadPx).coerceAtLeast(0f)
+                                                val hTr = (tr - spreadPx).coerceAtLeast(0f)
+                                                val hBr = (br - spreadPx).coerceAtLeast(0f)
+                                                val hBl = (bl - spreadPx).coerceAtLeast(0f)
+                                                SkRRect.makeComplexXYWH(hLeft, hTop, hWidth, hHeight, floatArrayOf(hTl, hTl, hTr, hTr, hBr, hBr, hBl, hBl))
                                             } else {
-                                                addRoundRect(
-                                                    androidx.compose.ui.geometry.RoundRect(
-                                                        left = boxLeft,
-                                                        top = boxTop,
-                                                        right = boxLeft + boxWidth,
-                                                        bottom = boxTop + boxHeight,
-                                                        radiusX = tl,
-                                                        radiusY = tl
-                                                    )
-                                                )
+                                                val hRadius = (tl - spreadPx).coerceAtLeast(0f)
+                                                SkRRect.makeXYWH(hLeft, hTop, hWidth, hHeight, hRadius)
                                             }
-                                        }
-                                        clipPath(shapeClipPath) {
-                                            insets.forEach { shadow ->
-                                                val inColor = Color(shadow.color)
-                                                val sOffset = Offset(shadow.offsetX * pxPerUnit, shadow.offsetY * pxPerUnit)
-                                                val strokeW = (shadow.blurRadius.takeIf { it > 0f } ?: 3.5f) * pxPerUnit
-                                                if (isOval) {
-                                                    drawOval(
-                                                        color = inColor.copy(alpha = inColor.alpha * subAlpha),
-                                                        topLeft = Offset(boxLeft + sOffset.x, boxTop + sOffset.y),
-                                                        size = Size(boxWidth, boxHeight),
-                                                        style = Stroke(width = strokeW * 1.5f)
-                                                    )
-                                                } else {
-                                                    drawRoundRect(
-                                                        color = inColor.copy(alpha = inColor.alpha * subAlpha),
-                                                        topLeft = Offset(boxLeft + sOffset.x, boxTop + sOffset.y),
-                                                        size = Size(boxWidth, boxHeight),
-                                                        cornerRadius = CornerRadius(tl, tl),
-                                                        style = Stroke(width = strokeW * 1.5f)
+
+                                            val margin = blurPx * 3f + kotlin.math.abs(sOffset.x) + kotlin.math.abs(sOffset.y) + 32f
+                                            val outerRect = SkRect.makeLTRB(boxLeft - margin, boxTop - margin, boxLeft + boxWidth + margin, boxTop + boxHeight + margin)
+
+                                            val skCanvas = drawContext.canvas.skiaCanvas
+                                            val skPaint = SkPaint().apply {
+                                                color = shadowColorArgb
+                                                if (blurPx > 0f) {
+                                                    maskFilter = SkMaskFilter.makeBlur(
+                                                        SkFilterBlurMode.NORMAL,
+                                                        (blurPx / 2f).coerceAtLeast(0.5f)
                                                     )
                                                 }
+                                            }
+                                            skCanvas.save()
+                                            try {
+                                                skCanvas.clipRRect(elementRRect, SkClipMode.INTERSECT, true)
+                                                skCanvas.clipRRect(holeRRect, SkClipMode.DIFFERENCE, true)
+                                                skCanvas.drawRect(outerRect, skPaint)
+                                            } finally {
+                                                skCanvas.restore()
+                                                skPaint.close()
                                             }
                                         }
                                     }
