@@ -993,30 +993,56 @@ fun NxprcCanvasPreview(
                             }
                         }
                         is CanvasLayer.InnerShadow -> {
-                            val arcRadius = size.minDimension / 2f * 0.86f
-                            val arcTopLeft = Offset(centerOffset.x - arcRadius, centerOffset.y - arcRadius)
-                            val arcSize = Size(arcRadius * 2f, arcRadius * 2f)
+                            val elementRRect = if (rootIsOval) {
+                                SkRRect.makeOvalXYWH(buttonLeft, buttonTop, buttonW, buttonH)
+                            } else {
+                                SkRRect.makeXYWH(buttonLeft, buttonTop, buttonW, buttonH, rootTl)
+                            }
 
-                            // Top highlight rim
-                            drawArc(
-                                color = Color(layer.highlightColor),
-                                startAngle = 180f,
-                                sweepAngle = 180f,
-                                useCenter = false,
-                                topLeft = arcTopLeft,
-                                size = arcSize,
-                                style = Stroke(width = layer.strokeWidth * pxPerUnit)
+                            val shadows = listOf(
+                                Triple(Color(layer.highlightColor), Offset(0f, layer.strokeWidth * pxPerUnit * 0.6f), layer.strokeWidth * pxPerUnit * 1.0f),
+                                Triple(Color(layer.shadowColor), Offset(0f, -layer.strokeWidth * pxPerUnit * 1.4f), layer.strokeWidth * pxPerUnit * 2.0f)
                             )
-                            // Bottom dark curved shadow
-                            drawArc(
-                                color = Color(layer.shadowColor),
-                                startAngle = 0f,
-                                sweepAngle = 180f,
-                                useCenter = false,
-                                topLeft = arcTopLeft,
-                                size = arcSize,
-                                style = Stroke(width = layer.strokeWidth * pxPerUnit)
-                            )
+
+                            val skCanvas = drawContext.canvas.skiaCanvas
+                            shadows.forEach { (color, sOffset, blurPx) ->
+                                val alpha = color.alpha
+                                if (alpha <= 0.001f) return@forEach
+                                val shadowColorArgb = color.toArgb()
+
+                                val hLeft = buttonLeft + sOffset.x
+                                val hTop = buttonTop + sOffset.y
+                                val hWidth = buttonW
+                                val hHeight = buttonH
+
+                                val holeRRect = if (rootIsOval) {
+                                    SkRRect.makeOvalXYWH(hLeft, hTop, hWidth, hHeight)
+                                } else {
+                                    SkRRect.makeXYWH(hLeft, hTop, hWidth, hHeight, rootTl)
+                                }
+
+                                val margin = blurPx * 3f + kotlin.math.abs(sOffset.y) + 32f
+                                val outerRect = SkRect.makeLTRB(buttonLeft - margin, buttonTop - margin, buttonLeft + buttonW + margin, buttonTop + buttonH + margin)
+
+                                val skPaint = SkPaint().apply {
+                                    this.color = shadowColorArgb
+                                    if (blurPx > 0f) {
+                                        maskFilter = SkMaskFilter.makeBlur(
+                                            SkFilterBlurMode.NORMAL,
+                                            (blurPx / 2f).coerceAtLeast(0.5f)
+                                        )
+                                    }
+                                }
+                                skCanvas.save()
+                                try {
+                                    skCanvas.clipRRect(elementRRect, SkClipMode.INTERSECT, true)
+                                    skCanvas.clipRRect(holeRRect, SkClipMode.DIFFERENCE, true)
+                                    skCanvas.drawRect(outerRect, skPaint)
+                                } finally {
+                                    skCanvas.restore()
+                                    skPaint.close()
+                                }
+                            }
                         }
                         is CanvasLayer.GlossReflection -> {
                             val glossW = buttonW * layer.widthRatio

@@ -566,21 +566,39 @@ object NxprcAuditService {
                         gLayer.draw(Ellipse2D.Float(cx - baseRadius * 0.98f, cy - baseRadius * 0.98f, baseRadius * 1.96f, baseRadius * 1.96f))
                     }
                     is CanvasLayer.InnerShadow -> {
-                        val cx = btnLeft + btnW / 2f
-                        val cy = btnTop + btnH / 2f
-                        val arcRadius = minOf(btnW, btnH) / 2f * 0.86f
-                        val arcX = cx - arcRadius
-                        val arcY = cy - arcRadius
-                        val arcDiam = arcRadius * 2f
-                        gLayer.stroke = BasicStroke(layer.strokeWidth * density)
-                        // Top highlight rim
-                        val hAlpha = ((layer.highlightColor shr 24) and 0xFF).toInt()
-                        gLayer.color = Color(((layer.highlightColor shr 16) and 0xFF).toInt(), ((layer.highlightColor shr 8) and 0xFF).toInt(), (layer.highlightColor and 0xFF).toInt(), hAlpha)
-                        gLayer.draw(Arc2D.Float(arcX, arcY, arcDiam, arcDiam, 0f, 180f, Arc2D.OPEN))
-                        // Bottom dark shadow rim
-                        val shAlpha = ((layer.shadowColor shr 24) and 0xFF).toInt()
-                        gLayer.color = Color(((layer.shadowColor shr 16) and 0xFF).toInt(), ((layer.shadowColor shr 8) and 0xFF).toInt(), (layer.shadowColor and 0xFF).toInt(), shAlpha)
-                        gLayer.draw(Arc2D.Float(arcX, arcY, arcDiam, arcDiam, 180f, 180f, Arc2D.OPEN))
+                        val shadows = listOf(
+                            Triple(layer.highlightColor, 0f, layer.strokeWidth * density * 0.6f),
+                            Triple(layer.shadowColor, 0f, -layer.strokeWidth * density * 1.4f)
+                        )
+                        shadows.forEach { (colorLong, sx, sy) ->
+                            val alpha = ((colorLong shr 24) and 0xFF).toInt()
+                            if (alpha <= 0) return@forEach
+                            val sc = Color(
+                                ((colorLong shr 16) and 0xFF).toInt(),
+                                ((colorLong shr 8) and 0xFF).toInt(),
+                                (colorLong and 0xFF).toInt(),
+                                alpha
+                            )
+                            val hLeft = btnLeft + sx
+                            val hTop = btnTop + sy
+                            val holeShape = if (isRootOval) {
+                                Ellipse2D.Float(hLeft, hTop, btnW, btnH)
+                            } else {
+                                RoundRectangle2D.Float(hLeft, hTop, btnW, btnH, rootCornerArc, rootCornerArc)
+                            }
+                            val gOut = gLayer.create() as Graphics2D
+                            try {
+                                gOut.clip(rootClipShape)
+                                val outerMargin = 32f
+                                val outerRect = Rectangle2D.Float(btnLeft - outerMargin, btnTop - outerMargin, btnW + outerMargin * 2f, btnH + outerMargin * 2f)
+                                val maskArea = Area(outerRect)
+                                maskArea.subtract(Area(holeShape))
+                                gOut.color = sc
+                                gOut.fill(maskArea)
+                            } finally {
+                                gOut.dispose()
+                            }
+                        }
                     }
                     is CanvasLayer.GlossReflection -> {
                         val glossW = btnW * layer.widthRatio

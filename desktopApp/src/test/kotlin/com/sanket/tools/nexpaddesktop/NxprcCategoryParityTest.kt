@@ -1163,8 +1163,12 @@ body {
                             } else {
                                 gLayer.stroke = BasicStroke(st.width * density)
                             }
-                            val stShape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval, layer.pathData, layer.shapeType, layer.polygonSides)
-                            gLayer.draw(stShape)
+                            if (isOval && st.isTopOnly) {
+                                gLayer.draw(Arc2D.Float(boxX, boxY, boxW, boxH, 0f, 180f, Arc2D.OPEN))
+                            } else {
+                                val stShape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval, layer.pathData, layer.shapeType, layer.polygonSides)
+                                gLayer.draw(stShape)
+                            }
                         }
 
                         // 4. Inset Shadows
@@ -1430,21 +1434,67 @@ body {
                         gLayer.draw(Ellipse2D.Float(cx - baseRadius * 0.98f, cy - baseRadius * 0.98f, baseRadius * 1.96f, baseRadius * 1.96f))
                     }
                     is CanvasLayer.InnerShadow -> {
-                        val cx = btnLeft + btnW / 2f
-                        val cy = btnTop + btnH / 2f
-                        val arcRadius = minOf(btnW, btnH) / 2f * 0.86f
-                        val arcX = cx - arcRadius
-                        val arcY = cy - arcRadius
-                        val arcDiam = arcRadius * 2f
-                        gLayer.stroke = BasicStroke(layer.strokeWidth * density)
-                        // Top highlight rim
-                        val hAlpha = ((layer.highlightColor shr 24) and 0xFF).toInt()
-                        gLayer.color = Color(((layer.highlightColor shr 16) and 0xFF).toInt(), ((layer.highlightColor shr 8) and 0xFF).toInt(), (layer.highlightColor and 0xFF).toInt(), hAlpha)
-                        gLayer.draw(Arc2D.Float(arcX, arcY, arcDiam, arcDiam, 0f, 180f, Arc2D.OPEN))
-                        // Bottom dark shadow rim
-                        val shAlpha = ((layer.shadowColor shr 24) and 0xFF).toInt()
-                        gLayer.color = Color(((layer.shadowColor shr 16) and 0xFF).toInt(), ((layer.shadowColor shr 8) and 0xFF).toInt(), (layer.shadowColor and 0xFF).toInt(), shAlpha)
-                        gLayer.draw(Arc2D.Float(arcX, arcY, arcDiam, arcDiam, 180f, 180f, Arc2D.OPEN))
+                        data class ShadowSpec(val colorLong: Long, val sx: Float, val sy: Float, val blur: Float)
+                        val shadows = listOf(
+                            ShadowSpec(layer.highlightColor, 0f, layer.strokeWidth * density * 0.6f, layer.strokeWidth * density * 1.0f),
+                            ShadowSpec(layer.shadowColor, 0f, -layer.strokeWidth * density * 1.4f, layer.strokeWidth * density * 2.0f)
+                        )
+                        val elemTransformed = gLayer.transform.createTransformedShape(rootClipShape)
+
+                        shadows.forEach { (colorLong, sx, sy, blur) ->
+                            val alpha = ((colorLong shr 24) and 0xFF).toInt()
+                            if (alpha <= 0) return@forEach
+                            val sc = Color(
+                                ((colorLong shr 16) and 0xFF).toInt(),
+                                ((colorLong shr 8) and 0xFF).toInt(),
+                                (colorLong and 0xFF).toInt(),
+                                alpha
+                            )
+
+                            val hLeft = btnLeft + sx
+                            val hTop = btnTop + sy
+                            val holeShape = if (isRootOval) {
+                                Ellipse2D.Float(hLeft, hTop, btnW, btnH)
+                            } else {
+                                RoundRectangle2D.Float(hLeft, hTop, btnW, btnH, rootCornerArc, rootCornerArc)
+                            }
+
+                            if (blur > 0.5f) {
+                                val sImg = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+                                val sg = sImg.createGraphics()
+                                sg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+                                val outerMargin = blur * 3f + Math.abs(sy) + 32f
+                                val outerRect = Rectangle2D.Float(btnLeft - outerMargin, btnTop - outerMargin, btnW + outerMargin * 2f, btnH + outerMargin * 2f)
+                                val maskArea = Area(outerRect)
+                                maskArea.subtract(Area(holeShape))
+                                sg.transform = gLayer.transform
+                                sg.color = sc
+                                sg.fill(maskArea)
+                                sg.dispose()
+
+                                val blurred = gaussianBlurRgba(sImg, blur / 2f)
+                                val gOut = g2.create() as Graphics2D
+                                try {
+                                    gOut.clip(elemTransformed)
+                                    gOut.drawImage(blurred, 0, 0, null)
+                                } finally {
+                                    gOut.dispose()
+                                }
+                            } else {
+                                val gOut = gLayer.create() as Graphics2D
+                                try {
+                                    gOut.clip(rootClipShape)
+                                    val outerMargin = 32f
+                                    val outerRect = Rectangle2D.Float(btnLeft - outerMargin, btnTop - outerMargin, btnW + outerMargin * 2f, btnH + outerMargin * 2f)
+                                    val maskArea = Area(outerRect)
+                                    maskArea.subtract(Area(holeShape))
+                                    gOut.color = sc
+                                    gOut.fill(maskArea)
+                                } finally {
+                                    gOut.dispose()
+                                }
+                            }
+                        }
                     }
                     is CanvasLayer.VectorPath -> {
                         val svgBoxW = btnW * layer.scale

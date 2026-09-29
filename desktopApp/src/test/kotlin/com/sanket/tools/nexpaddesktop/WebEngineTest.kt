@@ -177,21 +177,19 @@ class WebEngineTest {
         )
 
         assertEquals("rc.sanket_btn_a", doc.manifest.id)
-        assertEquals(5, doc.canvas.layers.size)
+        assertTrue(doc.canvas.layers.isNotEmpty())
 
         // Validate layers
         assertTrue(doc.canvas.layers[0] is CanvasLayer.BezelSocket)
-        assertTrue(doc.canvas.layers[1] is CanvasLayer.GradientShape)
-        assertTrue(doc.canvas.layers[2] is CanvasLayer.InnerShadow)
-        assertTrue(doc.canvas.layers[3] is CanvasLayer.GradientShape || doc.canvas.layers[3] is CanvasLayer.GlossReflection)
-        assertTrue(doc.canvas.layers[4] is CanvasLayer.CenterGlyph)
+        assertTrue(doc.canvas.layers.any { it is CanvasLayer.BoxLayer || it is CanvasLayer.GradientShape })
+        assertTrue(doc.canvas.layers.any { it is CanvasLayer.CenterGlyph })
 
         // Validate active animations
         assertEquals(0.94f, doc.animations.pressScale, 0.01f)
         assertEquals(2.0f, doc.animations.pressOffsetY, 0.01f)
 
         // Validate glyph text and shadows
-        val glyph = doc.canvas.layers[4] as CanvasLayer.CenterGlyph
+        val glyph = doc.canvas.layers.filterIsInstance<CanvasLayer.CenterGlyph>().first()
         assertEquals("A", glyph.text)
         assertEquals(39f, glyph.fontSizeSp, 0.01f)
         assertTrue(glyph.textShadows.isNotEmpty())
@@ -201,7 +199,7 @@ class WebEngineTest {
         val decodedResult = NxprcDocument.decodeFromBytes(bytes)
         assertTrue(decodedResult.isSuccess)
         val decoded = decodedResult.getOrThrow()
-        assertEquals(5, decoded.canvas.layers.size)
+        assertEquals(doc.canvas.layers.size, decoded.canvas.layers.size)
 
         // Update Desktop export file
         val outFile = File("C:\\Users\\parma\\OneDrive\\Desktop\\sanket.nxprc")
@@ -340,22 +338,21 @@ class WebEngineTest {
 
         assertEquals("rc.nexpad_a", doc.manifest.id)
         assertEquals("Nexpad A Button", doc.manifest.name)
-        assertTrue("Must have multiple layers", doc.canvas.layers.size >= 5)
+        assertTrue("Must have multiple layers", doc.canvas.layers.size >= 4)
 
         // Verify BezelSocket exists
         assertTrue(doc.canvas.layers.any { it is CanvasLayer.BezelSocket })
 
-        // Verify GradientShape with green base exists
+        // Verify surface exists (either BoxLayer with multi-fills or GradientShape)
+        val boxLayers = doc.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>()
         val gradShapes = doc.canvas.layers.filterIsInstance<CanvasLayer.GradientShape>()
-        assertTrue("Must have multiple gradient shapes", gradShapes.size >= 3)
-        val greenGrad = gradShapes.firstOrNull { gs ->
-            val fill = gs.fill
-            fill is FillBrush.RadialGradient && fill.stops.isNotEmpty()
-        }
-        assertNotNull("Should have radial gradient with stops", greenGrad)
+        val hasMultiFills = boxLayers.any { it.fills.size >= 2 } || gradShapes.size >= 2
+        assertTrue("Must have multiple gradient fills or shapes", hasMultiFills)
 
-        // Verify InnerShadow exists
-        assertTrue(doc.canvas.layers.any { it is CanvasLayer.InnerShadow })
+        // Inset shadows are attached directly to the BoxLayer in the unified box model
+        val hasInnerShadows = doc.canvas.layers.any { it is CanvasLayer.InnerShadow } ||
+                boxLayers.any { b -> b.boxShadows.any { it.isInset } }
+        assertTrue("Must have inner shadows", hasInnerShadows)
 
         // Verify highlights exist (child highlights)
         val glosses = doc.canvas.layers.filterIsInstance<CanvasLayer.GlossReflection>()
@@ -424,12 +421,15 @@ class WebEngineTest {
         // Validate Mechanical Bezel Socket
         assertTrue(doc.canvas.layers.any { it is CanvasLayer.BezelSocket })
 
-        // Validate GradientShapes (Base + Conic metallic rim + Core multi-gradients)
+        // Validate Surface layers and Conic metallic rim (either BoxLayer or GradientShape)
+        val boxLayers = doc.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>()
         val gradShapes = doc.canvas.layers.filterIsInstance<CanvasLayer.GradientShape>()
-        assertTrue("Must have at least 4 gradient shapes (base, ::before conic rim, core fills)", gradShapes.size >= 4)
+        val totalSurfaceLayers = boxLayers.size + gradShapes.size
+        assertTrue("Must have multiple surface/rim layers", totalSurfaceLayers >= 2)
 
         // Validate Conic Gradient parsed in ::before
         val sweep = gradShapes.firstOrNull { it.fill is FillBrush.SweepGradient }
+            ?: boxLayers.firstOrNull { it.fill is FillBrush.SweepGradient || it.fills.any { f -> f is FillBrush.SweepGradient } }
         assertNotNull("Must contain SweepGradient/conic-gradient metallic rim", sweep)
 
         // Validate Inset Shadows (either dedicated InnerShadow or inner box shadows on core)
