@@ -49,6 +49,7 @@ compose.desktop {
             targetFormats(TargetFormat.Msi, TargetFormat.Exe, TargetFormat.AppImage)
             packageName = "com.sanket.tools.nexpaddesktop"
             packageVersion = "1.0.0"
+            licenseFile.set(rootProject.file("LICENSE"))
 
             buildTypes.release.proguard {
                 isEnabled.set(false)

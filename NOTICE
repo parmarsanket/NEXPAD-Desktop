@@ -1,0 +1,35 @@
+NEXPAD Desktop (Virtual Controller Server & Studio)
+Copyright 2026 Sanket Parmar
+
+This product is licensed under the Apache License, Version 2.0.
+See the LICENSE file for more information.
+
+=========================================================================
+Third-Party Software Acknowledgments & Licenses
+=========================================================================
+
+This project incorporates components from the following open-source projects:
+
+1. Compose Multiplatform
+   Copyright (c) 2020-2026 JetBrains s.r.o. and Compose Multiplatform contributors
+   License: Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+
+2. Java Native Access (JNA)
+   Copyright (c) 2007-2026 Timothy Wall, Wayne Meissner
+   License: Apache License, Version 2.0 or LGPL 2.1 (https://github.com/java-native-access/jna)
+
+3. ViGEmClient & ViGEmBus
+   Copyright (c) 2017-2026 Nefarius Software Solutions e.U. and contributors
+   License: MIT License (https://github.com/nefarius/ViGEmClient)
+
+4. usb4java
+   Copyright (c) 2013-2026 Klaus Reimer
+   License: MIT License (https://github.com/usb4java/usb4java)
+
+5. Kotlin & Kotlinx Libraries (Coroutines, Serialization)
+   Copyright (c) 2010-2026 JetBrains s.r.o. and Kotlin Programming Language contributors
+   License: Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+
+6. Ktor Network
+   Copyright (c) 2018-2026 JetBrains s.r.o. and Ktor contributors
+   License: Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
