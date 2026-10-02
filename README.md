@@ -61,6 +61,7 @@
 
 ---
 
-## 📄 License
+## 📄 License & Legal
 
-This project is licensed under the Apache License, Version 2.0 - see the [LICENSE](./LICENSE) file for details.
+- **License**: This project is licensed under the Apache License, Version 2.0 - see the [LICENSE](./LICENSE) file for details.
+- **Legal Disclaimer**: Unofficial open-source project. Not affiliated with Microsoft, Xbox, Sony, Nintendo, or Valve. All trademarks used under Nominative Fair Use - see [DISCLAIMER.md](./DISCLAIMER.md).
