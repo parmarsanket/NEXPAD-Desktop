@@ -1,5 +1,7 @@
 package com.sanket.tools.nexpaddesktop.plugins
 
+import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpad.nxprc.NxprcCategory
 import com.sanket.tools.nexpad.nxprc.NxprcDocument
 import com.sanket.tools.nexpaddesktop.connection.adb.AdbPathResolver
 import kotlinx.coroutines.Dispatchers
@@ -22,8 +24,8 @@ object DesktopPluginManager {
         DesktopPluginItem(
             id = "custom.scifi_hex_a",
             name = "Sci-Fi Hex Attack",
-            category = "BUTTON",
-            defaultControl = "A",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.A.key,
             author = "NEXPAD Core",
             description = "Cyan holographic hexagonal attack button with spring bounce feedback.",
             jsonContent = """
@@ -33,8 +35,8 @@ object DesktopPluginManager {
     "name": "Sci-Fi Hex Attack",
     "author": "NEXPAD Core",
     "version": "1.0.0",
-    "category": "BUTTON",
-    "defaultControl": "A",
+    "category": "${NxprcCategory.BUTTON.id}",
+    "defaultControl": "${ControlKey.A.key}",
     "description": "Cyan holographic hexagonal attack button with spring bounce feedback."
   },
   "geometry": {
@@ -75,8 +77,8 @@ object DesktopPluginManager {
         DesktopPluginItem(
             id = "custom.cyber_octa_b",
             name = "Cyber Octa Burst",
-            category = "BUTTON",
-            defaultControl = "B",
+            category = NxprcCategory.BUTTON.id,
+            defaultControl = ControlKey.B.key,
             author = "NEXPAD Core",
             description = "Neon crimson octagonal defense/burst button.",
             jsonContent = """
@@ -86,8 +88,8 @@ object DesktopPluginManager {
     "name": "Cyber Octa Burst",
     "author": "NEXPAD Core",
     "version": "1.0.0",
-    "category": "BUTTON",
-    "defaultControl": "B",
+    "category": "${NxprcCategory.BUTTON.id}",
+    "defaultControl": "${ControlKey.B.key}",
     "description": "Neon crimson octagonal defense/burst button."
   },
   "geometry": {
@@ -128,8 +130,8 @@ object DesktopPluginManager {
         DesktopPluginItem(
             id = "custom.neon_matrix_ls",
             name = "Neon Matrix Analog Stick",
-            category = "JOYSTICK",
-            defaultControl = "LS",
+            category = NxprcCategory.JOYSTICK.id,
+            defaultControl = ControlKey.LS.key,
             author = "NEXPAD Core",
             description = "Floating dual-ring cyber analog stick with dynamic deadzone indicators.",
             jsonContent = """
@@ -139,8 +141,8 @@ object DesktopPluginManager {
     "name": "Neon Matrix Analog Stick",
     "author": "NEXPAD Core",
     "version": "1.0.0",
-    "category": "JOYSTICK",
-    "defaultControl": "LS",
+    "category": "${NxprcCategory.JOYSTICK.id}",
+    "defaultControl": "${ControlKey.LS.key}",
     "description": "Floating dual-ring cyber analog stick with dynamic deadzone indicators."
   },
   "geometry": {
@@ -169,8 +171,8 @@ object DesktopPluginManager {
         DesktopPluginItem(
             id = "custom.mecha_trigger_rt",
             name = "Mecha Linear Trigger",
-            category = "TRIGGER",
-            defaultControl = "RT",
+            category = NxprcCategory.TRIGGER.id,
+            defaultControl = ControlKey.RT.key,
             author = "NEXPAD Core",
             description = "Cyber mecha high-precision linear trigger.",
             jsonContent = """
@@ -180,8 +182,8 @@ object DesktopPluginManager {
     "name": "Mecha Linear Trigger",
     "author": "NEXPAD Core",
     "version": "1.0.0",
-    "category": "TRIGGER",
-    "defaultControl": "RT",
+    "category": "${NxprcCategory.TRIGGER.id}",
+    "defaultControl": "${ControlKey.RT.key}",
     "description": "Cyber mecha high-precision linear trigger."
   },
   "geometry": {

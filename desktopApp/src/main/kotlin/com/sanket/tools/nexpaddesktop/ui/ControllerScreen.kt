@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.ui
+package com.sanket.tools.nexpaddesktop.ui
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
@@ -38,6 +38,31 @@ import com.sanket.tools.nexpaddesktop.ui.components.glassCard
 import com.sanket.tools.nexpaddesktop.ui.components.glassCardHovered
 import com.sanket.tools.nexpaddesktop.ui.components.selectedGlow
 import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
+import com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel
+
+@Composable
+fun ControllerScreen(
+    viewModel: DesktopViewModel
+) {
+    ControllerScreen(
+        latestInput = viewModel.latestInput,
+        activeController = viewModel.activeController,
+        lsSensitivityX = viewModel.lsSensitivityX,
+        lsSensitivityY = viewModel.lsSensitivityY,
+        rsSensitivityX = viewModel.rsSensitivityX,
+        rsSensitivityY = viewModel.rsSensitivityY,
+        onLsSensitivityXChange = { viewModel.lsSensitivityX = it },
+        onLsSensitivityYChange = { viewModel.lsSensitivityY = it },
+        onRsSensitivityXChange = { viewModel.rsSensitivityX = it },
+        onRsSensitivityYChange = { viewModel.rsSensitivityY = it },
+        onSaveController = { viewModel.onControllerChange(it) },
+        gyroSettings = viewModel.gyroSettings,
+        onGyroSettingsChange = { viewModel.gyroSettings = it },
+        processedYaw = viewModel.processedYaw,
+        processedPitch = viewModel.processedPitch,
+        onRecalibrate = viewModel.onRecalibrate
+    )
+}
 
 @Composable
 fun ControllerScreen(

@@ -83,7 +83,10 @@ fun FullAuditPreviewScreen(
             isAuditing = true
             auditStatus = "Capturing Headless Chrome rendering..."
             withContext(Dispatchers.Default) {
-                val chromeImg = NxprcAuditService.captureChromeScreenshot(htmlSource, 400, 400)
+                val viewBoxW = document.canvas.viewBoxWidth.coerceAtLeast(1f)
+                val viewBoxH = document.canvas.viewBoxHeight.coerceAtLeast(1f)
+                val viewScale = minOf(280f / viewBoxW, 280f / viewBoxH)
+                val chromeImg = NxprcAuditService.captureChromeScreenshot(htmlSource, 400, 400, viewScale)
                 if (chromeImg != null) {
                     val nativeImg = NxprcAuditService.renderNxprcToImage(document, 400, 400)
                     val score = NxprcAuditService.computeVisualParity(chromeImg, nativeImg)

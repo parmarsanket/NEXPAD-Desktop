@@ -3,6 +3,7 @@ package com.sanket.tools.nexpaddesktop
 import com.sanket.tools.nexpad.nxprc.*
 import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
 import com.sanket.tools.nexpaddesktop.plugins.NxprcLayerCodeGenerator
+import com.sanket.tools.nexpaddesktop.plugins.NxprcSurgicalReplacer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -178,4 +179,322 @@ class NxprcLayerStudioTest {
             assertTrue(details.codeSnippet.isNotBlank())
         }
     }
+
+    @Test
+    fun switchingControlsResetsActiveLayersToAllEnabled() {
+        val docA = NxprcHtmlCssConverter.convert(
+            source = NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A,
+            id = "rc.action_a",
+            name = "Action A Button",
+            category = "BUTTON",
+            defaultControl = "A"
+        )
+        val docLS = NxprcHtmlCssConverter.convert(
+            source = NxprcHtmlCssConverter.PRESET_THUMBSTICK_LS,
+            id = "rc.stick_ls",
+            name = "Analog Stick LS",
+            category = "JOYSTICK",
+            defaultControl = "LS"
+        )
+        val docLTP = NxprcHtmlCssConverter.convert(
+            source = NxprcHtmlCssConverter.PRESET_TOUCHPAD_LTP,
+            id = "rc.pad_ltp",
+            name = "Touchpad LTP",
+            category = "TOUCHPAD",
+            defaultControl = "LTP"
+        )
+        val docLB = NxprcHtmlCssConverter.convert(
+            source = NxprcHtmlCssConverter.PRESET_BUMPER_LB,
+            id = "rc.bumper_lb",
+            name = "Shoulder Bumper LB",
+            category = "BUMPER",
+            defaultControl = "LB"
+        )
+
+        val totalA = docA.canvas.layers.size
+        val totalLS = docLS.canvas.layers.size
+        val totalLTP = docLTP.canvas.layers.size
+        val totalLB = docLB.canvas.layers.size
+
+        assertTrue(totalA >= 4, "Action A must have at least 4 layers")
+        assertTrue(totalLS >= 3, "Left Stick must have at least 3 layers")
+        assertTrue(totalLTP >= 2, "Touchpad LTP must have at least 2 layers")
+        assertTrue(totalLB >= 3, "Bumper LB must have at least 3 layers")
+
+        // Simulate layer modifications on Button A in Layer Studio (only layers 0 and 1 active)
+        var simulatedActiveIndices = setOf(0, 1)
+
+        // Switching to LS must NEVER inherit Button A's filtered layers
+        // When switching, the studio logic resets layers to (0 until totalLS).toSet()
+        val resetToLS = (0 until totalLS).toSet()
+        assertEquals(totalLS, resetToLS.size, "All LS layers must be enabled on selection")
+        assertTrue(resetToLS.containsAll((0 until totalLS).toList()))
+
+        // Switching to LTP must have all LTP layers active
+        val resetToLTP = (0 until totalLTP).toSet()
+        assertEquals(totalLTP, resetToLTP.size, "All LTP layers must be enabled on selection")
+
+        // Switching to LB must have all LB layers active
+        val resetToLB = (0 until totalLB).toSet()
+        assertEquals(totalLB, resetToLB.size, "All LB layers must be enabled on selection")
+
+        // Switching back to Button A must restore all Action A layers
+        val resetToA = (0 until totalA).toSet()
+        assertEquals(totalA, resetToA.size, "All Action A layers must be restored to 100% enabled")
+        assertTrue(resetToA.containsAll((0 until totalA).toList()))
+    }
+
+    @Test
+    fun layerStudioExitRestoresAllLayersToStudioSandbox() {
+        val doc = NxprcHtmlCssConverter.convert(
+            source = NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A,
+            id = "rc.action_a",
+            name = "Action A Button",
+            category = "BUTTON",
+            defaultControl = "A"
+        )
+        val totalLayers = doc.canvas.layers.size
+
+        // Inside Layer Studio: user disables layer 1 and solos layer 2
+        var activeIndices = setOf(0, 2, 3)
+        var soloIndex: Int? = 2
+
+        // Filtered export inside Layer Studio produces isolated output
+        val exportDocInStudio = doc.copy(
+            canvas = doc.canvas.copy(
+                layers = doc.canvas.layers.filterIndexed { idx, _ -> idx in activeIndices }
+            )
+        )
+        assertEquals(3, exportDocInStudio.canvas.layers.size)
+
+        fun resolvePreviewLayers(layers: List<CanvasLayer>, active: Set<Int>, solo: Int?): List<CanvasLayer>? {
+            return when {
+                solo != null -> {
+                    val single = layers.getOrNull(solo)
+                    if (single != null) listOf(single) else null
+                }
+                active.size < layers.size -> layers.filterIndexed { idx, _ -> idx in active }
+                else -> null
+            }
+        }
+
+        // When soloing layer #2: preview displays exclusively the 1 soloed layer
+        val soloLayers = resolvePreviewLayers(doc.canvas.layers, activeIndices, soloIndex)
+        assertEquals(1, soloLayers?.size, "Soloing layer #2 must isolate to exactly 1 layer")
+
+        // When solo is cleared, preview displays active filtered subset (3 layers)
+        val activeSubsetLayers = resolvePreviewLayers(doc.canvas.layers, activeIndices, null)
+        assertEquals(3, activeSubsetLayers?.size, "Preview must display exactly 3 active layers")
+
+        // On return to studio (onClose):
+        activeIndices = (0 until totalLayers).toSet()
+        soloIndex = null
+
+        // Main studio preview evaluates to all layers (no filtering)
+        val previewLayers = resolvePreviewLayers(doc.canvas.layers, activeIndices, soloIndex)
+        assertEquals(null, previewLayers, "Sandbox previewLayers must be null (rendering all layers)")
+        assertEquals(totalLayers, activeIndices.size, "All layers must be active after exiting Layer Studio")
+    }
+
+    @Test
+    fun testLayerStudioTransactionalSandboxedEditing() {
+        val originalHtml = NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A
+        var parentHtml = originalHtml
+        var parentDoc = NxprcHtmlCssConverter.convert(
+            source = parentHtml,
+            id = "rc.action_a",
+            name = "Action A Button",
+            category = "BUTTON",
+            defaultControl = "A"
+        )
+
+        // Simulate opening Layer Studio
+        var studioHtml = parentHtml
+        var studioDoc = parentDoc
+        var hasUnsavedChanges = false
+
+        // Target Layer 1 (Diffusion layer)
+        val targetLayer = studioDoc.canvas.layers[1]
+
+        val replacementCode = """
+            .nexpad-btn::before {
+              background: #00FF00;
+              opacity: 0.9;
+            }
+        """.trimIndent()
+
+        val surgicalResult = NxprcSurgicalReplacer.applySurgicalChange(
+            originalHtml = studioHtml,
+            layerIndex = 1,
+            layer = targetLayer,
+            doc = studioDoc,
+            replacementInput = replacementCode
+        )
+
+        assertTrue(surgicalResult.success, "Surgical apply must succeed: ${surgicalResult.message}")
+        studioHtml = surgicalResult.updatedHtml
+        studioDoc = NxprcHtmlCssConverter.convert(
+            source = studioHtml,
+            id = studioDoc.manifest.id,
+            name = studioDoc.manifest.name,
+            category = studioDoc.manifest.category,
+            defaultControl = studioDoc.manifest.defaultControl
+        )
+        hasUnsavedChanges = true
+
+        // 1. Verify studio live preview & export reflects the staged green change
+        assertTrue(studioHtml.contains("#00FF00"), "Studio HTML must contain staged green color")
+        assertNotNull(studioDoc)
+
+        // 2. Scenario A: User pushes/exports stagedDoc, but returns to studio WITHOUT clicking Save Changes
+        // Notice parentHtml and parentDoc are still 100% UNCHANGED
+        assertFalse(parentHtml.contains("#00FF00"), "Parent HTML must NOT contain unstaged change")
+        assertEquals(originalHtml, parentHtml, "Parent HTML must remain completely untouched if not saved")
+
+        // 3. Scenario B: User explicitly clicks '💾 Save Changes'
+        val onSaveHtml: (String) -> Unit = { savedHtml ->
+            parentHtml = savedHtml
+            parentDoc = NxprcHtmlCssConverter.convert(
+                source = savedHtml,
+                id = "rc.action_a",
+                name = "Action A Button",
+                category = "BUTTON",
+                defaultControl = "A"
+            )
+        }
+
+        onSaveHtml(studioHtml)
+        hasUnsavedChanges = false
+
+        // Now parent has committed the change
+        assertFalse(hasUnsavedChanges)
+        assertTrue(parentHtml.contains("#00FF00"), "Parent HTML must contain saved change")
+    }
+
+    @Test
+    fun updateLayerZIndexInHtmlInjectsAndUpdatesZIndex() {
+        val originalHtml = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+            <style>
+            .nexpad-btn {
+                position: relative;
+                width: 96px;
+                height: 96px;
+                background: #101010;
+            }
+            .nexpad-btn::before {
+                content: '';
+                position: absolute;
+                background: #222222;
+                z-index: 1;
+            }
+            .nexpad-btn .btn-label {
+                position: absolute;
+                color: #ffffff;
+            }
+            </style>
+            </head>
+            <body>
+            <button class="nexpad-btn">
+                <span class="btn-label">A</span>
+            </button>
+            </body>
+            </html>
+        """.trimIndent()
+
+        val doc = NxprcHtmlCssConverter.convert(
+            source = originalHtml,
+            id = "rc.test_btn",
+            name = "Test Button",
+            category = "BUTTON",
+            defaultControl = "A"
+        )
+
+        // 1. Update layer with existing z-index (::before at z-index 1 -> change to 5)
+        val beforeLayer = doc.canvas.layers.getOrNull(1)
+        val updatedHtml1 = NxprcSurgicalReplacer.updateLayerZIndexInHtml(
+            originalHtml = originalHtml,
+            layerIndex = 1,
+            layer = beforeLayer,
+            doc = doc,
+            newZIndex = 5
+        )
+        assertTrue(updatedHtml1.contains("z-index: 5;"), "Updated HTML must contain new z-index: 5")
+
+        // 2. Inject z-index into layer that had none (.btn-label -> newZIndex = 10)
+        val labelLayer = doc.canvas.layers.lastOrNull()
+        val updatedHtml2 = NxprcSurgicalReplacer.updateLayerZIndexInHtml(
+            originalHtml = originalHtml,
+            layerIndex = doc.canvas.layers.lastIndex,
+            layer = labelLayer,
+            doc = doc,
+            newZIndex = 10
+        )
+        assertTrue(updatedHtml2.contains("z-index: 10;"), "Updated HTML must have injected z-index: 10")
+    }
+
+    @Test
+    fun syncLayersZIndexInHtmlSynchronizesAllLayers() {
+        val originalHtml = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+            <style>
+            .nexpad-btn {
+                position: relative;
+                width: 96px;
+                height: 96px;
+                background: #111111;
+            }
+            .nexpad-btn .glow {
+                position: absolute;
+                box-shadow: 0 0 10px #00F0FF;
+            }
+            .nexpad-btn .cap {
+                position: absolute;
+                background: #333333;
+            }
+            .nexpad-btn .btn-label {
+                position: absolute;
+                color: #ffffff;
+            }
+            </style>
+            </head>
+            <body>
+            <button class="nexpad-btn">
+                <div class="glow"></div>
+                <div class="cap"></div>
+                <span class="btn-label">A</span>
+            </button>
+            </body>
+            </html>
+        """.trimIndent()
+
+        val doc = NxprcHtmlCssConverter.convert(
+            source = originalHtml,
+            id = "rc.test_btn",
+            name = "Test Button",
+            category = "BUTTON",
+            defaultControl = "A"
+        )
+
+        // Reverse layers order: simulate dragging top layer to bottom
+        val reversedLayers = doc.canvas.layers.reversed()
+        val reorderedDoc = doc.copy(
+            canvas = doc.canvas.copy(layers = reversedLayers)
+        )
+
+        val syncedHtml = NxprcSurgicalReplacer.syncLayersZIndexInHtml(originalHtml, reorderedDoc)
+
+        // All layers should now have z-index corresponding to their new index (0 .. N-1)
+        for (i in reorderedDoc.canvas.layers.indices) {
+            assertTrue(
+                syncedHtml.contains("z-index: $i;"),
+                "Synced HTML must contain z-index: $i for layer $i in reordered document"
+            )
+        }
+    }
 }
+

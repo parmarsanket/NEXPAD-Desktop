@@ -47,7 +47,7 @@ object NxprcAuditService {
     /**
      * Captures true browser rendering via Headless Google Chrome.
      */
-    fun captureChromeScreenshot(html: String, width: Int = 400, height: Int = 400): BufferedImage? {
+    fun captureChromeScreenshot(html: String, width: Int = 400, height: Int = 400, scale: Float = 1.0f): BufferedImage? {
         val chromePath = findChromePath() ?: return null
 
         return try {
@@ -55,23 +55,24 @@ object NxprcAuditService {
             val htmlFile = File(tempDir, "preview_audit_${System.currentTimeMillis()}.html")
             val outFile = File(tempDir, "chrome_audit_${System.currentTimeMillis()}.png")
 
-            val styledHtml = wrapHtmlForPreview(html, width, height)
+            val styledHtml = wrapHtmlForPreview(html, width, height, scale)
             htmlFile.writeText(styledHtml)
 
             val fileUrl = htmlFile.toURI().toString()
             val cmd = arrayOf(
-                "cmd.exe", "/c",
-                "start", "/wait", "\"\"",
-                "\"$chromePath\"",
+                chromePath,
                 "--headless=new",
                 "--disable-gpu",
                 "--window-size=$width,$height",
-                "--screenshot=\"${outFile.absolutePath}\"",
-                "\"$fileUrl\""
+                "--screenshot=${outFile.absolutePath}",
+                fileUrl
             )
 
             val proc = ProcessBuilder(*cmd).start()
-            proc.waitFor()
+            val completed = proc.waitFor(10, java.util.concurrent.TimeUnit.SECONDS)
+            if (!completed) {
+                proc.destroyForcibly()
+            }
 
             val resultImg = if (outFile.exists() && outFile.length() > 0) {
                 ImageIO.read(outFile)
@@ -87,18 +88,21 @@ object NxprcAuditService {
         }
     }
 
-    private fun wrapHtmlForPreview(html: String, width: Int, height: Int): String {
+    private fun wrapHtmlForPreview(html: String, width: Int, height: Int, scale: Float = 1.0f): String {
+        val zoomStyle = if (scale != 1.0f) "zoom: ${scale};" else ""
+        val bodyW = if (scale != 1.0f) (width / scale).toInt() else width
+        val bodyH = if (scale != 1.0f) (height / scale).toInt() else height
         return if (html.contains("<body>", ignoreCase = true)) {
             html.replace(
                 Regex("<body>", RegexOption.IGNORE_CASE),
-                """<body style="margin:0; padding:0; background-color:#0B0E14; width:${width}px; height:${height}px; display:flex; align-items:center; justify-content:center; overflow:hidden;">"""
+                """<body style="margin:0; padding:0; background-color:#0B0E14; width:${bodyW}px; height:${bodyH}px; display:flex; align-items:center; justify-content:center; overflow:hidden; $zoomStyle">"""
             )
         } else {
             """
             <!DOCTYPE html>
             <html>
             <head><meta charset="utf-8"></head>
-            <body style="margin:0; padding:0; background-color:#0B0E14; width:${width}px; height:${height}px; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+            <body style="margin:0; padding:0; background-color:#0B0E14; width:${bodyW}px; height:${bodyH}px; display:flex; align-items:center; justify-content:center; overflow:hidden; $zoomStyle">
             $html
             </body>
             </html>
@@ -228,12 +232,23 @@ object NxprcAuditService {
         val density = viewScale
 
         val primaryBox = doc.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull()
-        val isRootOval = primaryBox?.shapeType?.uppercase() == "OVAL"
-        val rootCornerArc = (primaryBox?.cornerRadiusTopLeft ?: 14f) * density * 2f
-        val rootClipShape: Shape = if (isRootOval) {
-            Ellipse2D.Float(btnLeft, btnTop, btnW, btnH)
-        } else {
-            RoundRectangle2D.Float(btnLeft, btnTop, btnW, btnH, rootCornerArc, rootCornerArc)
+        val primaryGrad = doc.canvas.layers.filterIsInstance<CanvasLayer.GradientShape>().firstOrNull()
+        val rootShapeType = primaryBox?.shapeType?.uppercase() ?: primaryGrad?.shapeType?.uppercase() ?: "ROUNDED_RECT"
+        val isRootOval = rootShapeType == "OVAL"
+        val rootCornerArc = (primaryBox?.cornerRadiusTopLeft ?: primaryGrad?.cornerRadius ?: 14f) * density * 2f
+        val rootPathData = primaryBox?.pathData ?: ""
+        val rootPolySides = primaryBox?.polygonSides ?: 0
+        val rootEffectiveSides = when {
+            rootPolySides >= 3 -> rootPolySides
+            rootShapeType == "HEXAGON" -> 6
+            rootShapeType == "OCTAGON" -> 8
+            else -> 0
+        }
+        val rootClipShape: Shape = when {
+            rootPathData.isNotBlank() -> skiaPathToAwtShape(rootPathData, btnLeft, btnTop, btnW, btnH) ?: parsePathDataToShape(rootPathData, btnLeft, btnTop, btnW, btnH)
+            rootEffectiveSides >= 3 -> buildPolygonShape(rootEffectiveSides, btnLeft, btnTop, btnW, btnH)
+            isRootOval -> Ellipse2D.Float(btnLeft, btnTop, btnW, btnH)
+            else -> RoundRectangle2D.Float(btnLeft, btnTop, btnW, btnH, rootCornerArc, rootCornerArc)
         }
 
         val layersToRender = activeLayersOnly ?: doc.canvas.layers
@@ -284,24 +299,58 @@ object NxprcAuditService {
                         if (layer.scaleX != 1f || layer.scaleY != 1f) gLayer.scale(layer.scaleX.toDouble(), layer.scaleY.toDouble())
                         gLayer.translate(-pivotX.toDouble(), -pivotY.toDouble())
 
-                        // Outset Shadows
-                        layer.boxShadows.filter { !it.isInset }.forEach { shadow ->
+                        val elementShape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval, layer.pathData, layer.shapeType, layer.polygonSides)
+
+                        // 1. Outset Shadows (drawn bottom-to-top per CSS spec)
+                        layer.boxShadows.filter { !it.isInset }.reversed().forEach { shadow ->
                             val sp = shadow.spreadRadius * density
                             val sx = shadow.offsetX * density
                             val sy = shadow.offsetY * density
                             val alpha = (((shadow.color shr 24) and 0xFF) * layer.opacity).toInt().coerceIn(0, 255)
+                            if (alpha <= 0) return@forEach
                             val c = Color(
                                 ((shadow.color shr 16) and 0xFF).toInt(),
                                 ((shadow.color shr 8) and 0xFF).toInt(),
                                 (shadow.color and 0xFF).toInt(),
                                 alpha
                             )
-                            gLayer.color = c
-                            val sShape = getBoxShape(boxX + sx - sp, boxY + sy - sp, boxW + sp * 2, boxH + sp * 2, tl + sp, tr + sp, br + sp, bl + sp, isOval)
-                            gLayer.fill(sShape)
+                            val blur = shadow.blurRadius * density
+                            val sShape = getBoxShape(boxX + sx - sp, boxY + sy - sp, boxW + sp * 2, boxH + sp * 2, tl + sp, tr + sp, br + sp, bl + sp, isOval, layer.pathData, layer.shapeType, layer.polygonSides)
+
+                            if (blur > 0.5f) {
+                                val sImg = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+                                val sg = sImg.createGraphics()
+                                sg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+                                sg.transform = gLayer.transform
+                                sg.color = c
+                                sg.fill(sShape)
+                                sg.dispose()
+
+                                val blurred = gaussianBlurRgba(sImg, blur / 2f)
+                                val gOut = g2.create() as Graphics2D
+                                try {
+                                    val fullArea = Area(Rectangle(0, 0, width, height))
+                                    fullArea.subtract(Area(gLayer.transform.createTransformedShape(elementShape)))
+                                    gOut.clip(fullArea)
+                                    gOut.drawImage(blurred, 0, 0, null)
+                                } finally {
+                                    gOut.dispose()
+                                }
+                            } else {
+                                val gOut = gLayer.create() as Graphics2D
+                                try {
+                                    val fullArea = Area(Rectangle(0, 0, width, height))
+                                    fullArea.subtract(Area(elementShape))
+                                    gOut.clip(fullArea)
+                                    gOut.color = c
+                                    gOut.fill(sShape)
+                                } finally {
+                                    gOut.dispose()
+                                }
+                            }
                         }
 
-                        // Fills
+                        // 2. Fills (stacked bottom-to-top per CSS painter's algorithm)
                         val fills = if (layer.fills.isNotEmpty()) layer.fills else listOf(layer.fill)
                         fills.forEach { fill ->
                             when (fill) {
@@ -313,7 +362,7 @@ object NxprcAuditService {
                                         (fill.color and 0xFF).toInt(),
                                         alpha
                                     )
-                                    val shape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval)
+                                    val shape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval, layer.pathData, layer.shapeType, layer.polygonSides)
                                     gLayer.fill(shape)
                                 }
                                 is FillBrush.LinearGradient -> {
@@ -327,36 +376,16 @@ object NxprcAuditService {
                                     val y1 = gcy - sin * r
                                     val x2 = gcx + cos * r
                                     val y2 = gcy + sin * r
-                                    val fractions = fill.stops.takeIf { it.size == fill.colors.size && it.size >= 2 }?.toFloatArray()
-                                        ?: FloatArray(fill.colors.size) { it.toFloat() / (fill.colors.size - 1).coerceAtLeast(1) }
-                                    val colors = fill.colors.map { col ->
-                                        val alpha = (((col shr 24) and 0xFF) * layer.opacity).toInt().coerceIn(0, 255)
-                                        Color(
-                                            ((col shr 16) and 0xFF).toInt(),
-                                            ((col shr 8) and 0xFF).toInt(),
-                                            (col and 0xFF).toInt(),
-                                            alpha
-                                        )
-                                    }.toTypedArray()
+                                    val (fractions, colors) = sanitizeFractionsAndColors(fill.stops, fill.colors, layer.opacity)
                                     gLayer.paint = LinearGradientPaint(x1, y1, x2, y2, fractions, colors)
-                                    val shape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval)
+                                    val shape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval, layer.pathData, layer.shapeType, layer.polygonSides)
                                     gLayer.fill(shape)
                                 }
                                 is FillBrush.RadialGradient -> {
                                     val gcx = boxX + boxW * fill.centerXRatio
                                     val gcy = boxY + boxH * fill.centerYRatio
-                                    val gradRad = (boxW * fill.radiusRatio).coerceAtLeast(1f)
-                                    val fractions = fill.stops.takeIf { it.size == fill.colors.size && it.size >= 2 }?.toFloatArray()
-                                        ?: FloatArray(fill.colors.size) { it.toFloat() / (fill.colors.size - 1).coerceAtLeast(1) }
-                                    val colors = fill.colors.map { col ->
-                                        val alpha = (((col shr 24) and 0xFF) * layer.opacity).toInt().coerceIn(0, 255)
-                                        Color(
-                                            ((col shr 16) and 0xFF).toInt(),
-                                            ((col shr 8) and 0xFF).toInt(),
-                                            (col and 0xFF).toInt(),
-                                            alpha
-                                        )
-                                    }.toTypedArray()
+                                    val radius = (Math.min(boxW, boxH) * fill.radiusRatio * 1.5f).coerceAtLeast(1f)
+                                    val (fractions, colors) = sanitizeFractionsAndColors(fill.stops, fill.colors, layer.opacity)
 
                                     val xform = if (fill.aspectRatio != 1.0f && fill.aspectRatio > 0f) {
                                         AffineTransform().apply {
@@ -366,52 +395,23 @@ object NxprcAuditService {
                                         }
                                     } else AffineTransform()
 
-                                    gLayer.paint = RadialGradientPaint(Point2D.Float(gcx, gcy), gradRad, Point2D.Float(gcx, gcy), fractions, colors, MultipleGradientPaint.CycleMethod.NO_CYCLE, MultipleGradientPaint.ColorSpaceType.SRGB, xform)
-                                    val shape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval)
+                                    gLayer.paint = RadialGradientPaint(Point2D.Float(gcx, gcy), radius, Point2D.Float(gcx, gcy), fractions, colors, MultipleGradientPaint.CycleMethod.NO_CYCLE, MultipleGradientPaint.ColorSpaceType.SRGB, xform)
+                                    val shape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval, layer.pathData, layer.shapeType, layer.polygonSides)
                                     gLayer.fill(shape)
                                 }
                                 is FillBrush.SweepGradient -> {
-                                    val gcx = boxX + boxW / 2f
-                                    val gcy = boxY + boxH / 2f
-                                    val colors = fill.colors.map { col ->
-                                        val alpha = (((col shr 24) and 0xFF) * layer.opacity).toInt().coerceIn(0, 255)
-                                        Color(
-                                            ((col shr 16) and 0xFF).toInt(),
-                                            ((col shr 8) and 0xFF).toInt(),
-                                            (col and 0xFF).toInt(),
-                                            alpha
-                                        )
-                                    }.toTypedArray()
-                                    val fractions = fill.stops.takeIf { it.size == fill.colors.size && it.size >= 2 }?.toFloatArray()
-                                        ?: FloatArray(fill.colors.size) { it.toFloat() / (fill.colors.size - 1).coerceAtLeast(1) }
-                                    val startAngleRad = Math.toRadians((fill.startAngleDegrees).toDouble()).toFloat()
+                                    val gcx = boxX + boxW * fill.centerXRatio
+                                    val gcy = boxY + boxH * fill.centerYRatio
+                                    val (fractions, colors) = sanitizeFractionsAndColors(fill.stops, fill.colors, layer.opacity)
+                                    val startAngleRad = Math.toRadians((fill.startAngleDegrees - 90.0)).toFloat()
                                     gLayer.paint = ConicGradientPaint(gcx, gcy, startAngleRad, colors, fractions)
-                                    val shape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval)
+                                    val shape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval, layer.pathData, layer.shapeType, layer.polygonSides)
                                     gLayer.fill(shape)
                                 }
                             }
                         }
 
-                        // Inset Shadows
-                        layer.boxShadows.filter { it.isInset }.forEach { shadow ->
-                            val sp = shadow.spreadRadius * density
-                            val sx = shadow.offsetX * density
-                            val sy = shadow.offsetY * density
-                            val alpha = (((shadow.color shr 24) and 0xFF) * layer.opacity).toInt().coerceIn(0, 255)
-                            val c = Color(
-                                ((shadow.color shr 16) and 0xFF).toInt(),
-                                ((shadow.color shr 8) and 0xFF).toInt(),
-                                (shadow.color and 0xFF).toInt(),
-                                alpha
-                            )
-                            gLayer.color = c
-                            val strokeW = (sp * 1.5f).coerceAtLeast(2f)
-                            gLayer.stroke = BasicStroke(strokeW)
-                            val shape = getBoxShape(boxX + sx + strokeW / 2, boxY + sy + strokeW / 2, boxW - strokeW, boxH - strokeW, tl, tr, br, bl, isOval)
-                            gLayer.draw(shape)
-                        }
-
-                        // Border Stroke
+                        // 3. Border Stroke (supports dashed stroke & top-only specular arc)
                         layer.stroke?.let { stroke ->
                             val sAlpha = (((stroke.color shr 24) and 0xFF) * layer.opacity).toInt().coerceIn(0, 255)
                             gLayer.color = Color(
@@ -423,12 +423,85 @@ object NxprcAuditService {
                             val strokeW = stroke.width * density
                             val strokeObj = if (stroke.dashWidth > 0f && stroke.dashGap > 0f) {
                                 BasicStroke(strokeW, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 10f, floatArrayOf(stroke.dashWidth * density, stroke.dashGap * density), 0f)
+                            } else if (stroke.isDashed) {
+                                BasicStroke(strokeW, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f, floatArrayOf(8f * density, 6f * density), 0f)
                             } else {
                                 BasicStroke(strokeW)
                             }
                             gLayer.stroke = strokeObj
-                            val shape = getBoxShape(boxX + strokeW / 2, boxY + strokeW / 2, boxW - strokeW, boxH - strokeW, (tl - strokeW / 2).coerceAtLeast(0f), (tr - strokeW / 2).coerceAtLeast(0f), (br - strokeW / 2).coerceAtLeast(0f), (bl - strokeW / 2).coerceAtLeast(0f), isOval)
-                            gLayer.draw(shape)
+                            if (isOval && stroke.isTopOnly) {
+                                gLayer.draw(Arc2D.Float(boxX, boxY, boxW, boxH, 0f, 180f, Arc2D.OPEN))
+                            } else {
+                                val shape = getBoxShape(boxX + strokeW / 2, boxY + strokeW / 2, boxW - strokeW, boxH - strokeW, (tl - strokeW / 2).coerceAtLeast(0f), (tr - strokeW / 2).coerceAtLeast(0f), (br - strokeW / 2).coerceAtLeast(0f), (bl - strokeW / 2).coerceAtLeast(0f), isOval, layer.pathData, layer.shapeType, layer.polygonSides)
+                                gLayer.draw(shape)
+                            }
+                        }
+
+                        // 4. Inset Shadows (with Gaussian blur & hole difference clipping)
+                        val insets = layer.boxShadows.filter { it.isInset }
+                        if (insets.isNotEmpty()) {
+                            val elemTransformed = gLayer.transform.createTransformedShape(elementShape)
+
+                            insets.forEach { shadow ->
+                                val alpha = (((shadow.color shr 24) and 0xFF) * layer.opacity).toInt().coerceIn(0, 255)
+                                if (alpha <= 0) return@forEach
+                                val sc = Color(
+                                    ((shadow.color shr 16) and 0xFF).toInt(),
+                                    ((shadow.color shr 8) and 0xFF).toInt(),
+                                    (shadow.color and 0xFF).toInt(),
+                                    alpha
+                                )
+                                val blur = shadow.blurRadius * density
+                                val sp = shadow.spreadRadius * density
+                                val sx = shadow.offsetX * density
+                                val sy = shadow.offsetY * density
+
+                                val hLeft = boxX + sx + sp
+                                val hTop = boxY + sy + sp
+                                val hW = (boxW - sp * 2f).coerceAtLeast(0f)
+                                val hH = (boxH - sp * 2f).coerceAtLeast(0f)
+                                val hTl = (tl - sp).coerceAtLeast(0f)
+                                val hTr = (tr - sp).coerceAtLeast(0f)
+                                val hBr = (br - sp).coerceAtLeast(0f)
+                                val hBl = (bl - sp).coerceAtLeast(0f)
+                                val holeShape = getBoxShape(hLeft, hTop, hW, hH, hTl, hTr, hBr, hBl, isOval, layer.pathData, layer.shapeType, layer.polygonSides)
+
+                                if (blur > 0.5f) {
+                                    val sImg = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+                                    val sg = sImg.createGraphics()
+                                    sg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+                                    val outerMargin = blur * 3f + Math.abs(sx) + Math.abs(sy) + 32f
+                                    val outerRect = Rectangle2D.Float(boxX - outerMargin, boxY - outerMargin, boxW + outerMargin * 2f, boxH + outerMargin * 2f)
+                                    val maskArea = Area(outerRect)
+                                    maskArea.subtract(Area(holeShape))
+                                    sg.transform = gLayer.transform
+                                    sg.color = sc
+                                    sg.fill(maskArea)
+                                    sg.dispose()
+
+                                    val blurred = gaussianBlurRgba(sImg, blur / 2f)
+                                    val gOut = g2.create() as Graphics2D
+                                    try {
+                                        gOut.clip(elemTransformed)
+                                        gOut.drawImage(blurred, 0, 0, null)
+                                    } finally {
+                                        gOut.dispose()
+                                    }
+                                } else {
+                                    val gOut = gLayer.create() as Graphics2D
+                                    try {
+                                        gOut.clip(elementShape)
+                                        val outerMargin = 32f
+                                        val outerRect = Rectangle2D.Float(boxX - outerMargin, boxY - outerMargin, boxW + outerMargin * 2f, boxH + outerMargin * 2f)
+                                        val maskArea = Area(outerRect)
+                                        maskArea.subtract(Area(holeShape))
+                                        gOut.color = sc
+                                        gOut.fill(maskArea)
+                                    } finally {
+                                        gOut.dispose()
+                                    }
+                                }
+                            }
                         }
                     }
                     is CanvasLayer.CenterGlyph -> {
@@ -451,6 +524,268 @@ object NxprcAuditService {
                         )
                         gLayer.drawString(text, gx.toInt(), gy.toInt())
                     }
+                    is CanvasLayer.TextLayer -> {
+                        val fontScale = density
+                        val fontSize = (layer.fontSizeSp * fontScale).toInt()
+                        val fontStyle = if (layer.fontWeight >= 700) Font.BOLD else Font.PLAIN
+                        gLayer.font = Font("SansSerif", fontStyle, fontSize)
+                        val fontMetrics = gLayer.fontMetrics
+                        val text = layer.text
+                        val textW = fontMetrics.stringWidth(text)
+                        val textH = fontMetrics.ascent - fontMetrics.descent
+                        val tx = (btnLeft + btnW * 0.5f + layer.offsetXRatio * btnW - textW / 2f).toInt()
+                        val ty = (btnTop + btnH * 0.5f + layer.offsetYRatio * btnH + textH / 2f).toInt()
+
+                        layer.textShadows.forEach { ts ->
+                            val alpha = ((ts.color shr 24) and 0xFF).toInt()
+                            val sc = Color(
+                                ((ts.color shr 16) and 0xFF).toInt(),
+                                ((ts.color shr 8) and 0xFF).toInt(),
+                                (ts.color and 0xFF).toInt(),
+                                alpha
+                            )
+                            gLayer.color = sc
+                            gLayer.drawString(text, (tx + ts.offsetX * fontScale).toInt(), (ty + ts.offsetY * fontScale).toInt())
+                        }
+
+                        val textColor = layer.textColor.toInt()
+                        gLayer.color = Color(
+                            (textColor shr 16) and 0xFF,
+                            (textColor shr 8) and 0xFF,
+                            textColor and 0xFF
+                        )
+                        gLayer.drawString(text, tx, ty)
+                    }
+                    is CanvasLayer.GradientShape -> {
+                        val shapeW = btnW * layer.widthRatio
+                        val shapeH = btnH * layer.heightRatio
+                        val shapeLeft = btnLeft + btnW * layer.effectiveTransform.offsetXRatio
+                        val shapeTop = btnTop + btnH * layer.effectiveTransform.offsetYRatio
+                        val cornerRadius = layer.cornerRadius * density
+                        val shapeType = layer.shapeType.uppercase()
+                        val isOval = shapeType == "OVAL"
+                        val shapeAlpha = layer.effectiveEffects.opacity.coerceIn(0f, 1f)
+
+                        val pivotX = shapeLeft + shapeW * layer.effectiveTransform.originXRatio
+                        val pivotY = shapeTop + shapeH * layer.effectiveTransform.originYRatio
+                        gLayer.translate(pivotX.toDouble(), pivotY.toDouble())
+                        if (layer.effectiveTransform.rotationDegrees != 0f) gLayer.rotate(Math.toRadians(layer.effectiveTransform.rotationDegrees.toDouble()))
+                        if (layer.effectiveTransform.scaleX != 1f || layer.effectiveTransform.scaleY != 1f) gLayer.scale(layer.effectiveTransform.scaleX.toDouble(), layer.effectiveTransform.scaleY.toDouble())
+                        gLayer.translate(-pivotX.toDouble(), -pivotY.toDouble())
+
+                        val effectiveSides = when {
+                            shapeType == "HEXAGON" -> 6
+                            shapeType == "OCTAGON" -> 8
+                            shapeType == "POLYGON" -> 6
+                            else -> 0
+                        }
+                        val shape = when {
+                            effectiveSides >= 3 -> buildPolygonShape(effectiveSides, shapeLeft, shapeTop, shapeW, shapeH)
+                            isOval -> Ellipse2D.Float(shapeLeft, shapeTop, shapeW, shapeH)
+                            else -> RoundRectangle2D.Float(shapeLeft, shapeTop, shapeW, shapeH, cornerRadius * 2f, cornerRadius * 2f)
+                        }
+
+                        // Fill
+                        when (val fill = layer.fill) {
+                            is FillBrush.Solid -> {
+                                val alpha = (((fill.color shr 24) and 0xFF) * shapeAlpha).toInt().coerceIn(0, 255)
+                                gLayer.color = Color(((fill.color shr 16) and 0xFF).toInt(), ((fill.color shr 8) and 0xFF).toInt(), (fill.color and 0xFF).toInt(), alpha)
+                            }
+                            is FillBrush.LinearGradient -> {
+                                val angleRad = Math.toRadians((fill.angleDegrees - 90.0))
+                                val gcx = shapeLeft + shapeW / 2f
+                                val gcy = shapeTop + shapeH / 2f
+                                val r = Math.hypot(shapeW.toDouble(), shapeH.toDouble()).toFloat() / 2f
+                                val cos = Math.cos(angleRad).toFloat()
+                                val sin = Math.sin(angleRad).toFloat()
+                                val x1 = gcx - cos * r
+                                val y1 = gcy - sin * r
+                                val x2 = gcx + cos * r
+                                val y2 = gcy + sin * r
+                                val (fractions, colors) = sanitizeFractionsAndColors(fill.stops, fill.colors, shapeAlpha)
+                                gLayer.paint = LinearGradientPaint(x1, y1, x2, y2, fractions, colors)
+                            }
+                            is FillBrush.RadialGradient -> {
+                                val gcx = shapeLeft + shapeW * fill.centerXRatio
+                                val gcy = shapeTop + shapeH * fill.centerYRatio
+                                val radius = (Math.min(shapeW, shapeH) * fill.radiusRatio * 1.5f).coerceAtLeast(1f)
+                                val (fractions, colors) = sanitizeFractionsAndColors(fill.stops, fill.colors, shapeAlpha)
+                                gLayer.paint = RadialGradientPaint(gcx, gcy, radius, fractions, colors)
+                            }
+                            is FillBrush.SweepGradient -> {
+                                val gcx = shapeLeft + shapeW * fill.centerXRatio
+                                val gcy = shapeTop + shapeH * fill.centerYRatio
+                                val (fractions, colors) = sanitizeFractionsAndColors(fill.stops, fill.colors, shapeAlpha)
+                                val startAngleRad = Math.toRadians((fill.startAngleDegrees - 90.0)).toFloat()
+                                gLayer.paint = ConicGradientPaint(gcx, gcy, startAngleRad, colors, fractions)
+                            }
+                        }
+                        gLayer.fill(shape)
+
+                        // Stroke
+                        layer.stroke?.let { st ->
+                            val alpha = (((st.color shr 24) and 0xFF) * shapeAlpha).toInt().coerceIn(0, 255)
+                            gLayer.color = Color(((st.color shr 16) and 0xFF).toInt(), ((st.color shr 8) and 0xFF).toInt(), (st.color and 0xFF).toInt(), alpha)
+                            if (st.isDashed) {
+                                gLayer.stroke = BasicStroke(st.width * density, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f, floatArrayOf(8f * density, 6f * density), 0f)
+                            } else {
+                                gLayer.stroke = BasicStroke(st.width * density)
+                            }
+                            if (isOval && st.isTopOnly) {
+                                gLayer.draw(Arc2D.Float(shapeLeft, shapeTop, shapeW, shapeH, 0f, 180f, Arc2D.OPEN))
+                            } else {
+                                gLayer.draw(shape)
+                            }
+                        }
+                    }
+                    is CanvasLayer.BezelSocket -> {
+                        val baseRadius = minOf(btnW, btnH) / 2f
+                        val cx = btnLeft + btnW / 2f
+                        val cy = btnTop + btnH / 2f
+                        // 1. Soft bottom drop shadow
+                        val sAlpha = ((layer.shadowColor shr 24) and 0xFF).toInt()
+                        gLayer.color = Color(((layer.shadowColor shr 16) and 0xFF).toInt(), ((layer.shadowColor shr 8) and 0xFF).toInt(), (layer.shadowColor and 0xFF).toInt(), sAlpha)
+                        gLayer.fill(Ellipse2D.Float(cx - baseRadius * 0.98f, cy - baseRadius * 0.98f + baseRadius * 0.05f, baseRadius * 1.96f, baseRadius * 1.96f))
+                        // 2. Solid bezel well
+                        val bAlpha = ((layer.outerBezelColor shr 24) and 0xFF).toInt()
+                        gLayer.color = Color(((layer.outerBezelColor shr 16) and 0xFF).toInt(), ((layer.outerBezelColor shr 8) and 0xFF).toInt(), (layer.outerBezelColor and 0xFF).toInt(), bAlpha)
+                        gLayer.fill(Ellipse2D.Float(cx - baseRadius * 0.98f, cy - baseRadius * 0.98f, baseRadius * 1.96f, baseRadius * 1.96f))
+                        // 3. Bezel rim stroke
+                        val rAlpha = ((layer.outerBevelStroke shr 24) and 0xFF).toInt()
+                        gLayer.color = Color(((layer.outerBevelStroke shr 16) and 0xFF).toInt(), ((layer.outerBevelStroke shr 8) and 0xFF).toInt(), (layer.outerBevelStroke and 0xFF).toInt(), rAlpha)
+                        gLayer.stroke = BasicStroke(2f * density)
+                        gLayer.draw(Ellipse2D.Float(cx - baseRadius * 0.98f, cy - baseRadius * 0.98f, baseRadius * 1.96f, baseRadius * 1.96f))
+                    }
+                    is CanvasLayer.InnerShadow -> {
+                        val shadows = listOf(
+                            Triple(layer.highlightColor, 0f, layer.strokeWidth * density * 0.6f),
+                            Triple(layer.shadowColor, 0f, -layer.strokeWidth * density * 1.4f)
+                        )
+                        shadows.forEach { (colorLong, sx, sy) ->
+                            val alpha = ((colorLong shr 24) and 0xFF).toInt()
+                            if (alpha <= 0) return@forEach
+                            val sc = Color(
+                                ((colorLong shr 16) and 0xFF).toInt(),
+                                ((colorLong shr 8) and 0xFF).toInt(),
+                                (colorLong and 0xFF).toInt(),
+                                alpha
+                            )
+                            val hLeft = btnLeft + sx
+                            val hTop = btnTop + sy
+                            val holeShape = if (isRootOval) {
+                                Ellipse2D.Float(hLeft, hTop, btnW, btnH)
+                            } else {
+                                RoundRectangle2D.Float(hLeft, hTop, btnW, btnH, rootCornerArc, rootCornerArc)
+                            }
+                            val gOut = gLayer.create() as Graphics2D
+                            try {
+                                gOut.clip(rootClipShape)
+                                val outerMargin = 32f
+                                val outerRect = Rectangle2D.Float(btnLeft - outerMargin, btnTop - outerMargin, btnW + outerMargin * 2f, btnH + outerMargin * 2f)
+                                val maskArea = Area(outerRect)
+                                maskArea.subtract(Area(holeShape))
+                                gOut.color = sc
+                                gOut.fill(maskArea)
+                            } finally {
+                                gOut.dispose()
+                            }
+                        }
+                    }
+                    is CanvasLayer.GlossReflection -> {
+                        val glossW = btnW * layer.widthRatio
+                        val glossH = btnH * layer.heightRatio
+                        val glossLeft = btnLeft + btnW * layer.offsetXRatio
+                        val glossTop = btnTop + btnH * layer.offsetYRatio
+                        val glossCx = glossLeft + glossW / 2f
+                        val glossCy = glossTop + glossH / 2f
+                        if (doc.canvas.clipToBounds) {
+                            gLayer.clip(rootClipShape)
+                        }
+
+                        gLayer.translate(glossCx.toDouble(), glossCy.toDouble())
+                        if (layer.rotationDegrees != 0f) gLayer.rotate(Math.toRadians(layer.rotationDegrees.toDouble()))
+                        gLayer.translate(-glossCx.toDouble(), -glossCy.toDouble())
+
+                        val blurSpread = layer.blurRadius * density
+                        val radius = (glossW / 2f + blurSpread).coerceAtLeast(1f)
+                        val colors = arrayOf(
+                            Color(255, 255, 255, (255 * 0.55f * layer.alpha).toInt().coerceIn(0, 255)),
+                            Color(255, 255, 255, (255 * 0.25f * layer.alpha).toInt().coerceIn(0, 255)),
+                            Color(255, 255, 255, (255 * 0.05f * layer.alpha).toInt().coerceIn(0, 255)),
+                            Color(255, 255, 255, 0)
+                        )
+                        val fractions = floatArrayOf(0f, 0.35f, 0.70f, 1.0f)
+                        gLayer.paint = RadialGradientPaint(glossCx, glossCy, radius, fractions, colors)
+                        gLayer.fill(Ellipse2D.Float(glossLeft - blurSpread * 0.5f, glossTop - blurSpread * 0.5f, glossW + blurSpread, glossH + blurSpread))
+                    }
+                    is CanvasLayer.VectorPath -> {
+                        val svgBoxW = btnW * layer.scale
+                        val svgBoxH = btnH * layer.scale
+                        val svgBoxX = btnLeft + btnW * layer.offsetXRatio
+                        val svgBoxY = btnTop + btnH * layer.offsetYRatio
+                        val shape = skiaPathToAwtShape(layer.pathData, svgBoxX, svgBoxY, svgBoxW, svgBoxH)
+                        if (shape != null) {
+                            if (layer.rotationDegrees != 0f) {
+                                val cx = svgBoxX + svgBoxW / 2.0
+                                val cy = svgBoxY + svgBoxH / 2.0
+                                gLayer.translate(cx, cy)
+                                gLayer.rotate(Math.toRadians(layer.rotationDegrees.toDouble()))
+                                gLayer.translate(-cx, -cy)
+                            }
+                            // Fill
+                            when (val fill = layer.fill) {
+                                is FillBrush.Solid -> {
+                                    val alpha = ((fill.color shr 24) and 0xFF).toInt()
+                                    if (alpha > 0) {
+                                        gLayer.color = Color(((fill.color shr 16) and 0xFF).toInt(), ((fill.color shr 8) and 0xFF).toInt(), (fill.color and 0xFF).toInt(), alpha)
+                                        gLayer.fill(shape)
+                                    }
+                                }
+                                is FillBrush.LinearGradient -> {
+                                    val angleRad = Math.toRadians((fill.angleDegrees - 90.0))
+                                    val gcx = svgBoxX + svgBoxW / 2f
+                                    val gcy = svgBoxY + svgBoxH / 2f
+                                    val r = Math.hypot(svgBoxW.toDouble(), svgBoxH.toDouble()).toFloat() / 2f
+                                    val cos = Math.cos(angleRad).toFloat()
+                                    val sin = Math.sin(angleRad).toFloat()
+                                    val x1 = gcx - cos * r
+                                    val y1 = gcy - sin * r
+                                    val x2 = gcx + cos * r
+                                    val y2 = gcy + sin * r
+                                    val (fractions, colors) = sanitizeFractionsAndColors(fill.stops, fill.colors, 1.0f)
+                                    gLayer.paint = LinearGradientPaint(x1, y1, x2, y2, fractions, colors)
+                                    gLayer.fill(shape)
+                                }
+                                is FillBrush.RadialGradient -> {
+                                    val gcx = svgBoxX + svgBoxW * fill.centerXRatio
+                                    val gcy = svgBoxY + svgBoxH * fill.centerYRatio
+                                    val gradRad = (svgBoxW * fill.radiusRatio).coerceAtLeast(1f)
+                                    val (fractions, colors) = sanitizeFractionsAndColors(fill.stops, fill.colors, 1.0f)
+                                    gLayer.paint = RadialGradientPaint(gcx, gcy, gradRad, fractions, colors)
+                                    gLayer.fill(shape)
+                                }
+                                is FillBrush.SweepGradient -> {
+                                    val gcx = svgBoxX + svgBoxW / 2f
+                                    val gcy = svgBoxY + svgBoxH / 2f
+                                    val (fractions, colors) = sanitizeFractionsAndColors(fill.stops, fill.colors, 1.0f)
+                                    val startAngleRad = Math.toRadians(fill.startAngleDegrees.toDouble()).toFloat()
+                                    gLayer.paint = ConicGradientPaint(gcx, gcy, startAngleRad, colors, fractions)
+                                    gLayer.fill(shape)
+                                }
+                            }
+
+                            // Stroke
+                            layer.stroke?.let { st ->
+                                val alpha = ((st.color shr 24) and 0xFF).toInt()
+                                if (alpha > 0) {
+                                    gLayer.color = Color(((st.color shr 16) and 0xFF).toInt(), ((st.color shr 8) and 0xFF).toInt(), (st.color and 0xFF).toInt(), alpha)
+                                    val strokeW = (st.width * density).coerceAtLeast(0.5f)
+                                    gLayer.stroke = BasicStroke(strokeW, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
+                                    gLayer.draw(shape)
+                                }
+                            }
+                        }
+                    }
                     else -> {}
                 }
             } finally {
@@ -462,23 +797,196 @@ object NxprcAuditService {
         return img
     }
 
-    private fun getBoxShape(x: Float, y: Float, w: Float, h: Float, tl: Float, tr: Float, br: Float, bl: Float, isOval: Boolean): Shape {
-        return if (isOval) {
-            Ellipse2D.Float(x, y, w, h)
-        } else {
-            val path = Path2D.Float()
-            path.moveTo(x + tl, y)
-            path.lineTo(x + w - tr, y)
-            path.quadTo(x + w, y, x + w, y + tr)
-            path.lineTo(x + w, y + h - br)
-            path.quadTo(x + w, y + h, x + w - br, y + h)
-            path.lineTo(x + bl, y + h)
-            path.quadTo(x, y + h, x, y + h - bl)
-            path.lineTo(x, y + tl)
-            path.quadTo(x, y, x + tl, y)
-            path.closePath()
-            path
+    fun buildPolygonShape(sides: Int, x: Float, y: Float, w: Float, h: Float): Shape {
+        val path = Path2D.Float()
+        val cx = x + w / 2f
+        val cy = y + h / 2f
+        val rx = w / 2f
+        val ry = h / 2f
+        val angleStep = (2.0 * Math.PI / sides)
+        val startAngle = -Math.PI / 2.0
+        for (i in 0 until sides) {
+            val a = startAngle + i * angleStep
+            val px = (cx + rx * Math.cos(a)).toFloat()
+            val py = (cy + ry * Math.sin(a)).toFloat()
+            if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
         }
+        path.closePath()
+        return path
+    }
+
+    fun skiaPathToAwtShape(svgData: String, boxX: Float, boxY: Float, boxW: Float, boxH: Float): Shape? {
+        val trimmed = svgData.trim()
+        if (trimmed.isBlank()) return null
+        val skiaPath = try { org.jetbrains.skia.Path.makeFromSVGString(trimmed) } catch (_: Throwable) { null } ?: return null
+        val bounds = skiaPath.bounds
+        val isNormalized100 = bounds.left >= -5f && bounds.top >= -5f && bounds.right <= 105f && bounds.bottom <= 105f
+        fun toScreenX(px: Float): Float = if (isNormalized100) boxX + (px / 100f) * boxW else boxX + ((px - bounds.left) / bounds.width.coerceAtLeast(0.001f)) * boxW
+        fun toScreenY(py: Float): Float = if (isNormalized100) boxY + (py / 100f) * boxH else boxY + ((py - bounds.top) / bounds.height.coerceAtLeast(0.001f)) * boxH
+
+        val path2d = Path2D.Float()
+        val iter = skiaPath.iterator()
+        while (iter.hasNext()) {
+            val seg = iter.next() ?: continue
+            when (seg.verb) {
+                org.jetbrains.skia.PathVerb.MOVE -> {
+                    val p0 = seg.p0
+                    if (p0 != null) path2d.moveTo(toScreenX(p0.x), toScreenY(p0.y))
+                }
+                org.jetbrains.skia.PathVerb.LINE -> {
+                    val p1 = seg.p1
+                    if (p1 != null) path2d.lineTo(toScreenX(p1.x), toScreenY(p1.y))
+                }
+                org.jetbrains.skia.PathVerb.QUAD -> {
+                    val p1 = seg.p1
+                    val p2 = seg.p2
+                    if (p1 != null && p2 != null) path2d.quadTo(toScreenX(p1.x), toScreenY(p1.y), toScreenX(p2.x), toScreenY(p2.y))
+                }
+                org.jetbrains.skia.PathVerb.CUBIC -> {
+                    val p1 = seg.p1
+                    val p2 = seg.p2
+                    val p3 = seg.p3
+                    if (p1 != null && p2 != null && p3 != null) path2d.curveTo(toScreenX(p1.x), toScreenY(p1.y), toScreenX(p2.x), toScreenY(p2.y), toScreenX(p3.x), toScreenY(p3.y))
+                }
+                org.jetbrains.skia.PathVerb.CLOSE -> path2d.closePath()
+                else -> {}
+            }
+        }
+        return path2d
+    }
+
+    fun getBoxShape(
+        x: Float, y: Float, w: Float, h: Float,
+        tl: Float, tr: Float, br: Float, bl: Float,
+        isOval: Boolean,
+        pathData: String = "",
+        shapeType: String = "",
+        polygonSides: Int = 0
+    ): Shape {
+        val st = shapeType.uppercase()
+        val effectiveSides = when {
+            polygonSides >= 3 -> polygonSides
+            st == "HEXAGON" -> 6
+            st == "OCTAGON" -> 8
+            else -> 0
+        }
+        val baseShape: Shape = when {
+            pathData.isNotBlank() -> skiaPathToAwtShape(pathData, x, y, w, h) ?: parsePathDataToShape(pathData, x, y, w, h)
+            effectiveSides >= 3 -> buildPolygonShape(effectiveSides, x, y, w, h)
+            isOval || st == "OVAL" -> Ellipse2D.Float(x, y, w, h)
+            else -> {
+                val path = Path2D.Float()
+                path.moveTo(x + tl, y)
+                path.lineTo(x + w - tr, y)
+                path.quadTo(x + w, y, x + w, y + tr)
+                path.lineTo(x + w, y + h - br)
+                path.quadTo(x + w, y + h, x + w - br, y + h)
+                path.lineTo(x + bl, y + h)
+                path.quadTo(x, y + h, x, y + h - bl)
+                path.lineTo(x, y + tl)
+                path.quadTo(x, y, x + tl, y)
+                path.closePath()
+                path
+            }
+        }
+
+        if (pathData.isNotBlank() && isOval) {
+            val area = java.awt.geom.Area(baseShape)
+            area.intersect(java.awt.geom.Area(Ellipse2D.Float(x, y, w, h)))
+            return area
+        } else if (pathData.isNotBlank() && (tl > 0f || tr > 0f || br > 0f || bl > 0f)) {
+            val outerPath = Path2D.Float().apply {
+                moveTo(x + tl, y)
+                lineTo(x + w - tr, y)
+                quadTo(x + w, y, x + w, y + tr)
+                lineTo(x + w, y + h - br)
+                quadTo(x + w, y + h, x + w - br, y + h)
+                lineTo(x + bl, y + h)
+                quadTo(x, y + h, x, y + h - bl)
+                lineTo(x, y + tl)
+                quadTo(x, y, x + tl, y)
+                closePath()
+            }
+            val area = java.awt.geom.Area(baseShape)
+            area.intersect(java.awt.geom.Area(outerPath))
+            return area
+        }
+
+        return baseShape
+    }
+
+    fun parsePathDataToShape(pathData: String, boxX: Float, boxY: Float, boxW: Float, boxH: Float): Shape {
+        val path = Path2D.Float()
+        val tokens = pathData.trim().split(java.util.regex.Pattern.compile("[,\\s]+")).filter { it.isNotEmpty() }
+        var i = 0
+        var curX = 0f
+        var curY = 0f
+
+        var isNormalized = true
+        for (idx in tokens.indices) {
+            val f = tokens[idx].toFloatOrNull()
+            if (f != null && (f < -1f || f > 105f)) {
+                isNormalized = false
+                break
+            }
+        }
+
+        fun toScreenX(px: Float): Float = if (isNormalized) boxX + (px / 100f) * boxW else boxX + px
+        fun toScreenY(py: Float): Float = if (isNormalized) boxY + (py / 100f) * boxH else boxY + py
+
+        while (i < tokens.size) {
+            val cmd = tokens[i].uppercase()
+            when (cmd) {
+                "M" -> {
+                    if (i + 2 < tokens.size) {
+                        val px = tokens[i + 1].toFloatOrNull() ?: 0f
+                        val py = tokens[i + 2].toFloatOrNull() ?: 0f
+                        curX = toScreenX(px)
+                        curY = toScreenY(py)
+                        path.moveTo(curX, curY)
+                        i += 3
+                    } else i++
+                }
+                "L" -> {
+                    if (i + 2 < tokens.size) {
+                        val px = tokens[i + 1].toFloatOrNull() ?: 0f
+                        val py = tokens[i + 2].toFloatOrNull() ?: 0f
+                        curX = toScreenX(px)
+                        curY = toScreenY(py)
+                        path.lineTo(curX, curY)
+                        i += 3
+                    } else i++
+                }
+                "C" -> {
+                    if (i + 6 < tokens.size) {
+                        val x1 = toScreenX(tokens[i + 1].toFloatOrNull() ?: 0f)
+                        val y1 = toScreenY(tokens[i + 2].toFloatOrNull() ?: 0f)
+                        val x2 = toScreenX(tokens[i + 3].toFloatOrNull() ?: 0f)
+                        val y2 = toScreenY(tokens[i + 4].toFloatOrNull() ?: 0f)
+                        curX = toScreenX(tokens[i + 5].toFloatOrNull() ?: 0f)
+                        curY = toScreenY(tokens[i + 6].toFloatOrNull() ?: 0f)
+                        path.curveTo(x1, y1, x2, y2, curX, curY)
+                        i += 7
+                    } else i++
+                }
+                "Q" -> {
+                    if (i + 4 < tokens.size) {
+                        val x1 = toScreenX(tokens[i + 1].toFloatOrNull() ?: 0f)
+                        val y1 = toScreenY(tokens[i + 2].toFloatOrNull() ?: 0f)
+                        curX = toScreenX(tokens[i + 3].toFloatOrNull() ?: 0f)
+                        curY = toScreenY(tokens[i + 4].toFloatOrNull() ?: 0f)
+                        path.quadTo(x1, y1, curX, curY)
+                        i += 5
+                    } else i++
+                }
+                "Z" -> {
+                    path.closePath()
+                    i++
+                }
+                else -> i++
+            }
+        }
+        return path
     }
 
     /**
@@ -509,6 +1017,78 @@ object NxprcAuditService {
             }
             else -> "L$index: ${layer::class.simpleName}"
         }
+    }
+    fun gaussianBlurRgba(src: BufferedImage, radius: Float): BufferedImage {
+        val r = radius.toInt().coerceAtLeast(1)
+        val w = src.width
+        val h = src.height
+        val srcPixels = IntArray(w * h)
+        src.getRGB(0, 0, w, h, srcPixels, 0, w)
+        val dstPixels = IntArray(w * h)
+
+        fun boxBlurPass(input: IntArray, output: IntArray) {
+            val temp = IntArray(w * h)
+            val div = 2 * r + 1
+            for (y in 0 until h) {
+                var aSum = 0
+                var rSum = 0
+                var gSum = 0
+                var bSum = 0
+                val rowStart = y * w
+                for (i in -r..r) {
+                    val x = i.coerceIn(0, w - 1)
+                    val c = input[rowStart + x]
+                    aSum += (c ushr 24) and 0xFF
+                    rSum += (c ushr 16) and 0xFF
+                    gSum += (c ushr 8) and 0xFF
+                    bSum += c and 0xFF
+                }
+                for (x in 0 until w) {
+                    temp[rowStart + x] = ((aSum / div) shl 24) or ((rSum / div) shl 16) or ((gSum / div) shl 8) or (bSum / div)
+                    val prevX = (x - r).coerceIn(0, w - 1)
+                    val nextX = (x + r + 1).coerceIn(0, w - 1)
+                    val cPrev = input[rowStart + prevX]
+                    val cNext = input[rowStart + nextX]
+                    aSum += ((cNext ushr 24) and 0xFF) - ((cPrev ushr 24) and 0xFF)
+                    rSum += ((cNext ushr 16) and 0xFF) - ((cPrev ushr 16) and 0xFF)
+                    gSum += ((cNext ushr 8) and 0xFF) - ((cPrev ushr 8) and 0xFF)
+                    bSum += (cNext and 0xFF) - (cPrev and 0xFF)
+                }
+            }
+            for (x in 0 until w) {
+                var aSum = 0
+                var rSum = 0
+                var gSum = 0
+                var bSum = 0
+                for (i in -r..r) {
+                    val y = i.coerceIn(0, h - 1)
+                    val c = temp[y * w + x]
+                    aSum += (c ushr 24) and 0xFF
+                    rSum += (c ushr 16) and 0xFF
+                    gSum += (c ushr 8) and 0xFF
+                    bSum += c and 0xFF
+                }
+                for (y in 0 until h) {
+                    output[y * w + x] = ((aSum / div) shl 24) or ((rSum / div) shl 16) or ((gSum / div) shl 8) or (bSum / div)
+                    val prevY = (y - r).coerceIn(0, h - 1)
+                    val nextY = (y + r + 1).coerceIn(0, h - 1)
+                    val cPrev = temp[prevY * w + x]
+                    val cNext = temp[nextY * w + x]
+                    aSum += ((cNext ushr 24) and 0xFF) - ((cPrev ushr 24) and 0xFF)
+                    rSum += ((cNext ushr 16) and 0xFF) - ((cPrev ushr 16) and 0xFF)
+                    gSum += ((cNext ushr 8) and 0xFF) - ((cPrev ushr 8) and 0xFF)
+                    bSum += (cNext and 0xFF) - (cPrev and 0xFF)
+                }
+            }
+        }
+
+        val intermediate = IntArray(w * h)
+        boxBlurPass(srcPixels, intermediate)
+        boxBlurPass(intermediate, dstPixels)
+
+        val res = BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB)
+        res.setRGB(0, 0, w, h, dstPixels, 0, w)
+        return res
     }
 
     private class ConicGradientPaint(
@@ -588,5 +1168,66 @@ object NxprcAuditService {
                 return raster
             }
         }
+    }
+
+    /**
+     * Sanitizes stops and colors for Java AWT LinearGradientPaint and RadialGradientPaint:
+     * 1. Guarantees stops starts with 0.0f
+     * 2. Guarantees stops ends with 1.0f
+     * 3. Guarantees strictly increasing order (fractions[i] > fractions[i-1]) so
+     *    IllegalArgumentException: Keyframe fractions must be increasing is never thrown.
+     */
+    private fun sanitizeFractionsAndColors(
+        rawStops: List<Float>?,
+        rawColors: List<Long>,
+        layerOpacity: Float
+    ): Pair<FloatArray, Array<Color>> {
+        if (rawColors.isEmpty()) {
+            return Pair(floatArrayOf(0f, 1f), arrayOf(Color(0, 0, 0, 0), Color(0, 0, 0, 0)))
+        }
+
+        val colorsList = rawColors.map { col ->
+            val alpha = (((col shr 24) and 0xFF) * layerOpacity).toInt().coerceIn(0, 255)
+            Color(
+                ((col shr 16) and 0xFF).toInt(),
+                ((col shr 8) and 0xFF).toInt(),
+                (col and 0xFF).toInt(),
+                alpha
+            )
+        }.toMutableList()
+
+        val stopsList = (rawStops?.takeIf { it.size == rawColors.size && it.size >= 2 }
+            ?: List(rawColors.size) { it.toFloat() / (rawColors.size - 1).coerceAtLeast(1) }).toMutableList()
+
+        // 1. Ensure starts at 0f (required by java.awt.MultipleGradientPaint)
+        if (stopsList.first() > 0.0001f) {
+            stopsList.add(0, 0f)
+            colorsList.add(0, colorsList.first())
+        } else {
+            stopsList[0] = 0f
+        }
+
+        // 2. Ensure ends at 1f (required by java.awt.MultipleGradientPaint)
+        if (stopsList.last() < 0.9999f) {
+            stopsList.add(1f)
+            colorsList.add(colorsList.last())
+        } else {
+            stopsList[stopsList.lastIndex] = 1f
+        }
+
+        // 3. Ensure strictly increasing (required by java.awt.MultipleGradientPaint: fractions[i] > fractions[i-1])
+        val epsilon = 0.0002f
+        for (i in 1 until stopsList.size) {
+            if (stopsList[i] <= stopsList[i - 1]) {
+                stopsList[i] = (stopsList[i - 1] + epsilon).coerceAtMost(1f)
+            }
+        }
+        for (i in stopsList.size - 2 downTo 0) {
+            if (stopsList[i] >= stopsList[i + 1]) {
+                stopsList[i] = (stopsList[i + 1] - epsilon).coerceAtLeast(0f)
+            }
+        }
+
+        return Pair(stopsList.toFloatArray(), colorsList.toTypedArray())
     }
 }

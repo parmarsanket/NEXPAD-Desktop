@@ -17,6 +17,7 @@ import com.sanket.tools.nexpaddesktop.connection.DriverInstallState
 import com.sanket.tools.nexpad.model.GamepadFeedback
 import com.sanket.tools.nexpaddesktop.ui.ControllerType
 import com.sanket.tools.nexpaddesktop.plugins.UniversalPushManager
+import com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel
 import com.sun.jna.platform.win32.Kernel32
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -59,12 +60,11 @@ fun main(args: Array<String>) {
     application {
 
     val scope = rememberCoroutineScope()
+    val viewModel = remember { DesktopViewModel() }
     var server by remember { mutableStateOf<UdpServer?>(null) }
     val aoaManager = remember { com.sanket.tools.nexpaddesktop.connection.usb.aoa.AoaManager() }
     val adbBridgeManager = remember { com.sanket.tools.nexpaddesktop.connection.adb.AdbBridgeManager() }
     val btServer = remember { com.sanket.tools.nexpaddesktop.connection.bt.BluetoothRfcommServer() }
-    
-    var activeController by remember { mutableStateOf(ControllerType.XBOX_360) }
     
     // The active ViGEm driver (Xbox 360 or DualShock 4). Updated when controller type changes.
     var activeDriver by remember { mutableStateOf<IGamepadDriver?>(null) }
@@ -72,39 +72,20 @@ fun main(args: Array<String>) {
     // DSU (CemuHook) motion server — always active for emulator compatibility
     val dsuServer = remember { DsuServer() }
     val discoveryServer = remember { com.sanket.tools.nexpaddesktop.connection.wifi.DiscoveryServer() }
-    var latestInput by remember { mutableStateOf(GamepadInput()) }
-    
-    // Track connection state
-    var isDriverConnected by remember { mutableStateOf(false) }
-    var activeTransport by remember { mutableStateOf(ActiveTransport.NONE) }
-    var connectedDeviceName by remember { mutableStateOf<String?>(null) }
     
     // Motion Smoothing State
-    var gyroSettings by remember { mutableStateOf(GyroSettings()) }
     val gyroProcessor = remember { com.sanket.tools.nexpaddesktop.driver.GyroProcessor() }
-    var processedYaw by remember { mutableStateOf(0f) }
-    var processedPitch by remember { mutableStateOf(0f) }
 
-    // UI State for Sensitivity
-    var lsSensitivityX by remember { mutableStateOf(1.0f) }
-    var lsSensitivityY by remember { mutableStateOf(1.0f) }
-    var rsSensitivityX by remember { mutableStateOf(1.0f) }
-    var rsSensitivityY by remember { mutableStateOf(1.0f) }
-    
     // Throttle UI updates to 30 FPS
     var lastUiUpdateTime by remember { mutableStateOf(0L) }
     
-    var appError by remember { mutableStateOf("") }
-    
     // AOA Driver Installation State
-    var isAoaDriverNeeded by remember { mutableStateOf(false) }
-    var driverInstallState by remember { mutableStateOf(DriverInstallState.IDLE) }
     var requiredVidHex by remember { mutableStateOf("") }
     var requiredPidHex by remember { mutableStateOf("") }
     var requiredMi by remember { mutableStateOf("") }
     
     val onInstallAoaDriver: () -> Unit = {
-        driverInstallState = DriverInstallState.INSTALLING
+        viewModel.driverInstallState = DriverInstallState.INSTALLING
         scope.launch {
             println("Main: Requesting UAC elevation via native ShellExecuteEx...")
             
@@ -132,35 +113,36 @@ fun main(args: Array<String>) {
                     aoaManager.onDriverInstallCompleted(success)
                     if (success) {
                         println("Main: WinUSB driver installed successfully. Scanner loop will retry handshake.")
-                        isAoaDriverNeeded = false
-                        driverInstallState = DriverInstallState.FINISHED
+                        viewModel.isAoaDriverNeeded = false
+                        viewModel.driverInstallState = DriverInstallState.FINISHED
                         kotlinx.coroutines.delay(2000)
-                        driverInstallState = DriverInstallState.IDLE
+                        viewModel.driverInstallState = DriverInstallState.IDLE
                     } else {
                         println("Main: Driver installation failed (Code ${result.exitCode}).")
-                        driverInstallState = DriverInstallState.IDLE
+                        viewModel.driverInstallState = DriverInstallState.IDLE
                     }
                 }
                 is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.UserCancelled -> {
                     println("Main: User cancelled UAC prompt.")
-                    driverInstallState = DriverInstallState.IDLE
+                    viewModel.driverInstallState = DriverInstallState.IDLE
                 }
                 is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.Error -> {
                     println("Main: Failed to launch elevated process. Win32 Error: ${result.errorCode} - ${result.message}")
-                    driverInstallState = DriverInstallState.IDLE
+                    viewModel.driverInstallState = DriverInstallState.IDLE
                 }
             }
         }
     }
+    viewModel.onInstallAoaDriver = onInstallAoaDriver
     
     // ══════════════════════════════════════════════════════════
     //  DRIVER LIFECYCLE — Re-create driver when controller type changes
     // ══════════════════════════════════════════════════════════
-    DisposableEffect(activeController) {
+    DisposableEffect(viewModel.activeController) {
         val sendRumbleFeedback: (GamepadFeedback) -> Unit = { feedback ->
             scope.launch {
                 try {
-                    when (activeTransport) {
+                    when (viewModel.activeTransport) {
                         ActiveTransport.WIFI, ActiveTransport.USB_TETHERING -> server?.sendFeedback(feedback)
                         ActiveTransport.USB_AOA -> aoaManager.sendFeedback(feedback)
                         ActiveTransport.USB_ADB -> adbBridgeManager.sendFeedback(feedback)
@@ -168,19 +150,19 @@ fun main(args: Array<String>) {
                         ActiveTransport.NONE -> {}
                     }
                 } catch (e: Throwable) {
-                    appError = "Rumble Error: ${e.message}"
+                    viewModel.appError = "Rumble Error: ${e.message}"
                 }
             }
         }
 
-        val newDriver = if (activeController == ControllerType.XBOX_360) {
+        val newDriver = if (viewModel.activeController == ControllerType.XBOX_360) {
             VirtualGamepadDriver(onRumble = sendRumbleFeedback)
         } else {
             VirtualDualShock4Driver(onRumble = sendRumbleFeedback)
         }
         newDriver.connect()
         activeDriver = newDriver
-        isDriverConnected = newDriver.isDriverConnected()
+        viewModel.isDriverConnected = newDriver.isDriverConnected()
 
         // If the driver isn't installed yet, launch a coroutine to keep trying in the background
         val connectionJob = scope.launch(Dispatchers.IO) {
@@ -191,7 +173,7 @@ fun main(args: Array<String>) {
                 } catch (e: Exception) {
                     // Ignore errors during polling
                 }
-                isDriverConnected = newDriver.isDriverConnected()
+                viewModel.isDriverConnected = newDriver.isDriverConnected()
             }
         }
 
@@ -211,20 +193,20 @@ fun main(args: Array<String>) {
         val inputHandler: (GamepadInput) -> Unit = { input ->
             val processedInput = com.sanket.tools.nexpaddesktop.driver.InputPipeline.processInput(
                 input = input,
-                activeController = activeController,
+                activeController = viewModel.activeController,
                 gyroProcessor = gyroProcessor,
-                gyroSettings = gyroSettings,
-                lsSensitivityX = lsSensitivityX,
-                lsSensitivityY = lsSensitivityY,
-                rsSensitivityX = rsSensitivityX,
-                rsSensitivityY = rsSensitivityY,
+                gyroSettings = viewModel.gyroSettings,
+                lsSensitivityX = viewModel.lsSensitivityX,
+                lsSensitivityY = viewModel.lsSensitivityY,
+                rsSensitivityX = viewModel.rsSensitivityX,
+                rsSensitivityY = viewModel.rsSensitivityY,
                 onProcessedAngles = { yaw, pitch ->
                     val now = System.currentTimeMillis()
                     if ((now - lastUiUpdateTime) > 33L) {
                         lastUiUpdateTime = now
-                        processedYaw = yaw
-                        processedPitch = pitch
-                        latestInput = input // We update latestInput here for the UI to prevent excessive recomposition
+                        viewModel.processedYaw = yaw
+                        viewModel.processedPitch = pitch
+                        viewModel.latestInput = input // We update latestInput here for the UI to prevent excessive recomposition
                     }
                 }
             )
@@ -236,38 +218,25 @@ fun main(args: Array<String>) {
         server = UdpServer(
             port = 9999,
             onClientConnected = { name, connType -> 
-                if (connType == 2) {
-                    activeTransport = ActiveTransport.USB_TETHERING
-                    connectedDeviceName = name
-                } else {
-                    activeTransport = ActiveTransport.WIFI
-                    connectedDeviceName = name
-                }
-                isAoaDriverNeeded = false 
+                val transport = if (connType == 2) ActiveTransport.USB_TETHERING else ActiveTransport.WIFI
+                viewModel.updateConnectedDevice(name, transport)
                 btServer.pause()
             },
             onClientDisconnected = { 
-                if (activeTransport == ActiveTransport.WIFI || activeTransport == ActiveTransport.USB_TETHERING) {
-                    activeTransport = ActiveTransport.NONE
-                    connectedDeviceName = null
-                }
+                viewModel.updateDisconnectedDevice(ActiveTransport.WIFI)
+                viewModel.updateDisconnectedDevice(ActiveTransport.USB_TETHERING)
             },
             onInputReceived = inputHandler
         ).apply {
-            isExternalTransportActive = { activeTransport != ActiveTransport.NONE && activeTransport != ActiveTransport.WIFI && activeTransport != ActiveTransport.USB_TETHERING }
+            isExternalTransportActive = { viewModel.activeTransport != ActiveTransport.NONE && viewModel.activeTransport != ActiveTransport.WIFI && viewModel.activeTransport != ActiveTransport.USB_TETHERING }
         }
 
         aoaManager.onAoaConnected = { name -> 
-            activeTransport = ActiveTransport.USB_AOA
-            connectedDeviceName = name
-            isAoaDriverNeeded = false 
+            viewModel.updateConnectedDevice(name, ActiveTransport.USB_AOA)
             btServer.pause()
         }
         aoaManager.onAoaDisconnected = { 
-            if (activeTransport == ActiveTransport.USB_AOA) {
-                activeTransport = ActiveTransport.NONE
-                connectedDeviceName = null
-            }
+            viewModel.updateDisconnectedDevice(ActiveTransport.USB_AOA)
         }
         aoaManager.onInputReceived = inputHandler
 
@@ -275,13 +244,13 @@ fun main(args: Array<String>) {
         aoaManager.isAdbActive = { adbBridgeManager.hasActiveAdb() }
         aoaManager.isAdbInitialScanCompleted = { adbBridgeManager.isInitialScanCompleted.get() }
         // Single Active Transport Guard: pause USB scanning when another transport is active
-        aoaManager.isScanningPaused = { activeTransport != ActiveTransport.NONE && activeTransport != ActiveTransport.USB_AOA }
+        aoaManager.isScanningPaused = { viewModel.activeTransport != ActiveTransport.NONE && viewModel.activeTransport != ActiveTransport.USB_AOA }
 
         aoaManager.onDriverNeedChanged = { needed, vid, pid, mi -> 
-            if (activeTransport != ActiveTransport.NONE || adbBridgeManager.hasActiveAdb()) {
-                isAoaDriverNeeded = false
+            if (viewModel.activeTransport != ActiveTransport.NONE || adbBridgeManager.hasActiveAdb()) {
+                viewModel.isAoaDriverNeeded = false
             } else {
-                isAoaDriverNeeded = needed
+                viewModel.isAoaDriverNeeded = needed
                 if (needed && vid != null && pid != null) {
                     requiredVidHex = String.format("%04X", vid)
                     requiredPidHex = String.format("%04X", pid)
@@ -291,34 +260,24 @@ fun main(args: Array<String>) {
         }
         
         adbBridgeManager.onAdbConnected = { name -> 
-            activeTransport = ActiveTransport.USB_ADB
-            connectedDeviceName = name
-            isAoaDriverNeeded = false 
+            viewModel.updateConnectedDevice(name, ActiveTransport.USB_ADB)
             btServer.pause()
         }
         adbBridgeManager.onAdbDisconnected = { 
-            if (activeTransport == ActiveTransport.USB_ADB) {
-                activeTransport = ActiveTransport.NONE
-                connectedDeviceName = null
-            }
+            viewModel.updateDisconnectedDevice(ActiveTransport.USB_ADB)
         }
         adbBridgeManager.onInputReceived = inputHandler
         // Single Active Transport Guard: pause ADB process polling when another transport is active
-        adbBridgeManager.isScanningPaused = { activeTransport != ActiveTransport.NONE && activeTransport != ActiveTransport.USB_ADB }
+        adbBridgeManager.isScanningPaused = { viewModel.activeTransport != ActiveTransport.NONE && viewModel.activeTransport != ActiveTransport.USB_ADB }
         adbBridgeManager.startScanner(scope)
 
         // Bluetooth RFCOMM Server
-        btServer.isExternalTransportActive = { activeTransport != ActiveTransport.NONE && activeTransport != ActiveTransport.BLUETOOTH }
+        btServer.isExternalTransportActive = { viewModel.activeTransport != ActiveTransport.NONE && viewModel.activeTransport != ActiveTransport.BLUETOOTH }
         btServer.onBtConnected = { name ->
-            activeTransport = ActiveTransport.BLUETOOTH
-            connectedDeviceName = name
-            isAoaDriverNeeded = false
+            viewModel.updateConnectedDevice(name, ActiveTransport.BLUETOOTH)
         }
         btServer.onBtDisconnected = { 
-            if (activeTransport == ActiveTransport.BLUETOOTH) {
-                activeTransport = ActiveTransport.NONE
-                connectedDeviceName = null
-            }
+            viewModel.updateDisconnectedDevice(ActiveTransport.BLUETOOTH)
         }
         btServer.onInputReceived = inputHandler
         btServer.start(scope)
@@ -340,53 +299,30 @@ fun main(args: Array<String>) {
         }
     }
 
-    LaunchedEffect(activeTransport, server) {
-        UniversalPushManager.currentTransport = activeTransport
+    LaunchedEffect(viewModel.activeTransport, server) {
+        UniversalPushManager.currentTransport = viewModel.activeTransport
         UniversalPushManager.udpServer = server
         UniversalPushManager.aoaManager = aoaManager
         UniversalPushManager.btServer = btServer
     }
+
+    viewModel.onRecalibrate = {
+        // Reset the DS4 driver's internal calibration
+        activeDriver?.disconnect()
+        activeDriver?.connect()
+        gyroProcessor.reset()
+    }
+    viewModel.onControllerChange = {
+        viewModel.activeController = it
+    }
+    viewModel.dsuClientCount = dsuServer.getClientCount()
 
     Window(
         onCloseRequest = ::exitApplication,
         title = "NEXPAD Desktop Server"
     ) {
         NexpadDesktopTheme {
-            MainApplicationWindow(
-                driver = activeDriver ?: VirtualGamepadDriver(),
-                latestInput = latestInput, 
-                dsuClientCount = dsuServer.getClientCount(),
-                activeController = activeController,
-                lsSensitivityX = lsSensitivityX,
-                lsSensitivityY = lsSensitivityY,
-                rsSensitivityX = rsSensitivityX,
-                rsSensitivityY = rsSensitivityY,
-                onLsSensitivityXChange = { lsSensitivityX = it },
-                onLsSensitivityYChange = { lsSensitivityY = it },
-                onRsSensitivityXChange = { rsSensitivityX = it },
-                onRsSensitivityYChange = { rsSensitivityY = it },
-                
-                isDriverConnected = isDriverConnected,
-                connectedDeviceName = connectedDeviceName,
-                activeTransport = activeTransport,
-                
-                isAoaDriverNeeded = isAoaDriverNeeded,
-                driverInstallState = driverInstallState,
-                onInstallAoaDriver = onInstallAoaDriver,
-
-                gyroSettings = gyroSettings,
-                onGyroSettingsChange = { gyroSettings = it },
-                processedYaw = processedYaw,
-                processedPitch = processedPitch,
-                onRecalibrate = {
-                    // Reset the DS4 driver's internal calibration
-                    activeDriver?.disconnect()
-                    activeDriver?.connect()
-                    gyroProcessor.reset()
-                },
-                
-                onControllerChange = { activeController = it }
-            )
+            MainApplicationWindow(viewModel = viewModel)
         }
     }
     }

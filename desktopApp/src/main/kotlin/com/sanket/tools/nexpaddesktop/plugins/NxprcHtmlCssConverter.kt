@@ -1,7 +1,12 @@
 package com.sanket.tools.nexpaddesktop.plugins
 
+import com.sanket.tools.nexpad.model.NexpadKeys
+import com.sanket.tools.nexpad.nxprc.CompileResult
+import com.sanket.tools.nexpad.nxprc.NxprcCategory
 import com.sanket.tools.nexpad.nxprc.NxprcDocument
 import com.sanket.tools.nexpad.nxprc.NxprcPackager
+import com.sanket.tools.nexpad.nxprc.engine.dom.DomNode
+import com.sanket.tools.nexpad.nxprc.engine.dom.HtmlDomParser
 
 /**
  * Intelligent HTML / CSS / SVG to .nxprc Converter Facade.
@@ -9,18 +14,31 @@ import com.sanket.tools.nexpad.nxprc.NxprcPackager
  */
 object NxprcHtmlCssConverter {
 
+    // Domain constants for AST root class resolution
+    private val STANDARD_BUTTON_SUFFIXES = listOf("-btn", "-ctl")
+    private val CONTAINER_CLASS_KEYWORDS = listOf("button", "touchpad", "pad", "control")
+    private const val DEFAULT_ROOT_BUTTON_CLASS = "button"
+
+    // Domain constants for stacking order remediation
+    private const val DEFAULT_SVG_MIN_Z_INDEX = 6
+    private const val MIN_REPAIRED_SURFACE_Z_INDEX = 2
+    private const val Z_INDEX_CLEARANCE_STEP = 2
+
     /**
      * Converts raw HTML/CSS/SVG text into an NxprcDocument via shared :protocol engine.
+     * Automatically normalizes AI-generated code (code block extraction, root rectification,
+     * z-index stacking hierarchy enforcement, and CSS prefix normalization).
      */
     fun convert(
         source: String,
         id: String,
         name: String,
-        category: String = "BUTTON",
-        defaultControl: String = "A"
+        category: String = NxprcCategory.BUTTON.id,
+        defaultControl: String = NexpadKeys.A
     ): NxprcDocument {
+        val clean = normalizeAiHtml(source)
         return NxprcPackager.compile(
-            html = source,
+            html = clean,
             id = id,
             name = name,
             category = category,
@@ -28,2388 +46,544 @@ object NxprcHtmlCssConverter {
         )
     }
 
-    /** Pre-built HTML/CSS templates for instant testing */
-    val PRESET_ULTRA_NEXPAD_A get() = PRESET_NEO_TACTILE_A
-
-    val PRESET_CYBER_REACTOR = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <style>
-        .button-a {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: radial-gradient(
-                circle at 32% 24%,
-                #d9ffd9 0%,
-                #9be99b 18%,
-                #52b952 48%,
-                #238423 78%,
-                #155c15 100%
-            );
-            border: 3px solid #292a30;
-            box-shadow:
-                0 2px 4px rgba(255,255,255,0.18) inset,
-                0 -7px 14px rgba(0,0,0,0.45) inset,
-                0 0 0 2px rgba(255,255,255,0.08),
-                0 0 0 5px rgba(0,0,0,0.30),
-                0 8px 14px rgba(0,0,0,0.45);
-        }
-        .button-a::before {
-            content: "";
-            position: absolute;
-            width: 55%;
-            height: 32%;
-            top: 7%;
-            left: 14%;
-            border-radius: 50%;
-            background: radial-gradient(ellipse at center, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.22) 40%, transparent 75%);
-            transform: rotate(-18deg);
-        }
-        .button-a::after {
-            content: "";
-            position: absolute;
-            inset: 5px;
-            border-radius: 50%;
-            box-shadow: inset 0 0 8px rgba(0,0,0,0.45), inset 0 2px 4px rgba(255,255,255,0.18);
-        }
-        .button-a span {
-            font-size: 39px;
-            font-weight: 900;
-            color: #f5f5f5;
-            text-shadow: 0 3px 2px rgba(0,0,0,0.45), 0 1px 0 rgba(255,255,255,0.7);
-        }
-        .button-a:active {
-            transform: scale(0.94) translateY(2px);
-        }
-    </style>
-</head>
-<body>
-    <button class="button-a" data-control="A" data-category="BUTTON" data-name="Cyber Reactor A"><span>A</span></button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_CRIMSON_OCTA = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --accent: #FF0055;
-    --accent-glow: rgba(255, 0, 85, 0.6);
-  }
-  .crimson-octa {
-    position: relative;
-    width: 96px;
-    height: 96px;
-    clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
-    background: radial-gradient(circle at 35% 30%, #ff1766 0%, #990033 50%, #20000a 100%);
-    border: 2px solid var(--accent);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7), 0 0 20px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .crimson-octa span {
-    font-size: 38px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8), 0 0 12px var(--accent);
-  }
-  .crimson-octa:active {
-    transform: scale(0.93) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="crimson-octa" data-control="B" data-category="BUTTON" data-name="Crimson Octagon">
-    <span>B</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_SPEED_TURBO = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --accent: #FFCC00;
-    --accent-glow: rgba(255, 204, 0, 0.6);
-  }
-  .speed-turbo {
-    position: relative;
-    width: 96px;
-    height: 96px;
-    border-radius: 20px;
-    background: linear-gradient(135deg, #ffdb4d 0%, #cc9900 45%, #2a2000 100%);
-    border: 2px solid var(--accent);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65), 0 0 20px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .speed-turbo span {
-    font-size: 38px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8), 0 0 12px var(--accent);
-  }
-  .speed-turbo:active {
-    transform: scale(0.93) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="speed-turbo" data-control="X" data-category="BUTTON" data-name="Speed Turbo X">
-    <span>X</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_NEO_TACTILE_A = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --btn-size: 96px;
-    --accent-glow: rgba(74, 222, 128, 0.7);
-    --accent-core: #4ade80;
-    --spring-damping: 0.68;
-    --spring-stiffness: 440;
-    --press-scale: 0.92;
-  }
-
-  .nexpad-btn {
-    position: relative;
-    width: var(--btn-size);
-    height: var(--btn-size);
-    border-radius: 50%;
-    background:
-      radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.25) 0%, transparent 40%),
-      radial-gradient(circle at 68% 78%, rgba(0, 0, 0, 0.65) 0%, transparent 55%),
-      radial-gradient(circle at 50% 50%, #0e1c14 0%, #06100a 65%, #020603 100%);
-    border: 2px solid #1c3d28;
-    box-shadow: 
-      0 12px 28px rgba(0, 0, 0, 0.75),
-      0 0 0 3px rgba(18, 40, 26, 0.95),
-      0 0 24px var(--accent-glow),
-      inset 0 2px 4px rgba(255, 255, 255, 0.25),
-      inset 0 -6px 14px rgba(0, 0, 0, 0.85);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .nexpad-btn::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.2) 0%, transparent 45%),
-      conic-gradient(from 180deg at 50% 50%, #173322, #326343, #122418, #478c5e, #173322, #326343, #122418);
-    box-shadow: 
-      inset 0 3px 6px rgba(255, 255, 255, 0.25),
-      inset 0 -6px 14px rgba(0, 0, 0, 0.8);
-  }
-
-  .nexpad-btn::after {
-    content: "";
-    position: absolute;
-    top: 6%;
-    left: 14%;
-    width: 72%;
-    height: 40%;
-    border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.2) 42%, transparent 75%);
-    transform: rotate(-10deg);
-    border-top: 1.5px solid rgba(255, 255, 255, 0.55);
-  }
-
-  .nexpad-btn .btn-core {
-    position: relative;
-    width: 68px;
-    height: 68px;
-    border-radius: 50%;
-    background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.55) 0%, transparent 35%),
-      radial-gradient(circle at 68% 75%, rgba(0, 0, 0, 0.55) 0%, transparent 50%),
-      linear-gradient(145deg, #34d399 0%, #10b981 35%, #059669 70%, #064e3b 100%);
-    border: 1.5px solid rgba(74, 222, 128, 0.65);
-    box-shadow: 
-      inset 0 2px 5px rgba(255, 255, 255, 0.45),
-      inset 0 -5px 10px rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .nexpad-btn .btn-label {
-    font-size: 34px;
-    font-weight: 900;
-    color: #ffffff;
-    text-shadow: 
-      0 1px 0 rgba(255, 255, 255, 0.95),
-      0 -1px 0 rgba(0, 0, 0, 0.95),
-      0 3px 8px rgba(0, 0, 0, 0.8),
-      0 0 14px var(--accent-core);
-  }
-
-  .nexpad-btn:active {
-    transform: scale(0.93) translateY(3px);
-  }
-</style>
-</head>
-<body>
-  <button class="nexpad-btn" data-control="A" data-category="BUTTON" data-name="Neo Tactile A">
-    <div class="btn-core">
-      <span class="btn-label">A</span>
-    </div>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_NEO_TACTILE_B = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --btn-size: 96px;
-    --accent-glow: rgba(255, 51, 102, 0.7);
-    --accent-core: #ff3366;
-    --spring-damping: 0.68;
-    --spring-stiffness: 440;
-    --press-scale: 0.92;
-  }
-
-  .nexpad-btn {
-    position: relative;
-    width: var(--btn-size);
-    height: var(--btn-size);
-    border-radius: 50%;
-    background:
-      radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.25) 0%, transparent 40%),
-      radial-gradient(circle at 68% 78%, rgba(0, 0, 0, 0.65) 0%, transparent 55%),
-      radial-gradient(circle at 50% 50%, #220c13 0%, #120509 65%, #050102 100%);
-    border: 2px solid #4a1926;
-    box-shadow: 
-      0 12px 28px rgba(0, 0, 0, 0.75),
-      0 0 0 3px rgba(45, 14, 22, 0.95),
-      0 0 24px var(--accent-glow),
-      inset 0 2px 4px rgba(255, 255, 255, 0.25),
-      inset 0 -6px 14px rgba(0, 0, 0, 0.85);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .nexpad-btn::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.2) 0%, transparent 45%),
-      conic-gradient(from 180deg at 50% 50%, #38161f, #70263a, #240e14, #99334e, #38161f, #70263a, #240e14);
-    box-shadow: 
-      inset 0 3px 6px rgba(255, 255, 255, 0.25),
-      inset 0 -6px 14px rgba(0, 0, 0, 0.8);
-  }
-
-  .nexpad-btn::after {
-    content: "";
-    position: absolute;
-    top: 6%;
-    left: 14%;
-    width: 72%;
-    height: 40%;
-    border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.2) 42%, transparent 75%);
-    transform: rotate(-10deg);
-    border-top: 1.5px solid rgba(255, 255, 255, 0.55);
-  }
-
-  .nexpad-btn .btn-core {
-    position: relative;
-    width: 68px;
-    height: 68px;
-    border-radius: 50%;
-    background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.55) 0%, transparent 35%),
-      radial-gradient(circle at 68% 75%, rgba(0, 0, 0, 0.55) 0%, transparent 50%),
-      linear-gradient(145deg, #fb7185 0%, #f43f5e 35%, #e11d48 70%, #881337 100%);
-    border: 1.5px solid rgba(255, 51, 102, 0.65);
-    box-shadow: 
-      inset 0 2px 5px rgba(255, 255, 255, 0.45),
-      inset 0 -5px 10px rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .nexpad-btn .btn-label {
-    font-size: 34px;
-    font-weight: 900;
-    color: #ffffff;
-    text-shadow: 
-      0 1px 0 rgba(255, 255, 255, 0.95),
-      0 -1px 0 rgba(0, 0, 0, 0.95),
-      0 3px 8px rgba(0, 0, 0, 0.8),
-      0 0 14px var(--accent-core);
-  }
-
-  .nexpad-btn:active {
-    transform: scale(0.93) translateY(3px);
-  }
-</style>
-</head>
-<body>
-  <button class="nexpad-btn" data-control="B" data-category="BUTTON" data-name="Neo Tactile B">
-    <div class="btn-core">
-      <span class="btn-label">B</span>
-    </div>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_NEO_TACTILE_X = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --btn-size: 96px;
-    --accent-glow: rgba(0, 176, 255, 0.7);
-    --accent-core: #00b0ff;
-    --spring-damping: 0.68;
-    --spring-stiffness: 440;
-    --press-scale: 0.92;
-  }
-
-  .nexpad-btn {
-    position: relative;
-    width: var(--btn-size);
-    height: var(--btn-size);
-    border-radius: 50%;
-    background:
-      radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.25) 0%, transparent 40%),
-      radial-gradient(circle at 68% 78%, rgba(0, 0, 0, 0.65) 0%, transparent 55%),
-      radial-gradient(circle at 50% 50%, #0c1824 0%, #050d14 65%, #010406 100%);
-    border: 2px solid #1a364f;
-    box-shadow: 
-      0 12px 28px rgba(0, 0, 0, 0.75),
-      0 0 0 3px rgba(14, 30, 48, 0.95),
-      0 0 24px var(--accent-glow),
-      inset 0 2px 4px rgba(255, 255, 255, 0.25),
-      inset 0 -6px 14px rgba(0, 0, 0, 0.85);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .nexpad-btn::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.2) 0%, transparent 45%),
-      conic-gradient(from 180deg at 50% 50%, #14293d, #29547d, #0d1b29, #3d7cb8, #14293d, #29547d, #0d1b29);
-    box-shadow: 
-      inset 0 3px 6px rgba(255, 255, 255, 0.25),
-      inset 0 -6px 14px rgba(0, 0, 0, 0.8);
-  }
-
-  .nexpad-btn::after {
-    content: "";
-    position: absolute;
-    top: 6%;
-    left: 14%;
-    width: 72%;
-    height: 40%;
-    border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.2) 42%, transparent 75%);
-    transform: rotate(-10deg);
-    border-top: 1.5px solid rgba(255, 255, 255, 0.55);
-  }
-
-  .nexpad-btn .btn-core {
-    position: relative;
-    width: 68px;
-    height: 68px;
-    border-radius: 50%;
-    background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.55) 0%, transparent 35%),
-      radial-gradient(circle at 68% 75%, rgba(0, 0, 0, 0.55) 0%, transparent 50%),
-      linear-gradient(145deg, #38bdf8 0%, #0ea5e9 35%, #0284c7 70%, #0c4a6e 100%);
-    border: 1.5px solid rgba(0, 176, 255, 0.65);
-    box-shadow: 
-      inset 0 2px 5px rgba(255, 255, 255, 0.45),
-      inset 0 -5px 10px rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .nexpad-btn .btn-label {
-    font-size: 34px;
-    font-weight: 900;
-    color: #ffffff;
-    text-shadow: 
-      0 1px 0 rgba(255, 255, 255, 0.95),
-      0 -1px 0 rgba(0, 0, 0, 0.95),
-      0 3px 8px rgba(0, 0, 0, 0.8),
-      0 0 14px var(--accent-core);
-  }
-
-  .nexpad-btn:active {
-    transform: scale(0.93) translateY(3px);
-  }
-</style>
-</head>
-<body>
-  <button class="nexpad-btn" data-control="X" data-category="BUTTON" data-name="Neo Tactile X">
-    <div class="btn-core">
-      <span class="btn-label">X</span>
-    </div>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_NEO_TACTILE_Y = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --btn-size: 96px;
-    --accent-glow: rgba(255, 204, 0, 0.7);
-    --accent-core: #ffcc00;
-    --spring-damping: 0.68;
-    --spring-stiffness: 440;
-    --press-scale: 0.92;
-  }
-
-  .nexpad-btn {
-    position: relative;
-    width: var(--btn-size);
-    height: var(--btn-size);
-    border-radius: 50%;
-    background:
-      radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.25) 0%, transparent 40%),
-      radial-gradient(circle at 68% 78%, rgba(0, 0, 0, 0.65) 0%, transparent 55%),
-      radial-gradient(circle at 50% 50%, #201a08 0%, #110d04 65%, #040301 100%);
-    border: 2px solid #473a14;
-    box-shadow: 
-      0 12px 28px rgba(0, 0, 0, 0.75),
-      0 0 0 3px rgba(45, 36, 11, 0.95),
-      0 0 24px var(--accent-glow),
-      inset 0 2px 4px rgba(255, 255, 255, 0.25),
-      inset 0 -6px 14px rgba(0, 0, 0, 0.85);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .nexpad-btn::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.2) 0%, transparent 45%),
-      conic-gradient(from 180deg at 50% 50%, #3d3110, #7d6521, #29200b, #b89531, #3d3110, #7d6521, #29200b);
-    box-shadow: 
-      inset 0 3px 6px rgba(255, 255, 255, 0.25),
-      inset 0 -6px 14px rgba(0, 0, 0, 0.8);
-  }
-
-  .nexpad-btn::after {
-    content: "";
-    position: absolute;
-    top: 6%;
-    left: 14%;
-    width: 72%;
-    height: 40%;
-    border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.2) 42%, transparent 75%);
-    transform: rotate(-10deg);
-    border-top: 1.5px solid rgba(255, 255, 255, 0.55);
-  }
-
-  .nexpad-btn .btn-core {
-    position: relative;
-    width: 68px;
-    height: 68px;
-    border-radius: 50%;
-    background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.55) 0%, transparent 35%),
-      radial-gradient(circle at 68% 75%, rgba(0, 0, 0, 0.55) 0%, transparent 50%),
-      linear-gradient(145deg, #fde047 0%, #eab308 35%, #ca8a04 70%, #713f12 100%);
-    border: 1.5px solid rgba(255, 204, 0, 0.65);
-    box-shadow: 
-      inset 0 2px 5px rgba(255, 255, 255, 0.45),
-      inset 0 -5px 10px rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .nexpad-btn .btn-label {
-    font-size: 34px;
-    font-weight: 900;
-    color: #ffffff;
-    text-shadow: 
-      0 1px 0 rgba(255, 255, 255, 0.95),
-      0 -1px 0 rgba(0, 0, 0, 0.95),
-      0 3px 8px rgba(0, 0, 0, 0.8),
-      0 0 14px var(--accent-core);
-  }
-
-  .nexpad-btn:active {
-    transform: scale(0.93) translateY(3px);
-  }
-</style>
-</head>
-<body>
-  <button class="nexpad-btn" data-control="Y" data-category="BUTTON" data-name="Neo Tactile Y">
-    <div class="btn-core">
-      <span class="btn-label">Y</span>
-    </div>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_DPAD_UP = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --dpad-size: 80px;
-    --accent: #00F0FF;
-    --accent-glow: rgba(0, 240, 255, 0.5);
-    --spring-damping: 0.72;
-    --spring-stiffness: 480;
-    --press-scale: 0.92;
-  }
-  .dpad-btn {
-    width: var(--dpad-size);
-    height: var(--dpad-size);
-    border-radius: 18px;
-    background: 
-      radial-gradient(circle at 50% 20%, rgba(0, 240, 255, 0.18) 0%, transparent 55%),
-      linear-gradient(180deg, #2a3140 0%, #161a22 60%, #0a0c10 100%);
-    border: 2px solid #3d475c;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.65), inset 0 2px 4px rgba(255, 255, 255, 0.3), inset 0 -4px 8px rgba(0, 0, 0, 0.75), 0 0 16px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  .dpad-btn::before {
-    content: "";
-    position: absolute;
-    top: 9px;
-    left: 18px;
-    width: 44px;
-    height: 3px;
-    border-radius: 1.5px;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent);
-    opacity: 0.85;
-  }
-  .dpad-btn::after {
-    content: "";
-    position: absolute;
-    top: 8%;
-    left: 14%;
-    width: 72%;
-    height: 36%;
-    border-radius: 12px;
-    background: radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.45) 0%, transparent 70%);
-  }
-  .dpad-arrow {
-    font-size: 32px;
-    font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0,0,0,0.9), 0 -1px 0 rgba(255,255,255,0.6);
-    z-index: 5;
-  }
-  .dpad-btn:active {
-    transform: scale(0.92) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="dpad-btn" data-control="UP" data-category="DPAD" data-name="D-Pad Up">
-    <span class="dpad-arrow">▲</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_DPAD_CROSS = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --cross-size: 140px;
-    --accent: #00F0FF;
-    --accent-glow: rgba(0, 240, 255, 0.35);
-    --spring-damping: 0.72;
-    --spring-stiffness: 480;
-    --press-scale: 0.95;
-  }
-  .dpad-cross {
-    width: var(--cross-size);
-    height: var(--cross-size);
-    border-radius: 28px;
-    background: 
-      radial-gradient(circle at 50% 50%, #222834 0%, #12151c 65%, #08090d 100%);
-    border: 2px solid #363f52;
-    box-shadow: 
-      0 12px 28px rgba(0, 0, 0, 0.75), 
-      inset 0 2px 5px rgba(255, 255, 255, 0.25), 
-      inset 0 -6px 14px rgba(0, 0, 0, 0.85), 
-      0 0 24px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  .dpad-cross::before {
-    content: "";
-    position: absolute;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 45% 45%, #2a3140 0%, #0d0f14 100%);
-    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.9), 0 1px 2px rgba(255, 255, 255, 0.2);
-    border: 1.5px solid rgba(0, 240, 255, 0.3);
-  }
-  .dpad-cross::after {
-    content: "";
-    position: absolute;
-    width: 96px;
-    height: 96px;
-    border-radius: 50%;
-    border: 1.5px dashed rgba(0, 240, 255, 0.35);
-  }
-  .cross-center {
-    font-size: 20px;
-    font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 10px var(--accent), 0 2px 4px rgba(0,0,0,0.8);
-    z-index: 5;
-  }
-  .dpad-cross:active {
-    transform: scale(0.95);
-  }
-</style>
-</head>
-<body>
-  <button class="dpad-cross" data-control="DPAD" data-category="DPAD" data-name="Tactile Cross Pad">
-    <span class="cross-center">❖</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_TRIGGER_RT = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --accent: #FF3366;
-    --accent-glow: rgba(255, 51, 102, 0.5);
-    --spring-damping: 0.65;
-    --spring-stiffness: 380;
-    --press-scale: 0.94;
-  }
-  .trigger-btn {
-    width: 72px;
-    height: 110px;
-    border-radius: 20px;
-    background: linear-gradient(180deg, #282f3d 0%, #161922 45%, #0a0c10 100%);
-    border: 2px solid #3d4659;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.65), inset 0 2px 4px rgba(255, 255, 255, 0.3), inset 0 -8px 16px rgba(0, 0, 0, 0.8), 0 0 18px var(--accent-glow);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    padding-top: 18px;
-    box-sizing: border-box;
-    position: relative;
-  }
-  .trigger-btn::before {
-    content: "";
-    position: absolute;
-    top: 55%;
-    width: 44px;
-    height: 4px;
-    border-radius: 2px;
-    background: rgba(255, 255, 255, 0.18);
-    box-shadow: 0 8px 0 rgba(255, 255, 255, 0.12), 0 16px 0 rgba(255, 255, 255, 0.08);
-  }
-  .trigger-label {
-    font-size: 28px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.8), 0 0 12px var(--accent);
-  }
-  .trigger-btn:active {
-    transform: scaleY(0.94) translateY(4px);
-  }
-</style>
-</head>
-<body>
-  <button class="trigger-btn" data-control="RT" data-category="TRIGGER" data-name="Tactile Trigger RT">
-    <span class="trigger-label">RT</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_BUMPER_RB = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --accent: #00F0FF;
-    --accent-glow: rgba(0, 240, 255, 0.35);
-    --spring-damping: 0.75;
-    --spring-stiffness: 520;
-    --press-scale: 0.96;
-  }
-  .bumper-btn {
-    width: 120px;
-    height: 52px;
-    border-radius: 18px;
-    background: linear-gradient(180deg, #2c3342 0%, #171a23 60%, #0c0e13 100%);
-    border: 2px solid #3d475c;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.3), inset 0 -4px 8px rgba(0, 0, 0, 0.7), 0 0 16px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  .bumper-btn::after {
-    content: "";
-    position: absolute;
-    top: 10%;
-    left: 12%;
-    width: 76%;
-    height: 35%;
-    border-radius: 10px;
-    background: radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.45) 0%, transparent 75%);
-  }
-  .bumper-label {
-    font-size: 24px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7), 0 -1px 0 rgba(0, 0, 0, 0.9), 0 0 10px var(--accent);
-  }
-  .bumper-btn:active {
-    transform: scale(0.95) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="bumper-btn" data-control="RB" data-category="BUMPER" data-name="Shoulder Bumper RB">
-    <span class="bumper-label">RB</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_THUMBSTICK_LS = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --stick-size: 100px;
-    --accent: #4ADE80;
-    --accent-glow: rgba(74, 222, 128, 0.25);
-    --spring-damping: 0.70;
-    --spring-stiffness: 420;
-    --press-scale: 0.92;
-  }
-  .stick-btn {
-    width: var(--stick-size);
-    height: var(--stick-size);
-    position: relative;
-    background: transparent;
-    border: none;
-    padding: 0;
-    outline: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .stick-base {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background: radial-gradient(circle at 45% 40%, #2b313d 0%, #14171e 65%, #08090c 100%);
-    border: 3px solid #3d4657;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7), inset 0 3px 6px rgba(255, 255, 255, 0.25), inset 0 -8px 16px rgba(0, 0, 0, 0.8), 0 0 20px var(--accent-glow);
-    box-sizing: border-box;
-  }
-  .stick-cap {
-    position: absolute;
-    width: 66px;
-    height: 66px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 50% 50%, #1a1e26 0%, #0d0f14 100%);
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.9), 0 0 0 2px rgba(255, 255, 255, 0.12);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-sizing: border-box;
-  }
-  .knurled-ring {
-    position: absolute;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    border: 2px dashed rgba(74, 222, 128, 0.5);
-    box-sizing: border-box;
-  }
-  .stick-label {
-    font-size: 20px;
-    font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 8px var(--accent);
-    z-index: 5;
-  }
-  .stick-btn:active .stick-cap {
-    transform: scale(0.92);
-  }
-</style>
-</head>
-<body>
-  <button class="stick-btn" data-control="LS" data-category="JOYSTICK" data-name="Analog Stick LS">
-    <div class="stick-base"></div>
-    <div class="stick-cap">
-      <div class="knurled-ring"></div>
-      <span class="stick-label">L3</span>
-    </div>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_SYSTEM_MENU = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --spring-damping: 0.78;
-    --spring-stiffness: 500;
-    --press-scale: 0.92;
-  }
-  .system-btn {
-    width: 64px;
-    height: 44px;
-    border-radius: 14px;
-    background: radial-gradient(circle at 50% 30%, #29303e 0%, #12151d 100%);
-    border: 1.5px solid #3d475c;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6), inset 0 1px 3px rgba(255, 255, 255, 0.3), inset 0 -3px 6px rgba(0, 0, 0, 0.75);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-  }
-  .burger-bar {
-    width: 22px;
-    height: 3px;
-    border-radius: 1.5px;
-    background: #FFFFFF;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.8), 0 0 4px rgba(255,255,255,0.4);
-  }
-  .system-btn:active {
-    transform: scale(0.92) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="system-btn" data-control="MENU" data-category="SYSTEM" data-name="System Menu">
-    <div class="burger-bar"></div>
-    <div class="burger-bar"></div>
-    <div class="burger-bar"></div>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_DPAD_DOWN = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --dpad-size: 80px;
-    --accent: #00F0FF;
-    --accent-glow: rgba(0, 240, 255, 0.5);
-    --spring-damping: 0.72;
-    --spring-stiffness: 480;
-    --press-scale: 0.92;
-  }
-  .dpad-btn {
-    width: var(--dpad-size);
-    height: var(--dpad-size);
-    border-radius: 18px;
-    background: 
-      radial-gradient(circle at 50% 80%, rgba(0, 240, 255, 0.18) 0%, transparent 55%),
-      linear-gradient(0deg, #2a3140 0%, #161a22 60%, #0a0c10 100%);
-    border: 2px solid #3d475c;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.65), inset 0 2px 4px rgba(255, 255, 255, 0.3), inset 0 -4px 8px rgba(0, 0, 0, 0.75), 0 0 16px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  .dpad-btn::before {
-    content: "";
-    position: absolute;
-    bottom: 9px;
-    left: 18px;
-    width: 44px;
-    height: 3px;
-    border-radius: 1.5px;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent);
-    opacity: 0.85;
-  }
-  .dpad-btn::after {
-    content: "";
-    position: absolute;
-    bottom: 8%;
-    left: 14%;
-    width: 72%;
-    height: 36%;
-    border-radius: 12px;
-    background: radial-gradient(ellipse at 50% 70%, rgba(255, 255, 255, 0.45) 0%, transparent 70%);
-  }
-  .dpad-arrow {
-    font-size: 32px;
-    font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0,0,0,0.9), 0 -1px 0 rgba(255,255,255,0.6);
-    z-index: 5;
-  }
-  .dpad-btn:active {
-    transform: scale(0.92) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="dpad-btn" data-control="DOWN" data-category="DPAD" data-name="D-Pad Down">
-    <span class="dpad-arrow">▼</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_DPAD_LEFT = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --dpad-size: 80px;
-    --accent: #00F0FF;
-    --accent-glow: rgba(0, 240, 255, 0.5);
-    --spring-damping: 0.72;
-    --spring-stiffness: 480;
-    --press-scale: 0.92;
-  }
-  .dpad-btn {
-    width: var(--dpad-size);
-    height: var(--dpad-size);
-    border-radius: 18px;
-    background: 
-      radial-gradient(circle at 20% 50%, rgba(0, 240, 255, 0.18) 0%, transparent 55%),
-      linear-gradient(90deg, #2a3140 0%, #161a22 60%, #0a0c10 100%);
-    border: 2px solid #3d475c;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.65), inset 0 2px 4px rgba(255, 255, 255, 0.3), inset 0 -4px 8px rgba(0, 0, 0, 0.75), 0 0 16px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  .dpad-btn::before {
-    content: "";
-    position: absolute;
-    left: 9px;
-    top: 18px;
-    width: 3px;
-    height: 44px;
-    border-radius: 1.5px;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent);
-    opacity: 0.85;
-  }
-  .dpad-btn::after {
-    content: "";
-    position: absolute;
-    top: 14%;
-    left: 8%;
-    width: 36%;
-    height: 72%;
-    border-radius: 12px;
-    background: radial-gradient(ellipse at 30% 50%, rgba(255, 255, 255, 0.45) 0%, transparent 70%);
-  }
-  .dpad-arrow {
-    font-size: 32px;
-    font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0,0,0,0.9), 0 -1px 0 rgba(255,255,255,0.6);
-    z-index: 5;
-  }
-  .dpad-btn:active {
-    transform: scale(0.92) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="dpad-btn" data-control="LEFT" data-category="DPAD" data-name="D-Pad Left">
-    <span class="dpad-arrow">◀</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_DPAD_RIGHT = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --dpad-size: 80px;
-    --accent: #00F0FF;
-    --accent-glow: rgba(0, 240, 255, 0.5);
-    --spring-damping: 0.72;
-    --spring-stiffness: 480;
-    --press-scale: 0.92;
-  }
-  .dpad-btn {
-    width: var(--dpad-size);
-    height: var(--dpad-size);
-    border-radius: 18px;
-    background: 
-      radial-gradient(circle at 80% 50%, rgba(0, 240, 255, 0.18) 0%, transparent 55%),
-      linear-gradient(270deg, #2a3140 0%, #161a22 60%, #0a0c10 100%);
-    border: 2px solid #3d475c;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.65), inset 0 2px 4px rgba(255, 255, 255, 0.3), inset 0 -4px 8px rgba(0, 0, 0, 0.75), 0 0 16px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  .dpad-btn::before {
-    content: "";
-    position: absolute;
-    right: 9px;
-    top: 18px;
-    width: 3px;
-    height: 44px;
-    border-radius: 1.5px;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent);
-    opacity: 0.85;
-  }
-  .dpad-btn::after {
-    content: "";
-    position: absolute;
-    top: 14%;
-    right: 8%;
-    width: 36%;
-    height: 72%;
-    border-radius: 12px;
-    background: radial-gradient(ellipse at 70% 50%, rgba(255, 255, 255, 0.45) 0%, transparent 70%);
-  }
-  .dpad-arrow {
-    font-size: 32px;
-    font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0,0,0,0.9), 0 -1px 0 rgba(255,255,255,0.6);
-    z-index: 5;
-  }
-  .dpad-btn:active {
-    transform: scale(0.92) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="dpad-btn" data-control="RIGHT" data-category="DPAD" data-name="D-Pad Right">
-    <span class="dpad-arrow">▶</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_TRIGGER_LT = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --accent: #FF3366;
-    --accent-glow: rgba(255, 51, 102, 0.5);
-    --spring-damping: 0.65;
-    --spring-stiffness: 380;
-    --press-scale: 0.94;
-  }
-  .trigger-btn {
-    width: 72px;
-    height: 110px;
-    border-radius: 20px;
-    background: linear-gradient(180deg, #282f3d 0%, #161922 45%, #0a0c10 100%);
-    border: 2px solid #3d4659;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.65), inset 0 2px 4px rgba(255, 255, 255, 0.3), inset 0 -8px 16px rgba(0, 0, 0, 0.8), 0 0 18px var(--accent-glow);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    padding-top: 18px;
-    box-sizing: border-box;
-    position: relative;
-  }
-  .trigger-btn::before {
-    content: "";
-    position: absolute;
-    top: 55%;
-    width: 44px;
-    height: 4px;
-    border-radius: 2px;
-    background: rgba(255, 255, 255, 0.18);
-    box-shadow: 0 8px 0 rgba(255, 255, 255, 0.12), 0 16px 0 rgba(255, 255, 255, 0.08);
-  }
-  .trigger-label {
-    font-size: 28px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.8), 0 0 12px var(--accent);
-  }
-  .trigger-btn:active {
-    transform: scaleY(0.94) translateY(4px);
-  }
-</style>
-</head>
-<body>
-  <button class="trigger-btn" data-control="LT" data-category="TRIGGER" data-name="Tactile Trigger LT">
-    <span class="trigger-label">LT</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_BUMPER_LB = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --accent: #00F0FF;
-    --accent-glow: rgba(0, 240, 255, 0.35);
-    --spring-damping: 0.75;
-    --spring-stiffness: 520;
-    --press-scale: 0.96;
-  }
-  .bumper-btn {
-    width: 120px;
-    height: 52px;
-    border-radius: 18px;
-    background: linear-gradient(180deg, #2c3342 0%, #171a23 60%, #0c0e13 100%);
-    border: 2px solid #3d475c;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.3), inset 0 -4px 8px rgba(0, 0, 0, 0.7), 0 0 16px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  .bumper-btn::after {
-    content: "";
-    position: absolute;
-    top: 10%;
-    left: 12%;
-    width: 76%;
-    height: 35%;
-    border-radius: 10px;
-    background: radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.45) 0%, transparent 75%);
-  }
-  .bumper-label {
-    font-size: 24px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7), 0 -1px 0 rgba(0, 0, 0, 0.9), 0 0 10px var(--accent);
-  }
-  .bumper-btn:active {
-    transform: scale(0.95) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="bumper-btn" data-control="LB" data-category="BUMPER" data-name="Shoulder Bumper LB">
-    <span class="bumper-label">LB</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_THUMBSTICK_RS = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --stick-size: 100px;
-    --accent: #00B0FF;
-    --accent-glow: rgba(0, 176, 255, 0.4);
-    --spring-damping: 0.70;
-    --spring-stiffness: 420;
-    --press-scale: 0.92;
-  }
-  .stick-btn {
-    width: var(--stick-size);
-    height: var(--stick-size);
-    position: relative;
-    background: transparent;
-    border: none;
-    padding: 0;
-    outline: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .stick-base {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background: radial-gradient(circle at 45% 40%, #2b313d 0%, #14171e 65%, #08090c 100%);
-    border: 3px solid #3d4657;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7), inset 0 3px 6px rgba(255, 255, 255, 0.25), inset 0 -8px 16px rgba(0, 0, 0, 0.8), 0 0 20px var(--accent-glow);
-    box-sizing: border-box;
-  }
-  .stick-cap {
-    position: absolute;
-    width: 66px;
-    height: 66px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 50% 50%, #1a1e26 0%, #0d0f14 100%);
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.9), 0 0 0 2px rgba(255, 255, 255, 0.12);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-sizing: border-box;
-  }
-  .knurled-ring {
-    position: absolute;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    border: 2px dashed rgba(0, 176, 255, 0.5);
-    box-sizing: border-box;
-  }
-  .stick-label {
-    font-size: 20px;
-    font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 8px var(--accent);
-    z-index: 5;
-  }
-  .stick-btn:active .stick-cap {
-    transform: scale(0.92);
-  }
-</style>
-</head>
-<body>
-  <button class="stick-btn" data-control="RS" data-category="JOYSTICK" data-name="Analog Stick RS">
-    <div class="stick-base"></div>
-    <div class="stick-cap">
-      <div class="knurled-ring"></div>
-      <span class="stick-label">R3</span>
-    </div>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_SYSTEM_VIEW = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --spring-damping: 0.78;
-    --spring-stiffness: 500;
-    --press-scale: 0.92;
-  }
-  .system-btn {
-    width: 64px;
-    height: 44px;
-    border-radius: 14px;
-    background: radial-gradient(circle at 50% 30%, #29303e 0%, #12151d 100%);
-    border: 1.5px solid #3d475c;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6), inset 0 1px 3px rgba(255, 255, 255, 0.3), inset 0 -3px 6px rgba(0, 0, 0, 0.75);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .view-icon {
-    font-size: 22px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 0 0 8px rgba(0, 240, 255, 0.6), 0 1px 2px rgba(0,0,0,0.9);
-  }
-  .system-btn:active {
-    transform: scale(0.92) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="system-btn" data-control="VIEW" data-category="SYSTEM" data-name="System View">
-    <span class="view-icon">⧉</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_SYSTEM_HOME = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --spring-damping: 0.78;
-    --spring-stiffness: 500;
-    --press-scale: 0.93;
-  }
-  .system-home-btn {
-    width: 70px;
-    height: 70px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 50% 35%, #303748 0%, #151922 70%, #07090d 100%);
-    border: 2px solid #4f5b72;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -6px 12px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 255, 255, 0.35);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  .home-symbol {
-    font-size: 32px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 0 0 14px rgba(255, 255, 255, 0.85), 0 0 22px rgba(0, 240, 255, 0.5), 0 2px 4px rgba(0,0,0,0.9);
-  }
-  .system-home-btn:active {
-    transform: scale(0.93) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="system-home-btn" data-control="HOME" data-category="SYSTEM" data-name="System Home">
-    <span class="home-symbol">⨂</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
+    /**
+     * Converts raw HTML/CSS/SVG text into a [CompileResult] containing the [NxprcDocument]
+     * and any compiler warnings for CSS properties that were dropped or approximated.
+     * Automatically normalizes AI-generated code before compilation.
+     */
+    fun convertWithWarnings(
+        source: String,
+        id: String,
+        name: String,
+        category: String = "BUTTON",
+        defaultControl: String = NexpadKeys.A
+    ): CompileResult {
+        val clean = normalizeAiHtml(source)
+        return NxprcPackager.compileWithWarnings(
+            html = clean,
+            id = id,
+            name = name,
+            category = category,
+            defaultControl = defaultControl
+        )
+    }
 
     /**
-     * Returns the optional reference template (document structure guide only) for any controller button key.
-     * Templates are REFERENCE ONLY — do not treat them as 100% NXPRC-compliant HTML.
-     * Some legacy templates may contain properties unsupported by the NXPRC compiler (e.g. filter: blur()).
-     * Always follow the STRICT NEXPAD COMPILER CONTRACT defined in [generateAiPrompt].
+     * Comprehensive, industry-standard normalization pipeline for AI-generated HTML/CSS/SVG code:
+     * 1. [extractCleanMarkup]: Strips Markdown fences, conversational envelope text, scripts, and unsafe handlers.
+     * 2. [inlineCssCustomProperties]: Pre-evaluates :root CSS variables using balanced-parentheses fallback parsing.
+     * 3. [normalizeCssVendorPrefixes]: Bi-directionally synchronizes vendor prefixes (-webkit-clip-path <-> clip-path).
+     * 4. [normalizeSvgElements]: Auto-completes missing namespace and explicit numeric pixel viewBox attributes.
+     * 5. [ensureRootComponentContract]: Guarantees a single root <button> with spring micro-physics and active state.
+     * 6. [resolveStructuralStackingInversions]: AST/DOM-driven semantic occlusion remediation on the rectified DOM.
      */
-    fun getReferenceTemplate(control: String): String = getReferenceTemplateInternal(control, "BUTTON")
+    fun normalizeAiHtml(source: String, rootClassHint: String? = null): String {
+        if (source.isBlank()) return source
+        var clean = extractCleanMarkup(source)
+        clean = inlineCssCustomProperties(clean)
+        clean = normalizeCssVendorPrefixes(clean)
+        clean = normalizeSvgElements(clean)
+        clean = ensureRootComponentContract(clean, rootClassHint)
+        clean = resolveStructuralStackingInversions(clean)
+        return clean
+    }
 
-    /** Returns the category-specific reference template (structure guide only) used by the desktop studio AI prompt. */
-    fun getReferenceTemplate(control: String, category: String): String = getReferenceTemplateInternal(control, category)
+    /**
+     * Normalizes the source HTML through the AI preprocessing pipeline.
+     */
+    fun normalize(source: String, rootClassHint: String? = null): String = normalizeAiHtml(source, rootClassHint)
 
-    private fun getReferenceTemplateInternal(control: String, category: String): String {
-        if (category.uppercase() != "BUTTON") {
-            return when (category.uppercase()) {
-                "DPAD" -> when (control.uppercase()) {
-                    "DOWN" -> PRESET_DPAD_DOWN
-                    "LEFT" -> PRESET_DPAD_LEFT
-                    "RIGHT" -> PRESET_DPAD_RIGHT
-                    "DPAD" -> PRESET_DPAD_CROSS
-                    else -> PRESET_DPAD_UP
-                }
-                "TRIGGER" -> if (control.uppercase() == "LT") PRESET_TRIGGER_LT else PRESET_TRIGGER_RT
-                "BUMPER" -> if (control.uppercase() == "LB") PRESET_BUMPER_LB else PRESET_BUMPER_RB
-                "JOYSTICK" -> if (control.uppercase() == "RS") PRESET_THUMBSTICK_RS else PRESET_THUMBSTICK_LS
-                "SYSTEM" -> when (control.uppercase()) {
-                    "VIEW" -> PRESET_SYSTEM_VIEW
-                    "HOME" -> PRESET_SYSTEM_HOME
-                    else -> PRESET_SYSTEM_MENU
-                }
-                else -> getReferenceTemplateInternal(control, "BUTTON")
+    private fun extractCleanMarkup(source: String): String {
+        var clean = source.trim()
+
+        // Extract from Markdown code fence if present
+        if (clean.contains("```")) {
+            val codeBlockRegex = Regex("""```(?:html|xml)?\s*([\s\S]*?)\s*```""", RegexOption.IGNORE_CASE)
+            val match = codeBlockRegex.find(clean)
+            if (match != null) {
+                clean = match.groupValues[1].trim()
+            } else {
+                clean = clean.replace(Regex("""^```(?:html|xml)?\s*""", RegexOption.IGNORE_CASE), "")
+                    .replace(Regex("""\s*```$"""), "").trim()
             }
         }
 
-        return when (control.uppercase()) {
-            "A" -> PRESET_NEO_TACTILE_A
-            "B" -> PRESET_NEO_TACTILE_B
-            "X" -> PRESET_NEO_TACTILE_X
-            "Y" -> PRESET_NEO_TACTILE_Y
-            "UP" -> PRESET_DPAD_UP
-            "DOWN" -> PRESET_DPAD_DOWN
-            "LEFT" -> PRESET_DPAD_LEFT
-            "RIGHT" -> PRESET_DPAD_RIGHT
-            "DPAD" -> PRESET_DPAD_CROSS
-            "LT" -> PRESET_TRIGGER_LT
-            "RT" -> PRESET_TRIGGER_RT
-            "LB" -> PRESET_BUMPER_LB
-            "RB" -> PRESET_BUMPER_RB
-            "LS" -> PRESET_THUMBSTICK_LS
-            "RS" -> PRESET_THUMBSTICK_RS
-            "MENU" -> PRESET_SYSTEM_MENU
-            "VIEW" -> PRESET_SYSTEM_VIEW
-            "HOME" -> PRESET_SYSTEM_HOME
-            else -> PRESET_NEO_TACTILE_A
+        // Strip conversational text preceding first valid markup start
+        val docStartIdx = listOf(
+            clean.indexOf("<!DOCTYPE", ignoreCase = true),
+            clean.indexOf("<!--", ignoreCase = true),
+            clean.indexOf("<html", ignoreCase = true),
+            clean.indexOf("<head", ignoreCase = true),
+            clean.indexOf("<button", ignoreCase = true),
+            clean.indexOf("<style", ignoreCase = true),
+            clean.indexOf("<div", ignoreCase = true),
+            clean.indexOf("<svg", ignoreCase = true)
+        ).filter { it >= 0 }.minOrNull()
+
+        if (docStartIdx != null && docStartIdx > 0) {
+            clean = clean.substring(docStartIdx).trim()
+        }
+
+        // Strip trailing conversational chatter after </html>, </button>, or </svg>
+        val htmlEndIdx = clean.lastIndexOf("</html>", ignoreCase = true)
+        if (htmlEndIdx != -1) {
+            clean = clean.substring(0, htmlEndIdx + "</html>".length).trim()
+        } else {
+            val btnEndIdx = clean.lastIndexOf("</button>", ignoreCase = true)
+            if (btnEndIdx != -1) {
+                clean = clean.substring(0, btnEndIdx + "</button>".length).trim()
+            } else {
+                val svgEndIdx = clean.lastIndexOf("</svg>", ignoreCase = true)
+                if (svgEndIdx != -1) {
+                    clean = clean.substring(0, svgEndIdx + "</svg>".length).trim()
+                }
+            }
+        }
+
+        // Remove <script> tags and inline script event handlers
+        clean = clean.replace(Regex("""<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>""", RegexOption.IGNORE_CASE), "")
+        clean = clean.replace(Regex("""\son\w+\s*=\s*(["'][^"']*["']|[^\s>]+)""", RegexOption.IGNORE_CASE), "")
+
+        return clean
+    }
+
+    private fun inlineCssCustomProperties(html: String): String {
+        val varDefRegex = Regex("""--([a-zA-Z0-9_-]+)\s*:\s*([^;]+);""")
+        val variables = mutableMapOf<String, String>()
+
+        for (match in varDefRegex.findAll(html)) {
+            val name = match.groupValues[1].trim()
+            val value = match.groupValues[2].trim()
+            // Do not inline spring physics properties (compiler parses them directly from :root)
+            if (!name.startsWith("spring-") && name != "press-scale") {
+                variables[name] = value
+            }
+        }
+
+        if (variables.isEmpty()) return html
+
+        var resolvedVars = variables.toMutableMap()
+        for (pass in 0 until 5) {
+            var changed = false
+            for ((k, v) in resolvedVars) {
+                if (v.contains("var(--")) {
+                    val newV = resolveCssVariablesWithFallbacks(v, resolvedVars)
+                    if (newV != v) {
+                        resolvedVars[k] = newV
+                        changed = true
+                    }
+                }
+            }
+            if (!changed) break
+        }
+
+        val styleTagRegex = Regex("""<style[^>]*>([\s\S]*?)</style>""", RegexOption.IGNORE_CASE)
+        return styleTagRegex.replace(html) { match ->
+            val css = match.groupValues[1]
+            val resolvedCss = resolveCssVariablesWithFallbacks(css, resolvedVars)
+            "<style>${resolvedCss}</style>"
         }
     }
 
     /**
-     * Returns an unstyled, non-binding syntax skeleton illustrating the minimal compiler contract
-     * for a given category. Intentionally free of pre-baked colors, gradients, and border-radii
-     * to eliminate visual imitation bias in generative AI models.
+     * Resolves CSS `var(--name, fallback)` calls using balanced-parentheses parsing
+     * to safely support nested functional values such as `rgba(...)`, `calc(...)`, or `linear-gradient(...)`.
      */
-    fun getSyntaxSkeleton(control: String, category: String, widthDp: Int, heightDp: Int): String {
-        return when (category.uppercase()) {
-            "JOYSTICK" -> """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --spring-damping: 0.70;
-    --spring-stiffness: 420;
-    --press-scale: 0.92;
-  }
-  .stick-btn {
-    width: ${widthDp}px;
-    height: ${heightDp}px;
-    position: relative;
-    background: transparent;
-    border: none;
-    padding: 0;
-    outline: none;
-  }
-  /* Stationary Gimbal Base (remains at 0, 0) */
-  .stick-base {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    /* Visually design the stationary socket, bezel, and directional tick markers here */
-  }
-  /* Movable Analog Thumb Cap (translates on thumb drag) */
-  .stick-cap {
-    position: absolute;
-    left: ${(widthDp * 0.18).toInt()}px;
-    top: ${(heightDp * 0.18).toInt()}px;
-    width: ${(widthDp * 0.64).toInt()}px;
-    height: ${(heightDp * 0.64).toInt()}px;
-    /* Visually design the thumb dish, knurled traction rings, vector art, and label here */
-  }
-  .stick-btn:active .stick-cap {
-    transform: scale(0.92);
-  }
-</style>
-</head>
-<body>
-  <button class="stick-btn" data-control="$control" data-category="JOYSTICK" data-name="Analog Stick $control">
-    <div class="stick-base">
-      <!-- Stationary socket layers -->
-    </div>
-    <div class="stick-cap">
-      <!-- Movable thumb cap layers -->
-      <span class="stick-label">${if (control.uppercase() == "RS") "R3" else "L3"}</span>
-    </div>
-  </button>
-</body>
-</html>
-            """.trimIndent()
+    private fun resolveCssVariablesWithFallbacks(css: String, resolvedVars: Map<String, String>): String {
+        val sb = StringBuilder()
+        var i = 0
+        val len = css.length
+        while (i < len) {
+            val varStart = css.indexOf("var(", i, ignoreCase = true)
+            if (varStart == -1) {
+                sb.append(css.substring(i))
+                break
+            }
+            sb.append(css.substring(i, varStart))
 
-            "TRIGGER" -> """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --spring-damping: 0.65;
-    --spring-stiffness: 380;
-    --press-scale: 0.94;
-  }
-  .trigger-btn {
-    width: ${widthDp}px;
-    height: ${heightDp}px;
-    position: relative;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    padding-top: 18px;
-    /* Visually design the trigger paddle body, curvature gradient, bevels, and shadows here */
-  }
-  .trigger-label {
-    font-size: 28px;
-    font-weight: 900;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    /* Visually design the label typography and embossed shadows here */
-  }
-  .trigger-btn:active {
-    transform: scaleY(0.94) translateY(4px);
-  }
-</style>
-</head>
-<body>
-  <button class="trigger-btn" data-control="$control" data-category="TRIGGER" data-name="Trigger $control">
-    <span class="trigger-label">$control</span>
-  </button>
-</body>
-</html>
-            """.trimIndent()
+            // Find matching closing parenthesis for this var(...) call
+            var depth = 1
+            var j = varStart + 4
+            var firstCommaIdx = -1
+            while (j < len && depth > 0) {
+                when (css[j]) {
+                    '(' -> depth++
+                    ')' -> depth--
+                    ',' -> if (depth == 1 && firstCommaIdx == -1) firstCommaIdx = j
+                }
+                if (depth == 0) break
+                j++
+            }
 
-            "BUMPER" -> """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --spring-damping: 0.75;
-    --spring-stiffness: 520;
-    --press-scale: 0.96;
-  }
-  .bumper-btn {
-    width: ${widthDp}px;
-    height: ${heightDp}px;
-    position: relative;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    /* Visually design the shoulder lever rocker, curvature specular highlight, and socket recess here */
-  }
-  .bumper-label {
-    font-size: 24px;
-    font-weight: 900;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    /* Visually design the bumper label typography and embossed shadows here */
-  }
-  .bumper-btn:active {
-    transform: scale(0.96) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="bumper-btn" data-control="$control" data-category="BUMPER" data-name="Bumper $control">
-    <span class="bumper-label">$control</span>
-  </button>
-</body>
-</html>
-            """.trimIndent()
+            if (depth == 0) {
+                val (varName, fallback) = if (firstCommaIdx != -1) {
+                    val name = css.substring(varStart + 4, firstCommaIdx).trim()
+                    val fb = css.substring(firstCommaIdx + 1, j).trim()
+                    Pair(name, fb)
+                } else {
+                    val name = css.substring(varStart + 4, j).trim()
+                    Pair(name, null)
+                }
 
-            "DPAD" -> """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --spring-damping: 0.72;
-    --spring-stiffness: 480;
-    --press-scale: ${if (control.uppercase() == "DPAD") "0.95" else "0.92"};
-  }
-  .dpad-btn {
-    width: ${widthDp}px;
-    height: ${heightDp}px;
-    position: relative;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    /* Visually design the directional pad geometry, rocker pivot well, and shading here */
-  }
-  .dpad-glyph {
-    font-size: 28px;
-    font-weight: 900;
-    /* Visually design the directional indicator (or embedded SVG chevron/arrow) here */
-  }
-  .dpad-btn:active {
-    transform: ${if (control.uppercase() == "DPAD") "scale(0.95)" else "scale(0.92) translateY(2px)"};
-  }
-</style>
-</head>
-<body>
-  <button class="dpad-btn" data-control="$control" data-category="DPAD" data-name="D-Pad $control">
-    <span class="dpad-glyph">${when (control.uppercase()) { "DOWN" -> "▼"; "LEFT" -> "◀"; "RIGHT" -> "▶"; "DPAD" -> "❖"; else -> "▲" }}</span>
-  </button>
-</body>
-</html>
-            """.trimIndent()
+                val cleanVarName = varName.removePrefix("--").trim()
+                val resolvedValue = resolvedVars[cleanVarName]
 
-            "SYSTEM" -> """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --spring-damping: 0.78;
-    --spring-stiffness: 500;
-    --press-scale: 0.92;
-  }
-  .system-btn {
-    width: ${widthDp}px;
-    height: ${heightDp}px;
-    position: relative;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    /* Visually design the low-profile utility switch body, socket bevels, and lighting here */
-  }
-  .system-btn:active {
-    transform: scale(0.92) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="system-btn" data-control="$control" data-category="SYSTEM" data-name="System $control">
-    <!-- Visually design vector iconography (e.g. flex hamburger bars, overlapping windows, or emblem) here -->
-  </button>
-</body>
-</html>
-            """.trimIndent()
+                if (resolvedValue != null && !resolvedValue.contains("var(--")) {
+                    sb.append(resolvedValue)
+                } else if (fallback != null) {
+                    // Recursively resolve any nested var() inside fallback
+                    val resolvedFallback = resolveCssVariablesWithFallbacks(fallback, resolvedVars)
+                    sb.append(resolvedFallback)
+                } else {
+                    // Undefined without fallback, preserve original var(...) call
+                    sb.append(css.substring(varStart, j + 1))
+                }
+                i = j + 1
+            } else {
+                sb.append("var(")
+                i = varStart + 4
+            }
+        }
+        return sb.toString()
+    }
 
-            else -> """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --spring-damping: 0.68;
-    --spring-stiffness: 440;
-    --press-scale: 0.92;
-  }
-  .nexpad-btn {
-    width: ${widthDp}px;
-    height: ${heightDp}px;
-    position: relative;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    /* Visually design the face button silhouette, physical material, depth, and socket recess here */
-  }
-  .btn-label {
-    font-size: 34px;
-    font-weight: 900;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    /* Visually design the extruded 3D typography and text shadows here */
-  }
-  .nexpad-btn:active {
-    transform: scale(0.93) translateY(3px);
-  }
-</style>
-</head>
-<body>
-  <button class="nexpad-btn" data-control="$control" data-category="BUTTON" data-name="Action $control">
-    <span class="btn-label">$control</span>
-  </button>
-</body>
-</html>
-            """.trimIndent()
+    private fun normalizeCssVendorPrefixes(html: String): String {
+        var res = html
+        val hasPrefixed = Regex("""-webkit-clip-path\s*:""", RegexOption.IGNORE_CASE).containsMatchIn(res)
+        val hasUnprefixed = Regex("""(?<!-webkit-)clip-path\s*:""", RegexOption.IGNORE_CASE).containsMatchIn(res)
+
+        if (hasPrefixed && !hasUnprefixed) {
+            res = res.replace(Regex("""-webkit-clip-path\s*:\s*([^;]+);""", RegexOption.IGNORE_CASE)) {
+                "-webkit-clip-path: ${it.groupValues[1]}; clip-path: ${it.groupValues[1]};"
+            }
+        } else if (hasUnprefixed && !hasPrefixed) {
+            res = res.replace(Regex("""(?<!-webkit-)clip-path\s*:\s*([^;]+);""", RegexOption.IGNORE_CASE)) {
+                "clip-path: ${it.groupValues[1]}; -webkit-clip-path: ${it.groupValues[1]};"
+            }
+        }
+        return res
+    }
+
+    private fun normalizeSvgElements(html: String): String {
+        val svgTagRegex = Regex("""<svg\b([^>]*)>""", RegexOption.IGNORE_CASE)
+        val numAttrRegex = { name: String ->
+            Regex("""\b$name\s*=\s*(?:"(\d+(?:\.\d+)?)(?:px)?"|'(\d+(?:\.\d+)?)(?:px)?'|(\d+(?:\.\d+)?)(?:px)?(?=[\s>]))""", RegexOption.IGNORE_CASE)
+        }
+        return svgTagRegex.replace(html) { match ->
+            var attrs = match.groupValues[1]
+            if (!attrs.contains("xmlns", ignoreCase = true)) {
+                attrs = "$attrs xmlns=\"http://www.w3.org/2000/svg\""
+            }
+            if (!attrs.contains("viewBox", ignoreCase = true)) {
+                val wMatch = numAttrRegex("width").find(attrs)
+                val hMatch = numAttrRegex("height").find(attrs)
+                val w = wMatch?.groupValues?.drop(1)?.firstOrNull { it.isNotEmpty() }
+                val h = hMatch?.groupValues?.drop(1)?.firstOrNull { it.isNotEmpty() }
+                // Only synthesize viewBox if both width and height are explicit numeric pixel values
+                if (w != null && h != null) {
+                    attrs = "$attrs viewBox=\"0 0 $w $h\""
+                }
+            }
+            "<svg$attrs>"
         }
     }
 
     /**
-     * Generates an in-depth, specialized AI Prompt tailored specifically to the target button type.
-     * Delegates to dedicated generators for ABXY, D-PAD, TRIGGERS, BUMPERS, JOYSTICKS, and SYSTEM buttons.
+     * Guarantees a single root <button> element with interactive spring micro-physics and active state.
+     *
+     * Note on Metadata Contract: Component metadata attributes (`data-control`, `data-category`, `data-name`)
+     * are validated, completed, and packaged during the compiler packaging phase by [NxprcPackager.compile],
+     * which applies authoritative category defaults when omitted by the AI model.
+     */
+    private fun ensureRootComponentContract(html: String, rootClassHint: String? = null): String {
+        var res = html
+
+        // Inspect existing DOM structure
+        val initialParsed = try { HtmlDomParser.parse(res) } catch (e: Throwable) { null }
+        val existingButtons = initialParsed?.root?.findByTag("button") ?: emptyList()
+
+        if (existingButtons.isEmpty()) {
+            val hintRegex = rootClassHint?.let { Regex("""<div(\s+[^>]*class\s*=\s*["'][^"']*${Regex.escape(it)}[^"']*["'][^>]*)>""", RegexOption.IGNORE_CASE) }
+            val divBtnRegex = Regex("""<div(\s+[^>]*class\s*=\s*["'][^"']*(?:btn|button|pad|control|ctl)[^"']*["'][^>]*)>""", RegexOption.IGNORE_CASE)
+            val anyDivRegex = Regex("""<div\b([^>]*)>""", RegexOption.IGNORE_CASE)
+            val match = hintRegex?.find(res) ?: if (divBtnRegex.containsMatchIn(res)) divBtnRegex.find(res) else anyDivRegex.find(res)
+            if (match != null) {
+                val openTagEnd = match.range.last + 1
+                val divTagRegex = Regex("""</?div\b[^>]*>""", RegexOption.IGNORE_CASE)
+                var depth = 1
+                var matchingEndDivRange: IntRange? = null
+                for (divMatch in divTagRegex.findAll(res, openTagEnd)) {
+                    val tagText = divMatch.value
+                    if (tagText.startsWith("</", ignoreCase = true)) {
+                        depth--
+                        if (depth == 0) {
+                            matchingEndDivRange = divMatch.range
+                            break
+                        }
+                    } else if (!tagText.endsWith("/>")) {
+                        depth++
+                    }
+                }
+
+                if (matchingEndDivRange != null) {
+                    res = res.substring(0, matchingEndDivRange.first) + "</button>" + res.substring(matchingEndDivRange.last + 1)
+                    res = res.substring(0, match.range.first) + "<button${match.groupValues[1]}>" + res.substring(match.range.last + 1)
+                }
+                // When depth matching fails, leave markup untouched (Point 12: no unsafe lastIndexOf fallback)
+            }
+        }
+
+        // Discover root class name from parsed DOM (Point 15: AST-driven, resilient to multi-class lists)
+        val postParsed = try { HtmlDomParser.parse(res) } catch (e: Throwable) { null }
+        val rootButton = postParsed?.root?.findByTag("button")?.firstOrNull()
+        val classList = rootButton?.classNames ?: emptyList()
+        val discoveredClass = when {
+            rootClassHint != null && classList.contains(rootClassHint) -> rootClassHint
+            classList.any { cls -> STANDARD_BUTTON_SUFFIXES.any { cls.endsWith(it) } } ->
+                classList.first { cls -> STANDARD_BUTTON_SUFFIXES.any { cls.endsWith(it) } }
+            classList.any { cls -> CONTAINER_CLASS_KEYWORDS.any { cls.contains(it) } } ->
+                classList.first { cls -> CONTAINER_CLASS_KEYWORDS.any { cls.contains(it) } }
+            classList.isNotEmpty() -> classList.first()
+            else -> rootClassHint ?: DEFAULT_ROOT_BUTTON_CLASS
+        }
+
+        val activeSelector = if (discoveredClass.isNotBlank() && discoveredClass != DEFAULT_ROOT_BUTTON_CLASS) {
+            ".$discoveredClass:active, button:active"
+        } else {
+            "button:active"
+        }
+
+        val defaultPhysics = SpringPhysics.DEFAULT
+
+        // If no <style> block exists, inject one with default spring physics
+        if (!res.contains("<style", ignoreCase = true)) {
+            val springPhysicsBlock = "<style>\n  ${defaultPhysics.toRootBlock()}\n  $activeSelector { transform: scale(${defaultPhysics.pressScaleFormatted}) translateY(2px); }\n</style>\n"
+            val bodyIdx = res.indexOf("<body", ignoreCase = true)
+            res = if (bodyIdx != -1) {
+                val afterBody = res.indexOf(">", bodyIdx) + 1
+                res.substring(0, afterBody) + "\n" + springPhysicsBlock + res.substring(afterBody)
+            } else {
+                springPhysicsBlock + res
+            }
+        } else {
+            // If :root does not contain spring physics, inject them into the first <style> block
+            if (!res.contains("--spring-damping")) {
+                val styleTagRegex = Regex("""<style[^>]*>""", RegexOption.IGNORE_CASE)
+                val match = styleTagRegex.find(res)
+                if (match != null) {
+                    val insertIdx = match.range.last + 1
+                    val springPhysicsBlock = "\n    ${defaultPhysics.toRootBlock()}\n"
+                    res = res.substring(0, insertIdx) + springPhysicsBlock + res.substring(insertIdx)
+                }
+            }
+            // If no :active rule is present in CSS, inject fallback active selector
+            if (!res.contains(":active", ignoreCase = true)) {
+                val styleEndRegex = Regex("""</style>""", RegexOption.IGNORE_CASE)
+                val match = styleEndRegex.find(res)
+                if (match != null) {
+                    val insertIdx = match.range.first
+                    val fallbackActive = "\n  $activeSelector { transform: scale(var(--press-scale, ${defaultPhysics.pressScaleFormatted})) translateY(2px); }\n"
+                    res = res.substring(0, insertIdx) + fallbackActive + res.substring(insertIdx)
+                }
+            }
+        }
+
+        return res
+    }
+
+    private fun resolveStructuralStackingInversions(html: String): String {
+        val parsed = try { HtmlDomParser.parse(html) } catch (e: Throwable) { return html }
+        val root = parsed.root
+
+        // 1. Identify all SVG vector elements in the DOM tree
+        val svgNodes = root.findByTag("svg")
+        val svgIdentifiers = mutableSetOf<String>()
+        if (svgNodes.isNotEmpty()) {
+            svgIdentifiers.add("svg")
+            for (svg in svgNodes) {
+                svg.id?.let { svgIdentifiers.add("#${it.lowercase()}") }
+                svg.classNames.forEach { svgIdentifiers.add(".${it.lowercase()}") }
+            }
+        }
+
+        // 2. Identify pure surface / container elements (elements with no SVG children and no direct text)
+        fun isDescendantOfAny(node: DomNode, targets: List<DomNode>): Boolean {
+            if (targets.isEmpty()) return false
+            var curr = node.parent
+            while (curr != null) {
+                if (targets.contains(curr)) return true
+                curr = curr.parent
+            }
+            return false
+        }
+
+        val surfaceIdentifiers = mutableSetOf<String>()
+        val foregroundIdentifiers = mutableSetOf<String>()
+        foregroundIdentifiers.addAll(svgIdentifiers)
+
+        fun scanElements(node: DomNode) {
+            val isRoot = node.tag.equals("button", true) || node.tag.equals("root", true) || node.tag.equals("body", true)
+            val isSvgOrDescendant = node.tag.equals("svg", true) || isDescendantOfAny(node, svgNodes)
+            val hasSvgChild = node.findByTag("svg").isNotEmpty()
+            val hasDirectText = node.textContent.isNotBlank()
+
+            val role = (node.attributes["data-layer-role"] ?: node.attributes["data-role"])?.trim()?.lowercase()
+            when (role) {
+                "artwork", "detail", "label" -> {
+                    node.id?.let { foregroundIdentifiers.add("#${it.lowercase()}") }
+                    node.classNames.forEach { foregroundIdentifiers.add(".${it.lowercase()}") }
+                }
+                "background", "surface", "base", "socket" -> {
+                    node.id?.let { surfaceIdentifiers.add("#${it.lowercase()}") }
+                    node.classNames.forEach { surfaceIdentifiers.add(".${it.lowercase()}") }
+                }
+                else -> {
+                    if (!isRoot && !isSvgOrDescendant && !hasSvgChild && !hasDirectText) {
+                        node.id?.let { surfaceIdentifiers.add("#${it.lowercase()}") }
+                        node.classNames.forEach { surfaceIdentifiers.add(".${it.lowercase()}") }
+                    }
+                }
+            }
+            node.children.forEach { scanElements(it) }
+        }
+        scanElements(root)
+
+        if (foregroundIdentifiers.isEmpty() || surfaceIdentifiers.isEmpty()) return html
+
+        // 3. Scan CSS rules across all <style> blocks
+        val styleTagRegex = Regex("""<style[^>]*>([\s\S]*?)</style>""", RegexOption.IGNORE_CASE)
+        val styleBlocks = styleTagRegex.findAll(html).toList()
+        if (styleBlocks.isEmpty()) return html
+
+        val ruleRegex = Regex("""([^{]+)\{([^}]+)\}""")
+        data class RuleInfo(val selector: String, val body: String, val zIndex: Int?)
+        val allRules = mutableListOf<RuleInfo>()
+        for (block in styleBlocks) {
+            val css = block.groupValues[1]
+            for (match in ruleRegex.findAll(css)) {
+                val sel = match.groupValues[1].trim()
+                val body = match.groupValues[2]
+                val z = Regex("""z-index\s*:\s*(\d+)""").find(body)?.groupValues?.get(1)?.toIntOrNull()
+                allRules.add(RuleInfo(sel, body, z))
+            }
+        }
+
+        // Find the lowest explicit z-index among foreground (SVG / artwork / detail / label) layers
+        val minForegroundZ = allRules.filter { r ->
+            r.zIndex != null && foregroundIdentifiers.any { r.selector.lowercase().contains(it) }
+        }.mapNotNull { it.zIndex }.minOrNull() ?: DEFAULT_SVG_MIN_Z_INDEX
+
+        // Find non-SVG container rules with a background and z-index >= minForegroundZ
+        val inversionSelectors = mutableSetOf<String>()
+        for (r in allRules) {
+            if (r.zIndex != null && r.zIndex >= minForegroundZ) {
+                val hasBg = r.body.contains("background", ignoreCase = true) || r.body.contains("background-color", ignoreCase = true)
+                val matchesForeground = foregroundIdentifiers.any { r.selector.lowercase().contains(it) }
+                val isPseudoGloss = r.selector.contains("::before") || r.selector.contains("::after")
+                val isTranslucentOrOverlay = r.body.contains("opacity", ignoreCase = true) ||
+                    r.body.contains("rgba", ignoreCase = true) ||
+                    r.body.contains("hsla", ignoreCase = true) ||
+                    r.body.contains("transparent", ignoreCase = true) ||
+                    r.body.contains("pointer-events", ignoreCase = true) ||
+                    r.body.contains("backdrop-filter", ignoreCase = true)
+
+                if (!matchesForeground && !isPseudoGloss && hasBg && !isTranslucentOrOverlay) {
+                    val isSurface = surfaceIdentifiers.any { r.selector.lowercase().contains(it) }
+                    val isClassOrId = r.selector.trim().startsWith(".") || r.selector.trim().startsWith("#")
+                    if (isSurface || isClassOrId) {
+                        inversionSelectors.add(r.selector.trim())
+                    }
+                }
+            }
+        }
+
+        if (inversionSelectors.isEmpty()) return html
+
+        val targetZ = maxOf(MIN_REPAIRED_SURFACE_Z_INDEX, minForegroundZ - Z_INDEX_CLEARANCE_STEP)
+        return styleTagRegex.replace(html) { match ->
+            var css = match.groupValues[1]
+            for (invSel in inversionSelectors) {
+                val escaped = Regex.escape(invSel)
+                val selRulePattern = Regex("""(${escaped}\s*\{[^}]*?z-index\s*:\s*)(\d+)([^}]*\})""")
+                css = css.replace(selRulePattern) { m ->
+                    "${m.groupValues[1]}$targetZ${m.groupValues[3]}"
+                }
+            }
+            "<style>${css}</style>"
+        }
+    }
+
+    /** Pre-built HTML/CSS templates for instant testing (Delegated to [NxprcPresets]) */
+    val PRESET_ULTRA_NEXPAD_A get() = NxprcPresets.PRESET_ULTRA_NEXPAD_A
+    val PRESET_CYBER_REACTOR get() = NxprcPresets.PRESET_CYBER_REACTOR
+    val PRESET_CRIMSON_OCTA get() = NxprcPresets.PRESET_CRIMSON_OCTA
+    val PRESET_SPEED_TURBO get() = NxprcPresets.PRESET_SPEED_TURBO
+    val PRESET_NEO_TACTILE_A get() = NxprcPresets.PRESET_NEO_TACTILE_A
+    val PRESET_NEO_TACTILE_B get() = NxprcPresets.PRESET_NEO_TACTILE_B
+    val PRESET_NEO_TACTILE_X get() = NxprcPresets.PRESET_NEO_TACTILE_X
+    val PRESET_NEO_TACTILE_Y get() = NxprcPresets.PRESET_NEO_TACTILE_Y
+    val PRESET_DPAD_UP get() = NxprcPresets.PRESET_DPAD_UP
+    val PRESET_DPAD_DOWN get() = NxprcPresets.PRESET_DPAD_DOWN
+    val PRESET_DPAD_LEFT get() = NxprcPresets.PRESET_DPAD_LEFT
+    val PRESET_DPAD_RIGHT get() = NxprcPresets.PRESET_DPAD_RIGHT
+    val PRESET_DPAD_CROSS get() = NxprcPresets.PRESET_DPAD_CROSS
+    val PRESET_TRIGGER_LT get() = NxprcPresets.PRESET_TRIGGER_LT
+    val PRESET_TRIGGER_RT get() = NxprcPresets.PRESET_TRIGGER_RT
+    val PRESET_BUMPER_LB get() = NxprcPresets.PRESET_BUMPER_LB
+    val PRESET_BUMPER_RB get() = NxprcPresets.PRESET_BUMPER_RB
+    val PRESET_THUMBSTICK_LS get() = NxprcPresets.PRESET_THUMBSTICK_LS
+    val PRESET_THUMBSTICK_RS get() = NxprcPresets.PRESET_THUMBSTICK_RS
+    val PRESET_SYSTEM_MENU get() = NxprcPresets.PRESET_SYSTEM_MENU
+    val PRESET_SYSTEM_VIEW get() = NxprcPresets.PRESET_SYSTEM_VIEW
+    val PRESET_SYSTEM_HOME get() = NxprcPresets.PRESET_SYSTEM_HOME
+    val PRESET_STICK_BUTTON_LSB get() = NxprcPresets.PRESET_STICK_BUTTON_LSB
+    val PRESET_STICK_BUTTON_RSB get() = NxprcPresets.PRESET_STICK_BUTTON_RSB
+    val PRESET_TOUCHPAD_LTP get() = NxprcPresets.PRESET_TOUCHPAD_LTP
+    val PRESET_TOUCHPAD_RTP get() = NxprcPresets.PRESET_TOUCHPAD_RTP
+    val PRESET_SYSTEM_SHARE get() = NxprcPresets.PRESET_SYSTEM_SHARE
+    val PRESET_MACRO_M1 get() = NxprcPresets.PRESET_MACRO_M1
+    val PRESET_MACRO_M2 get() = NxprcPresets.PRESET_MACRO_M2
+    val PRESET_MACRO_M3 get() = NxprcPresets.PRESET_MACRO_M3
+    val PRESET_MACRO_M4 get() = NxprcPresets.PRESET_MACRO_M4
+
+    /** Reference templates (structure guide only) delegated to [NxprcPresets]. */
+    fun getReferenceTemplate(control: String): String = NxprcPresets.getReferenceTemplate(control)
+    fun getReferenceTemplate(control: String, category: String): String = NxprcPresets.getReferenceTemplate(control, category)
+
+    /** Compiler syntax skeletons delegated to [NxprcPresets]. */
+    fun getSyntaxSkeleton(control: String, category: String, widthDp: Int, heightDp: Int): String =
+        NxprcPresets.getSyntaxSkeleton(control, category, widthDp, heightDp)
+
+    /**
+     * Generates an in-depth, parameter-driven AI prompt tailored specifically to the target button type.
+     * Delegates to [NxprcAiPromptBuilder.buildPrompt].
      */
     fun generateAiPrompt(
         control: String,
         category: String,
         widthDp: Int,
-        heightDp: Int
-    ): String {
-        return when (category.uppercase()) {
-            "TRIGGER" -> generateTriggerPrompt(control, widthDp, heightDp)
-            "BUMPER" -> generateBumperPrompt(control, widthDp, heightDp)
-            "DPAD" -> generateDpadPrompt(control, widthDp, heightDp)
-            "JOYSTICK" -> generateStickPrompt(control, widthDp, heightDp)
-            "SYSTEM" -> generateSystemPrompt(control, widthDp, heightDp)
-            else -> generateAbxyPrompt(control, widthDp, heightDp)
-        }
-    }
-
-    private fun genAiHeader(): String = """
-# NEXPAD VIRTUAL CONTROLLER COMPONENT SPECIFICATION
-**Protocol Standard: NXPRC 10/10 Vector Engine Architecture**
-**Engineered & Validated for Frontier Generative AI Models:**
-- OpenAI ChatGPT (GPT-4o, GPT-4, o1, o3-mini)
-- Anthropic Claude (Claude 3.7 Sonnet, Claude 3.5 Sonnet)
-- Google Gemini (Gemini 2.5 Flash / Pro, Gemini 2.0 Flash, Gemini 1.5 Pro)
-- DeepSeek (DeepSeek-V3, DeepSeek-R1)
-- xAI Grok (Grok 3, Grok 2)
-- Or any modern LLM with HTML/CSS/SVG code generation capabilities
-
-## CORE RULES (QUICK SUMMARY FOR ALL MODELS):
-1. Build ONE virtual controller component inside a single `<button>` element.
-2. Follow the user's visual request first — user customization always wins within compiler boundaries.
-3. Keep the component self-contained: one `<style>` block, system fonts, zero external assets.
-4. Use only supported HTML/CSS/SVG primitives (no unsupported web page APIs).
-5. Preserve the component's interaction meaning (category semantics), not a mandatory shape.
-6. Make the design visually coherent with physically believable depth and lighting.
-7. Use creativity when details are unspecified — never default to a generic circle unless requested.
-8. Design with restraint: avoid visual clutter; prefer the minimum number of layers required to achieve the requested aesthetic.
-9. Ensure the label/icon remains clearly readable with strong contrast.
-10. Return ONLY the complete, self-contained HTML/CSS inside one code block.
-""".trimIndent()
-
-private fun engineBoundaries(rootClass: String): String = """
-### 1. INSTRUCTION PRIORITY & CONFLICT RESOLUTION
-When instructions conflict, resolve them in this strict order of authority:
-1. **Non-Negotiable Compiler Safety** [GLOBAL-REQUIRED] (Single button root, px bounds, DOM text, self-contained document, no external assets or scripts).
-2. **User's Explicit Customization** [USER-OVERRIDE] [USER OVERRIDE] (Highest design authority — user's artistic style, shape, palette, and theme always supersede defaults).
-3. **Component Semantics** [COMPONENT-REQUIRED] (Preserve interaction meaning: tappable, directional, analog, etc.).
-4. **Accessibility & Readability** [GLOBAL-REQUIRED] [REQUIRED] (High-contrast label legibility, touch target visibility).
-5. **Design Quality Principles** [RECOMMENDED] (Physical coherence, balanced hierarchy, believable depth).
-6. **Category Defaults** [RECOMMENDED] (Color palette suggestions, default glyphs used when user specifies none).
-7. **Optional Inspiration** [OPTIONAL] (Theme suggestions, optional decorative flair).
-8. **Starter-Template Examples [NON-BINDING SYNTAX REFERENCE]** (Syntax structure only — never copy its geometry, proportions, colors, materials, layer count, visual hierarchy, or silhouette unless those properties are independently required by the component contract or explicitly requested by the user).
-
-> **The Golden Rule**: The user's visual and artistic instructions always win over defaults and recommendations, provided they remain compatible with the required compiler contract and component semantics.
-> **Conflict Rule**: User instructions always take precedence over optional recommendations or category defaults.
-> **Template Rule**: Starter-template examples are illustrative syntax only and should never override explicit user choices. Never imitate their colors, shapes, gradients, or materials when fulfilling user requests.
-
-### 2. RULE CLASSIFICATION HIERARCHY
-- **[GLOBAL-REQUIRED] / [REQUIRED]**: Platform/engine constraints. Violation causes compiler rejection.
-- **[COMPONENT-REQUIRED]**: Required for this component's interaction model (e.g. active feedback, control key).
-- **[USER-OVERRIDE] / [USER OVERRIDE]**: User's explicit aesthetic requests. Highest design authority within compiler boundaries.
-- **[RECOMMENDED]**: Proven design patterns for quality, depth, and touch affordance. Use unless the user's concept calls for another approach.
-- **[OPTIONAL]**: Primitives and effects (SVG paths, conic gradients, filter nodes) to use only when they enhance the requested aesthetic.
-- **[NON-BINDING SYNTAX REFERENCE]**: Architectural syntax example only. Never use its aesthetic properties as design anchors.
-
-### 3. COMPILER CAPABILITIES — WHAT PRIMITIVES ARE BEST FOR:
-The NXPRC engine compiles HTML/CSS/SVG into hardware-accelerated Compose Canvas layers. Use capabilities for their visual strengths:
-- **`radial-gradient`**: Best for spherical/concave shading, directional specular highlights, ambient glow, and radial illumination wells.
-- **`linear-gradient`**: Best for rake angles, directional light slope, horizontal specular sheen, and chamfer bevels.
-- **`conic-gradient`**: Best for brushed metallic bezels, segmented rotary dials, directional sheen rings, and mechanical textures.
-- **`box-shadow`**: Outset shadows for physical socket elevation and ambient halos; Inset shadows for 3D spherical bevel rims and recessed sockets.
-- **Embedded `<svg>` & Vector Nodes**: Best for custom vector iconography, chevrons, emblems, and technical markings (`<path d="...">`, `<circle>`, `<rect>`, `<polygon>`, `<g>`). Supports `<defs>` paint servers (`<linearGradient id="...">`, `<radialGradient id="...">` with `<stop offset="..." stop-color="..." stop-opacity="...">`) referenced via `fill: url(#id)` or `stroke: url(#id)` in both direct attributes and CSS classes (`.my-shape { fill: url(#grad); }`).
-- **SVG Multi-Path & Feature Grouping [RECOMMENDED]**: When designing composite illustrations, emblems, or multi-element graphics (e.g. eyes, emblems, character features):
-  1. Combine shapes sharing the same coordinates into a **single unified `<path d="M...Z M...Z">`**, OR
-  2. Give each sub-feature its own explicitly sized and positioned `<svg>` element (`position: absolute; left: Xpx; top: Ypx; width: Wpx; height: Hpx; viewBox="0 0 W H"`).
-  Avoid placing multiple disconnected `<path>` elements inside a full-width container without explicit component bounds, as each path compiles into an independently scalable GPU vector layer.
-- **SVG `<filter>` Graphs**: Best for optical graph effects (`<feGaussianBlur>`, `<feColorMatrix>`, `<feDropShadow>`, `<feBlend>`).
-- **Flexbox Layout**: Best for grouped items (menu bars, grip ribs, multi-label stacks), flow, and alignment (`display: flex`, `flex-direction`, `flex-wrap: wrap`, `gap`, `row-gap`, `column-gap`, `justify-content`, `align-items`).
-- **Typographic Auto-Wrapping**: Real DOM text formatting with `font-size`, `font-weight`, `letter-spacing`, `line-height`, `text-shadow`, and multi-line wrapping via `white-space: normal | pre-line` and explicit newlines.
-- **Modern CSS Colors**: Hex (`#rrggbbaa`), `rgb()`, `rgba()`, `hsl()`, `hwb()`, `oklch()`, and `color(display-p3 ...)`.
-
-### 4. STRICT NEXPAD COMPILER BOUNDARIES — FOLLOW THIS EXACTLY:
-1. **Single compiled component [GLOBAL-REQUIRED]**: `<body>` must contain exactly one root `<button class="$rootClass" data-control="..." data-category="..." data-name="...">`. Keep every visual child inside it. The compiler selects this button and does not render a general web page.
-2. **Portable self-contained document [GLOBAL-REQUIRED]**: Include one `<style>` block, one root button, and no external dependencies (no external `<link>`, `@import`, remote font files, or external web scripts). System fonts only.
-3. **Safe geometry & shapes [GLOBAL-REQUIRED]**: Use `px` dimensions for the root and visual children. Use `border-radius` or `clip-path: polygon(...)` for circles, capsules, stars, diamonds, hexagons, handmade, asymmetric, and organic silhouettes. Preserve the user's requested shape, proportions, and aesthetic.
-4. **Explicit layers & positioning [GLOBAL-REQUIRED]**: Set `position: relative` on the root. Set `position: absolute`, `left`, `top`, `width`, and `height` on decorative children as needed. Use `z-index` only for layer ordering.
-5. **Text must be real DOM text [GLOBAL-REQUIRED]**: Put labels, legends, and decorative symbols in actual `<span>`/`<div>` text nodes. Multi-label layouts are fully supported. Do not use pseudo-element text with icons or emoji; pseudo-elements `::before`/`::after` may use `content: ""` only for painted layers.
-6. **Stable CSS only [GLOBAL-REQUIRED]**: Do not use `@media`, `@supports`, `:hover`, `:focus`, or `:focus-visible` (these are browser page-state features). Do not use browser `@keyframes` animations; dynamic touch buttons use `$rootClass:active` tactile spring micro-physics for press actuation. Use `$rootClass:active` only for press feedback.
-7. **Optical filter rule [GLOBAL-REQUIRED]**: Use GPU `filter: blur()`, `brightness()`, `contrast()`, `saturate()`, `hue-rotate()`, or SVG `<filter>` graphs for optical effects. Do not use `backdrop-filter` or `mix-blend-mode`.
-8. **Tactile active interaction [COMPONENT-REQUIRED]**: Always define `.$rootClass:active { transform: scale(...) translateY(...); }` using the exact root class.
-9. **Tactile spring micro-physics [COMPONENT-REQUIRED]**: Declare spring physics custom properties in `:root`:
-   `--spring-damping: 0.68;`, `--spring-stiffness: 440;`, `--press-scale: 0.92;`
-   These calibrate physical tactile button weight, dampening, and spring return speed on mobile touch HUDs.
-10. **Creative freedom [GLOBAL-REQUIRED]**: `data-category` is metadata, not a shape instruction. It does not force a circle, cross, capsule, paddle, ring, gimbal, or any other silhouette. Preserve the user's requested shape, proportions, color palette, and visual language—even when they differ from the category.
-
-### 5. DESIGN QUALITY CRITERIA & DESIGN RESTRAINT
-**Design Quality Criteria**:
-A successful virtual controller component optimizes for:
-1. *Recognizability*: Instantly identifiable key identity during gameplay.
-2. *Legibility*: High contrast label readable at small handheld touch scales.
-3. *Touch Affordance*: Visually communicates pressability, depth, and tactile actuation.
-4. *Visual Hierarchy*: Primary glyph stands out above decorative bezels and ambient halos.
-5. *Material Coherence*: Shading, highlights, and borders reflect a consistent material (matte, metallic, neon, glass).
-6. *Appropriate Depth*: Multi-tier inset/outset shadows creating realistic tactile socket recess.
-
-**DESIGN RESTRAINT & VISUAL BALANCE**:
-- Apply visual effects with deliberate purpose. Prefer the minimum number of layers required to achieve the requested aesthetic cleanly.
-- Avoid unnecessary glow, excessive shadows, or decorative elements that visually compete with the button label.
-
-### 6. DESIGN DECISION RULES:
-The model operates as an autonomous designer inside the compiler boundary:
-- Choose geometry that fits the concept (do not default to a circle unless the requested concept benefits from it).
-- Choose lighting that supports the material (specular highlights for metal/glass, soft ambient for matte plastic).
-- Choose depth that supports the interaction.
-- If user customization details are unspecified, exercise creative judgment aligned with the overall theme.
-
-### 7. SELF-CHECK CHECKLIST:
-Self-check before output:
-- Exactly one root `<button class="$rootClass"` with matching `data-control`, `data-category`, and `data-name`.
-- Real DOM text labels with strong contrast and readable font size.
-- Explicit px dimensions on root and layered children (`Set position: absolute, left, top, width, and height`).
-- Valid active state `.$rootClass:active` with spring micro-physics (`--spring-damping`, `--spring-stiffness`) in `:root`.
-- No forbidden properties (`Do not use @media`, no external fonts, no external scripts).
-- Preserves the user's requested shape and applies appropriate design restraint.
-- Does the visual hierarchy make the control identity immediately obvious?
-- Does every decorative layer have a clear design purpose?
-- Does the final design match the user's requested aesthetic rather than the starter template?
-
-### 8. AUTHORITATIVE OUTPUT CONTRACT:
-To ensure reliable programmatic compilation, return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text outside it.
-""".trimIndent()
-
-    private fun generateAbxyPrompt(control: String, widthDp: Int, heightDp: Int): String {
-        val (colorName, hexCode, rgbGlow, coreGrad) = when (control.uppercase()) {
-            "X" -> Quadruple("Vibrant Sapphire Blue", "#00B0FF", "rgba(0, 176, 255, 0.6)", "linear-gradient(145deg, #0284c7 0%, #0369a1 50%, #0c4a6e 100%)")
-            "Y" -> Quadruple("Radiant Solar Yellow", "#FFCC00", "rgba(255, 204, 0, 0.6)", "linear-gradient(145deg, #eab308 0%, #ca8a04 50%, #713f12 100%)")
-            "B" -> Quadruple("Vibrant Crimson Red", "#FF3366", "rgba(255, 51, 102, 0.6)", "linear-gradient(145deg, #f43f5e 0%, #e11d48 50%, #881337 100%)")
-            else -> Quadruple("Vibrant Emerald Green", "#4ADE80", "rgba(74, 222, 128, 0.6)", "linear-gradient(145deg, #10b981 0%, #059669 50%, #047857 100%)")
-        }
-
-        return """
-${genAiHeader()}
-
-You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Face Action Button for NEXPAD.
-
-### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control (Standard Gamepad Face Button)
-- **Category [GLOBAL-REQUIRED]**: BUTTON
-- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
-- **Standard Color Profile [RECOMMENDED]**: $colorName (Accent: $hexCode, Glow: $rgbGlow)
-- **Standard Core [RECOMMENDED]**: $coreGrad
-
-### CATEGORY SEMANTICS & INTERACTION MEANING:
-- **Interaction Meaning [COMPONENT-REQUIRED]**: Momentary discrete user actuation with tactile depression and instant spring release.
-- **Visual Affordance [RECOMMENDED]**: Prominent elevation, tactile socket well, clear pressability, high-contrast center label.
-- **Optional Visual Language [OPTIONAL]**: Multi-stop radial gradients, specular highlight arcs, metallic chamfer rings, neon edge halos.
-- **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. The silhouette is completely yours: circle, hexagon, rounded rect, diamond, shield, or organic silhouette. Preserve the user's requested shape.
-
-### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
-The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
-1. **Root Button Tag (`<button class="nexpad-btn" data-control="$control" data-category="BUTTON" data-name="Action $control">`)**:
-   - `border-radius: 50%` (or `clip-path: polygon(...)` for custom faceted geometries).
-   - `background`: Stack multiple `radial-gradient` layers:
-     - Top-left specular highlight: `radial-gradient(circle at 28% 20%, rgba(255,255,255,0.8) 0%, transparent 35%)`
-     - Bottom-right occlusion shadow: `radial-gradient(circle at 72% 80%, rgba(0,0,0,0.4) 0%, transparent 60%)`
-     - Main chromatic core: Multi-stop gradient for your button color ($hexCode).
-   - **Tactile Spring Micro-Physics**: Configure in `:root`:
-     `--spring-damping: 0.68; --spring-stiffness: 440; --press-scale: 0.92;`
-2. **Multi-Tier Box Shadows**:
-   - Outset: `box-shadow: 0 8px 24px rgba(0,0,0,0.65), 0 0 0 3px rgba(20,22,30,0.9), 0 0 20px var(--accent-glow);` (creates physical socket elevation and neon ambient halo).
-   - Inset: `box-shadow: inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -6px 12px rgba(0,0,0,0.7);` (creates 3D spherical bevel rim and recessed socket well).
-3. **Pseudo-Elements & SVG Layers**:
-   - `::before`: Inner recessed core or metallic chamfered bezel ring (`conic-gradient` supported).
-   - `::after`: Translucent elliptical gloss reflection arc (`radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.7) 0%, transparent 70%)` rotated by -12deg).
-   - Embedded `<svg>`: Full support for vector iconography, paths, and SVG `<filter>` graphs (`<feGaussianBlur>`, `<feColorMatrix>`).
-4. **Center Typography Glyph & Auto-Wrapping**:
-   - `<span class="btn-label">$control</span>`: Font size 34-42px, weight 900.
-   - Multi-layer `text-shadow`: `0 1px 0 rgba(255,255,255,0.8), 0 -1px 0 rgba(0,0,0,0.9), 0 3px 6px rgba(0,0,0,0.75), 0 0 12px var(--accent-core);` (renders as 3D extruded tactile letter).
-   - Auto-wrapping support: Supports `white-space: pre-line` or `normal`, with `line-height` and explicit newlines.
-5. **Tactile Active Physics**:
-   - `.nexpad-btn:active { transform: scale(0.93) translateY(3px); }` (compiles into native Compose spring physics).
-
-### VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
-Create an authentic console-grade hardware aesthetic (reminiscent of Xbox Series X, Elite Controller, or DualSense) with physical industrial realism:
-1. **Matte Polycarbonate Body & Optical Depth**: Rich dual-cast molding — deep chassis base tones (`#14171e`, `#1c202a`, `#08090c`) with crisp perimeter chamfer highlights, NOT flat monochrome or pure `#000`.
-2. **Physical Contact Shadows & Recessed Socket**: Elevated dome seated inside a subtle recessed socket well (`box-shadow: 0 8px 24px rgba(0,0,0,0.65), inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -6px 12px rgba(0,0,0,0.7)`).
-3. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic face buttons feature crisp embossed letterforms, restrained subsurface luminance, and authentic optical gloss arcs.
-4. **Legible High-Contrast Letterform**: Prominent, highly legible center glyph ($control) with multi-stop 3D text shadow that remains clear at handheld phone touch scales.
-
-${engineBoundaries("nexpad-btn")}
-
-### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
-Before outputting, verify your component against this checklist:
-- [ ] Console Realism: Authentic industrial materials (matte polycarbonate dome, subtle socket recess, physical contact shadows) rather than unsolicited neon glow.
-- [ ] Center Glyph Legibility: High-contrast "$control" label with embossed 3D text shadow readable at handheld touch scale.
-- [ ] Optical Gloss Arc: Subtle specular reflection (`::after`) communicating convex molded plastic.
-- [ ] Tactile Active Physics: Spring micro-physics (`--spring-damping: 0.68; --spring-stiffness: 440; --press-scale: 0.92;`) and `.nexpad-btn:active { transform: scale(0.93) translateY(3px); }`.
-- [ ] Compiler Safety: Exactly one root `<button class="nexpad-btn">` element; all px dimensions explicit.
-
-### USER CUSTOMIZATION SCHEMA:
-The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
-- **STYLE**: [e.g. Cyberpunk 2077 / Glassmorphism / Brushed Gunmetal / Retro Arcade / Minimal Flat / Anime Mecha / Custom]
-- **COLOR / ACCENT**: [e.g. Neon cyan & dark obsidian / Crimson & carbon / Custom palette (Default: $hexCode)]
-- **SHAPE / SILHOUETTE**: [e.g. Faceted octagon / Smooth capsule / Organic shield / Asymmetric shard (Default: Circular)]
-- **LABEL / GLYPH**: [e.g. "$control" / Custom text / SVG icon emblem (Default: "$control")]
-- **MATERIAL / TEXTURE**: [e.g. Matte polycarbonate / Anodized aluminum / Smoked translucent glass / Stippled rubber]
-- **LIGHTING & DEPTH**: [e.g. Top-left specular directional / Under-glow neon edge / Deep recessed socket]
-- **TACTILE PHYSICS**: [e.g. Snappy micro-switch / Heavy spring depression / Soft fluid damping]
-- **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
-
-### OPTIONAL STARTER TEMPLATE — SYNTAX SKELETON [NON-BINDING SYNTAX REFERENCE ONLY]:
-This template demonstrates document syntax only. Do NOT treat its colors, geometry, gradients, shadows, layer arrangement, typography, or proportions as design defaults. Build the visual design independently from the user's request:
-```html
-${getSyntaxSkeleton(control, "BUTTON", widthDp, heightDp)}
-```
-
-### OUTPUT FORMAT CONTRACT:
-Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
-""".trimIndent()
-    }
-
-    private fun generateDpadPrompt(control: String, widthDp: Int, heightDp: Int): String {
-        val arrowGlyph = when (control.uppercase()) {
-            "DOWN" -> "▼"
-            "LEFT" -> "◀"
-            "RIGHT" -> "▶"
-            "DPAD" -> "❖"
-            else -> "▲"
-        }
-
-        return """
-${genAiHeader()}
-
-You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller D-Pad Component for NEXPAD.
-
-### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control (${if (control.uppercase() == "DPAD") "Unified 4-Way Cross Pad" else "Directional Arrow Button"})
-- **Category [GLOBAL-REQUIRED]**: DPAD
-- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px;
-- **Directional Glyph [RECOMMENDED]**: $arrowGlyph
-
-### CATEGORY SEMANTICS & INTERACTION MEANING:
-- **Interaction Meaning [COMPONENT-REQUIRED]**: Directional navigation with crisp actuation along cardinal or diagonal axes.
-- **Visual Affordance [RECOMMENDED]**: Clear directional affordance, central rocker pivot affordance, distinct directional touch zones.
-- **Optional Visual Language [OPTIONAL]**: Recessed pivot well, laser-etched chevron markings, sloped directional gradients, tactile nubs.
-- **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. Cross, wedge, arrow, star, disc, or organic form are all valid. Preserve the user's requested shape.
-
-### VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
-Create an authentic console-grade hardware aesthetic (reminiscent of Xbox Series X, Elite Controller, or DualSense) with physical industrial realism:
-1. **Textured Matte ABS Plastic**: Deep chassis body tones (`#14171e`, `#1c202a`, `#08090c`) with subtle perimeter bevels, NOT flat grey or pure `#000`.
-2. **Central Rocker Pivot Mechanics**: Authentic console D-pads rock around a central spherical pivot. When designing a 4-way cross or dish, include a recessed central pivot well (`::before` circular indent) simulating the physical rocker mechanism. When designing an individual directional button, slope the gradient along the direction of travel to communicate tactile inward tilt.
-3. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic directional pads prioritize tactile finger purchase, molded cardinal bevels, and crisp physical contact shadows.
-4. **High-Contrast Cardinal Directional Affordance**: Crisp directional indicators (arrow glyph $arrowGlyph, chevron, or vector path) with high contrast against the dark textured housing.
-
-### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
-The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
-1. **Root Button Tag (`<button class="dpad-btn" data-control="$control" data-category="DPAD" data-name="D-Pad $control">`)**:
-   - **Tactile Spring Micro-Physics**: Configure in `:root`:
-     `--spring-damping: 0.72; --spring-stiffness: 480; --press-scale: 0.94;`
-   ${if (control.uppercase() == "DPAD") """
-   - Geometry: Shape the 4-way cross or directional dish via `border-radius`, `clip-path: polygon(...)` (e.g. 12-point faceted cross), or SVG vector paths.
-   - `background`: Deep radial gradient with directional arm shading.
-   - Central Pivot: Use `::before` to create a circular recessed pivot well (`width: 44px; height: 44px; border-radius: 50%`) with an inset drop shadow simulating the central rocker pivot.
-   - Direction Markers: Crisp vector/font glyphs, SVG directional arrows, or markings for UP, DOWN, LEFT, RIGHT.
-   """ else """
-   - Geometry: Shape the directional wedge, chevron, arrow, or button housing via `border-radius`, `clip-path`, or SVG vector paths.
-   - `background`: Directional linear gradient sloped along the direction of travel ($control) from raised outer rim to recessed inner base.
-   - Arrow Glyph: Directional indicator (<span class="dpad-arrow">$arrowGlyph</span>) or embedded `<svg>` chevron with neon glow and drop shadow.
-   """}
-2. **Multi-Tier Box Shadows**:
-   - Outset: `box-shadow: 0 10px 24px rgba(0,0,0,0.65), 0 0 0 2px rgba(35,40,55,0.8), 0 0 20px var(--accent-glow);`
-   - Inset: `box-shadow: inset 0 2px 4px rgba(255,255,255,0.25), inset 0 -5px 10px rgba(0,0,0,0.7);`
-3. **Tactile Active Physics**:
-   - `.dpad-btn:active { transform: ${if (control.uppercase() == "DPAD") "scale(0.95)" else "scale(0.92) translateY(2px)"}; }`
-
-${engineBoundaries("dpad-btn")}
-
-### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
-Before outputting, verify your component against this checklist:
-- [ ] Directional Affordance: Distinct cardinal touch zones (or 4-way cross) with clear directional orientation.
-- [ ] Rocker Pivot Affordance: Central pivot well or sloped directional gradient communicating physical rocker mechanism.
-- [ ] High-Contrast Glyph: Crisp directional glyph ($arrowGlyph) or vector chevron readable at small touch scales.
-- [ ] Console Realism: Authentic industrial materials (textured matte ABS, subtle contact shadows) rather than unsolicited neon glow.
-- [ ] Tactile Active Physics: Spring micro-physics (`--spring-damping: 0.72; --spring-stiffness: 480;`) and `.dpad-btn:active` transform.
-- [ ] Compiler Safety: Exactly one root `<button class="dpad-btn">` element; all px dimensions explicit.
-
-### USER CUSTOMIZATION SCHEMA:
-The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
-- **STYLE**: [e.g. Stealth Matte Black / Cyberpunk High-Contrast Hazard / Retro Game Boy / Clean Minimal]
-- **COLOR / ACCENT**: [e.g. Electric Cyan / Neon Amber / Stealth Dark / Custom palette]
-- **SHAPE / SILHOUETTE**: [e.g. 12-point faceted cross / Segmented arrows / Radial disc / Wedge]
-- **DIRECTIONAL MARKINGS**: [e.g. Laser-etched arrows / Glowing chevrons / Raised tactile nubs]
-- **MATERIAL / TEXTURE**: [e.g. Textured ABS plastic / Brushed gunmetal / Rubberized grip]
-- **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
-
-### OPTIONAL STARTER TEMPLATE — SYNTAX SKELETON [NON-BINDING SYNTAX REFERENCE ONLY]:
-This template demonstrates document syntax only. Do NOT treat its colors, geometry, gradients, shadows, layer arrangement, typography, or proportions as design defaults. Build the visual design independently from the user's request:
-```html
-${getSyntaxSkeleton(control, "DPAD", widthDp, heightDp)}
-```
-
-### OUTPUT FORMAT CONTRACT:
-Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
-""".trimIndent()
-    }
-
-    private fun generateTriggerPrompt(control: String, widthDp: Int, heightDp: Int): String {
-        return """
-${genAiHeader()}
-
-You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Analog Trigger for NEXPAD.
-
-### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control (${if (control.uppercase() == "LT") "Left Trigger" else "Right Trigger"})
-- **Category [GLOBAL-REQUIRED]**: TRIGGER
-- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
-- **Labels [RECOMMENDED]**: Primary "$control"
-
-### CATEGORY SEMANTICS & INTERACTION MEANING:
-- **Interaction Meaning [COMPONENT-REQUIRED]**: Analog progressive pull, pressure, and travel communication (throttle, brake, aim, fire).
-- **Visual Affordance [RECOMMENDED]**: Elongated travel, depth, directional pull cues, active travel displacement (`scaleY(0.94) translateY(4px)`).
-- **Optional Visual Language [OPTIONAL]**: Horizontal friction ribs, stippling, curved rake paddle angle, digital pressure telemetry.
-- **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. Ergonomic curved paddle, angular wedge, minimal capsule, or custom silhouette. Preserve the user's requested shape.
-
-### VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
-Create an authentic console-grade hardware aesthetic (reminiscent of Xbox Series X, Elite Controller, or DualSense) with physical industrial realism:
-1. **Progressive Analog Travel Mechanics**: Authentic analog triggers communicate progressive depth and travel within the bounding box (${widthDp}px x ${heightDp}px) with a gradient receding into the controller housing cavity, communicating analog travel and finger placement.
-2. **Molded Traction Ribs**: Physical molded horizontal friction ridges (via Flexbox column or `::before` layered shadows) providing authentic fingertip grip for throttling, braking, or aiming.
-3. **High-Contrast Clean Typography**: Prominent primary key indicator ("$control", font-size 26-30px, weight 900). Keep the typography clean and authentic to real console gamepads without artificial secondary sub-labels.
-4. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic triggers focus on ergonomic paddle curvature, molded grip traction, and deep socket shadow wells.
-
-### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
-The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
-1. **Root Button Tag (`<button class="trigger-btn" data-control="$control" data-category="TRIGGER" data-name="Trigger $control">`)**:
-   - `width: ${widthDp}px; height: ${heightDp}px;` (canvas bounding box). Silhouette can be sculpted via `border-radius`, `clip-path: polygon(...)`, or layered structural elements.
-   - `background`: Shading that communicates progressive slope or rake angle receding into the gamepad shell (e.g. `linear-gradient(180deg, #282e3d 0%, #151822 45%, #0a0c10 100%)`).
-   - **Tactile Spring Micro-Physics**: Configure in `:root`:
-     `--spring-damping: 0.65; --spring-stiffness: 380; --press-scale: 0.94;`
-2. **Traction Grip Ribs via Flexbox or `::before`**:
-   - Grouped grip ribs: Use Flexbox (`display: flex`, `flex-direction: column`, `gap: 6px`) or `::before` with multi-tier `box-shadow` for horizontal friction ridges:
-     `background: rgba(255,255,255,0.18); box-shadow: 0 8px 0 rgba(255,255,255,0.12), 0 16px 0 rgba(255,255,255,0.08);`
-3. **Multi-Tier Box Shadows**:
-   - Outset: `box-shadow: 0 10px 24px rgba(0,0,0,0.65), 0 0 18px var(--accent-glow);`
-   - Inset: `box-shadow: inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -8px 16px rgba(0,0,0,0.8);` (deep vertical pull socket well).
-4. **Primary Typography & Layout**:
-   - Real DOM text: `<span class="trigger-label">$control</span>` (font-size 28px, weight 900) positioned on the upper portion of the paddle with vertical flexbox layout (`display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 18px;`).
-5. **Tactile Active Travel Physics**:
-   - `.trigger-btn:active { transform: scaleY(0.94) translateY(4px); }` (simulates physical downward paddle pull stroke).
-
-${engineBoundaries("trigger-btn")}
-
-### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
-Before outputting, verify your component against this checklist:
-- [ ] Analog Travel Affordance: Progressive depth and light slope communicating analog travel into socket.
-- [ ] Traction Grip: Molded horizontal ribs or grip ridges for authentic tactile purchase.
-- [ ] Clear Primary Typography: Clear high-contrast "$control" label readable at handheld touch scale.
-- [ ] Progressive Stroke Physics: Paddle stroke displacement (`.trigger-btn:active { transform: scaleY(0.94) translateY(4px); }`) with spring micro-physics (`--spring-damping: 0.65; --spring-stiffness: 380;`).
-- [ ] Compiler Safety: Exactly one root `<button class="trigger-btn">` element; all px dimensions explicit.
-
-### USER CUSTOMIZATION SCHEMA:
-The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
-- **STYLE**: [e.g. Carbon Fiber Racing / Brembo Red Performance / Cyberpunk Neon Telemetry / Tactical Military]
-- **COLOR / ACCENT**: [e.g. Racing Red / Neon Magenta / Titanium Gray / Custom palette]
-- **SHAPE / SILHOUETTE**: [e.g. Ergonomic curved paddle / Angular wedge / Modern capsule / Asymmetric blade / Custom contour]
-- **TRACTION GRIP**: [e.g. Horizontal rubberized ribs / Stippled texture / Slotted heat vents]
-- **LABELS**: [e.g. "$control" / Custom text / Icon only (Default: "$control")]
-- **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
-
-### OPTIONAL STARTER TEMPLATE — SYNTAX SKELETON [NON-BINDING SYNTAX REFERENCE ONLY]:
-This template demonstrates document syntax only. Do NOT treat its colors, geometry, gradients, shadows, layer arrangement, typography, or proportions as design defaults. Build the visual design independently from the user's request:
-```html
-${getSyntaxSkeleton(control, "TRIGGER", widthDp, heightDp)}
-```
-
-### OUTPUT FORMAT CONTRACT:
-Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
-""".trimIndent()
-    }
-
-    private fun generateBumperPrompt(control: String, widthDp: Int, heightDp: Int): String = """
-${genAiHeader()}
-
-You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Shoulder Bumper for NEXPAD.
-
-### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control (${if (control.uppercase() == "LB") "Left Bumper / Secondary Weapon" else "Right Bumper / Primary Weapon"})
-- **Category [GLOBAL-REQUIRED]**: BUMPER
-- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
-
-### CATEGORY SEMANTICS & INTERACTION MEANING:
-- **Interaction Meaning [COMPONENT-REQUIRED]**: Shallow tactile shoulder lever/rocker actuation with crisp microswitch click feedback.
-- **Visual Affordance [RECOMMENDED]**: Physical shoulder lever profile seated in a chassis housing socket or seam, specular sheen highlight, shallow press displacement.
-- **Optional Visual Language [OPTIONAL]**: Specular sheen arc, brushed metallic texture, chamfered housing seam, tactile ridge.
-- **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. The silhouette is completely yours: curved shoulder lever, angular stealth wedge, faceted cyber wing, horizontal blade, or organic contour. Preserve the user's requested shape.
-
-### VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
-Create an authentic console-grade hardware aesthetic (reminiscent of Xbox Series X, Elite Controller, or DualSense) with physical industrial realism:
-1. **Physical Shoulder Lever/Rocker Architecture**: Authentic gamepad bumpers are physical shoulder levers seated directly in a recessed chassis housing seam or socket on the controller shell, rather than floating abstract pills. The lever surface catches ambient light along its top shoulder contour.
-2. **Convex Curvature Specular Sheen**: Specular highlight arc communicating convex molded polycarbonate catching studio light.
-3. **Microswitch Click Actuation**: Unlike analog triggers, shoulder bumpers use crisp tactile microswitches with shallow travel displacement (`scale(0.96) translateY(2px)`) and snappy spring return (`--spring-damping: 0.75; --spring-stiffness: 520; --press-scale: 0.96;`).
-4. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic bumpers feature clean industrial dark tones (`#2c3342` to `#0c0e13`), chassis seam contact shadows, and crisp high-contrast labels.
-
-### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
-The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
-1. **Root Button Tag (`<button class="bumper-btn" data-control="$control" data-category="BUMPER" data-name="Bumper $control">`)**:
-   - `width: ${widthDp}px; height: ${heightDp}px;` (canvas bounding box). Silhouette can be sculpted via `border-radius`, `clip-path: polygon(...)`, or layered structural elements.
-   - Background & lighting: Simulates the physical shoulder lever surface seated in a chassis socket (e.g. `linear-gradient(180deg, #2c3342 0%, #171a23 60%, #0c0e13 100%)`).
-   - **Tactile Spring Micro-Physics**: Configure in `:root`:
-     `--spring-damping: 0.75; --spring-stiffness: 520; --press-scale: 0.96;`
-2. **Horizontal Specular Sheen via `::after` or SVG**:
-   - Positioned across the upper contour (e.g. `top: 10%; left: 12%; width: 76%; height: 35%;`):
-     `background: radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.45) 0%, transparent 75%);`
-3. **Multi-Tier Box Shadows**:
-   - Outset: `box-shadow: 0 8px 20px rgba(0,0,0,0.6), 0 0 16px var(--accent-glow);` (chassis seam shadow and socket depth).
-   - Inset: `box-shadow: inset 0 2px 4px rgba(255,255,255,0.35), inset 0 -4px 8px rgba(0,0,0,0.7);` (shoulder bevel and housing recess).
-4. **Typography & Layout**:
-   - `<span class="bumper-label">$control</span>`: Font size 24px, weight 900, with horizontal specular highlight and dark drop shadow.
-   - Flexbox centering: `display: flex; align-items: center; justify-content: center;`
-5. **Tactile Active Click Physics**:
-   - `.bumper-btn:active { transform: scale(0.96) translateY(2px); }` (simulates shallow micro-switch click).
-
-${engineBoundaries("bumper-btn")}
-
-### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
-Before outputting, verify your component against this checklist:
-- [ ] Shoulder Lever Mechanics: Physical shoulder lever/rocker seated in a housing socket or chassis seam rather than a generic floating button.
-- [ ] Specular Sheen Arc: Upper curvature highlight communicating convex physical plastic molding.
-- [ ] Microswitch Actuation: Shallow crisp click feedback (`scale(0.96) translateY(2px)`).
-- [ ] High-Contrast Label: Crisp "$control" text with embossed 3D shadows.
-- [ ] Compiler Safety: Exactly one root `<button class="bumper-btn">` element; all px dimensions explicit.
-
-### USER CUSTOMIZATION SCHEMA:
-The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
-- **STYLE**: [e.g. Brushed Gunmetal Aluminum / Matte Stealth Carbon / Sci-Fi Thruster / Minimalist]
-- **COLOR / ACCENT**: [e.g. Electric Blue / Cyberpunk Yellow / Gunmetal / Custom palette]
-- **SHAPE / SILHOUETTE**: [e.g. Ergonomic curved shoulder / Angled stealth wedge / Faceted cyber wing / Horizontal blade / Custom contour]
-- **FINISH & SHEEN**: [e.g. Horizontal specular arc / Frosted matte / Edge illumination]
-- **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
-
-### OPTIONAL STARTER TEMPLATE — SYNTAX SKELETON [NON-BINDING SYNTAX REFERENCE ONLY]:
-This template demonstrates document syntax only. Do NOT treat its colors, geometry, gradients, shadows, layer arrangement, typography, or proportions as design defaults. Build the visual design independently from the user's request:
-```html
-${getSyntaxSkeleton(control, "BUMPER", widthDp, heightDp)}
-```
-
-### OUTPUT FORMAT CONTRACT:
-Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
-""".trimIndent()
-
-    private fun generateStickPrompt(control: String, widthDp: Int, heightDp: Int): String {
-        val clickLabel = if (control.uppercase() == "RS") "R3" else "L3"
-
-        return """
-${genAiHeader()}
-
-You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Thumbstick Component for NEXPAD.
-
-### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control ($clickLabel Click)
-- **Category [GLOBAL-REQUIRED]**: JOYSTICK
-- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
-
-### CATEGORY SEMANTICS & INTERACTION MEANING:
-- **Interaction Meaning [COMPONENT-REQUIRED]**: Continuous 360-degree analog navigation and axial thumbstick click ($clickLabel actuation).
-- **Visual Affordance [RECOMMENDED]**: Outer gimbal socket well, concave thumb dome, concentric knurled grip texture for traction.
-- **Optional Visual Language [OPTIONAL]**: Knurled dashed rings, radial tick marks, cross-hatch metal, rubberized stippling.
-- **Geometry [USER-OVERRIDE]**: Circle geometry is natural and authentic for physical joystick gimbal, socket, and thumb cap. Do not make it look like a flat circular web button. `data-category` is metadata, not a shape instruction. Gimbal ring, dish, square housing, or stylized silhouette: preserve the user's requested shape.
-
-### VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
-Create an authentic console-grade hardware aesthetic (reminiscent of Xbox Series X, Elite Controller, or DualSense) with physical industrial realism:
-1. **Matte Charcoal & Polycarbonate Plastic**: Base chassis tones `#14171e`, `#1c202a`, `#08090c` with subtle surface specular rim highlights, NOT flat grey or pure `#000`.
-2. **Physical Material Contrast**: The outer gimbal socket is a deep, recessed cavity (`box-shadow: inset 0 -8px 16px rgba(0,0,0,0.85)`). The inner thumb cap is textured molded rubber/elastomer with knurled traction rings or micro-ribs.
-3. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic gamepads feature clean micro-textures, matte finishes, and crisp physical contact shadows.
-4. **Mechanical Clearance & Proportions**: The thumb cap diameter must be approximately 55%–65% of the total socket diameter (~${(widthDp * 0.60).toInt()}px for ${widthDp}px socket) to provide authentic travel clearance inside the housing well. A 1:1 cap-to-socket ratio looks like a broken button, not an analog stick!
-
-### JOYSTICK TWO-ZONE PHYSICAL MECHANISM:
-In physical gamepads (Xbox, PlayStation) and mobile gaming (CoD Mobile, Genshin, PUBG), an analog stick consists of TWO distinct physical parts:
-1. **Stationary Gimbal Base (The Fixed Socket Housing)**:
-   - Must remain 100% stationary at (0, 0) — never translates during thumb drag.
-   - Contains: Outer bezel rim, deep recessed spherical socket well (`box-shadow: inset ...`), directional tick marks, axis lines, and directional markers (▲, ▼, ◀, ▶).
-   - Use container `<div class="stick-base">` or element classes containing: `base`, `socket`, `bezel`, `outer-ring`, `ticks`, `marker`.
-2. **Movable Analog Thumb Cap (The Inner Dome)**:
-   - Sized at approximately 55%–65% of the base diameter (~${(widthDp * 0.58).toInt()}px to ${(widthDp * 0.65).toInt()}px) to provide mechanical clearance inside the socket.
-   - **Only this part translates (x, y)** when the player drags their thumb, and springs back to center on release!
-   - Contains: Concave thumb dish, knurled traction grip rings, custom vector emblems/graphics, and center $clickLabel marking.
-   - **MANDATORY DOM PLACEMENT**: Put ALL cap elements (dome background, knurled rings, graphics, label) inside `<div class="stick-cap">` or element classes containing: `stick-cap`, `thumb`, `grip`, `core`, `stick-label`. Never attach thumb cap elements directly to the root `<button>` or use `.stick-btn::before`/`::after` for the moving cap, as that causes the cap to freeze to the stationary socket!
-3. **Dual Mechanical Actuation**:
-   - **360° Analog Deflection**: Handled dynamically at runtime by NEXPAD's touch vector engine with spring return physics when dragged. **Do not write JavaScript, CSS transitions/animations, or hover/pointer events for analog movement.**
-   - **Axial $clickLabel Click**: Actuated via physical downward thumb depression, represented in CSS by `.stick-btn:active { transform: scale(0.92); }` or `.stick-btn:active .stick-cap { transform: scale(0.92); }` with tactile spring damping micro-physics (`--spring-damping: 0.70; --spring-stiffness: 420;`).
-
-### NEXPAD COMPILER ARCHITECTURE & TWO-ZONE DOM CONTRACT:
-The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format) and partitions them into Base vs Cap layers:
-```html
-<button class="stick-btn" data-control="$control" data-category="JOYSTICK" data-name="Analog Stick $control">
-  <div class="stick-base">
-    <!-- Stationary Gimbal Base: socket cavity, outer rim, directional ticks, bezel -->
-  </div>
-  <div class="stick-cap">
-    <!-- Movable Thumb Cap: concave dish, knurled grip rings, custom vector art, click label -->
-    <div class="knurled-ring"></div>
-    <span class="stick-label">$clickLabel</span>
-  </div>
-</button>
-```
-1. **Outer Housing (`<button class="stick-btn">`)**:
-   - `width: ${widthDp}px; height: ${heightDp}px; position: relative; background: transparent; border: none; padding: 0; outline: none;`
-   - **Tactile Spring Micro-Physics**: Configure in `:root`:
-     `--spring-damping: 0.70; --spring-stiffness: 420; --press-scale: 0.92;`
-2. **Stationary Gimbal Base (`<div class="stick-base">`)**:
-   - `position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 50%;`
-   - Background gradient: `radial-gradient(circle at 45% 40%, #2b313d 0%, #14171e 65%, #08090c 100%)`
-   - Inset socket well shadow: `box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7), inset 0 3px 6px rgba(255, 255, 255, 0.25), inset 0 -8px 16px rgba(0, 0, 0, 0.85);`
-3. **Movable Thumb Cap (`<div class="stick-cap">`)**:
-   - Centered inside button: `position: absolute; left: ${(widthDp * 0.18).toInt()}px; top: ${(heightDp * 0.18).toInt()}px; width: ${(widthDp * 0.64).toInt()}px; height: ${(heightDp * 0.64).toInt()}px; border-radius: 50%;`
-   - Background gradient: `radial-gradient(circle at 50% 50%, #1a1e26 0%, #0d0f14 100%)`
-   - Dish bevel & rim: `box-shadow: inset 0 0 10px rgba(0,0,0,0.9), 0 0 0 2px rgba(255, 255, 255, 0.12);`
-4. **Concentric Knurled Grip Rings (`<div class="knurled-ring">` or SVG)**:
-   - Placed inside `<div class="stick-cap">`: `position: absolute; width: ${(widthDp * 0.44).toInt()}px; height: ${(heightDp * 0.44).toInt()}px; border-radius: 50%; border: 2px dashed rgba(255, 255, 255, 0.35);`
-5. **Stick Click Typography**:
-   - `<span class="stick-label">$clickLabel</span>`: Font size 20px, weight 900, centered in cap. Real DOM text.
-6. **Tactile Active Press Physics**:
-   - `.stick-btn:active .stick-cap { transform: scale(0.92); }` or `.stick-btn:active { transform: scale(0.92); }` (simulates physical $clickLabel depression).
-
-${engineBoundaries("stick-btn")}
-
-### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
-Before outputting, verify your component against this checklist:
-- [ ] Two-Zone DOM Structure: Stationary base enclosed in `<div class="stick-base">`, movable cap enclosed in `<div class="stick-cap">`.
-- [ ] Mechanical Clearance: Thumb cap diameter is ~55%–65% of socket diameter (~${(widthDp * 0.60).toInt()}px) for realistic travel clearance.
-- [ ] No Frozen Cap Elements: Knurled rings, traction ridges, emblems, and label are placed INSIDE `<div class="stick-cap">`.
-- [ ] Console Realism: Authentic industrial materials (matte charcoal, rubberized dish, physical shadows) rather than unsolicited neon glow.
-- [ ] No Scripts or Page CSS: Zero JavaScript, zero CSS keyframes animations, zero hover/pointer event handlers.
-- [ ] Compiler Safety: Exactly one root `<button class="stick-btn">` element; all px dimensions explicit.
-
-### USER CUSTOMIZATION SCHEMA:
-The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
-- **STYLE**: [e.g. Tactical Rubber Dome / Xbox Elite Magnetic Swappable / DualSense Two-Tone / Arcade Flight-Sim]
-- **COLOR / ACCENT**: [e.g. Neon Emerald Green / Cyberpunk Cyan / Stealth Black / Custom palette]
-- **THUMB DOME**: [e.g. Deep concave dish / Convex textured dome / Cross-hatch metallic surface]
-- **KNURLING & TRACTION**: [e.g. Concentric dashed rings / Radial tick marks / Diamond knurl texture]
-- **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
-
-### OPTIONAL STARTER TEMPLATE — SYNTAX SKELETON [NON-BINDING SYNTAX REFERENCE ONLY]:
-This template demonstrates document syntax only. Do NOT treat its colors, geometry, gradients, shadows, layer arrangement, typography, or proportions as design defaults. Build the visual design independently from the user's request:
-```html
-${getSyntaxSkeleton(control, "JOYSTICK", widthDp, heightDp)}
-```
-
-### OUTPUT FORMAT CONTRACT:
-Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
-""".trimIndent()
-    }
-
-    private fun generateSystemPrompt(control: String, widthDp: Int, heightDp: Int): String = """
-${genAiHeader()}
-
-You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller System/Utility Button for NEXPAD.
-
-### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control (${when(control.uppercase()) { "MENU" -> "Menu / Pause / Start"; "VIEW" -> "View / Back / Select"; else -> "Home / Guide / Nexus" }})
-- **Category [GLOBAL-REQUIRED]**: SYSTEM
-- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px;
-
-### CATEGORY SEMANTICS & INTERACTION MEANING:
-- **Interaction Meaning [COMPONENT-REQUIRED]**: Secondary console utility actions (menu, pause, guide, view, options).
-- **Visual Affordance [RECOMMENDED]**: Compact, flush or low-profile footprint, immediate iconography recognition, subtle tactile click.
-- **Optional Visual Language [OPTIONAL]**: Flexbox hamburger pause bars, overlapping dual rectangles, glowing nexus guide emblem.
-- **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. Pill, sphere, tile, emblem, or custom form are all valid. Preserve the user's requested shape.
-
-### VISUAL TARGET — CONSOLE/XBOX INDUSTRIAL REALISM:
-Create an authentic console-grade hardware aesthetic (reminiscent of Xbox Series X, Elite Controller, or DualSense) with physical industrial realism:
-1. **Flush Low-Profile Utility Ergonomics**: System buttons (MENU, VIEW, HOME, SHARE) on authentic gamepads are secondary utility controls. They feature a compact, flush or slightly recessed profile to prevent accidental presses during intense gameplay.
-2. **Crisp Authentic Iconography**:
-   - `MENU`: 3 horizontal hamburger bars with clean vertical flexbox column spacing (`gap: 4px`), rounded pill ends, and clean white/silver contrast.
-   - `VIEW`: Overlapping dual windows/rectangles symbol (`⧉`) or vector path.
-   - `HOME` / `GUIDE`: Central nexus orb / emblem with subtle radial glow and chamfered bezel ring.
-3. **Zero Text Collision on Graphic Buttons**: Iconographic system buttons (such as MENU hamburger bars or VIEW windows) must NEVER have automatic text stamped over their icons. The icon itself is the visual identity.
-4. **Restrained Lighting & Tactile Click**: Subtle recessed socket well (`box-shadow: inset 0 1px 3px rgba(255,255,255,0.25), inset 0 -3px 6px rgba(0,0,0,0.75)`), matte chassis darks, and shallow tactile micro-travel (`scale(0.92) translateY(2px)`).
-
-### NEXPAD COMPILER ARCHITECTURE & LAYER TRANSLATION:
-The NEXPAD engine converts your HTML/CSS/SVG into native GPU Compose Canvas draw layers (.nxprc format):
-1. **Root Button Tag (`<button class="system-btn" data-control="$control" data-category="SYSTEM" data-name="System $control">`)**:
-   - **Tactile Spring Micro-Physics**: Configure in `:root`:
-     `--spring-damping: 0.78; --spring-stiffness: 500; --press-scale: 0.92;`
-   ${if (control.uppercase() == "HOME") """
-   - `width: ${widthDp}px; height: ${heightDp}px; border-radius: 50%;` (or custom emblem silhouette).
-   - Multi-tiered radial ambient lighting with glowing nexus emblem and silver chamfered bezel.
-   """ else """
-   - `width: ${widthDp}px; height: ${heightDp}px;` (canvas bounding box, e.g. `border-radius: 14px` or custom pill/tile geometry).
-   - Radial dark gradient: `background: radial-gradient(circle at 50% 30%, #242833 0%, #101217 100%);`
-   - Inset bevel shadows: `box-shadow: inset 0 1px 3px rgba(255,255,255,0.25), inset 0 -3px 6px rgba(0,0,0,0.7);`
-   """}
-2. **Iconography & Grouped Elements**:
-   ${when (control.uppercase()) {
-       "MENU" -> "- 3-line horizontal hamburger pause bars (`<div class=\"burger-bar\"></div>` with `width: 22px; height: 3px; border-radius: 1.5px; background: #E0E0E0;`) using flexbox vertical column (`display: flex; flex-direction: column; gap: 4px;`)."
-       "VIEW" -> "- Overlapping dual-rectangle back/select icons (`<span class=\"view-icon\">⧉</span>` or embedded `<svg>`)."
-       else -> "- Central nexus/guide logo (`<span class=\"home-symbol\">⨂</span>` or embedded `<svg>`)."
-   }}
-3. **Tactile Active Click Physics**:
-   - `.system-btn:active { transform: scale(0.92) translateY(2px); }`
-
-${engineBoundaries("system-btn")}
-
-### VISUAL QA CHECKLIST (SELF-CHECK BEFORE OUTPUT):
-Before outputting, verify your component against this checklist:
-- [ ] Low-Profile Footprint: Compact dimensions with recessed socket well.
-- [ ] Crisp Iconography: Clean, instantly recognizable symbol (hamburger bars, dual windows, nexus emblem) with ZERO conflicting fallback text stamped over it.
-- [ ] Micro-Travel Physics: Subtle tactile click feedback (`scale(0.92) translateY(2px)`).
-- [ ] Console Realism: Authentic industrial utility finish rather than unsolicited neon halos.
-- [ ] Compiler Safety: Exactly one root `<button class="system-btn">` (or `<button class="system-home-btn">`); all px dimensions explicit.
-
-### USER CUSTOMIZATION SCHEMA:
-The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
-- **STYLE**: [e.g. Minimalist Matte Dark Pill / Cyberpunk Neon Toggle / Xbox Series Glass Guide / Brushed Steel Switch]
-- **COLOR / ACCENT**: [e.g. Subtle Cool White / Neon Yellow / Amber / Custom palette]
-- **SHAPE / SILHOUETTE**: [e.g. Compact pill / Circular guide emblem / Rounded tile]
-- **ICONOGRAPHY**: [e.g. Hamburger bars / Dual overlapping rectangles / Nexus sphere emblem]
-- **SPECIAL INSTRUCTIONS**: [Any specific visual elements, vector markings, or creative intent]
-
-### OPTIONAL STARTER TEMPLATE — SYNTAX SKELETON [NON-BINDING SYNTAX REFERENCE ONLY]:
-This template demonstrates document syntax only. Do NOT treat its colors, geometry, gradients, shadows, layer arrangement, typography, or proportions as design defaults. Build the visual design independently from the user's request:
-```html
-${getSyntaxSkeleton(control, "SYSTEM", widthDp, heightDp)}
-```
-
-### OUTPUT FORMAT CONTRACT:
-Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text.
-""".trimIndent()
-
-    private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+        heightDp: Int,
+        options: AiDesignOptions = AiDesignOptions()
+    ): String = NxprcAiPromptBuilder.buildPrompt(control, category, widthDp, heightDp, options)
+
+    /**
+     * Generates a targeted repair/rectification prompt to guide an AI model in fixing
+     * compiler warnings or syntax errors from a previous generation.
+     * Delegates to [NxprcAiPromptBuilder.buildRepairPrompt].
+     */
+    fun generateRepairPrompt(
+        previousHtml: String,
+        warnings: List<String> = emptyList(),
+        errors: List<String> = emptyList(),
+        control: String? = null,
+        category: String? = null,
+        options: AiDesignOptions = AiDesignOptions()
+    ): String = NxprcAiPromptBuilder.buildRepairPrompt(
+        previousHtml = previousHtml,
+        warnings = warnings,
+        errors = errors,
+        control = control,
+        category = category,
+        options = options
+    )
 }

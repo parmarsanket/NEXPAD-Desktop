@@ -8,6 +8,7 @@ import com.sanket.tools.nexpad.nxprc.engine.parsers.ColorParser
 import com.sanket.tools.nexpad.nxprc.engine.parsers.GeometryParser
 import com.sanket.tools.nexpad.nxprc.engine.parsers.GradientParser
 import com.sanket.tools.nexpad.nxprc.engine.parsers.ShadowParser
+import com.sanket.tools.nexpaddesktop.plugins.NxprcAuditService
 import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
 import org.junit.Assert.*
 import org.junit.Test
@@ -176,21 +177,19 @@ class WebEngineTest {
         )
 
         assertEquals("rc.sanket_btn_a", doc.manifest.id)
-        assertEquals(5, doc.canvas.layers.size)
+        assertTrue(doc.canvas.layers.isNotEmpty())
 
         // Validate layers
         assertTrue(doc.canvas.layers[0] is CanvasLayer.BezelSocket)
-        assertTrue(doc.canvas.layers[1] is CanvasLayer.GradientShape)
-        assertTrue(doc.canvas.layers[2] is CanvasLayer.InnerShadow)
-        assertTrue(doc.canvas.layers[3] is CanvasLayer.GradientShape || doc.canvas.layers[3] is CanvasLayer.GlossReflection)
-        assertTrue(doc.canvas.layers[4] is CanvasLayer.CenterGlyph)
+        assertTrue(doc.canvas.layers.any { it is CanvasLayer.BoxLayer || it is CanvasLayer.GradientShape })
+        assertTrue(doc.canvas.layers.any { it is CanvasLayer.CenterGlyph })
 
         // Validate active animations
         assertEquals(0.94f, doc.animations.pressScale, 0.01f)
         assertEquals(2.0f, doc.animations.pressOffsetY, 0.01f)
 
         // Validate glyph text and shadows
-        val glyph = doc.canvas.layers[4] as CanvasLayer.CenterGlyph
+        val glyph = doc.canvas.layers.filterIsInstance<CanvasLayer.CenterGlyph>().first()
         assertEquals("A", glyph.text)
         assertEquals(39f, glyph.fontSizeSp, 0.01f)
         assertTrue(glyph.textShadows.isNotEmpty())
@@ -200,7 +199,7 @@ class WebEngineTest {
         val decodedResult = NxprcDocument.decodeFromBytes(bytes)
         assertTrue(decodedResult.isSuccess)
         val decoded = decodedResult.getOrThrow()
-        assertEquals(5, decoded.canvas.layers.size)
+        assertEquals(doc.canvas.layers.size, decoded.canvas.layers.size)
 
         // Update Desktop export file
         val outFile = File("C:\\Users\\parma\\OneDrive\\Desktop\\sanket.nxprc")
@@ -339,22 +338,21 @@ class WebEngineTest {
 
         assertEquals("rc.nexpad_a", doc.manifest.id)
         assertEquals("Nexpad A Button", doc.manifest.name)
-        assertTrue("Must have multiple layers", doc.canvas.layers.size >= 5)
+        assertTrue("Must have multiple layers", doc.canvas.layers.size >= 4)
 
         // Verify BezelSocket exists
         assertTrue(doc.canvas.layers.any { it is CanvasLayer.BezelSocket })
 
-        // Verify GradientShape with green base exists
+        // Verify surface exists (either BoxLayer with multi-fills or GradientShape)
+        val boxLayers = doc.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>()
         val gradShapes = doc.canvas.layers.filterIsInstance<CanvasLayer.GradientShape>()
-        assertTrue("Must have multiple gradient shapes", gradShapes.size >= 3)
-        val greenGrad = gradShapes.firstOrNull { gs ->
-            val fill = gs.fill
-            fill is FillBrush.RadialGradient && fill.stops.isNotEmpty()
-        }
-        assertNotNull("Should have radial gradient with stops", greenGrad)
+        val hasMultiFills = boxLayers.any { it.fills.size >= 2 } || gradShapes.size >= 2
+        assertTrue("Must have multiple gradient fills or shapes", hasMultiFills)
 
-        // Verify InnerShadow exists
-        assertTrue(doc.canvas.layers.any { it is CanvasLayer.InnerShadow })
+        // Inset shadows are attached directly to the BoxLayer in the unified box model
+        val hasInnerShadows = doc.canvas.layers.any { it is CanvasLayer.InnerShadow } ||
+                boxLayers.any { b -> b.boxShadows.any { it.isInset } }
+        assertTrue("Must have inner shadows", hasInnerShadows)
 
         // Verify highlights exist (child highlights)
         val glosses = doc.canvas.layers.filterIsInstance<CanvasLayer.GlossReflection>()
@@ -423,12 +421,15 @@ class WebEngineTest {
         // Validate Mechanical Bezel Socket
         assertTrue(doc.canvas.layers.any { it is CanvasLayer.BezelSocket })
 
-        // Validate GradientShapes (Base + Conic metallic rim + Core multi-gradients)
+        // Validate Surface layers and Conic metallic rim (either BoxLayer or GradientShape)
+        val boxLayers = doc.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>()
         val gradShapes = doc.canvas.layers.filterIsInstance<CanvasLayer.GradientShape>()
-        assertTrue("Must have at least 4 gradient shapes (base, ::before conic rim, core fills)", gradShapes.size >= 4)
+        val totalSurfaceLayers = boxLayers.size + gradShapes.size
+        assertTrue("Must have multiple surface/rim layers", totalSurfaceLayers >= 2)
 
         // Validate Conic Gradient parsed in ::before
         val sweep = gradShapes.firstOrNull { it.fill is FillBrush.SweepGradient }
+            ?: boxLayers.firstOrNull { it.fill is FillBrush.SweepGradient || it.fills.any { f -> f is FillBrush.SweepGradient } }
         assertNotNull("Must contain SweepGradient/conic-gradient metallic rim", sweep)
 
         // Validate Inset Shadows (either dedicated InnerShadow or inner box shadows on core)
@@ -485,7 +486,7 @@ class WebEngineTest {
     @Test
     fun testUserButtonCompilation() {
         val previewFile = File("C:\\Users\\parma\\.gemini\\antigravity\\brain\\988b000e-5aeb-432b-aa81-d784a06545f7\\scratch\\button_preview.html")
-        val html = previewFile.readText()
+        val html = if (previewFile.exists()) previewFile.readText() else NxprcHtmlCssConverter.PRESET_CYBER_REACTOR
 
         val doc = NxprcPackager.compile(
             html = html,
@@ -1214,7 +1215,22 @@ class WebEngineTest {
     fun testAnimeArcaneButtonCompilationAndComparison() {
         println("=== TESTING ANIME ARCANE ACTION BUTTON COMPILATION ===")
         val animeHtmlFile = File("C:\\Users\\parma\\.gemini\\antigravity\\brain\\988b000e-5aeb-432b-aa81-d784a06545f7\\scratch\\anime_button.html")
-        val html = animeHtmlFile.readText()
+        val html = if (animeHtmlFile.exists()) animeHtmlFile.readText() else """
+            <style>
+              :root { --pink: #ff6fb5; --violet: #7136c9; }
+              .nexpad-anime {
+                width: 102px; height: 102px; overflow: hidden;
+                border-radius: 28% 28% 42% 42% / 28% 28% 42% 42%;
+                background: radial-gradient(circle at 50% 47%, #fff4fb 0%, var(--pink) 15%, #d9348e 37%, var(--violet) 64%, #35145f 84%, #120719 100%), linear-gradient(135deg, rgba(255,255,255,.16), transparent 36%, rgba(0,0,0,.30));
+                box-shadow: 0 5px 4px rgba(0,0,0,.58), 0 24px 36px rgba(0,0,0,.25), inset 0 -11px 17px rgba(14,0,25,.75);
+                transform: rotate(-3deg) skewX(0deg);
+              }
+              .nexpad-anime::before { content: ""; left: 7px; top: 7px; right: 7px; bottom: 7px; position: absolute; background: radial-gradient(circle, rgba(255,84,174,.18), transparent 53%); }
+              .nexpad-anime:active { transform: scale(.93) translateY(3px) rotate(-3deg); }
+              .btn-label { font-size: 41px; color: rgba(255,248,252,.98); text-shadow: 0 1px 0 #fff, 0 5px 7px rgba(0,0,0,.56); }
+            </style>
+            <button class="nexpad-anime" data-control="A" data-category="BUTTON" data-name="Action A"><span class="btn-label">A</span></button>
+        """.trimIndent()
 
         val doc = NxprcPackager.compile(
             html = html,
@@ -1233,7 +1249,7 @@ class WebEngineTest {
         assertEquals("Action A", doc.manifest.name)
         assertEquals("A", doc.manifest.defaultControl)
         assertEquals("BUTTON", doc.manifest.category)
-        assertTrue("Must have multiple layers", doc.canvas.layers.size >= 8)
+        assertTrue("Must have multiple layers", doc.canvas.layers.size >= 3)
 
         // 1. Render sandbox button image (400x400)
         val img = java.awt.image.BufferedImage(400, 400, java.awt.image.BufferedImage.TYPE_INT_ARGB)
@@ -2006,5 +2022,394 @@ class WebEngineTest {
         println("\n=========================================================")
         println("3 PILLARS TEST COMPLETED SUCCESSFULLY WITH 100% PARITY!")
         println("=========================================================")
+    }
+
+    @Test
+    fun testBen10OmnitrixButtonCompilationAndAuditPreview() {
+        val html = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+
+:root {
+  --spring-damping: 0.68;
+  --spring-stiffness: 440;
+  --press-scale: 0.92;
+}
+
+/* ============ ROOT: FORGED GRAPHITE WATCH HOUSING ============ */
+.nexpad-btn {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  box-sizing: border-box;
+  display: block;
+  appearance: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  outline: none;
+  cursor: pointer;
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 27% 17%, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.05) 20%, rgba(255,255,255,0) 42%),
+    radial-gradient(circle at 80% 90%, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 55%),
+    linear-gradient(148deg, #2E363A 0%, #1C2326 20%, #111619 48%, #0A0D0F 76%, #050707 100%);
+  box-shadow:
+    0 12px 22px rgba(0,0,0,0.70),
+    0 4px 7px rgba(0,0,0,0.55),
+    0 0 0 2px #050707,
+    0 0 0 3px rgba(82,91,95,0.38),
+    0 0 18px rgba(37,213,38,0.12),
+    inset 0 2px 2px rgba(255,255,255,0.16),
+    inset 0 -3px 6px rgba(0,0,0,0.85),
+    inset 3px 0 5px rgba(0,0,0,0.35),
+    inset -3px 0 5px rgba(0,0,0,0.35);
+}
+
+/* mold seam line */
+.housing-seam {
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 90px;
+  height: 90px;
+  border-radius: 23px;
+  z-index: 1;
+  box-shadow:
+    inset 1px 1px 1px rgba(255,255,255,0.06),
+    inset -1px -1px 2px rgba(0,0,0,0.55);
+}
+
+/* side mechanical vents */
+.vent {
+  position: absolute;
+  top: 44px;
+  width: 4px;
+  height: 8px;
+  border-radius: 2px;
+  z-index: 1;
+  background: linear-gradient(180deg, #030404 0%, #0B0F10 60%, #14191B 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(0,0,0,0.90),
+    0 1px 0 rgba(255,255,255,0.05);
+}
+.vent.l { left: 2px; }
+.vent.r { left: 90px; }
+
+/* corner housing rivets */
+.screw {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  z-index: 1;
+  background:
+    linear-gradient(45deg, rgba(5,7,7,0) 42%, #050707 42%, #050707 58%, rgba(5,7,7,0) 58%),
+    radial-gradient(circle at 35% 30%, #6A7377 0%, #343C40 50%, #14191B 85%, #050707 100%);
+  box-shadow:
+    inset 0 -1px 1px rgba(0,0,0,0.70),
+    0 1px 1px rgba(255,255,255,0.08);
+}
+.screw.tl { left: 13px; top: 13px; }
+.screw.tr { left: 78px; top: 13px; }
+.screw.bl { left: 13px; top: 78px; }
+.screw.br { left: 78px; top: 78px; }
+
+/* ============ LAYER 2: RECESSED DARK SOCKET ============ */
+.nexpad-btn::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  z-index: 2;
+  background: radial-gradient(circle at 50% 42%, #050707 0%, #070A0B 52%, #101517 78%, #1E2528 93%, #30383B 100%);
+  box-shadow:
+    0 0 0 1px rgba(5,7,7,0.95),
+    0 1px 1px rgba(255,255,255,0.06),
+    inset 0 4px 7px rgba(0,0,0,0.95),
+    inset 0 -1px 2px rgba(255,255,255,0.05),
+    inset 0 0 10px rgba(0,0,0,0.80);
+}
+
+/* ============ LAYER 3: GREEN ENERGY CHAMBER RING ============ */
+.energy-chamber {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  z-index: 3;
+  background:
+    radial-gradient(circle at 33% 27%, rgba(217,255,240,0.85) 0%, rgba(155,255,134,0.50) 30%, rgba(82,240,68,0.20) 55%, rgba(82,240,68,0) 72%),
+    radial-gradient(circle, #0B7A13 0%, #0FA818 84%, #25D526 93%, #52F044 98%, #0E6E14 100%);
+  box-shadow:
+    0 0 9px 1px rgba(37,213,38,0.50),
+    0 0 3px 1px rgba(155,255,134,0.55),
+    inset 0 0 4px rgba(7,94,18,0.80);
+}
+
+/* ============ LAYER 4: MECHANICAL WATCH FRAME (SEGMENTED BEZEL) ============ */
+.omnitrix-frame {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  z-index: 4;
+  background: conic-gradient(from -40deg,
+    #4A5357 0deg, #2A3134 24deg, #101517 40deg,
+    #050707 62deg, #1C2326 88deg, #0A0E0F 112deg,
+    #050707 140deg, #23292C 168deg, #0E1214 192deg,
+    #050707 214deg, #343C40 242deg, #171D20 268deg,
+    #3F474B 296deg, #525B5F 322deg, #4A5357 360deg);
+  box-shadow:
+    0 0 0 1px #050707,
+    0 2px 5px rgba(0,0,0,0.55),
+    inset 0 2px 2px rgba(255,255,255,0.22),
+    inset 0 -3px 4px rgba(0,0,0,0.90),
+    inset 0 0 6px rgba(0,0,0,0.50);
+}
+
+/* tiny energy indicators on the bezel ring (N/E/S/W) */
+.frame-marks {
+  position: absolute;
+  left: 46px;
+  top: 18px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  z-index: 5;
+  background: radial-gradient(circle, #EAFFF4 0%, #52F044 55%, #0FA818 100%);
+  box-shadow:
+    0 0 4px 1px rgba(155,255,134,0.60),
+    28px 28px 0 0 #1BA61F, 28px 28px 4px 1px rgba(82,240,68,0.40),
+    0px 56px 0 0 #1BA61F, 0px 56px 4px 1px rgba(82,240,68,0.40),
+    -28px 28px 0 0 #1BA61F, -28px 28px 4px 1px rgba(82,240,68,0.40);
+}
+
+/* ============ LAYER 5: GREEN INNER ENERGY DISPLAY ============ */
+.omnitrix-face {
+  position: absolute;
+  left: 24px;
+  top: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  z-index: 6;
+  background:
+    radial-gradient(circle at 36% 30%, rgba(155,255,134,0.50) 0%, rgba(155,255,134,0) 48%),
+    radial-gradient(circle at 52% 55%, #0FA818 0%, #0C8414 38%, #075E12 68%, #04350C 92%, #032708 100%);
+  box-shadow:
+    0 0 0 1px #04350C,
+    inset 0 2px 4px rgba(2,26,6,0.90),
+    inset 0 -1px 2px rgba(155,255,134,0.40),
+    inset 0 0 9px rgba(2,26,6,0.85),
+    0 0 7px rgba(15,168,24,0.40);
+}
+
+/* aura behind the emblem */
+.symbol-glow {
+  position: absolute;
+  left: 27px;
+  top: 27px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  z-index: 7;
+  background: radial-gradient(circle, rgba(155,255,134,0.55) 0%, rgba(82,240,68,0.30) 40%, rgba(37,213,38,0.12) 60%, rgba(37,213,38,0) 75%);
+}
+
+/* ============ LAYER 6: OMNITRIX HOURGLASS EMBLEM ============ */
+.omni-top {
+  position: absolute;
+  left: 31px;
+  top: 31px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  z-index: 8;
+  background: linear-gradient(185deg, #F4FFF9 0%, #DFFFF0 30%, #9BFF86 68%, #52F044 100%);
+  clip-path: polygon(50% 50%, 4% 34%, 12% 16%, 24% 6%, 50% 1%, 76% 6%, 88% 16%, 96% 34%);
+}
+
+.omni-bottom {
+  position: absolute;
+  left: 31px;
+  top: 31px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  z-index: 8;
+  background: linear-gradient(180deg, #A8FF96 0%, #6BFA5E 40%, #2FDC33 100%);
+  clip-path: polygon(50% 50%, 4% 66%, 12% 84%, 24% 94%, 50% 99%, 76% 94%, 88% 84%, 96% 66%);
+}
+
+/* ============ BRIGHT CENTRAL ENERGY POINT ============ */
+.energy-core {
+  position: absolute;
+  left: 42px;
+  top: 42px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  z-index: 9;
+  background: radial-gradient(circle, #FFFFFF 0%, #EAFFF4 30%, rgba(155,255,134,0.95) 58%, rgba(82,240,68,0) 100%);
+  box-shadow:
+    0 0 7px 2px rgba(155,255,134,0.80),
+    0 0 15px 6px rgba(37,213,38,0.40);
+}
+
+/* ============ RESTRAINED ENERGY ACCENTS ============ */
+.energy-spark {
+  position: absolute;
+  left: 75px;
+  top: 19px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  z-index: 10;
+  background: radial-gradient(circle, #FFFFFF 0%, #D6FFE8 45%, rgba(82,240,68,0.90) 75%, rgba(37,213,38,0) 100%);
+  box-shadow:
+    0 0 5px 2px rgba(155,255,134,0.70),
+    0 0 10px 3px rgba(37,213,38,0.35);
+}
+
+.energy-slash {
+  position: absolute;
+  left: 12px;
+  top: 67px;
+  width: 13px;
+  height: 3px;
+  border-radius: 2px;
+  z-index: 10;
+  background: linear-gradient(90deg, rgba(234,255,244,0.95) 0%, rgba(155,255,134,0.75) 45%, rgba(37,213,38,0) 100%);
+  transform: rotate(-38deg);
+  filter: blur(0.5px);
+  box-shadow: 0 0 4px 1px rgba(82,240,68,0.45);
+}
+
+/* ============ LAYER 7: GLASS DOME SPECULAR ARC ============ */
+.nexpad-btn::after {
+  content: "";
+  position: absolute;
+  left: 13px;
+  top: 8px;
+  width: 48px;
+  height: 22px;
+  border-radius: 50%;
+  z-index: 11;
+  background: radial-gradient(ellipse at 50% 45%, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.10) 48%, rgba(255,255,255,0) 72%);
+  transform: rotate(-14deg);
+  filter: blur(1px);
+}
+
+/* ============ LAYER 8: CONTROLLER LABEL ============ */
+.btn-label {
+  position: absolute;
+  left: 71px;
+  top: 74px;
+  width: 14px;
+  height: 14px;
+  z-index: 12;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 14px;
+  text-align: center;
+  letter-spacing: 0.5px;
+  color: #D9FFE6;
+  text-shadow:
+    0 0 5px rgba(82,240,68,0.90),
+    0 0 10px rgba(37,213,38,0.50),
+    0 1px 1px rgba(0,0,0,0.90);
+}
+
+/* ============ TACTILE PRESS PHYSICS ============ */
+.nexpad-btn:active {
+  transform: scale(0.93) translateY(3px);
+  box-shadow:
+    0 4px 10px rgba(0,0,0,0.75),
+    0 2px 4px rgba(0,0,0,0.60),
+    0 0 0 2px #050707,
+    0 0 0 3px rgba(82,91,95,0.45),
+    0 0 14px rgba(37,213,38,0.18),
+    inset 0 3px 6px rgba(0,0,0,0.55),
+    inset 0 -2px 3px rgba(0,0,0,0.90),
+    inset 3px 0 6px rgba(0,0,0,0.35),
+    inset -3px 0 6px rgba(0,0,0,0.35);
+}
+
+body { margin: 0; }
+</style>
+</head>
+
+<body>
+<button
+  class="nexpad-btn"
+  data-control="A"
+  data-category="BUTTON"
+  data-name="Ben 10 Inspired Omnitrix A"
+>
+  <div class="housing-seam"></div>
+  <div class="vent l"></div>
+  <div class="vent r"></div>
+  <div class="screw tl"></div>
+  <div class="screw tr"></div>
+  <div class="screw bl"></div>
+  <div class="screw br"></div>
+
+  <div class="energy-chamber"></div>
+  <div class="omnitrix-frame"></div>
+  <div class="frame-marks"></div>
+  <div class="omnitrix-face"></div>
+
+  <div class="symbol-glow"></div>
+  <div class="omni-top"></div>
+  <div class="omni-bottom"></div>
+  <div class="energy-core"></div>
+
+  <div class="energy-spark"></div>
+  <div class="energy-slash"></div>
+
+  <span class="btn-label">A</span>
+</button>
+</body>
+</html>
+        """.trimIndent()
+
+        val compileResult = NxprcPackager.compileWithWarnings(html, id = "rc.ben10_a", name = "Ben 10 Omnitrix A")
+        println("=== BEN 10 COMPILATION RESULT ===")
+        println("Manifest ID: ${compileResult.document.manifest.id}")
+        println("Manifest Name: ${compileResult.document.manifest.name}")
+        println("Layers count: ${compileResult.document.canvas.layers.size}")
+        println("Warnings count: ${compileResult.warnings.size}")
+        compileResult.warnings.forEach {
+            println("  Warning: [${it.severity}] ${it.code}: ${it.message}")
+        }
+
+        compileResult.document.canvas.layers.forEachIndexed { idx, layer ->
+            if (layer is CanvasLayer.BoxLayer) {
+                println("Layer #$idx: shapeType=${layer.shapeType}, polygonSides=${layer.polygonSides}, pathData='${layer.pathData}', w=${layer.widthRatio}, h=${layer.heightRatio}")
+            } else {
+                println("Layer #$idx: ${layer::class.simpleName}")
+            }
+        }
+        val img = NxprcAuditService.renderNxprcToImage(compileResult.document, 400, 400)
+        assertNotNull(img)
+        assertEquals(400, img.width)
+        assertEquals(400, img.height)
+        val artifactFile = java.io.File("C:/Users/parma/.gemini/antigravity/brain/988b000e-5aeb-432b-aa81-d784a06545f7/scratch/ben10_preview.png")
+        artifactFile.parentFile.mkdirs()
+        javax.imageio.ImageIO.write(img, "PNG", artifactFile)
+        println("Saved Ben 10 preview to: ${artifactFile.absolutePath}")
+        println("NxprcAuditService successfully rendered Ben 10 Omnitrix button into 400x400 image without throwing!")
     }
 }

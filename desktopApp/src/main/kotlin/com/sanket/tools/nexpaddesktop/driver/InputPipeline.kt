@@ -1,6 +1,7 @@
 package com.sanket.tools.nexpaddesktop.driver
 
 import com.sanket.tools.nexpad.model.GamepadInput
+import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpaddesktop.model.GyroSettings
 import com.sanket.tools.nexpaddesktop.model.XboxTargetStick
 import com.sanket.tools.nexpaddesktop.model.XboxBlendMode
@@ -27,15 +28,15 @@ object InputPipeline {
         } else {
             gyroSettings.activationButtons.any { btn ->
                 when (btn) {
-                    "LT" -> input.triggerL2 > 0.1f
-                    "RT" -> input.triggerR2 > 0.1f
-                    "LB" -> input.btnL1
-                    "RB" -> input.btnR1
-                    "A" -> input.btnA
-                    "B" -> input.btnB
-                    "X" -> input.btnX
-                    "Y" -> input.btnY
-                    else -> false
+                    NexpadKeys.LT -> input.triggerL2 > 0.1f
+                    NexpadKeys.RT -> input.triggerR2 > 0.1f
+                    NexpadKeys.LB -> input.btnL1
+                    NexpadKeys.RB -> input.btnR1
+                    NexpadKeys.A  -> input.btnA
+                    NexpadKeys.B  -> input.btnB
+                    NexpadKeys.X  -> input.btnX
+                    NexpadKeys.Y  -> input.btnY
+                    else          -> false
                 }
             }
         }

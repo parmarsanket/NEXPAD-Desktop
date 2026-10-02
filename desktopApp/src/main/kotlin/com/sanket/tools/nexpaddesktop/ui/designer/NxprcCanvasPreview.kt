@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
+import kotlin.math.pow
 import kotlin.math.sin
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -34,6 +35,35 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.nxprc.*
+import org.jetbrains.skia.ClipMode as SkClipMode
+import org.jetbrains.skia.FilterBlurMode as SkFilterBlurMode
+import org.jetbrains.skia.MaskFilter as SkMaskFilter
+import org.jetbrains.skia.Paint as SkPaint
+import org.jetbrains.skia.RRect as SkRRect
+import org.jetbrains.skia.Rect as SkRect
+
+/**
+ * Professional 3-zone gaming speed-to-distance transfer function.
+ * Calibrated Sweet Spots:
+ * - Noise Gate: < 8 dp/s -> 0.0 (anti-jitter)
+ * - Precision Zone: 8..120 dp/s -> 0.16..0.25 (anti-deadzone floor)
+ * - Linear Tracking Zone: 120..400 dp/s -> 0.25..0.50 (GOLDEN SWEET SPOT: 400 dp/s = 0.50 half deflection)
+ * - Exponential Acceleration Zone: 400..1200 dp/s -> 0.50..1.00 (Smooth flick curve to full 1.00 deflection)
+ * - Saturation Zone: > 1200 dp/s -> 1.00 (clamped maximum)
+ */
+internal fun calculateGamingStickMagnitude(speedDpPerSec: Float, sensitivity: Float = 1.0f): Float {
+    val effSpeed = speedDpPerSec * sensitivity.coerceAtLeast(0.1f)
+    return when {
+        effSpeed < 8f -> 0f
+        effSpeed <= 120f -> 0.16f + 0.09f * ((effSpeed - 8f) / 112f)
+        effSpeed <= 400f -> 0.25f + 0.25f * ((effSpeed - 120f) / 280f)
+        effSpeed <= 1200f -> {
+            val norm = (effSpeed - 400f) / 800f
+            0.50f + 0.50f * norm.toDouble().pow(1.35).toFloat()
+        }
+        else -> 1.0f
+    }
+}
 
 private fun createNxprcColorFilter(filter: FilterDef): ColorFilter? {
     val brightness = filter.brightness.coerceAtLeast(0f)
@@ -124,7 +154,20 @@ fun NxprcCanvasPreview(
     val coroutineScope = rememberCoroutineScope()
 
     val isStick = document.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
-            document.manifest.defaultControl.uppercase() in listOf("LS", "RS")
+            document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
+            document.manifest.defaultControl.uppercase() in listOf(
+                com.sanket.tools.nexpad.category.ControlKey.LS.key,
+                com.sanket.tools.nexpad.category.ControlKey.RS.key,
+                com.sanket.tools.nexpad.category.ControlKey.LTP.key,
+                com.sanket.tools.nexpad.category.ControlKey.RTP.key
+            )
+    val isCameraMode = document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
+            document.manifest.defaultControl.equals(com.sanket.tools.nexpad.category.ControlKey.RTP.key, ignoreCase = true) ||
+            document.manifest.defaultControl.equals(com.sanket.tools.nexpad.category.ControlKey.LTP.key, ignoreCase = true) ||
+            document.manifest.defaultControl.equals(com.sanket.tools.nexpad.category.ControlKey.RS.key, ignoreCase = true)
+    val isTouchpad = document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
+            document.manifest.defaultControl.equals(com.sanket.tools.nexpad.category.ControlKey.LTP.key, ignoreCase = true) ||
+            document.manifest.defaultControl.equals(com.sanket.tools.nexpad.category.ControlKey.RTP.key, ignoreCase = true)
 
     val thumbOffsetX = remember { Animatable(0f) }
     val thumbOffsetY = remember { Animatable(0f) }
@@ -243,7 +286,7 @@ fun NxprcCanvasPreview(
     } else null
 
     val gestureModifier = if (isStick) {
-        Modifier.pointerInput(document.manifest.id) {
+        Modifier.pointerInput(document.manifest.id, isCameraMode, density) {
             awaitEachGesture {
                 val down = awaitFirstDown(requireUnconsumed = false)
                 isPressed = true
@@ -251,42 +294,158 @@ fun NxprcCanvasPreview(
                 val deadzoneRadius = 4f * density
                 val centerX = size.width / 2f
                 val centerY = size.height / 2f
+                val startTime = System.currentTimeMillis()
+                var previousTouchX = down.position.x
+                var previousTouchY = down.position.y
+                var previousTimeMs = startTime
+                var currentStickX = 0f
+                var currentStickY = 0f
+                var lastSpeed = 0f
+                var decayJob: kotlinx.coroutines.Job? = null
 
-                fun updateDeflection(pos: Offset) {
-                    val vecX = pos.x - centerX
-                    val vecY = pos.y - centerY
-                    val dist = hypot(vecX, vecY)
-                    val (clampedX, clampedY) = if (dist > maxRadius) {
-                        val angle = atan2(vecY, vecX)
-                        Pair(cos(angle) * maxRadius, sin(angle) * maxRadius)
-                    } else {
-                        Pair(vecX, vecY)
+                if (isCameraMode) {
+                    onStickDeflection?.invoke(0f, 0f)
+                } else {
+                    fun updateDeflection(pos: Offset) {
+                        val vecX = pos.x - centerX
+                        val vecY = pos.y - centerY
+                        val dist = hypot(vecX, vecY)
+                        val (clampedX, clampedY) = if (dist > maxRadius) {
+                            val angle = atan2(vecY, vecX)
+                            Pair(cos(angle) * maxRadius, sin(angle) * maxRadius)
+                        } else {
+                            Pair(vecX, vecY)
+                        }
+                        coroutineScope.launch {
+                            thumbOffsetX.snapTo(clampedX)
+                            thumbOffsetY.snapTo(clampedY)
+                        }
+                        val normX = if (dist < deadzoneRadius) 0f else (clampedX / maxRadius).coerceIn(-1f, 1f)
+                        val normY = if (dist < deadzoneRadius) 0f else (-clampedY / maxRadius).coerceIn(-1f, 1f)
+                        onStickDeflection?.invoke(normX, normY)
                     }
-                    coroutineScope.launch {
-                        thumbOffsetX.snapTo(clampedX)
-                        thumbOffsetY.snapTo(clampedY)
-                    }
-                    val normX = if (dist < deadzoneRadius) 0f else (clampedX / maxRadius).coerceIn(-1f, 1f)
-                    val normY = if (dist < deadzoneRadius) 0f else (-clampedY / maxRadius).coerceIn(-1f, 1f)
-                    onStickDeflection?.invoke(normX, normY)
+                    updateDeflection(down.position)
                 }
-
-                // Initial touch/click down deflection
-                updateDeflection(down.position)
 
                 while (true) {
                     val event = awaitPointerEvent()
                     val change = event.changes.firstOrNull { it.id == down.id }
                     if (change == null || !change.pressed) break
                     change.consume()
-                    updateDeflection(change.position)
+
+                    val currentTouchX = change.position.x
+                    val currentTouchY = change.position.y
+                    val deltaX = currentTouchX - previousTouchX
+                    val deltaY = currentTouchY - previousTouchY
+                    previousTouchX = currentTouchX
+                    previousTouchY = currentTouchY
+
+                    if (isCameraMode) {
+                        var finalDeltaX = deltaX
+                        var finalDeltaY = deltaY
+                        val absX = kotlin.math.abs(deltaX)
+                        val absY = kotlin.math.abs(deltaY)
+                        if (absX > 3.0f * absY) {
+                            finalDeltaY *= 0.5f // Suppress vertical wobble during horizontal turns
+                        } else if (absY > 3.0f * absX) {
+                            finalDeltaX *= 0.5f // Suppress horizontal wobble during vertical looks
+                        }
+
+                        val distPx = hypot(finalDeltaX, finalDeltaY)
+                        val distDp = distPx / density
+
+                        if (distDp > 0.15f) {
+                            val currentTimeMs = System.currentTimeMillis()
+                            val dtSec = ((currentTimeMs - previousTimeMs).coerceAtLeast(1L)) / 1000f
+                            previousTimeMs = currentTimeMs
+                            val speedDpPerSec = distDp / dtSec
+                            lastSpeed = speedDpPerSec
+
+                            val stickMagnitude = calculateGamingStickMagnitude(speedDpPerSec, 1.0f)
+
+                            if (stickMagnitude > 0f) {
+                                val dirX = finalDeltaX / distPx
+                                val dirY = finalDeltaY / distPx
+
+                                val targetStickX = (dirX * stickMagnitude).coerceIn(-1f, 1f)
+                                val targetStickY = (-dirY * stickMagnitude).coerceIn(-1f, 1f)
+
+                                currentStickX = 0.70f * targetStickX + 0.30f * currentStickX
+                                currentStickY = 0.70f * targetStickY + 0.30f * currentStickY
+
+                                onStickDeflection?.invoke(currentStickX, currentStickY)
+
+                                // Visual knob deflection actively moves down when dragging down
+                                val clampedX = (currentStickX * maxRadius).coerceIn(-maxRadius, maxRadius)
+                                val clampedY = (-currentStickY * maxRadius).coerceIn(-maxRadius, maxRadius)
+                                coroutineScope.launch {
+                                    thumbOffsetX.snapTo(clampedX)
+                                    thumbOffsetY.snapTo(clampedY)
+                                }
+
+                                decayJob?.cancel()
+                                decayJob = coroutineScope.launch {
+                                    kotlinx.coroutines.delay(40)
+                                    currentStickX *= 0.3f
+                                    currentStickY *= 0.3f
+                                    onStickDeflection?.invoke(currentStickX, currentStickY)
+                                    launch { thumbOffsetX.snapTo(currentStickX * maxRadius) }
+                                    launch { thumbOffsetY.snapTo(-currentStickY * maxRadius) }
+                                    kotlinx.coroutines.delay(30)
+                                    currentStickX = 0f
+                                    currentStickY = 0f
+                                    onStickDeflection?.invoke(0f, 0f)
+                                    launch { thumbOffsetX.animateTo(0f, spring(stiffness = 1000f, dampingRatio = 0.65f)) }
+                                    launch { thumbOffsetY.animateTo(0f, spring(stiffness = 1000f, dampingRatio = 0.65f)) }
+                                    lastSpeed = 0f
+                                }
+                            }
+                        }
+                    } else {
+                        val vecX = change.position.x - centerX
+                        val vecY = change.position.y - centerY
+                        val dist = hypot(vecX, vecY)
+                        val (clampedX, clampedY) = if (dist > maxRadius) {
+                            val angle = atan2(vecY, vecX)
+                            Pair(cos(angle) * maxRadius, sin(angle) * maxRadius)
+                        } else {
+                            Pair(vecX, vecY)
+                        }
+                        coroutineScope.launch {
+                            thumbOffsetX.snapTo(clampedX)
+                            thumbOffsetY.snapTo(clampedY)
+                        }
+                        val normX = if (dist < deadzoneRadius) 0f else (clampedX / maxRadius).coerceIn(-1f, 1f)
+                        val normY = if (dist < deadzoneRadius) 0f else (-clampedY / maxRadius).coerceIn(-1f, 1f)
+                        onStickDeflection?.invoke(normX, normY)
+                    }
                 }
                 isPressed = false
-                coroutineScope.launch {
-                    launch { thumbOffsetX.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
-                    launch { thumbOffsetY.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
+                decayJob?.cancel()
+                if (isCameraMode && lastSpeed > 400f) {
+                    val coastSteps = ((lastSpeed / 200f).toInt()).coerceIn(3, 7)
+                    coroutineScope.launch {
+                        var coastX = currentStickX
+                        var coastY = currentStickY
+                        repeat(coastSteps) {
+                            coastX *= 0.68f
+                            coastY *= 0.68f
+                            onStickDeflection?.invoke(coastX, coastY)
+                            launch { thumbOffsetX.snapTo(coastX * maxRadius) }
+                            launch { thumbOffsetY.snapTo(-coastY * maxRadius) }
+                            kotlinx.coroutines.delay(16)
+                        }
+                        launch { thumbOffsetX.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
+                        launch { thumbOffsetY.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
+                        onStickDeflection?.invoke(0f, 0f)
+                    }
+                } else {
+                    coroutineScope.launch {
+                        launch { thumbOffsetX.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
+                        launch { thumbOffsetY.animateTo(0f, spring(stiffness = document.animations.joystickSpringTension, dampingRatio = 0.65f)) }
+                    }
+                    onStickDeflection?.invoke(0f, 0f)
                 }
-                onStickDeflection?.invoke(0f, 0f)
             }
         }
     } else {
@@ -301,8 +460,8 @@ fun NxprcCanvasPreview(
         }
     }
 
-    val isTwoStageStick = isStick && document.canvas.capLayerIndices.isNotEmpty()
-    val capIndicesSet = remember(document) { document.canvas.capLayerIndices.toSet() }
+    val isTwoStageStick = isStick && !isTouchpad && document.canvas.capLayerIndices.isNotEmpty()
+    val capIndicesSet = remember(document) { if (isTouchpad) emptySet() else document.canvas.capLayerIndices.toSet() }
 
     Box(
         modifier = modifier
@@ -319,8 +478,8 @@ fun NxprcCanvasPreview(
                     scaleY = if (isTwoStageStick) 1f else finalScale
                     rotationZ = if (hasDynamicTracks) trackRotation else 0f
                     alpha = if (hasDynamicTracks) trackOpacity.coerceIn(0f, 1f) else 1f
-                    translationX = (if (isStick && !isTwoStageStick) thumbOffsetX.value else 0f) + (trackTranslateX * density)
-                    translationY = (if (isStick && !isTwoStageStick) thumbOffsetY.value else 0f) + (pressOffsetYAnim + trackTranslateY) * density
+                    translationX = (if (isStick && !isTwoStageStick && !isTouchpad) thumbOffsetX.value else 0f) + (trackTranslateX * density)
+                    translationY = (if (isStick && !isTwoStageStick && !isTouchpad) thumbOffsetY.value else 0f) + (pressOffsetYAnim + trackTranslateY) * density
                     if (rgbFilter != null) {
                         colorFilter = rgbFilter
                     }
@@ -353,13 +512,17 @@ fun NxprcCanvasPreview(
                 val rootBr = (primaryBox?.cornerRadiusBottomRight ?: primaryShape?.cornerRadius ?: 14f) * pxPerUnit
                 val rootBl = (primaryBox?.cornerRadiusBottomLeft ?: primaryShape?.cornerRadius ?: 14f) * pxPerUnit
 
+                val rootEffectiveSides = when {
+                    (primaryBox?.polygonSides ?: 0) >= 3 -> primaryBox!!.polygonSides
+                    rootShapeType == "HEXAGON" -> 6
+                    rootShapeType == "OCTAGON" -> 8
+                    else -> 0
+                }
                 val rootClipShape = Path().apply {
-                    if (rootIsPolygon && primaryBox != null && primaryBox.pathData.isNotBlank()) {
+                    if (primaryBox != null && primaryBox.pathData.isNotBlank()) {
                         addPath(buildScaledPath(primaryBox.pathData, Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH)))
-                    } else if (rootShapeType == "HEXAGON") {
-                        addPath(buildRegularPolygonPath(6, Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH)))
-                    } else if (rootShapeType == "OCTAGON") {
-                        addPath(buildRegularPolygonPath(8, Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH)))
+                    } else if (rootEffectiveSides >= 3) {
+                        addPath(buildRegularPolygonPath(rootEffectiveSides, Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH)))
                     } else if (rootIsOval) {
                         addOval(Rect(buttonLeft, buttonTop, buttonLeft + buttonW, buttonTop + buttonH))
                     } else {
@@ -428,48 +591,71 @@ fun NxprcCanvasPreview(
                                     if (rotAngle != 0f) rotate(rotAngle, pivot = pivot)
                                     if (transform.scaleX != 1f || transform.scaleY != 1f) scale(scaleX = transform.scaleX, scaleY = transform.scaleY, pivot = pivot)
                                 }) {
-                                    // 1. Outset box shadows
-                                    layer.boxShadows.filter { !it.isInset }.forEach { shadow ->
+                                    val ovalClipPath = Path().apply {
+                                        addOval(Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight))
+                                    }
+
+                                    val elementRRect = if (isOval) {
+                                        SkRRect.makeOvalXYWH(boxLeft, boxTop, boxWidth, boxHeight)
+                                    } else if (hasVariableCorners) {
+                                        SkRRect.makeComplexXYWH(boxLeft, boxTop, boxWidth, boxHeight, floatArrayOf(tl, tl, tr, tr, br, br, bl, bl))
+                                    } else {
+                                        SkRRect.makeXYWH(boxLeft, boxTop, boxWidth, boxHeight, tl)
+                                    }
+
+                                    // 1. Outset box shadows (drawn bottom-to-top per CSS spec)
+                                    layer.boxShadows.filter { !it.isInset }.reversed().forEach { shadow ->
                                         val shadowOffset = Offset(shadow.offsetX * pxPerUnit, shadow.offsetY * pxPerUnit)
                                         val sColor = Color(shadow.color)
                                         val spreadPx = shadow.spreadRadius * pxPerUnit
-                                        // Approximate browser Gaussian blur with low-alpha
-                                        // expanding shells. A single opaque shell produced
-                                        // the visible concentric bands in the parity PNG.
                                         val blurPx = shadow.blurRadius * pxPerUnit
-                                        val steps = if (blurPx > 0f) 8 else 1
-                                        for (step in 1..steps) {
-                                            val t = step.toFloat() / steps
-                                            val extent = spreadPx + blurPx * t
-                                            val alpha = sColor.alpha * subAlpha * (if (blurPx > 0f) (1f - t) * 0.22f else 1f)
-                                            val shadowColor = sColor.copy(alpha = alpha.coerceIn(0f, 1f))
-                                            if (isPolygon) {
-                                                drawPath(polygonPath, color = shadowColor)
-                                            } else if (isOval) {
-                                                drawOval(color = shadowColor,
-                                                    topLeft = Offset(boxLeft + shadowOffset.x - extent, boxTop + shadowOffset.y - extent),
-                                                    size = Size(boxWidth + extent * 2f, boxHeight + extent * 2f))
-                                            } else if (hasVariableCorners) {
-                                                val shadowPath = Path().apply {
-                                                    addRoundRect(androidx.compose.ui.geometry.RoundRect(
-                                                        rect = Rect(boxLeft + shadowOffset.x - extent, boxTop + shadowOffset.y - extent,
-                                                            boxLeft + boxWidth + shadowOffset.x + extent, boxTop + boxHeight + shadowOffset.y + extent),
-                                                        topLeft = CornerRadius(tl + extent, tl + extent),
-                                                        topRight = CornerRadius(tr + extent, tr + extent),
-                                                        bottomRight = CornerRadius(br + extent, br + extent),
-                                                        bottomLeft = CornerRadius(bl + extent, bl + extent)))
-                                                }
-                                                drawPath(shadowPath, color = shadowColor)
-                                            } else {
-                                                drawRoundRect(color = shadowColor,
-                                                    topLeft = Offset(boxLeft + shadowOffset.x - extent, boxTop + shadowOffset.y - extent),
-                                                    size = Size(boxWidth + extent * 2f, boxHeight + extent * 2f),
-                                                    cornerRadius = CornerRadius(tl + extent, tl + extent))
+                                        val effAlpha = (sColor.alpha * subAlpha).coerceIn(0f, 1f)
+                                        if (effAlpha <= 0.001f) return@forEach
+                                        val shadowColorArgb = sColor.copy(alpha = effAlpha).toArgb()
+
+                                        val sLeft = boxLeft + shadowOffset.x - spreadPx
+                                        val sTop = boxTop + shadowOffset.y - spreadPx
+                                        val sWidth = (boxWidth + spreadPx * 2f).coerceAtLeast(0f)
+                                        val sHeight = (boxHeight + spreadPx * 2f).coerceAtLeast(0f)
+
+                                        val shadowRRect = if (isOval) {
+                                            SkRRect.makeOvalXYWH(sLeft, sTop, sWidth, sHeight)
+                                        } else if (hasVariableCorners) {
+                                            val sTl = (tl + spreadPx).coerceAtLeast(0f)
+                                            val sTr = (tr + spreadPx).coerceAtLeast(0f)
+                                            val sBr = (br + spreadPx).coerceAtLeast(0f)
+                                            val sBl = (bl + spreadPx).coerceAtLeast(0f)
+                                            SkRRect.makeComplexXYWH(sLeft, sTop, sWidth, sHeight, floatArrayOf(sTl, sTl, sTr, sTr, sBr, sBr, sBl, sBl))
+                                        } else {
+                                            val sRadius = (tl + spreadPx).coerceAtLeast(0f)
+                                            SkRRect.makeXYWH(sLeft, sTop, sWidth, sHeight, sRadius)
+                                        }
+
+                                        val skCanvas = drawContext.canvas.skiaCanvas
+                                        val skPaint = SkPaint().apply {
+                                            color = shadowColorArgb
+                                            if (blurPx > 0f) {
+                                                maskFilter = SkMaskFilter.makeBlur(
+                                                    SkFilterBlurMode.NORMAL,
+                                                    (blurPx / 2f).coerceAtLeast(0.5f)
+                                                )
                                             }
+                                        }
+                                        skCanvas.save()
+                                        try {
+                                            if (!isPolygon) {
+                                                skCanvas.clipRRect(elementRRect, SkClipMode.DIFFERENCE, true)
+                                                skCanvas.drawRRect(shadowRRect, skPaint)
+                                            } else {
+                                                skCanvas.drawRRect(shadowRRect, skPaint)
+                                            }
+                                        } finally {
+                                            skCanvas.restore()
+                                            skPaint.close()
                                         }
                                     }
 
-                                    // 2. Main surface fills (stacked bottom-to-top)
+                                    // 2. Main surface fills (stacked bottom-to-top per CSS painter's algorithm)
                                     val allBrushes = if (layer.fills.isNotEmpty()) {
                                         layer.fills.map { createBrush(it, Size(boxWidth, boxHeight), Offset(boxLeft, boxTop)) }
                                     } else {
@@ -477,7 +663,15 @@ fun NxprcCanvasPreview(
                                     }
 
                                     allBrushes.forEach { b ->
-                                        if (isPolygon) {
+                                        if (isPolygon && isOval) {
+                                            clipPath(ovalClipPath) {
+                                                drawPath(polygonPath, brush = b, alpha = subAlpha)
+                                            }
+                                        } else if (isPolygon && hasVariableCorners) {
+                                            clipPath(variablePath) {
+                                                drawPath(polygonPath, brush = b, alpha = subAlpha)
+                                            }
+                                        } else if (isPolygon) {
                                             drawPath(polygonPath, brush = b, alpha = subAlpha)
                                         } else if (isOval) {
                                             drawOval(
@@ -508,7 +702,15 @@ fun NxprcCanvasPreview(
                                         } else {
                                             Stroke(width = stWidth)
                                         }
-                                        if (isPolygon) {
+                                        if (isPolygon && isOval) {
+                                            clipPath(ovalClipPath) {
+                                                drawPath(polygonPath, color = stColor.copy(alpha = stColor.alpha * subAlpha), style = strokeStyle)
+                                            }
+                                        } else if (isPolygon && hasVariableCorners) {
+                                            clipPath(variablePath) {
+                                                drawPath(polygonPath, color = stColor.copy(alpha = stColor.alpha * subAlpha), style = strokeStyle)
+                                            }
+                                        } else if (isPolygon) {
                                             drawPath(polygonPath, color = stColor.copy(alpha = stColor.alpha * subAlpha), style = strokeStyle)
                                         } else if (isOval) {
                                             if (st.isTopOnly) {
@@ -545,47 +747,69 @@ fun NxprcCanvasPreview(
                                     // 4. Inset box shadows
                                     val insets = layer.boxShadows.filter { it.isInset }
                                     if (insets.isNotEmpty()) {
-                                        val shapeClipPath = Path().apply {
-                                            if (isPolygon) {
-                                                addPath(polygonPath)
-                                            } else if (isOval) {
-                                                addOval(Rect(boxLeft, boxTop, boxLeft + boxWidth, boxTop + boxHeight))
-                                            } else if (hasVariableCorners) {
-                                                addPath(variablePath)
-                                            } else {
-                                                addRoundRect(
-                                                    androidx.compose.ui.geometry.RoundRect(
-                                                        left = boxLeft,
-                                                        top = boxTop,
-                                                        right = boxLeft + boxWidth,
-                                                        bottom = boxTop + boxHeight,
-                                                        radiusX = tl,
-                                                        radiusY = tl
-                                                    )
-                                                )
-                                            }
-                                        }
-                                        clipPath(shapeClipPath) {
-                                            insets.forEach { shadow ->
-                                                val inColor = Color(shadow.color)
-                                                val sOffset = Offset(shadow.offsetX * pxPerUnit, shadow.offsetY * pxPerUnit)
-                                                val strokeW = (shadow.blurRadius.takeIf { it > 0f } ?: 3.5f) * pxPerUnit
+                                        insets.forEach { shadow ->
+                                            val inColor = Color(shadow.color)
+                                            val inAlpha = (inColor.alpha * subAlpha).coerceIn(0f, 1f)
+                                            if (inAlpha <= 0.001f) return@forEach
+                                            val shadowColorArgb = inColor.copy(alpha = inAlpha).toArgb()
+
+                                            val sOffset = Offset(shadow.offsetX * pxPerUnit, shadow.offsetY * pxPerUnit)
+                                            val spreadPx = shadow.spreadRadius * pxPerUnit
+                                            val blurPx = shadow.blurRadius * pxPerUnit
+
+                                            val hLeft = boxLeft + sOffset.x + spreadPx
+                                            val hTop = boxTop + sOffset.y + spreadPx
+                                            val hWidth = (boxWidth - spreadPx * 2f).coerceAtLeast(0f)
+                                            val hHeight = (boxHeight - spreadPx * 2f).coerceAtLeast(0f)
+
+                                            val margin = blurPx * 3f + kotlin.math.abs(sOffset.x) + kotlin.math.abs(sOffset.y) + 32f
+                                            val insetPath = Path().apply {
+                                                fillType = PathFillType.EvenOdd
+                                                addRect(Rect(boxLeft - margin, boxTop - margin, boxLeft + boxWidth + margin, boxTop + boxHeight + margin))
                                                 if (isOval) {
-                                                    drawOval(
-                                                        color = inColor.copy(alpha = inColor.alpha * subAlpha),
-                                                        topLeft = Offset(boxLeft + sOffset.x, boxTop + sOffset.y),
-                                                        size = Size(boxWidth, boxHeight),
-                                                        style = Stroke(width = strokeW * 1.5f)
+                                                    addOval(Rect(hLeft, hTop, hLeft + hWidth, hTop + hHeight))
+                                                } else if (hasVariableCorners) {
+                                                    val hTl = (tl - spreadPx).coerceAtLeast(0f)
+                                                    val hTr = (tr - spreadPx).coerceAtLeast(0f)
+                                                    val hBr = (br - spreadPx).coerceAtLeast(0f)
+                                                    val hBl = (bl - spreadPx).coerceAtLeast(0f)
+                                                    addRoundRect(
+                                                        androidx.compose.ui.geometry.RoundRect(
+                                                            rect = Rect(hLeft, hTop, hLeft + hWidth, hTop + hHeight),
+                                                            topLeft = CornerRadius(hTl, hTl),
+                                                            topRight = CornerRadius(hTr, hTr),
+                                                            bottomRight = CornerRadius(hBr, hBr),
+                                                            bottomLeft = CornerRadius(hBl, hBl)
+                                                        )
                                                     )
                                                 } else {
-                                                    drawRoundRect(
-                                                        color = inColor.copy(alpha = inColor.alpha * subAlpha),
-                                                        topLeft = Offset(boxLeft + sOffset.x, boxTop + sOffset.y),
-                                                        size = Size(boxWidth, boxHeight),
-                                                        cornerRadius = CornerRadius(tl, tl),
-                                                        style = Stroke(width = strokeW * 1.5f)
+                                                    val hRadius = (tl - spreadPx).coerceAtLeast(0f)
+                                                    addRoundRect(
+                                                        androidx.compose.ui.geometry.RoundRect(
+                                                            rect = Rect(hLeft, hTop, hLeft + hWidth, hTop + hHeight),
+                                                            cornerRadius = CornerRadius(hRadius, hRadius)
+                                                        )
                                                     )
                                                 }
+                                            }
+
+                                            val skCanvas = drawContext.canvas.skiaCanvas
+                                            val skPaint = SkPaint().apply {
+                                                color = shadowColorArgb
+                                                if (blurPx > 0f) {
+                                                    maskFilter = SkMaskFilter.makeBlur(
+                                                        SkFilterBlurMode.NORMAL,
+                                                        (blurPx / 2f).coerceAtLeast(0.5f)
+                                                    )
+                                                }
+                                            }
+                                            skCanvas.save()
+                                            try {
+                                                skCanvas.clipRRect(elementRRect, SkClipMode.INTERSECT, true)
+                                                skCanvas.drawPath(insetPath.asSkiaPath(), skPaint)
+                                            } finally {
+                                                skCanvas.restore()
+                                                skPaint.close()
                                             }
                                         }
                                     }
@@ -687,18 +911,15 @@ fun NxprcCanvasPreview(
 
                             val drawShape: () -> Unit = {
                                 val shapeType = layer.shapeType.uppercase()
+                                val effectiveSides = when {
+                                    shapeType == "HEXAGON" -> 6
+                                    shapeType == "OCTAGON" -> 8
+                                    shapeType == "POLYGON" -> 6
+                                    else -> 0
+                                }
                                 when {
-                                    shapeType == "HEXAGON" -> {
-                                        val polyPath = buildRegularPolygonPath(6, Rect(shapeLeft, shapeTop, shapeLeft + shapeW, shapeTop + shapeH))
-                                        drawPath(polyPath, brush = brush, alpha = shapeAlpha)
-                                        layer.stroke?.let { st ->
-                                            val stColor = Color(st.color)
-                                            val strokeStyle = if (st.isDashed) Stroke(width = st.width * pxPerUnit, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f * pxPerUnit, 6f * pxPerUnit), 0f)) else Stroke(width = st.width * pxPerUnit)
-                                            drawPath(polyPath, color = stColor.copy(alpha = stColor.alpha * shapeAlpha), style = strokeStyle)
-                                        }
-                                    }
-                                    shapeType == "OCTAGON" -> {
-                                        val polyPath = buildRegularPolygonPath(8, Rect(shapeLeft, shapeTop, shapeLeft + shapeW, shapeTop + shapeH))
+                                    effectiveSides >= 3 -> {
+                                        val polyPath = buildRegularPolygonPath(effectiveSides, Rect(shapeLeft, shapeTop, shapeLeft + shapeW, shapeTop + shapeH))
                                         drawPath(polyPath, brush = brush, alpha = shapeAlpha)
                                         layer.stroke?.let { st ->
                                             val stColor = Color(st.color)
@@ -786,30 +1007,62 @@ fun NxprcCanvasPreview(
                             }
                         }
                         is CanvasLayer.InnerShadow -> {
-                            val arcRadius = size.minDimension / 2f * 0.86f
-                            val arcTopLeft = Offset(centerOffset.x - arcRadius, centerOffset.y - arcRadius)
-                            val arcSize = Size(arcRadius * 2f, arcRadius * 2f)
+                            val elementRRect = if (rootIsOval) {
+                                SkRRect.makeOvalXYWH(buttonLeft, buttonTop, buttonW, buttonH)
+                            } else {
+                                SkRRect.makeXYWH(buttonLeft, buttonTop, buttonW, buttonH, rootTl)
+                            }
 
-                            // Top highlight rim
-                            drawArc(
-                                color = Color(layer.highlightColor),
-                                startAngle = 180f,
-                                sweepAngle = 180f,
-                                useCenter = false,
-                                topLeft = arcTopLeft,
-                                size = arcSize,
-                                style = Stroke(width = layer.strokeWidth * pxPerUnit)
+                            val shadows = listOf(
+                                Triple(Color(layer.highlightColor), Offset(0f, layer.strokeWidth * pxPerUnit * 0.6f), layer.strokeWidth * pxPerUnit * 1.0f),
+                                Triple(Color(layer.shadowColor), Offset(0f, -layer.strokeWidth * pxPerUnit * 1.4f), layer.strokeWidth * pxPerUnit * 2.0f)
                             )
-                            // Bottom dark curved shadow
-                            drawArc(
-                                color = Color(layer.shadowColor),
-                                startAngle = 0f,
-                                sweepAngle = 180f,
-                                useCenter = false,
-                                topLeft = arcTopLeft,
-                                size = arcSize,
-                                style = Stroke(width = layer.strokeWidth * pxPerUnit)
-                            )
+
+                            val skCanvas = drawContext.canvas.skiaCanvas
+                            shadows.forEach { (color, sOffset, blurPx) ->
+                                val alpha = color.alpha
+                                if (alpha <= 0.001f) return@forEach
+                                val shadowColorArgb = color.toArgb()
+
+                                val hLeft = buttonLeft + sOffset.x
+                                val hTop = buttonTop + sOffset.y
+                                val hWidth = buttonW
+                                val hHeight = buttonH
+
+                                val margin = blurPx * 3f + kotlin.math.abs(sOffset.y) + 32f
+                                val insetPath = Path().apply {
+                                    fillType = PathFillType.EvenOdd
+                                    addRect(Rect(buttonLeft - margin, buttonTop - margin, buttonLeft + buttonW + margin, buttonTop + buttonH + margin))
+                                    if (rootIsOval) {
+                                        addOval(Rect(hLeft, hTop, hLeft + hWidth, hTop + hHeight))
+                                    } else {
+                                        addRoundRect(
+                                            androidx.compose.ui.geometry.RoundRect(
+                                                rect = Rect(hLeft, hTop, hLeft + hWidth, hTop + hHeight),
+                                                cornerRadius = CornerRadius(rootTl, rootTl)
+                                            )
+                                        )
+                                    }
+                                }
+
+                                val skPaint = SkPaint().apply {
+                                    this.color = shadowColorArgb
+                                    if (blurPx > 0f) {
+                                        maskFilter = SkMaskFilter.makeBlur(
+                                            SkFilterBlurMode.NORMAL,
+                                            (blurPx / 2f).coerceAtLeast(0.5f)
+                                        )
+                                    }
+                                }
+                                skCanvas.save()
+                                try {
+                                    skCanvas.clipRRect(elementRRect, SkClipMode.INTERSECT, true)
+                                    skCanvas.drawPath(insetPath.asSkiaPath(), skPaint)
+                                } finally {
+                                    skCanvas.restore()
+                                    skPaint.close()
+                                }
+                            }
                         }
                         is CanvasLayer.GlossReflection -> {
                             val glossW = buttonW * layer.widthRatio
@@ -849,14 +1102,14 @@ fun NxprcCanvasPreview(
                             }
                         }
                         is CanvasLayer.VectorPath -> {
-                            val brush = createBrush(layer.fill, size)
-                            val angle = if (layer.isRotating && document.animations.idleType == "ROTATE") rotateAngle else layer.rotationDegrees
                             val targetRect = Rect(
                                 buttonLeft + buttonW * layer.offsetXRatio,
                                 buttonTop + buttonH * layer.offsetYRatio,
                                 buttonLeft + buttonW * (layer.offsetXRatio + layer.scale),
                                 buttonTop + buttonH * (layer.offsetYRatio + layer.scale)
                             )
+                            val brush = createBrush(layer.fill, targetRect.size, targetRect.topLeft)
+                            val angle = if (layer.isRotating && document.animations.idleType == "ROTATE") rotateAngle else layer.rotationDegrees
                             val vectorPath = if (layer.pathData.isNotBlank()) {
                                 buildScaledPath(layer.pathData, targetRect)
                             } else null
@@ -1105,25 +1358,30 @@ private fun createBrush(fill: FillBrush, size: Size, topLeft: Offset = Offset.Ze
         is FillBrush.SweepGradient -> {
             val cx = topLeft.x + size.width * fill.centerXRatio
             val cy = topLeft.y + size.height * fill.centerYRatio
-            if (fill.startAngleDegrees != 0f && fill.colors.size >= 2) {
-                val shift = ((fill.startAngleDegrees % 360f + 360f) % 360f) / 360f
+            if (fill.colors.size >= 2) {
+                // In CSS conic-gradient, 0deg points North (12 o'clock / -Y).
+                // Compose Brush.sweepGradient starts at East (3 o'clock / +X).
+                // Therefore: standard_angle = css_angle - 90deg.
+                val startPos = (((fill.startAngleDegrees - 90f) % 360f + 360f) % 360f) / 360f
                 val n = fill.colors.size
                 val rawStops = if (fill.stops.size == n) fill.stops else List(n) { it.toFloat() / (n - 1) }
-                val samples = 36
+                val samples = 72
                 val sampleStops = FloatArray(samples + 1) { it.toFloat() / samples }
                 val colorStops = sampleStops.map { s ->
-                    val origPos = (s - shift + 1.0f) % 1.0f
+                    val origPos = (s - startPos + 1.0f) % 1.0f
                     s to sampleGradientColor(fill.colors, rawStops, origPos)
                 }.toTypedArray()
                 Brush.sweepGradient(
                     colorStops = colorStops,
                     center = Offset(cx, cy)
                 )
-            } else {
+            } else if (fill.colors.isNotEmpty()) {
                 Brush.sweepGradient(
                     colors = fill.colors.map { Color(it) },
                     center = Offset(cx, cy)
                 )
+            } else {
+                SolidColor(Color.Transparent)
             }
         }
     }
@@ -1140,12 +1398,16 @@ internal fun buildScaledPath(svgData: String, targetRect: Rect): Path {
             val bounds = skiaPath.bounds
             val composePath = skiaPath.asComposePath()
             if (bounds.width > 0.001f && bounds.height > 0.001f) {
-                val scaleX = targetRect.width / bounds.width
-                val scaleY = targetRect.height / bounds.height
+                val isNormalized100 = bounds.left >= -5f && bounds.top >= -5f && bounds.right <= 105f && bounds.bottom <= 105f
                 val matrix = Matrix().apply {
-                    translate(x = targetRect.left, y = targetRect.top)
-                    scale(x = scaleX, y = scaleY)
-                    translate(x = -bounds.left, y = -bounds.top)
+                    if (isNormalized100) {
+                        translate(x = targetRect.left, y = targetRect.top)
+                        scale(x = targetRect.width / 100f, y = targetRect.height / 100f)
+                    } else {
+                        translate(x = targetRect.left, y = targetRect.top)
+                        scale(x = targetRect.width / bounds.width, y = targetRect.height / bounds.height)
+                        translate(x = -bounds.left, y = -bounds.top)
+                    }
                 }
                 composePath.transform(matrix)
                 return composePath

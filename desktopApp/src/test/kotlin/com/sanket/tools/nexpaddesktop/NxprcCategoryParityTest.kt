@@ -1,6 +1,7 @@
 package com.sanket.tools.nexpaddesktop
 
 import com.sanket.tools.nexpad.nxprc.*
+import com.sanket.tools.nexpaddesktop.plugins.NxprcAuditService
 import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
 import org.junit.Assert.*
 import org.junit.Test
@@ -216,10 +217,497 @@ class NxprcCategoryParityTest {
         println("=======================================================================")
     }
 
-    private fun wrapHtmlForPreview(html: String, width: Int, height: Int): String {
+    @Test
+    fun testUserTriggerParity() {
+        val html = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NEXPAD Neo Tactile LT Trigger</title>
+
+<style>
+:root {
+  --trigger-size-w: 110px;
+  --trigger-size-h: 140px;
+
+  --body-0: #050607;
+  --body-1: #0c0f12;
+  --body-2: #171b20;
+  --body-3: #282f36;
+  --body-4: #384149;
+
+  --accent: #48d8ff;
+  --accent-soft: rgba(72,216,255,0.24);
+
+  --spring-damping: 0.68;
+  --spring-stiffness: 440;
+  --press-scale: 0.94;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+
+  background:
+    radial-gradient(
+      ellipse at 50% 34%,
+      #3b4147 0%,
+      #1a1e22 46%,
+      #080a0c 100%
+    );
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Arial,
+    sans-serif;
+}
+
+.trigger-btn {
+  position: relative;
+
+  width: 110px;
+  height: 140px;
+
+  padding: 0;
+  border: 0;
+  margin: 0;
+
+  border-radius: 30px;
+
+  background:
+    radial-gradient(
+      ellipse at 27% 12%,
+      rgba(255,255,255,0.09) 0%,
+      transparent 34%
+    ),
+    radial-gradient(
+      ellipse at 72% 88%,
+      rgba(0,0,0,0.80) 0%,
+      transparent 58%
+    ),
+    linear-gradient(
+      150deg,
+      var(--body-4) 0%,
+      var(--body-3) 26%,
+      var(--body-2) 57%,
+      var(--body-0) 100%
+    );
+
+  border: 2px solid rgba(2,3,4,0.96);
+
+  box-shadow:
+    0 11px 20px rgba(0,0,0,0.78),
+    0 2px 3px rgba(255,255,255,0.05),
+    inset 0 3px 4px rgba(255,255,255,0.08),
+    inset 0 -12px 18px rgba(0,0,0,0.86);
+
+  overflow: hidden;
+
+  transform-origin: 50% 82%;
+  z-index: 0;
+}
+
+/* Molded outer socket */
+.trigger-btn::before {
+  content: "";
+
+  position: absolute;
+  left: 6px;
+  top: 6px;
+
+  width: 98px;
+  height: 128px;
+
+  border-radius: 25px;
+
+  background:
+    radial-gradient(
+      ellipse at 50% 7%,
+      rgba(255,255,255,0.055),
+      transparent 31%
+    ),
+    linear-gradient(
+      154deg,
+      #343b42 0%,
+      #242a30 38%,
+      #12161a 100%
+    );
+
+  box-shadow:
+    inset 0 2px 3px rgba(255,255,255,0.08),
+    inset 0 -9px 13px rgba(0,0,0,0.84),
+    0 3px 6px rgba(0,0,0,0.42);
+
+  z-index: 1;
+}
+
+/* Socket well */
+.trigger-channel {
+  position: absolute;
+
+  left: 13px;
+  top: 11px;
+
+  width: 84px;
+  height: 118px;
+
+  border-radius: 23px;
+
+  background:
+    radial-gradient(
+      ellipse at 50% 15%,
+      rgba(255,255,255,0.065),
+      transparent 30%
+    ),
+    radial-gradient(
+      ellipse at 50% 82%,
+      rgba(0,0,0,0.48),
+      transparent 68%
+    ),
+    linear-gradient(
+      157deg,
+      #252b31 0%,
+      #171b20 48%,
+      #080b0d 100%
+    );
+
+  box-shadow:
+    inset 0 4px 7px rgba(0,0,0,0.72),
+    inset 0 -4px 7px rgba(255,255,255,0.035),
+    0 2px 3px rgba(0,0,0,0.52);
+
+  z-index: 2;
+}
+
+/* Main ergonomic paddle */
+.trigger-surface {
+  position: absolute;
+
+  left: 19px;
+  top: 15px;
+
+  width: 72px;
+  height: 108px;
+
+  border-radius: 21px 21px 24px 24px;
+
+  background:
+    radial-gradient(
+      ellipse at 31% 8%,
+      rgba(255,255,255,0.17) 0%,
+      transparent 27%
+    ),
+    radial-gradient(
+      ellipse at 70% 88%,
+      rgba(0,0,0,0.62) 0%,
+      transparent 57%
+    ),
+    linear-gradient(
+      160deg,
+      #454d55 0%,
+      #333a41 25%,
+      #20262b 55%,
+      #101418 100%
+    );
+
+  border: 1px solid rgba(0,0,0,0.9);
+
+  box-shadow:
+    0 3px 5px rgba(0,0,0,0.55),
+    inset 0 3px 4px rgba(255,255,255,0.105),
+    inset 2px 0 3px rgba(255,255,255,0.025),
+    inset -3px 0 5px rgba(0,0,0,0.36),
+    inset 0 -11px 15px rgba(0,0,0,0.76);
+
+  transform-origin: 50% 88%;
+
+  z-index: 3;
+}
+
+/* Curved central depression */
+.trigger-surface::before {
+  content: "";
+
+  position: absolute;
+
+  left: 7px;
+  top: 8px;
+
+  width: 58px;
+  height: 92px;
+
+  border-radius: 18px;
+
+  background:
+    radial-gradient(
+      ellipse at 50% 16%,
+      rgba(255,255,255,0.045),
+      transparent 34%
+    ),
+    linear-gradient(
+      163deg,
+      rgba(0,0,0,0.06),
+      rgba(0,0,0,0.38)
+    );
+
+  box-shadow:
+    inset 0 3px 5px rgba(0,0,0,0.30),
+    inset 0 -3px 5px rgba(255,255,255,0.025);
+
+  z-index: 4;
+}
+
+/* Physical traction ribs */
+.trigger-grips {
+  position: absolute;
+
+  left: 27px;
+  top: 46px;
+
+  width: 56px;
+  height: 48px;
+
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.105) 0px,
+      rgba(255,255,255,0.105) 2px,
+      rgba(0,0,0,0.18) 2px,
+      rgba(0,0,0,0.18) 5px,
+      transparent 5px,
+      transparent 9px
+    );
+
+  border-radius: 12px;
+
+  opacity: 0.72;
+
+  box-shadow:
+    inset 0 1px 1px rgba(255,255,255,0.035),
+    0 1px 1px rgba(0,0,0,0.22);
+
+  z-index: 5;
+}
+
+/* Upper optical accent */
+.trigger-light {
+  position: absolute;
+
+  left: 31px;
+  top: 25px;
+
+  width: 48px;
+  height: 3px;
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      ellipse,
+      var(--accent) 0%,
+      rgba(72,216,255,0.42) 42%,
+      transparent 82%
+    );
+
+  box-shadow:
+    0 0 7px var(--accent-soft),
+    0 0 13px rgba(72,216,255,0.10);
+
+  opacity: 0.68;
+
+  z-index: 6;
+}
+
+/* Lower finger-contact cavity */
+.trigger-bottom {
+  position: absolute;
+
+  left: 29px;
+  bottom: 23px;
+
+  width: 52px;
+  height: 12px;
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      ellipse,
+      rgba(0,0,0,0.62) 0%,
+      rgba(0,0,0,0.27) 48%,
+      transparent 78%
+    );
+
+  box-shadow:
+    0 -1px 2px rgba(255,255,255,0.025);
+
+  z-index: 6;
+}
+
+/* Small machined side markers */
+.trigger-mark {
+  position: absolute;
+
+  left: 16px;
+  top: 47px;
+
+  width: 3px;
+  height: 33px;
+
+  border-radius: 2px;
+
+  background:
+    linear-gradient(
+      to bottom,
+      transparent,
+      rgba(255,255,255,0.14) 25%,
+      rgba(255,255,255,0.14) 75%,
+      transparent
+    );
+
+  opacity: 0.45;
+
+  z-index: 4;
+}
+
+/* Real DOM label */
+.trigger-label {
+  position: absolute;
+
+  left: 0;
+  bottom: 16px;
+
+  width: 110px;
+
+  text-align: center;
+
+  font-size: 27px;
+  font-weight: 900;
+
+  line-height: 30px;
+  letter-spacing: 1px;
+
+  color: #e8edf1;
+
+  text-shadow:
+    0 1px 1px rgba(0,0,0,0.92),
+    0 -1px 0 rgba(255,255,255,0.08);
+
+  z-index: 8;
+}
+
+/* Active tactile compression */
+.trigger-btn:active {
+  transform:
+    scale(var(--press-scale))
+    translateY(4px);
+
+  box-shadow:
+    0 5px 10px rgba(0,0,0,0.80),
+    inset 0 5px 8px rgba(0,0,0,0.80),
+    inset 0 -5px 9px rgba(255,255,255,0.025);
+}
+
+.trigger-btn:active .trigger-surface {
+  transform:
+    scaleY(0.985)
+    translateY(3px);
+
+  box-shadow:
+    0 2px 3px rgba(0,0,0,0.55),
+    inset 0 5px 7px rgba(0,0,0,0.42),
+    inset 0 -6px 9px rgba(0,0,0,0.78);
+}
+
+.trigger-btn:active .trigger-light {
+  opacity: 1;
+  filter: brightness(1.22);
+}
+
+.trigger-btn:active .trigger-grips {
+  filter: brightness(0.86);
+}
+</style>
+</head>
+
+<body>
+
+<button
+  class="trigger-btn"
+  data-control="LT"
+  data-category="TRIGGER"
+  data-name="Neo Tactile Left Trigger"
+>
+  <div class="trigger-channel"></div>
+
+  <div class="trigger-surface"></div>
+
+  <div class="trigger-grips"></div>
+
+  <div class="trigger-mark"></div>
+
+  <div class="trigger-light"></div>
+
+  <div class="trigger-bottom"></div>
+
+  <span class="trigger-label">LT</span>
+</button>
+
+</body>
+</html>
+        """.trimIndent()
+
+        val doc = NxprcPackager.compile(html, "rc.lt", "Neo Tactile Left Trigger", "TRIGGER", "LT")
+        val canvasSize = 400
+        val nativeImg = renderNxprcToImage(doc, canvasSize, canvasSize)
+        val nativeOutFile = File(brainDir, "user_trigger_native.png")
+        ImageIO.write(nativeImg, "PNG", nativeOutFile)
+
+        val htmlFile = File(scratchDir, "preview_user_trigger.html")
+        val viewScale = minOf(280f / doc.canvas.viewBoxWidth.coerceAtLeast(1f), 280f / doc.canvas.viewBoxHeight.coerceAtLeast(1f))
+        val styledHtml = wrapHtmlForPreview(html, canvasSize, canvasSize, viewScale)
+        htmlFile.writeText(styledHtml)
+
+        val chromeImgFile = File(brainDir, "user_trigger_chrome.png")
+        captureChromeScreenshot(htmlFile, chromeImgFile, canvasSize, canvasSize)
+
+        if (chromeImgFile.exists()) {
+            val chromeImg = ImageIO.read(chromeImgFile)
+            val parityScore = computeVisualParity(chromeImg, nativeImg)
+            val sideBySideCard = generateSideBySideCard(
+                category = "TRIGGER",
+                displayName = "User Neo Tactile Trigger",
+                chromeImg = chromeImg,
+                nativeImg = nativeImg,
+                parityScore = parityScore
+            )
+            val cardOut = File(brainDir, "user_trigger_side_by_side.png")
+            ImageIO.write(sideBySideCard, "PNG", cardOut)
+            println("USER TRIGGER PARITY SCORE: $parityScore%")
+            println("SAVED CARD: ${cardOut.absolutePath}")
+        }
+    }
+
+
+    private fun wrapHtmlForPreview(html: String, width: Int, height: Int, scale: Float = 1.0f): String {
+        val zoomStyle = if (scale != 1.0f) "zoom: ${scale};" else ""
         return html.replace(
             "<body>",
-            """<body style="margin:0; padding:0; background-color:#0B0E14; width:${width}px; height:${height}px; display:flex; align-items:center; justify-content:center; overflow:hidden;">"""
+            """<body style="margin:0; padding:0; background-color:#0B0E14; width:${width / scale}px; height:${height / scale}px; display:flex; align-items:center; justify-content:center; overflow:hidden; $zoomStyle">"""
         )
     }
 
@@ -319,6 +807,104 @@ class NxprcCategoryParityTest {
         }
     }
 
+    private fun gaussianBlurRgba(src: BufferedImage, radius: Float): BufferedImage {
+        val r = radius.toInt().coerceAtLeast(1)
+        val w = src.width
+        val h = src.height
+        val srcPixels = IntArray(w * h)
+        src.getRGB(0, 0, w, h, srcPixels, 0, w)
+        val dstPixels = IntArray(w * h)
+
+        fun boxBlurPass(input: IntArray, output: IntArray) {
+            val temp = IntArray(w * h)
+            val div = 2 * r + 1
+            for (y in 0 until h) {
+                var aSum = 0
+                var rSum = 0
+                var gSum = 0
+                var bSum = 0
+                val rowStart = y * w
+                for (i in -r..r) {
+                    val x = i.coerceIn(0, w - 1)
+                    val c = input[rowStart + x]
+                    aSum += (c ushr 24) and 0xFF
+                    rSum += (c ushr 16) and 0xFF
+                    gSum += (c ushr 8) and 0xFF
+                    bSum += c and 0xFF
+                }
+                for (x in 0 until w) {
+                    temp[rowStart + x] = ((aSum / div) shl 24) or ((rSum / div) shl 16) or ((gSum / div) shl 8) or (bSum / div)
+                    val prevX = (x - r).coerceIn(0, w - 1)
+                    val nextX = (x + r + 1).coerceIn(0, w - 1)
+                    val cPrev = input[rowStart + prevX]
+                    val cNext = input[rowStart + nextX]
+                    aSum += ((cNext ushr 24) and 0xFF) - ((cPrev ushr 24) and 0xFF)
+                    rSum += ((cNext ushr 16) and 0xFF) - ((cPrev ushr 16) and 0xFF)
+                    gSum += ((cNext ushr 8) and 0xFF) - ((cPrev ushr 8) and 0xFF)
+                    bSum += (cNext and 0xFF) - (cPrev and 0xFF)
+                }
+            }
+            for (x in 0 until w) {
+                var aSum = 0
+                var rSum = 0
+                var gSum = 0
+                var bSum = 0
+                for (i in -r..r) {
+                    val y = i.coerceIn(0, h - 1)
+                    val c = temp[y * w + x]
+                    aSum += (c ushr 24) and 0xFF
+                    rSum += (c ushr 16) and 0xFF
+                    gSum += (c ushr 8) and 0xFF
+                    bSum += c and 0xFF
+                }
+                for (y in 0 until h) {
+                    output[y * w + x] = ((aSum / div) shl 24) or ((rSum / div) shl 16) or ((gSum / div) shl 8) or (bSum / div)
+                    val prevY = (y - r).coerceIn(0, h - 1)
+                    val nextY = (y + r + 1).coerceIn(0, h - 1)
+                    val cPrev = temp[prevY * w + x]
+                    val cNext = temp[nextY * w + x]
+                    aSum += ((cNext ushr 24) and 0xFF) - ((cPrev ushr 24) and 0xFF)
+                    rSum += ((cNext ushr 16) and 0xFF) - ((cPrev ushr 16) and 0xFF)
+                    gSum += ((cNext ushr 8) and 0xFF) - ((cPrev ushr 8) and 0xFF)
+                    bSum += (cNext and 0xFF) - (cPrev and 0xFF)
+                }
+            }
+        }
+
+        val intermediate = IntArray(w * h)
+        boxBlurPass(srcPixels, intermediate)
+        boxBlurPass(intermediate, dstPixels)
+
+        val res = BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB)
+        res.setRGB(0, 0, w, h, dstPixels, 0, w)
+        return res
+    }
+
+    private fun cleanAwtFractions(raw: FloatArray): FloatArray {
+        if (raw.size <= 1) return floatArrayOf(0f, 1f)
+        val result = FloatArray(raw.size)
+        result[0] = 0f
+        for (i in 1 until raw.size) {
+            val v = raw[i].coerceIn(0f, 1f)
+            val minV = result[i - 1] + 0.0001f
+            result[i] = if (v <= result[i - 1]) minV else v
+        }
+        val maxV = result.last()
+        if (maxV > 1.0f) {
+            for (i in 1 until result.size) {
+                result[i] = (result[i] / maxV).coerceIn(result[i - 1] + 0.00001f, 1.0f)
+            }
+        }
+        result[result.size - 1] = 1.0f
+        for (i in 1 until result.size) {
+            if (result[i] <= result[i - 1]) {
+                result[i] = (result[i - 1] + 0.00001f).coerceAtMost(0.99999f)
+            }
+        }
+        result[result.size - 1] = 1.0f
+        return result
+    }
+
     private fun renderNxprcToImage(
         doc: NxprcDocument,
         width: Int,
@@ -348,12 +934,23 @@ class NxprcCategoryParityTest {
         val density = viewScale
 
         val primaryBox = doc.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull()
-        val isRootOval = primaryBox?.shapeType?.uppercase() == "OVAL"
-        val rootCornerArc = (primaryBox?.cornerRadiusTopLeft ?: 14f) * density * 2f
-        val rootClipShape: Shape = if (isRootOval) {
-            Ellipse2D.Float(btnLeft, btnTop, btnW, btnH)
-        } else {
-            RoundRectangle2D.Float(btnLeft, btnTop, btnW, btnH, rootCornerArc, rootCornerArc)
+        val primaryGrad = doc.canvas.layers.filterIsInstance<CanvasLayer.GradientShape>().firstOrNull()
+        val rootShapeType = primaryBox?.shapeType?.uppercase() ?: primaryGrad?.shapeType?.uppercase() ?: "ROUNDED_RECT"
+        val isRootOval = rootShapeType == "OVAL"
+        val rootCornerArc = (primaryBox?.cornerRadiusTopLeft ?: primaryGrad?.cornerRadius ?: 14f) * density * 2f
+        val rootPathData = primaryBox?.pathData ?: ""
+        val rootPolySides = primaryBox?.polygonSides ?: 0
+        val rootEffectiveSides = when {
+            rootPolySides >= 3 -> rootPolySides
+            rootShapeType == "HEXAGON" -> 6
+            rootShapeType == "OCTAGON" -> 8
+            else -> 0
+        }
+        val rootClipShape: Shape = when {
+            rootPathData.isNotBlank() -> NxprcAuditService.skiaPathToAwtShape(rootPathData, btnLeft, btnTop, btnW, btnH) ?: NxprcAuditService.parsePathDataToShape(rootPathData, btnLeft, btnTop, btnW, btnH)
+            rootEffectiveSides >= 3 -> buildPolygonShape(rootEffectiveSides, btnLeft, btnTop, btnW, btnH)
+            isRootOval -> Ellipse2D.Float(btnLeft, btnTop, btnW, btnH)
+            else -> RoundRectangle2D.Float(btnLeft, btnTop, btnW, btnH, rootCornerArc, rootCornerArc)
         }
 
         val layersToRender = activeLayersOnly ?: doc.canvas.layers
@@ -405,20 +1002,53 @@ class NxprcCategoryParityTest {
                         gLayer.translate(-pivotX.toDouble(), -pivotY.toDouble())
 
                         // 1. Outset Shadows
+                        val elementShape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval, layer.pathData, layer.shapeType, layer.polygonSides)
                         layer.boxShadows.filter { !it.isInset }.forEach { shadow ->
                             val sp = shadow.spreadRadius * density
                             val sx = shadow.offsetX * density
                             val sy = shadow.offsetY * density
                             val alpha = (((shadow.color shr 24) and 0xFF) * layer.opacity).toInt().coerceIn(0, 255)
+                            if (alpha <= 0) return@forEach
                             val c = Color(
                                 ((shadow.color shr 16) and 0xFF).toInt(),
                                 ((shadow.color shr 8) and 0xFF).toInt(),
                                 (shadow.color and 0xFF).toInt(),
                                 alpha
                             )
-                            gLayer.color = c
-                            val sShape = getBoxShape(boxX + sx - sp, boxY + sy - sp, boxW + sp * 2, boxH + sp * 2, tl + sp, tr + sp, br + sp, bl + sp, isOval)
-                            gLayer.fill(sShape)
+                            val blur = shadow.blurRadius * density
+                            val sShape = getBoxShape(boxX + sx - sp, boxY + sy - sp, boxW + sp * 2, boxH + sp * 2, tl + sp, tr + sp, br + sp, bl + sp, isOval, layer.pathData, layer.shapeType, layer.polygonSides)
+
+                            if (blur > 0.5f) {
+                                val sImg = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+                                val sg = sImg.createGraphics()
+                                sg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+                                sg.transform = gLayer.transform
+                                sg.color = c
+                                sg.fill(sShape)
+                                sg.dispose()
+
+                                val blurred = gaussianBlurRgba(sImg, blur / 2f)
+                                val gOut = g2.create() as Graphics2D
+                                try {
+                                    val fullArea = Area(Rectangle(0, 0, width, height))
+                                    fullArea.subtract(Area(gLayer.transform.createTransformedShape(elementShape)))
+                                    gOut.clip(fullArea)
+                                    gOut.drawImage(blurred, 0, 0, null)
+                                } finally {
+                                    gOut.dispose()
+                                }
+                            } else {
+                                val gOut = gLayer.create() as Graphics2D
+                                try {
+                                    val fullArea = Area(Rectangle(0, 0, width, height))
+                                    fullArea.subtract(Area(elementShape))
+                                    gOut.clip(fullArea)
+                                    gOut.color = c
+                                    gOut.fill(sShape)
+                                } finally {
+                                    gOut.dispose()
+                                }
+                            }
                         }
 
                         // 2. Fills
@@ -445,8 +1075,9 @@ class NxprcCategoryParityTest {
                                     val y1 = gcy - sin * r
                                     val x2 = gcx + cos * r
                                     val y2 = gcy + sin * r
-                                    val fractions = fill.stops.takeIf { it.size == fill.colors.size && it.size >= 2 }?.toFloatArray()
+                                    val rawFractions = fill.stops.takeIf { it.size == fill.colors.size && it.size >= 2 }?.toFloatArray()
                                         ?: FloatArray(fill.colors.size) { it.toFloat() / (fill.colors.size - 1).coerceAtLeast(1) }
+                                    val fractions = cleanAwtFractions(rawFractions)
                                     val colors = fill.colors.map { col ->
                                         val alpha = (((col shr 24) and 0xFF) * layer.opacity).toInt().coerceIn(0, 255)
                                         Color(
@@ -462,8 +1093,9 @@ class NxprcCategoryParityTest {
                                     val gcx = boxX + boxW * fill.centerXRatio
                                     val gcy = boxY + boxH * fill.centerYRatio
                                     val radius = (Math.min(boxW, boxH) * fill.radiusRatio * 1.5f).coerceAtLeast(1f)
-                                    val fractions = fill.stops.takeIf { it.size == fill.colors.size && it.size >= 2 }?.toFloatArray()
+                                    val rawFractions = fill.stops.takeIf { it.size == fill.colors.size && it.size >= 2 }?.toFloatArray()
                                         ?: FloatArray(fill.colors.size) { it.toFloat() / (fill.colors.size - 1).coerceAtLeast(1) }
+                                    val fractions = cleanAwtFractions(rawFractions)
                                     val colors = fill.colors.map { col ->
                                         val alpha = (((col shr 24) and 0xFF) * layer.opacity).toInt().coerceIn(0, 255)
                                         Color(
@@ -501,12 +1133,12 @@ class NxprcCategoryParityTest {
                                     }.toTypedArray()
                                     val fractions = fill.stops.takeIf { it.size == fill.colors.size && it.size >= 2 }?.toFloatArray()
                                         ?: FloatArray(fill.colors.size) { it.toFloat() / (fill.colors.size - 1).coerceAtLeast(1) }
-                                    val startAngleRad = Math.toRadians(fill.startAngleDegrees.toDouble()).toFloat()
+                                    val startAngleRad = Math.toRadians((fill.startAngleDegrees - 90.0)).toFloat()
                                     gLayer.paint = ConicGradientPaint(gcx, gcy, startAngleRad, colors, fractions)
                                 }
                                 else -> {}
                             }
-                            val fShape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval)
+                            val fShape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval, layer.pathData, layer.shapeType, layer.polygonSides)
                             gLayer.fill(fShape)
                         }
 
@@ -531,35 +1163,78 @@ class NxprcCategoryParityTest {
                             } else {
                                 gLayer.stroke = BasicStroke(st.width * density)
                             }
-                            val stShape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval)
-                            gLayer.draw(stShape)
+                            if (isOval && st.isTopOnly) {
+                                gLayer.draw(Arc2D.Float(boxX, boxY, boxW, boxH, 0f, 180f, Arc2D.OPEN))
+                            } else {
+                                val stShape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval, layer.pathData, layer.shapeType, layer.polygonSides)
+                                gLayer.draw(stShape)
+                            }
                         }
 
                         // 4. Inset Shadows
                         val insets = layer.boxShadows.filter { it.isInset }
                         if (insets.isNotEmpty()) {
-                            val gInset = gLayer.create() as Graphics2D
-                            try {
-                                val shapeClip = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval)
-                                gInset.clip(shapeClip)
-                                insets.forEach { shadow ->
-                                    val alpha = (((shadow.color shr 24) and 0xFF) * layer.opacity).toInt().coerceIn(0, 255)
-                                    val sc = Color(
-                                        ((shadow.color shr 16) and 0xFF).toInt(),
-                                        ((shadow.color shr 8) and 0xFF).toInt(),
-                                        (shadow.color and 0xFF).toInt(),
-                                        alpha
-                                    )
-                                    val blur = (shadow.blurRadius.takeIf { it > 0f } ?: 3.5f) * density
-                                    gInset.color = sc
-                                    gInset.stroke = BasicStroke(blur * 1.5f)
-                                    val sx = shadow.offsetX * density
-                                    val sy = shadow.offsetY * density
-                                    val inShape = getBoxShape(boxX + sx, boxY + sy, boxW, boxH, tl, tr, br, bl, isOval)
-                                    gInset.draw(inShape)
+                            val elemTransformed = gLayer.transform.createTransformedShape(elementShape)
+
+                            insets.forEach { shadow ->
+                                val alpha = (((shadow.color shr 24) and 0xFF) * layer.opacity).toInt().coerceIn(0, 255)
+                                if (alpha <= 0) return@forEach
+                                val sc = Color(
+                                    ((shadow.color shr 16) and 0xFF).toInt(),
+                                    ((shadow.color shr 8) and 0xFF).toInt(),
+                                    (shadow.color and 0xFF).toInt(),
+                                    alpha
+                                )
+                                val blur = (shadow.blurRadius.takeIf { it > 0f } ?: 3.5f) * density
+                                val sp = shadow.spreadRadius * density
+                                val sx = shadow.offsetX * density
+                                val sy = shadow.offsetY * density
+
+                                val hLeft = boxX + sx + sp
+                                val hTop = boxY + sy + sp
+                                val hW = (boxW - sp * 2f).coerceAtLeast(0f)
+                                val hH = (boxH - sp * 2f).coerceAtLeast(0f)
+                                val hTl = (tl - sp).coerceAtLeast(0f)
+                                val hTr = (tr - sp).coerceAtLeast(0f)
+                                val hBr = (br - sp).coerceAtLeast(0f)
+                                val hBl = (bl - sp).coerceAtLeast(0f)
+                                val holeShape = getBoxShape(hLeft, hTop, hW, hH, hTl, hTr, hBr, hBl, isOval, layer.pathData, layer.shapeType, layer.polygonSides)
+
+                                if (blur > 0.5f) {
+                                    val sImg = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+                                    val sg = sImg.createGraphics()
+                                    sg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+                                    val outerMargin = blur * 3f + Math.abs(sx) + Math.abs(sy) + 32f
+                                    val outerRect = Rectangle2D.Float(boxX - outerMargin, boxY - outerMargin, boxW + outerMargin * 2f, boxH + outerMargin * 2f)
+                                    val maskArea = Area(outerRect)
+                                    maskArea.subtract(Area(holeShape))
+                                    sg.transform = gLayer.transform
+                                    sg.color = sc
+                                    sg.fill(maskArea)
+                                    sg.dispose()
+
+                                    val blurred = gaussianBlurRgba(sImg, blur / 2f)
+                                    val gOut = g2.create() as Graphics2D
+                                    try {
+                                        gOut.clip(elemTransformed)
+                                        gOut.drawImage(blurred, 0, 0, null)
+                                    } finally {
+                                        gOut.dispose()
+                                    }
+                                } else {
+                                    val gOut = gLayer.create() as Graphics2D
+                                    try {
+                                        gOut.clip(elementShape)
+                                        val outerMargin = 32f
+                                        val outerRect = Rectangle2D.Float(boxX - outerMargin, boxY - outerMargin, boxW + outerMargin * 2f, boxH + outerMargin * 2f)
+                                        val maskArea = Area(outerRect)
+                                        maskArea.subtract(Area(holeShape))
+                                        gOut.color = sc
+                                        gOut.fill(maskArea)
+                                    } finally {
+                                        gOut.dispose()
+                                    }
                                 }
-                            } finally {
-                                gInset.dispose()
                             }
                         }
                     }
@@ -671,9 +1346,14 @@ class NxprcCategoryParityTest {
                         if (layer.effectiveTransform.scaleX != 1f || layer.effectiveTransform.scaleY != 1f) gLayer.scale(layer.effectiveTransform.scaleX.toDouble(), layer.effectiveTransform.scaleY.toDouble())
                         gLayer.translate(-pivotX.toDouble(), -pivotY.toDouble())
 
+                        val effectiveSides = when {
+                            shapeType == "HEXAGON" -> 6
+                            shapeType == "OCTAGON" -> 8
+                            shapeType == "POLYGON" -> 6
+                            else -> 0
+                        }
                         val shape = when {
-                            shapeType == "HEXAGON" -> buildPolygonShape(6, shapeLeft, shapeTop, shapeW, shapeH)
-                            shapeType == "OCTAGON" -> buildPolygonShape(8, shapeLeft, shapeTop, shapeW, shapeH)
+                            effectiveSides >= 3 -> buildPolygonShape(effectiveSides, shapeLeft, shapeTop, shapeW, shapeH)
                             isOval -> Ellipse2D.Float(shapeLeft, shapeTop, shapeW, shapeH)
                             else -> RoundRectangle2D.Float(shapeLeft, shapeTop, shapeW, shapeH, cornerRadius * 2f, cornerRadius * 2f)
                         }
@@ -754,21 +1434,138 @@ class NxprcCategoryParityTest {
                         gLayer.draw(Ellipse2D.Float(cx - baseRadius * 0.98f, cy - baseRadius * 0.98f, baseRadius * 1.96f, baseRadius * 1.96f))
                     }
                     is CanvasLayer.InnerShadow -> {
-                        val cx = btnLeft + btnW / 2f
-                        val cy = btnTop + btnH / 2f
-                        val arcRadius = minOf(btnW, btnH) / 2f * 0.86f
-                        val arcX = cx - arcRadius
-                        val arcY = cy - arcRadius
-                        val arcDiam = arcRadius * 2f
-                        gLayer.stroke = BasicStroke(layer.strokeWidth * density)
-                        // Top highlight rim
-                        val hAlpha = ((layer.highlightColor shr 24) and 0xFF).toInt()
-                        gLayer.color = Color(((layer.highlightColor shr 16) and 0xFF).toInt(), ((layer.highlightColor shr 8) and 0xFF).toInt(), (layer.highlightColor and 0xFF).toInt(), hAlpha)
-                        gLayer.draw(Arc2D.Float(arcX, arcY, arcDiam, arcDiam, 0f, 180f, Arc2D.OPEN))
-                        // Bottom dark shadow rim
-                        val shAlpha = ((layer.shadowColor shr 24) and 0xFF).toInt()
-                        gLayer.color = Color(((layer.shadowColor shr 16) and 0xFF).toInt(), ((layer.shadowColor shr 8) and 0xFF).toInt(), (layer.shadowColor and 0xFF).toInt(), shAlpha)
-                        gLayer.draw(Arc2D.Float(arcX, arcY, arcDiam, arcDiam, 180f, 180f, Arc2D.OPEN))
+                        data class ShadowSpec(val colorLong: Long, val sx: Float, val sy: Float, val blur: Float)
+                        val shadows = listOf(
+                            ShadowSpec(layer.highlightColor, 0f, layer.strokeWidth * density * 0.6f, layer.strokeWidth * density * 1.0f),
+                            ShadowSpec(layer.shadowColor, 0f, -layer.strokeWidth * density * 1.4f, layer.strokeWidth * density * 2.0f)
+                        )
+                        val elemTransformed = gLayer.transform.createTransformedShape(rootClipShape)
+
+                        shadows.forEach { (colorLong, sx, sy, blur) ->
+                            val alpha = ((colorLong shr 24) and 0xFF).toInt()
+                            if (alpha <= 0) return@forEach
+                            val sc = Color(
+                                ((colorLong shr 16) and 0xFF).toInt(),
+                                ((colorLong shr 8) and 0xFF).toInt(),
+                                (colorLong and 0xFF).toInt(),
+                                alpha
+                            )
+
+                            val hLeft = btnLeft + sx
+                            val hTop = btnTop + sy
+                            val holeShape = if (isRootOval) {
+                                Ellipse2D.Float(hLeft, hTop, btnW, btnH)
+                            } else {
+                                RoundRectangle2D.Float(hLeft, hTop, btnW, btnH, rootCornerArc, rootCornerArc)
+                            }
+
+                            if (blur > 0.5f) {
+                                val sImg = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+                                val sg = sImg.createGraphics()
+                                sg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+                                val outerMargin = blur * 3f + Math.abs(sy) + 32f
+                                val outerRect = Rectangle2D.Float(btnLeft - outerMargin, btnTop - outerMargin, btnW + outerMargin * 2f, btnH + outerMargin * 2f)
+                                val maskArea = Area(outerRect)
+                                maskArea.subtract(Area(holeShape))
+                                sg.transform = gLayer.transform
+                                sg.color = sc
+                                sg.fill(maskArea)
+                                sg.dispose()
+
+                                val blurred = gaussianBlurRgba(sImg, blur / 2f)
+                                val gOut = g2.create() as Graphics2D
+                                try {
+                                    gOut.clip(elemTransformed)
+                                    gOut.drawImage(blurred, 0, 0, null)
+                                } finally {
+                                    gOut.dispose()
+                                }
+                            } else {
+                                val gOut = gLayer.create() as Graphics2D
+                                try {
+                                    gOut.clip(rootClipShape)
+                                    val outerMargin = 32f
+                                    val outerRect = Rectangle2D.Float(btnLeft - outerMargin, btnTop - outerMargin, btnW + outerMargin * 2f, btnH + outerMargin * 2f)
+                                    val maskArea = Area(outerRect)
+                                    maskArea.subtract(Area(holeShape))
+                                    gOut.color = sc
+                                    gOut.fill(maskArea)
+                                } finally {
+                                    gOut.dispose()
+                                }
+                            }
+                        }
+                    }
+                    is CanvasLayer.VectorPath -> {
+                        val svgBoxW = btnW * layer.scale
+                        val svgBoxH = btnH * layer.scale
+                        val svgBoxX = btnLeft + btnW * layer.offsetXRatio
+                        val svgBoxY = btnTop + btnH * layer.offsetYRatio
+                        val shape = com.sanket.tools.nexpaddesktop.plugins.NxprcAuditService.skiaPathToAwtShape(layer.pathData, svgBoxX, svgBoxY, svgBoxW, svgBoxH)
+                        if (shape != null) {
+                            if (layer.rotationDegrees != 0f) {
+                                val cx = svgBoxX + svgBoxW / 2.0
+                                val cy = svgBoxY + svgBoxH / 2.0
+                                gLayer.translate(cx, cy)
+                                gLayer.rotate(Math.toRadians(layer.rotationDegrees.toDouble()))
+                                gLayer.translate(-cx, -cy)
+                            }
+                            // Fill
+                            when (val fill = layer.fill) {
+                                is FillBrush.Solid -> {
+                                    val alpha = ((fill.color shr 24) and 0xFF).toInt()
+                                    if (alpha > 0) {
+                                        gLayer.color = Color(((fill.color shr 16) and 0xFF).toInt(), ((fill.color shr 8) and 0xFF).toInt(), (fill.color and 0xFF).toInt(), alpha)
+                                        gLayer.fill(shape)
+                                    }
+                                }
+                                is FillBrush.LinearGradient -> {
+                                    val angleRad = Math.toRadians((fill.angleDegrees - 90.0))
+                                    val gcx = svgBoxX + svgBoxW / 2f
+                                    val gcy = svgBoxY + svgBoxH / 2f
+                                    val r = Math.hypot(svgBoxW.toDouble(), svgBoxH.toDouble()).toFloat() / 2f
+                                    val cos = Math.cos(angleRad).toFloat()
+                                    val sin = Math.sin(angleRad).toFloat()
+                                    val x1 = gcx - cos * r
+                                    val y1 = gcy - sin * r
+                                    val x2 = gcx + cos * r
+                                    val y2 = gcy + sin * r
+                                    val fractions = fill.stops.takeIf { it.size == fill.colors.size && it.size >= 2 }?.toFloatArray()
+                                        ?: FloatArray(fill.colors.size) { it.toFloat() / (fill.colors.size - 1).coerceAtLeast(1) }
+                                    val colors = fill.colors.map { col ->
+                                        val alpha = ((col shr 24) and 0xFF).toInt()
+                                        Color(((col shr 16) and 0xFF).toInt(), ((col shr 8) and 0xFF).toInt(), (col and 0xFF).toInt(), alpha)
+                                    }.toTypedArray()
+                                    gLayer.paint = LinearGradientPaint(x1, y1, x2, y2, fractions, colors)
+                                    gLayer.fill(shape)
+                                }
+                                is FillBrush.RadialGradient -> {
+                                    val gcx = svgBoxX + svgBoxW * fill.centerXRatio
+                                    val gcy = svgBoxY + svgBoxH * fill.centerYRatio
+                                    val radius = (Math.min(svgBoxW, svgBoxH) * fill.radiusRatio * 1.5f).coerceAtLeast(1f)
+                                    val fractions = fill.stops.takeIf { it.size == fill.colors.size && it.size >= 2 }?.toFloatArray()
+                                        ?: FloatArray(fill.colors.size) { it.toFloat() / (fill.colors.size - 1).coerceAtLeast(1) }
+                                    val colors = fill.colors.map { col ->
+                                        val alpha = ((col shr 24) and 0xFF).toInt()
+                                        Color(((col shr 16) and 0xFF).toInt(), ((col shr 8) and 0xFF).toInt(), (col and 0xFF).toInt(), alpha)
+                                    }.toTypedArray()
+                                    gLayer.paint = RadialGradientPaint(gcx, gcy, radius, fractions, colors)
+                                    gLayer.fill(shape)
+                                }
+                                else -> {}
+                            }
+
+                            // Stroke
+                            layer.stroke?.let { st ->
+                                val alpha = ((st.color shr 24) and 0xFF).toInt()
+                                if (alpha > 0) {
+                                    gLayer.color = Color(((st.color shr 16) and 0xFF).toInt(), ((st.color shr 8) and 0xFF).toInt(), (st.color and 0xFF).toInt(), alpha)
+                                    val strokeW = (st.width * density).coerceAtLeast(0.5f)
+                                    gLayer.stroke = BasicStroke(strokeW, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
+                                    gLayer.draw(shape)
+                                }
+                            }
+                        }
                     }
                     else -> {}
                 }
@@ -798,13 +1595,14 @@ class NxprcCategoryParityTest {
         return path
     }
 
-    private fun getBoxShape(x: Float, y: Float, w: Float, h: Float, tl: Float, tr: Float, br: Float, bl: Float, isOval: Boolean): Shape {
-        if (isOval) {
-            return Ellipse2D.Float(x, y, w, h)
-        }
-        val avgCorner = (tl + tr + br + bl) / 4f
-        return RoundRectangle2D.Float(x, y, w, h, avgCorner * 2f, avgCorner * 2f)
-    }
+    private fun getBoxShape(
+        x: Float, y: Float, w: Float, h: Float,
+        tl: Float, tr: Float, br: Float, bl: Float,
+        isOval: Boolean,
+        pathData: String = "",
+        shapeType: String = "",
+        polygonSides: Int = 0
+    ): Shape = NxprcAuditService.getBoxShape(x, y, w, h, tl, tr, br, bl, isOval, pathData, shapeType, polygonSides)
 
     private fun computeVisualParity(imgA: BufferedImage, imgB: BufferedImage): Double {
         val croppedA = cropToButtonContent(imgA)
@@ -1441,4 +2239,167 @@ class NxprcCategoryParityTest {
 
         assertTrue("Visual parity score must be >= 88.0%, was " + parityScore + "%", parityScore >= 88.0)
     }
+
+    @Test
+    fun testUserAnimeButtonDiagnostics() {
+        val html = File(scratchDir, "user_anime_button.html").readText()
+        val doc = NxprcPackager.compile(
+            html = html,
+            id = "rc.anime_a",
+            name = "Anime A",
+            category = "BUTTON",
+            defaultControl = "A"
+        )
+        assertNotNull(doc)
+        println("=== COMPILED LAYERS FOR USER ANIME BUTTON (${doc.canvas.layers.size}) ===")
+        doc.canvas.layers.forEachIndexed { i, l ->
+            when (l) {
+                is CanvasLayer.VectorPath -> {
+                    val skiaPath = try { org.jetbrains.skia.Path.makeFromSVGString(l.pathData) } catch (e: Throwable) { null }
+                    if (skiaPath != null) {
+                        val b = skiaPath.bounds
+                        println("  #$i VectorPath bounds=[L=${b.left}, T=${b.top}, R=${b.right}, B=${b.bottom}] fill=${l.fill::class.simpleName} stroke=${l.stroke?.let { "0x%08X w=${it.width}".format(it.color, it.width) }} d='${l.pathData.take(45)}...'")
+                    } else {
+                        println("  #$i VectorPath FAILED SKIA PARSE! d='${l.pathData}'")
+                    }
+                }
+                is CanvasLayer.BoxLayer -> println("  #$i BoxLayer shape=${l.shapeType} w=${l.widthRatio} h=${l.heightRatio} x=${l.offsetXRatio} y=${l.offsetYRatio} op=${l.effectiveEffects.opacity}")
+                is CanvasLayer.CenterGlyph -> println("  #$i CenterGlyph text=${l.text}")
+                else -> println("  #$i ${l::class.simpleName}")
+            }
+        }
+        val canvasSize = 400
+        val nativeImg = renderNxprcToImage(doc, canvasSize, canvasSize)
+        val nativeOut = File(brainDir, "user_anime_button_native_after.png")
+        ImageIO.write(nativeImg, "PNG", nativeOut)
+        println("Saved native image to: ${nativeOut.absolutePath}")
+
+        val chromeFile = File(brainDir, "user_anime_button_chrome.png")
+        if (chromeFile.exists()) {
+            val chromeImg = ImageIO.read(chromeFile)
+            val parityScore = computeVisualParity(chromeImg, nativeImg)
+            println("=== USER ANIME BUTTON PARITY SCORE: ${String.format("%.2f", parityScore)}% ===")
+
+            val sideBySideCard = generateSideBySideCard(
+                category = "ANIME",
+                displayName = "Anime Action A (Sakura Emblem & Energy Halo)",
+                chromeImg = chromeImg,
+                nativeImg = nativeImg,
+                parityScore = parityScore
+            )
+            val cardOut = File(brainDir, "user_anime_button_side_by_side.png")
+            ImageIO.write(sideBySideCard, "PNG", cardOut)
+            println("Saved side-by-side comparison card to: ${cardOut.absolutePath}")
+        }
+    }
+
+    @Test
+    fun testUserTwoVariationsLayerByLayerAudit() {
+        val variations = listOf(
+            Triple("variation1.html", "Action A • Feature Test", "variation1"),
+            Triple("variation2.html", "Action A • Forged Octagon", "variation2")
+        )
+
+        for ((fileName, displayName, prefix) in variations) {
+            val htmlFile = File(scratchDir, fileName)
+            if (!htmlFile.exists()) {
+                println("File not found: ${htmlFile.absolutePath}")
+                continue
+            }
+            val html = htmlFile.readText()
+
+            println("\n" + "=".repeat(80))
+            println("=== TESTING LAYER-BY-LAYER: $displayName ($fileName) ===")
+            println("=".repeat(80))
+
+            val compileResult = NxprcHtmlCssConverter.convertWithWarnings(
+                source = html,
+                id = "rc.$prefix",
+                name = displayName,
+                category = "BUTTON",
+                defaultControl = "A"
+            )
+            val doc = compileResult.document
+            val warnings = compileResult.warnings
+
+            println("\n--- COMPILER WARNINGS (${warnings.size}) ---")
+            if (warnings.isEmpty()) {
+                println("  [None] All CSS and SVG features cleanly parsed.")
+            } else {
+                warnings.forEach { w ->
+                    println("  [${w.severity}] [${w.code}] ${w.message} (${w.source})")
+                }
+            }
+
+            println("\n--- COMPILED LAYERS AUDIT (${doc.canvas.layers.size} layers) ---")
+            doc.canvas.layers.forEachIndexed { i, layer ->
+                when (layer) {
+                    is CanvasLayer.GradientShape -> {
+                        println("  #$i [GradientShape] shape=${layer.shapeType} rW=${String.format("%.3f", layer.widthRatio)} rH=${String.format("%.3f", layer.heightRatio)} offX=${String.format("%.3f", layer.offsetXRatio)} offY=${String.format("%.3f", layer.offsetYRatio)} rot=${layer.rotationDegrees} op=${layer.opacity} fill=${layer.fill::class.simpleName} stroke=${layer.stroke?.let { "0x%08X w=${it.width}".format(it.color, it.width) }}")
+                    }
+                    is CanvasLayer.BoxLayer -> {
+                        println("  #$i [BoxLayer] shape=${layer.shapeType} poly=${layer.polygonSides} rW=${String.format("%.3f", layer.widthRatio)} rH=${String.format("%.3f", layer.heightRatio)} offX=${String.format("%.3f", layer.offsetXRatio)} offY=${String.format("%.3f", layer.offsetYRatio)} rot=${layer.rotationDegrees} op=${layer.effectiveEffects.opacity} fill=${layer.fill::class.simpleName} fills=${layer.fills.size} stroke=${layer.stroke?.let { "0x%08X w=${it.width}".format(it.color, it.width) }} shadows=${layer.boxShadows.size}")
+                    }
+                    is CanvasLayer.VectorPath -> {
+                        val skiaPath = try { org.jetbrains.skia.Path.makeFromSVGString(layer.pathData) } catch (e: Throwable) { null }
+                        val boundsStr = if (skiaPath != null) {
+                            val b = skiaPath.bounds
+                            "bounds=[L=${b.left}, T=${b.top}, R=${b.right}, B=${b.bottom}]"
+                        } else "bounds=[unknown]"
+                        println("  #$i [VectorPath] $boundsStr rot=${layer.rotationDegrees} scale=${String.format("%.3f", layer.scale)} offX=${String.format("%.3f", layer.offsetXRatio)} offY=${String.format("%.3f", layer.offsetYRatio)} fill=${layer.fill::class.simpleName} stroke=${layer.stroke?.let { "0x%08X w=${it.width}".format(it.color, it.width) }} d='${layer.pathData.take(35)}...'")
+                    }
+                    is CanvasLayer.GlowRing -> {
+                        println("  #$i [GlowRing] color=0x%08X blur=${layer.blurRadius} pulse=${layer.pulseEnabled}".format(layer.glowColor))
+                    }
+                    is CanvasLayer.BezelSocket -> {
+                        println("  #$i [BezelSocket] outerBezel=0x%08X outerBevel=0x%08X shadow=0x%08X insetRatio=${layer.insetRatio}".format(layer.outerBezelColor, layer.outerBevelStroke, layer.shadowColor))
+                    }
+                    is CanvasLayer.InnerShadow -> {
+                        println("  #$i [InnerShadow] shadow=0x%08X highlight=0x%08X width=${layer.strokeWidth}".format(layer.shadowColor, layer.highlightColor))
+                    }
+                    is CanvasLayer.CenterGlyph -> {
+                        println("  #$i [CenterGlyph] text='${layer.text}' fontSize=${layer.fontSizeSp}sp color=0x%08X shadows=${layer.textShadows.size}".format(layer.textColor))
+                    }
+                    is CanvasLayer.TextLayer -> {
+                        println("  #$i [TextLayer] text='${layer.text}' fontSize=${layer.fontSizeSp}sp color=0x%08X align=${layer.textAlign} offX=${String.format("%.3f", layer.offsetXRatio)} offY=${String.format("%.3f", layer.offsetYRatio)}".format(layer.textColor))
+                    }
+                    else -> {
+                        println("  #$i [${layer::class.simpleName}]")
+                    }
+                }
+            }
+
+            // Render Native Image
+            val canvasSize = 400
+            val nativeImg = renderNxprcToImage(doc, canvasSize, canvasSize)
+            val nativeOut = File(brainDir, "${prefix}_native.png")
+            ImageIO.write(nativeImg, "PNG", nativeOut)
+            println("\nSaved native image: ${nativeOut.absolutePath}")
+
+            // Capture Chrome Screenshot
+            val previewHtmlFile = File(scratchDir, "preview_${prefix}.html")
+            previewHtmlFile.writeText(wrapHtmlForPreview(html, canvasSize, canvasSize))
+            val chromeImgFile = File(brainDir, "${prefix}_chrome.png")
+            val chromeSuccess = captureChromeScreenshot(previewHtmlFile, chromeImgFile, canvasSize, canvasSize)
+            if (chromeSuccess && chromeImgFile.exists()) {
+                val chromeImg = ImageIO.read(chromeImgFile)
+                val parityScore = computeVisualParity(chromeImg, nativeImg)
+                println("=== $displayName VISUAL PARITY SCORE: ${String.format("%.2f", parityScore)}% ===")
+
+                val sideBySideCard = generateSideBySideCard(
+                    category = "ABXY",
+                    displayName = displayName,
+                    chromeImg = chromeImg,
+                    nativeImg = nativeImg,
+                    parityScore = parityScore
+                )
+                val cardOut = File(brainDir, "${prefix}_side_by_side.png")
+                ImageIO.write(sideBySideCard, "PNG", cardOut)
+                println("Saved side-by-side card: ${cardOut.absolutePath}")
+            } else {
+                println("Chrome screenshot failed or skipped.")
+            }
+        }
+    }
 }
+

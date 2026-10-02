@@ -23,9 +23,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpad.category.CategoryType
+import com.sanket.tools.nexpad.category.ControlKey
 import com.sanket.tools.nexpad.nxprc.NxprcDocument
+import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpaddesktop.connection.ActiveTransport
 import com.sanket.tools.nexpaddesktop.plugins.DesktopPluginManager
+import com.sanket.tools.nexpaddesktop.plugins.NxprcComponentDetector
 import com.sanket.tools.nexpaddesktop.plugins.NxprcExporter
 import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
 import com.sanket.tools.nexpaddesktop.plugins.UniversalPushManager
@@ -45,8 +49,25 @@ import java.awt.datatransfer.StringSelection
 
 import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.SubCategoryDefinition
+import com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel
+import com.sanket.tools.nexpaddesktop.plugins.AiDesignOptions
+import com.sanket.tools.nexpaddesktop.plugins.ModelCapability
 
 val SubCategoryDefinition.accentColor: Color get() = Color(accentColorArgb)
+
+/**
+ * Prompt tier for AI model targeting. Controls the level of detail in generated prompts.
+ */
+private enum class PromptTier(
+    val icon: String,
+    val displayName: String,
+    val description: String,
+    val modelCapability: ModelCapability
+) {
+    COMPACT("⚡", "Compact", "< 500 tokens • Small/Local LLMs", ModelCapability.COMPACT),
+    STANDARD("🎮", "Standard", "~1.2k tokens • GPT-4o, Claude Sonnet", ModelCapability.STANDARD),
+    FRONTIER("🚀", "Frontier", "~2.8k tokens • Claude Opus, o1, GPT-4.5", ModelCapability.FRONTIER)
+}
 
 private fun safeCopyToClipboard(text: String): Boolean {
     val selection = StringSelection(text)
@@ -59,6 +80,13 @@ private fun safeCopyToClipboard(text: String): Boolean {
         }
     }
     return false
+}
+
+@Composable
+fun PluginsScreen(
+    viewModel: DesktopViewModel
+) {
+    PluginsScreen(activeTransport = viewModel.activeTransport)
 }
 
 @Composable
@@ -77,21 +105,22 @@ fun PluginsScreen(
         }
     }
 
-    var selectedCategory by remember { mutableStateOf("ABXY") }
-    var selectedButtonKey by remember { mutableStateOf("A") }
-
+    val defaultCtrl = ControlKey.A
+    var selectedCategory by remember { mutableStateOf(defaultCtrl.categoryType.id) }
+    var selectedButtonKey by remember { mutableStateOf(defaultCtrl.key) }
     var htmlSource by remember { mutableStateOf(NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A) }
-    var componentId by remember { mutableStateOf("rc.action_a") }
-    var componentName by remember { mutableStateOf("Action A Button") }
-    var category by remember { mutableStateOf("BUTTON") }
-    var defaultControl by remember { mutableStateOf("A") }
-    var targetWidthDp by remember { mutableStateOf(96) }
-    var targetHeightDp by remember { mutableStateOf(96) }
+    var componentId by remember { mutableStateOf(defaultCtrl.defaultId) }
+    var componentName by remember { mutableStateOf(defaultCtrl.defaultName) }
+    var category by remember { mutableStateOf(defaultCtrl.componentType.name) }
+    var defaultControl by remember { mutableStateOf(defaultCtrl.key) }
+    var targetWidthDp by remember { mutableStateOf(defaultCtrl.defaultWidthDp) }
+    var targetHeightDp by remember { mutableStateOf(defaultCtrl.defaultHeightDp) }
 
     var exportStatus by remember { mutableStateOf<String?>(null) }
     var isExporting by remember { mutableStateOf(false) }
 
     var showAiPromptModal by remember { mutableStateOf(false) }
+    var selectedPromptTier by remember { mutableStateOf(PromptTier.STANDARD) }
     var showFullAuditPreview by remember { mutableStateOf(false) }
     var showFullScreenLayerStudio by remember { mutableStateOf(false) }
     var promptCopiedBanner by remember { mutableStateOf<String?>(null) }
@@ -104,30 +133,65 @@ fun PluginsScreen(
         mutableStateOf(
             NxprcHtmlCssConverter.convert(
                 source = NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A,
-                id = "rc.action_a",
-                name = "Action A Button",
-                category = "BUTTON",
-                defaultControl = "A"
+                id = defaultCtrl.defaultId,
+                name = defaultCtrl.defaultName,
+                category = defaultCtrl.componentType.name,
+                defaultControl = defaultCtrl.key
             )
         )
     }
     var compileError by remember { mutableStateOf<String?>(null) }
 
-    // Layer Studio & Layer Manager States
-    var activeLayerIndices by remember(compiledDoc) { mutableStateOf((0 until compiledDoc.canvas.layers.size).toSet()) }
-    var soloLayerIndex by remember(compiledDoc) { mutableStateOf<Int?>(null) }
-    var selectedLayerIndex by remember(compiledDoc) { mutableStateOf(0) }
+    // Layer Studio & Layer Manager States - Preserved across surgical modifications
+    var activeLayerIndices by remember { mutableStateOf((0 until compiledDoc.canvas.layers.size).toSet()) }
+    var soloLayerIndex by remember { mutableStateOf<Int?>(null) }
+    var selectedLayerIndex by remember { mutableStateOf(0) }
 
-    LaunchedEffect(htmlSource, componentId, componentName, category, defaultControl) {
+    // Helper: Reset layer state so that ALL layers are 100% active and enabled
+    val resetLayersToAllEnabled: (Int) -> Unit = { totalLayers ->
+        activeLayerIndices = (0 until totalLayers).toSet()
+        soloLayerIndex = null
+        selectedLayerIndex = 0
+    }
+
+    // Keep indices in sync when document changes — always ensure all layers enabled in main studio
+    LaunchedEffect(compiledDoc) {
+        val total = compiledDoc.canvas.layers.size
+        if (total > 0) {
+            selectedLayerIndex = selectedLayerIndex.coerceIn(0, total - 1)
+            if (!showFullScreenLayerStudio) {
+                // In main studio workspace, all layers are always 100% active and enabled
+                resetLayersToAllEnabled(total)
+            } else {
+                // Inside full-screen layer studio, keep existing selection valid and include any new layers
+                val validIndices = activeLayerIndices.filter { it < total }.toSet()
+                activeLayerIndices = if (validIndices.isEmpty()) (0 until total).toSet() else validIndices
+                if (soloLayerIndex != null && soloLayerIndex!! >= total) {
+                    soloLayerIndex = null
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(htmlSource) {
         delay(350) // Debounce keystrokes
         withContext(Dispatchers.Default) {
+            val detected = NxprcComponentDetector.detect(
+                html = htmlSource,
+                fallbackCategory = category,
+                fallbackControl = defaultControl,
+                fallbackId = componentId,
+                fallbackName = componentName,
+                fallbackWidthDp = targetWidthDp,
+                fallbackHeightDp = targetHeightDp
+            )
             try {
                 val doc = NxprcHtmlCssConverter.convert(
                     source = htmlSource,
-                    id = componentId,
-                    name = componentName,
-                    category = category,
-                    defaultControl = defaultControl
+                    id = detected.componentId,
+                    name = detected.componentName,
+                    category = detected.category,
+                    defaultControl = detected.defaultControl
                 )
                 compiledDoc = doc
                 compileError = null
@@ -135,6 +199,71 @@ fun PluginsScreen(
                 compileError = e.message ?: "Compilation error"
             }
         }
+    }
+
+    val handleSelectButton: (SubCategoryDefinition) -> Unit = { btn ->
+        selectedButtonKey = btn.key
+        defaultControl = btn.key
+        val btnCat = if (btn.categoryType == CategoryType.MACROS) "MACRO" else btn.componentType.name
+        category = btnCat
+        componentId = btn.defaultId
+        componentName = btn.defaultName
+        targetWidthDp = btn.defaultWidthDp
+        targetHeightDp = btn.defaultHeightDp
+        val newSource = btn.starterHtmlPreset ?: NxprcHtmlCssConverter.getReferenceTemplate(btn.key, btn.categoryType.id)
+        htmlSource = newSource
+        try {
+            val newDoc = NxprcHtmlCssConverter.convert(
+                source = newSource,
+                id = btn.defaultId,
+                name = btn.defaultName,
+                category = btnCat,
+                defaultControl = btn.key
+            )
+            compiledDoc = newDoc
+            compileError = null
+            resetLayersToAllEnabled(newDoc.canvas.layers.size)
+        } catch (e: Exception) {
+            compileError = e.message ?: "Compilation error"
+        }
+    }
+
+    val handleSelectCategory: (String) -> Unit = { catKey ->
+        selectedCategory = catKey
+        val firstButton = buttonsByCategory[catKey]?.firstOrNull()
+        if (firstButton != null) {
+            handleSelectButton(firstButton)
+        }
+    }
+
+    val handleLoadStarter: () -> Unit = {
+        val newSource = NxprcHtmlCssConverter.getReferenceTemplate(defaultControl, category)
+        htmlSource = newSource
+        promptCopiedBanner = "✓ Loaded starter template for $defaultControl ($category)!"
+        try {
+            val newDoc = NxprcHtmlCssConverter.convert(
+                source = newSource,
+                id = componentId,
+                name = componentName,
+                category = category,
+                defaultControl = defaultControl
+            )
+            compiledDoc = newDoc
+            compileError = null
+            resetLayersToAllEnabled(newDoc.canvas.layers.size)
+        } catch (e: Exception) {
+            compileError = e.message ?: "Compilation error"
+        }
+    }
+
+    val handleOpenLayerStudio: () -> Unit = {
+        resetLayersToAllEnabled(compiledDoc.canvas.layers.size)
+        showFullScreenLayerStudio = true
+    }
+
+    val handleCloseLayerStudio: () -> Unit = {
+        resetLayersToAllEnabled(compiledDoc.canvas.layers.size)
+        showFullScreenLayerStudio = false
     }
 
     // Auto-dismiss copy feedback banner after 4 seconds
@@ -172,49 +301,27 @@ fun PluginsScreen(
                     targetWidthDp = targetWidthDp,
                     targetHeightDp = targetHeightDp,
                     promptCopiedBanner = promptCopiedBanner,
+                    selectedPromptTier = selectedPromptTier,
+                    onSelectPromptTier = { selectedPromptTier = it },
                     onCopyAiPrompt = {
                         val prompt = NxprcHtmlCssConverter.generateAiPrompt(
                             control = defaultControl,
                             category = category,
                             widthDp = targetWidthDp,
-                            heightDp = targetHeightDp
+                            heightDp = targetHeightDp,
+                            options = AiDesignOptions(modelCapability = selectedPromptTier.modelCapability)
                         )
                         val ok = safeCopyToClipboard(prompt)
-                        promptCopiedBanner = if (ok) "✓ AI Prompt for $defaultControl ($category) copied!" else "⚠️ Clipboard busy — please try again"
+                        promptCopiedBanner = if (ok) "✓ ${selectedPromptTier.icon} ${selectedPromptTier.displayName} AI Prompt for $defaultControl ($category) copied!" else "⚠️ Clipboard busy — please try again"
                     },
                     onOpenPromptModal = { showAiPromptModal = true },
-                    onLoadStarter = {
-                        htmlSource = NxprcHtmlCssConverter.getReferenceTemplate(defaultControl, category)
-                        promptCopiedBanner = "✓ Loaded starter template for $defaultControl ($category)!"
-                    },
+                    onLoadStarter = handleLoadStarter,
                     selectedCategory = selectedCategory,
-                    onSelectCategory = { catKey ->
-                        selectedCategory = catKey
-                        val firstButton = buttonsByCategory[catKey]?.firstOrNull()
-                        if (firstButton != null) {
-                            selectedButtonKey = firstButton.key
-                            defaultControl = firstButton.key
-                            category = firstButton.componentType.name
-                            componentId = firstButton.defaultId
-                            componentName = firstButton.defaultName
-                            targetWidthDp = firstButton.defaultWidthDp
-                            targetHeightDp = firstButton.defaultHeightDp
-                            htmlSource = firstButton.starterHtmlPreset ?: NxprcHtmlCssConverter.getReferenceTemplate(firstButton.key, firstButton.componentType.name)
-                        }
-                    },
+                    onSelectCategory = handleSelectCategory,
                     categories = categories,
                     buttonsByCategory = buttonsByCategory,
                     selectedButtonKey = selectedButtonKey,
-                    onSelectButton = { btn ->
-                        selectedButtonKey = btn.key
-                        defaultControl = btn.key
-                        category = btn.componentType.name
-                        componentId = btn.defaultId
-                        componentName = btn.defaultName
-                        targetWidthDp = btn.defaultWidthDp
-                        targetHeightDp = btn.defaultHeightDp
-                        htmlSource = btn.starterHtmlPreset ?: NxprcHtmlCssConverter.getReferenceTemplate(btn.key, btn.componentType.name)
-                    },
+                    onSelectButton = handleSelectButton,
                     htmlSource = htmlSource,
                     onHtmlSourceChange = { htmlSource = it }
                 )
@@ -238,20 +345,12 @@ fun PluginsScreen(
                     compileError = compileError,
                     exportStatus = exportStatus,
                     isExporting = isExporting,
-                    onOpenLayerStudio = { showFullScreenLayerStudio = true },
+                    onOpenLayerStudio = handleOpenLayerStudio,
                     onOpenFullAudit = { showFullAuditPreview = true },
                     onExport = {
                         scope.launch {
                             isExporting = true
-                            val exportDoc = if (activeLayerIndices.size == compiledDoc.canvas.layers.size) {
-                                compiledDoc
-                            } else {
-                                compiledDoc.copy(
-                                    canvas = compiledDoc.canvas.copy(
-                                        layers = compiledDoc.canvas.layers.filterIndexed { idx, _ -> idx in activeLayerIndices }
-                                    )
-                                )
-                            }
+                            val exportDoc = compiledDoc
                             val res = NxprcExporter.exportToFile(exportDoc)
                             res.fold(
                                 onSuccess = { file ->
@@ -268,15 +367,7 @@ fun PluginsScreen(
                     onPush = {
                         scope.launch {
                             isExporting = true
-                            val exportDoc = if (activeLayerIndices.size == compiledDoc.canvas.layers.size) {
-                                compiledDoc
-                            } else {
-                                compiledDoc.copy(
-                                    canvas = compiledDoc.canvas.copy(
-                                        layers = compiledDoc.canvas.layers.filterIndexed { idx, _ -> idx in activeLayerIndices }
-                                    )
-                                )
-                            }
+                            val exportDoc = compiledDoc
                             exportStatus = "Pushing ${exportDoc.canvas.layers.size} layers to phone via ${activeTransport.displayName}..."
                             val res = UniversalPushManager.pushComponent(exportDoc)
                             res.fold(
@@ -358,49 +449,27 @@ fun PluginsScreen(
                             targetWidthDp = targetWidthDp,
                             targetHeightDp = targetHeightDp,
                             promptCopiedBanner = promptCopiedBanner,
+                            selectedPromptTier = selectedPromptTier,
+                            onSelectPromptTier = { selectedPromptTier = it },
                             onCopyAiPrompt = {
                                 val prompt = NxprcHtmlCssConverter.generateAiPrompt(
                                     control = defaultControl,
                                     category = category,
                                     widthDp = targetWidthDp,
-                                    heightDp = targetHeightDp
+                                    heightDp = targetHeightDp,
+                                    options = AiDesignOptions(modelCapability = selectedPromptTier.modelCapability)
                                 )
                                 val ok = safeCopyToClipboard(prompt)
-                                promptCopiedBanner = if (ok) "✓ AI Prompt for $defaultControl ($category) copied!" else "⚠️ Clipboard busy — please try again"
+                                promptCopiedBanner = if (ok) "✓ ${selectedPromptTier.icon} ${selectedPromptTier.displayName} AI Prompt for $defaultControl ($category) copied!" else "⚠️ Clipboard busy — please try again"
                             },
                             onOpenPromptModal = { showAiPromptModal = true },
-                            onLoadStarter = {
-                                htmlSource = NxprcHtmlCssConverter.getReferenceTemplate(defaultControl, category)
-                                promptCopiedBanner = "✓ Loaded starter template for $defaultControl ($category)!"
-                            },
+                            onLoadStarter = handleLoadStarter,
                             selectedCategory = selectedCategory,
-                            onSelectCategory = { catKey ->
-                                selectedCategory = catKey
-                                val firstButton = buttonsByCategory[catKey]?.firstOrNull()
-                                if (firstButton != null) {
-                                    selectedButtonKey = firstButton.key
-                                    defaultControl = firstButton.key
-                                    category = firstButton.componentType.name
-                                    componentId = firstButton.defaultId
-                                    componentName = firstButton.defaultName
-                                    targetWidthDp = firstButton.defaultWidthDp
-                                    targetHeightDp = firstButton.defaultHeightDp
-                                    htmlSource = firstButton.starterHtmlPreset ?: NxprcHtmlCssConverter.getReferenceTemplate(firstButton.key, firstButton.componentType.name)
-                                }
-                            },
+                            onSelectCategory = handleSelectCategory,
                             categories = categories,
                             buttonsByCategory = buttonsByCategory,
                             selectedButtonKey = selectedButtonKey,
-                            onSelectButton = { btn ->
-                                selectedButtonKey = btn.key
-                                defaultControl = btn.key
-                                category = btn.componentType.name
-                                componentId = btn.defaultId
-                                componentName = btn.defaultName
-                                targetWidthDp = btn.defaultWidthDp
-                                targetHeightDp = btn.defaultHeightDp
-                                htmlSource = btn.starterHtmlPreset ?: NxprcHtmlCssConverter.getReferenceTemplate(btn.key, btn.componentType.name)
-                            },
+                            onSelectButton = handleSelectButton,
                             htmlSource = htmlSource,
                             onHtmlSourceChange = { htmlSource = it }
                         )
@@ -421,20 +490,12 @@ fun PluginsScreen(
                             compileError = compileError,
                             exportStatus = exportStatus,
                             isExporting = isExporting,
-                            onOpenLayerStudio = { showFullScreenLayerStudio = true },
+                            onOpenLayerStudio = handleOpenLayerStudio,
                             onOpenFullAudit = { showFullAuditPreview = true },
                             onExport = {
                                 scope.launch {
                                     isExporting = true
-                                    val exportDoc = if (activeLayerIndices.size == compiledDoc.canvas.layers.size) {
-                                        compiledDoc
-                                    } else {
-                                        compiledDoc.copy(
-                                            canvas = compiledDoc.canvas.copy(
-                                                layers = compiledDoc.canvas.layers.filterIndexed { idx, _ -> idx in activeLayerIndices }
-                                            )
-                                        )
-                                    }
+                                    val exportDoc = compiledDoc
                                     val res = NxprcExporter.exportToFile(exportDoc)
                                     res.fold(
                                         onSuccess = { file ->
@@ -451,15 +512,7 @@ fun PluginsScreen(
                             onPush = {
                                 scope.launch {
                                     isExporting = true
-                                    val exportDoc = if (activeLayerIndices.size == compiledDoc.canvas.layers.size) {
-                                        compiledDoc
-                                    } else {
-                                        compiledDoc.copy(
-                                            canvas = compiledDoc.canvas.copy(
-                                                layers = compiledDoc.canvas.layers.filterIndexed { idx, _ -> idx in activeLayerIndices }
-                                            )
-                                        )
-                                    }
+                                    val exportDoc = compiledDoc
                                     exportStatus = "Pushing ${exportDoc.canvas.layers.size} layers to phone via ${activeTransport.displayName}..."
                                     val res = UniversalPushManager.pushComponent(exportDoc)
                                     res.fold(
@@ -479,12 +532,14 @@ fun PluginsScreen(
         // Modal Dialog: AI Prompt Inspector
         // ==========================================
         if (showAiPromptModal) {
-            val generatedPrompt = remember(defaultControl, category, targetWidthDp, targetHeightDp) {
+            var modalTier by remember { mutableStateOf(selectedPromptTier) }
+            val generatedPrompt = remember(defaultControl, category, targetWidthDp, targetHeightDp, modalTier) {
                 NxprcHtmlCssConverter.generateAiPrompt(
                     control = defaultControl,
                     category = category,
                     widthDp = targetWidthDp,
-                    heightDp = targetHeightDp
+                    heightDp = targetHeightDp,
+                    options = AiDesignOptions(modelCapability = modalTier.modelCapability)
                 )
             }
 
@@ -521,7 +576,11 @@ fun PluginsScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    "Compatible with: ChatGPT (GPT-4o, o1, o3-mini), Claude (3.5/3.7), Gemini (2.0/1.5), DeepSeek (V3/R1), Grok 2",
+                                    "${modalTier.icon} ${modalTier.displayName} tier • Compatible with: ${when(modalTier) {
+                                        PromptTier.COMPACT -> "Gemma, Llama 3.2, DeepSeek R1-Distill, Haiku"
+                                        PromptTier.STANDARD -> "GPT-4o, Claude 3.5 Sonnet, Gemini 1.5 Pro"
+                                        PromptTier.FRONTIER -> "Claude 3.7 Opus, o1/o3, GPT-4.5, Gemini 2.0 Pro"
+                                    }}",
                                     color = Color(0xFFC4B5FD),
                                     fontSize = 12.sp
                                 )
@@ -531,7 +590,7 @@ fun PluginsScreen(
                                 Button(
                                     onClick = {
                                         val ok = safeCopyToClipboard(generatedPrompt)
-                                        promptCopiedBanner = if (ok) "✓ AI Prompt for $defaultControl copied to clipboard!" else "⚠️ Clipboard busy — please try again"
+                                        promptCopiedBanner = if (ok) "✓ ${modalTier.icon} ${modalTier.displayName} AI Prompt for $defaultControl copied to clipboard!" else "⚠️ Clipboard busy — please try again"
                                         showAiPromptModal = false
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
@@ -545,6 +604,36 @@ fun PluginsScreen(
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
                                     Text("Close", color = Color.White, fontSize = 12.sp)
+                                }
+                            }
+                        }
+
+                        // Tier Tab Switcher
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF090E18))
+                                .border(1.dp, Color(0xFF1E293B), RoundedCornerShape(8.dp))
+                                .padding(3.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            PromptTier.entries.forEach { tier ->
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(30.dp)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(if (modalTier == tier) Color(0xFF7C3AED) else Color.Transparent)
+                                        .clickable { modalTier = tier },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "${tier.icon} ${tier.displayName}",
+                                        color = if (modalTier == tier) Color.White else Color.White.copy(alpha = 0.6f),
+                                        fontWeight = if (modalTier == tier) FontWeight.Bold else FontWeight.Normal,
+                                        fontSize = 11.5.sp
+                                    )
                                 }
                             }
                         }
@@ -579,7 +668,7 @@ fun PluginsScreen(
                 htmlSource = htmlSource,
                 onOpenLayerStudio = {
                     showFullAuditPreview = false
-                    showFullScreenLayerStudio = true
+                    handleOpenLayerStudio()
                 },
                 onClose = { showFullAuditPreview = false }
             )
@@ -596,6 +685,22 @@ fun PluginsScreen(
                 onSoloLayerChange = { soloLayerIndex = it },
                 selectedLayerIndex = selectedLayerIndex,
                 onSelectedLayerChange = { selectedLayerIndex = it },
+                onSaveHtml = { newHtml ->
+                    htmlSource = newHtml
+                    try {
+                        val immediateDoc = NxprcHtmlCssConverter.convert(
+                            source = newHtml,
+                            id = componentId,
+                            name = componentName,
+                            category = category,
+                            defaultControl = defaultControl
+                        )
+                        compiledDoc = immediateDoc
+                        compileError = null
+                    } catch (e: Exception) {
+                        compileError = e.message ?: "Compilation error"
+                    }
+                },
                 onExportDoc = { doc ->
                     scope.launch {
                         isExporting = true
@@ -628,9 +733,9 @@ fun PluginsScreen(
                     }
                 },
                 isPushEnabled = activeTransport != ActiveTransport.NONE,
-                pushLabel = if (activeTransport != ActiveTransport.NONE) "Push via ${activeTransport.displayName} (${compiledDoc.canvas.layers.size} L)" else "No Phone Connected",
+                pushLabel = if (activeTransport != ActiveTransport.NONE) "Push via ${activeTransport.displayName}" else "No Phone Connected",
                 onFeedback = { promptCopiedBanner = it },
-                onClose = { showFullScreenLayerStudio = false }
+                onClose = handleCloseLayerStudio
             )
         }
     }
@@ -649,6 +754,8 @@ private fun ComponentEditorPane(
     targetWidthDp: Int,
     targetHeightDp: Int,
     promptCopiedBanner: String?,
+    selectedPromptTier: PromptTier,
+    onSelectPromptTier: (PromptTier) -> Unit,
     onCopyAiPrompt: () -> Unit,
     onOpenPromptModal: () -> Unit,
     onLoadStarter: () -> Unit,
@@ -695,14 +802,62 @@ private fun ComponentEditorPane(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Button(
-                        onClick = onCopyAiPrompt,
-                        shape = RoundedCornerShape(6.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
-                        modifier = Modifier.height(28.dp)
-                    ) {
-                        Text("🤖 Copy AI Prompt", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    // SplitButton: Copy AI Prompt with tier dropdown
+                    Box {
+                        var showTierMenu by remember { mutableStateOf(false) }
+                        Row(
+                            modifier = Modifier
+                                .height(28.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                        ) {
+                            // Main copy action
+                            Button(
+                                onClick = onCopyAiPrompt,
+                                shape = RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp, topEnd = 0.dp, bottomEnd = 0.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
+                                modifier = Modifier.height(28.dp)
+                            ) {
+                                Text("${selectedPromptTier.icon} Copy AI Prompt", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+                            // Dropdown chevron
+                            Button(
+                                onClick = { showTierMenu = true },
+                                shape = RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = 6.dp, bottomEnd = 6.dp),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 3.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6D28D9)),
+                                modifier = Modifier.height(28.dp)
+                            ) {
+                                Text("▼", fontSize = 9.sp, color = Color.White)
+                            }
+                        }
+                        DropdownMenu(
+                            expanded = showTierMenu,
+                            onDismissRequest = { showTierMenu = false }
+                        ) {
+                            PromptTier.entries.forEach { tier ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text(
+                                                "${tier.icon} ${tier.displayName}${if (tier == selectedPromptTier) " ✓" else ""}",
+                                                fontWeight = if (tier == selectedPromptTier) FontWeight.Bold else FontWeight.Normal,
+                                                fontSize = 13.sp
+                                            )
+                                            Text(
+                                                tier.description,
+                                                fontSize = 10.5.sp,
+                                                color = Color.Gray
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        onSelectPromptTier(tier)
+                                        showTierMenu = false
+                                    }
+                                )
+                            }
+                        }
                     }
 
                     OutlinedButton(
@@ -754,13 +909,58 @@ private fun ComponentEditorPane(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Button(
-                        onClick = onCopyAiPrompt,
-                        shape = RoundedCornerShape(6.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
-                    ) {
-                        Text("🤖 Copy AI Prompt", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    // SplitButton: Copy AI Prompt with tier dropdown
+                    Box {
+                        var showTierMenu by remember { mutableStateOf(false) }
+                        Row(
+                            modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                        ) {
+                            // Main copy action
+                            Button(
+                                onClick = onCopyAiPrompt,
+                                shape = RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp, topEnd = 0.dp, bottomEnd = 0.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
+                            ) {
+                                Text("${selectedPromptTier.icon} Copy AI Prompt", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+                            // Dropdown chevron
+                            Button(
+                                onClick = { showTierMenu = true },
+                                shape = RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = 6.dp, bottomEnd = 6.dp),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6D28D9))
+                            ) {
+                                Text("▼", fontSize = 9.5.sp, color = Color.White)
+                            }
+                        }
+                        DropdownMenu(
+                            expanded = showTierMenu,
+                            onDismissRequest = { showTierMenu = false }
+                        ) {
+                            PromptTier.entries.forEach { tier ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text(
+                                                "${tier.icon} ${tier.displayName}${if (tier == selectedPromptTier) " ✓" else ""}",
+                                                fontWeight = if (tier == selectedPromptTier) FontWeight.Bold else FontWeight.Normal,
+                                                fontSize = 13.sp
+                                            )
+                                            Text(
+                                                tier.description,
+                                                fontSize = 10.5.sp,
+                                                color = Color.Gray
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        onSelectPromptTier(tier)
+                                        showTierMenu = false
+                                    }
+                                )
+                            }
+                        }
                     }
 
                     OutlinedButton(
@@ -920,6 +1120,14 @@ private fun LiveSandboxPane(
 ) {
     var stickDeflection by remember { mutableStateOf(Pair(0f, 0f)) }
 
+    // Effective metadata from compiled document (authoritative source of truth)
+    val effCategory = compiledDoc.manifest.category.ifBlank { category }
+    val effControl = compiledDoc.manifest.defaultControl.ifBlank { defaultControl }
+    val effId = compiledDoc.manifest.id.ifBlank { componentId }
+    val effName = compiledDoc.manifest.name.ifBlank { componentName }
+    val effWidthDp = if (compiledDoc.manifest.widthDp > 0) compiledDoc.manifest.widthDp else targetWidthDp
+    val effHeightDp = if (compiledDoc.manifest.heightDp > 0) compiledDoc.manifest.heightDp else targetHeightDp
+
     Column(
         modifier = modifier
             .glassCard()
@@ -974,7 +1182,7 @@ private fun LiveSandboxPane(
             val maxBoxW = maxWidth * 0.95f
             val maxBoxH = maxHeight * 0.96f
 
-            val aspect = targetWidthDp.toFloat() / targetHeightDp.toFloat()
+            val aspect = effWidthDp.toFloat() / effHeightDp.toFloat()
             val idealDimension = (maxBoxH * 0.88f).coerceIn(160.dp, 460.dp)
             val (boxW, boxH) = if (aspect >= 1.0f) {
                 val w = minOf(maxBoxW, idealDimension * aspect, 460.dp)
@@ -1023,7 +1231,14 @@ private fun LiveSandboxPane(
         }
 
         // Live Animation & Physics Stats Strip
-        val isStick = category.equals("JOYSTICK", ignoreCase = true) || defaultControl.uppercase() in listOf("LS", "RS")
+        val isStick = effCategory.equals("JOYSTICK", ignoreCase = true) ||
+                effCategory.equals("TOUCHPAD", ignoreCase = true) ||
+                effControl.uppercase() in listOf(
+                    com.sanket.tools.nexpad.category.ControlKey.LS.key,
+                    com.sanket.tools.nexpad.category.ControlKey.RS.key,
+                    com.sanket.tools.nexpad.category.ControlKey.LTP.key,
+                    com.sanket.tools.nexpad.category.ControlKey.RTP.key
+                )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1041,8 +1256,13 @@ private fun LiveSandboxPane(
                 val dy = stickDeflection.second
                 val xStr = if (dx >= 0f) "+${"%.2f".format(dx)}" else "%.2f".format(dx)
                 val yStr = if (dy >= 0f) "+${"%.2f".format(dy)}" else "%.2f".format(dy)
+                val isRightStick = effControl.uppercase() in listOf(
+                    com.sanket.tools.nexpad.category.ControlKey.RS.key,
+                    com.sanket.tools.nexpad.category.ControlKey.RTP.key
+                ) || compiledDoc.manifest.id.contains("rtp", ignoreCase = true)
+                val stickName = if (isRightStick) "RS Stick" else "LS Stick"
                 Text(
-                    "Stick: X:$xStr Y:$yStr",
+                    "$stickName: X:$xStr Y:$yStr",
                     color = if (dx != 0f || dy != 0f) Color(0xFF10B981) else Color.White.copy(alpha = 0.7f),
                     fontWeight = FontWeight.Bold,
                     fontSize = 10.5.sp
@@ -1076,10 +1296,10 @@ private fun LiveSandboxPane(
                         .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
                         .padding(horizontal = 5.dp, vertical = 2.dp)
                 ) {
-                    Text(text = componentId, color = NeonPalette.Cyan, fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                    Text(text = effId, color = NeonPalette.Cyan, fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
                 }
                 Text(
-                    text = componentName,
+                    text = effName,
                     color = Color.White,
                     fontSize = 10.5.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -1092,9 +1312,9 @@ private fun LiveSandboxPane(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "Key: $defaultControl", color = Color(0xFF4ADE80), fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+                Text(text = "Key: $effControl", color = Color(0xFF4ADE80), fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
                 Text(text = "•", color = Color.White.copy(alpha = 0.3f), fontSize = 10.sp)
-                Text(text = category, color = Color.White.copy(alpha = 0.7f), fontSize = 10.sp)
+                Text(text = effCategory, color = Color.White.copy(alpha = 0.7f), fontSize = 10.sp)
             }
         }
 
