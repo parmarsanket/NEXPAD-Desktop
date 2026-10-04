@@ -10,8 +10,10 @@ import java.io.IOException
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.asCoroutineDispatcher
 
 /**
  * Manages ultra-low latency ADB Bridge connectivity using Unix Domain Sockets (localabstract)
@@ -20,12 +22,15 @@ import java.util.concurrent.atomic.AtomicInteger
  * Key Optimizations:
  * 1. Zero driver swap / UAC prompt required (uses standard Android USB debugging).
  * 2. Reuses AoaFrameDecoder for streaming byte extraction with zero memory allocations.
- * 3. TCP_NODELAY = true with small buffers to eliminate Nagle buffering and delayed ACKs.
- * 4. 200 Hz input streaming and 60 Hz feedback / RTT echo pipeline.
+ * 3. TCP_NODELAY = true with generous buffers to eliminate Nagle buffering and sliding window stalls.
+ * 4. Dedicated high-priority dispatcher and instant inline RTT echo with zero thread hops.
  */
 class AdbBridgeManager(
     private val tcpPort: Int = 9999
 ) {
+    private val adbDispatcher = Executors.newFixedThreadPool(2) { runnable ->
+        Thread(runnable, "AdbStreamThread").apply { isDaemon = true }
+    }.asCoroutineDispatcher()
     companion object {
         private const val ABSTRACT_SOCKET_NAME = "nexpad_controller"
         private const val READ_BUFFER_SIZE = 4096
@@ -150,6 +155,7 @@ class AdbBridgeManager(
             if (serverSocket == null || serverSocket?.isClosed == true) {
                 serverSocket = ServerSocket(tcpPort, 1, InetAddress.getByName("127.0.0.1")).apply {
                     soTimeout = 2000 // 2s timeout for accept so we don't block indefinitely
+                    setPerformancePreferences(0, 2, 1) // Prioritize lowest latency
                 }
                 println("[ADB/Bridge] Listening on 127.0.0.1:$tcpPort for ADB client connection.")
             }
@@ -240,66 +246,64 @@ class AdbBridgeManager(
         clientSocket = socket
         isConnected.set(true)
 
-        // Ultra-low latency socket configuration
+        // Ultra-low latency socket configuration (generous buffers prevent TCP window exhaustion)
         try {
             socket.tcpNoDelay = true
-            socket.sendBufferSize = 1024
-            socket.receiveBufferSize = 1024
+            socket.setPerformancePreferences(0, 2, 1) // Prioritize lowest latency
+            socket.sendBufferSize = 65536
+            socket.receiveBufferSize = 65536
         } catch (_: Exception) {}
 
         println("[ADB/Bridge] Connected to ${device.displayName} via ADB tunnel!")
         onAdbConnected?.invoke(device.displayName)
 
-        val latestEchoSequence = AtomicInteger(0)
         val latestLossPctByte = AtomicInteger(0)
-        val triggerOutChannel = Channel<Unit>(Channel.CONFLATED)
+        val outLock = Any()
+        var currentFeedback = GamepadFeedback(0, 0)
 
-        connectionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        connectionScope = CoroutineScope(SupervisorJob() + adbDispatcher)
 
-        // Outbound Feedback / Rumble / RTT Echo Loop
-        val outJob = connectionScope?.launch {
-            val out = socket.getOutputStream()
+        val out = socket.getOutputStream()
 
-            // Send initial connected frame with PC hostname so phone learns laptop name
-            try {
-                val pcName = System.getenv("COMPUTERNAME")
-                    ?: try { InetAddress.getLocalHost().hostName } catch (_: Exception) { null }
-                    ?: "Windows PC"
-                val pcBytes = pcName.toByteArray(Charsets.UTF_8)
-                val safeLen = pcBytes.size.coerceAtMost(255)
-                val hsBytes = ByteArray(2 + safeLen)
-                hsBytes[0] = NexpadProtocol.PACKET_TYPE_CONNECTED
-                hsBytes[1] = safeLen.toByte()
-                System.arraycopy(pcBytes, 0, hsBytes, 2, safeLen)
+        // Send initial connected frame with PC hostname so phone learns laptop name
+        try {
+            val pcName = getHostDisplayName()
+            val pcBytes = pcName.toByteArray(Charsets.UTF_8)
+            val safeLen = pcBytes.size.coerceAtMost(255)
+            val hsBytes = ByteArray(2 + safeLen)
+            hsBytes[0] = NexpadProtocol.PACKET_TYPE_CONNECTED
+            hsBytes[1] = safeLen.toByte()
+            System.arraycopy(pcBytes, 0, hsBytes, 2, safeLen)
+            synchronized(outLock) {
                 out.write(hsBytes)
                 out.flush()
-            } catch (_: Exception) {}
+            }
+        } catch (_: Exception) {}
 
-            val feedbackBytes = ByteArray(NexpadProtocol.FEEDBACK_PACKET_SIZE)
-            var lastFeedback = GamepadFeedback(0, 0)
-
+        // Outbound Rumble / Heartbeat keepalive loop (dedicated coroutine on adbDispatcher)
+        val outJob = connectionScope?.launch(adbDispatcher) {
+            val heartbeatBytes = ByteArray(NexpadProtocol.FEEDBACK_PACKET_SIZE)
             try {
                 while (isActive && isConnected.get()) {
-                    withTimeoutOrNull(HEARTBEAT_FALLBACK_MS) {
-                        triggerOutChannel.receive()
+                    val nextFeedback = withTimeoutOrNull(HEARTBEAT_FALLBACK_MS) {
+                        feedbackChannel.receive()
+                    }
+                    if (nextFeedback != null) {
+                        currentFeedback = nextFeedback
                     }
 
-                    var nextFeedback = feedbackChannel.tryReceive().getOrNull()
-                    while (nextFeedback != null) {
-                        lastFeedback = nextFeedback
-                        nextFeedback = feedbackChannel.tryReceive().getOrNull()
+                    // Heartbeat or rumble update: send with echoSequenceNumber = 0 so phone ignores it for RTT
+                    synchronized(outLock) {
+                        NexpadProtocol.encodeFeedback(
+                            feedback = currentFeedback,
+                            echoSequenceNumber = 0,
+                            packetLossByte = latestLossPctByte.get().toByte(),
+                            out = heartbeatBytes,
+                            offset = 0
+                        )
+                        out.write(heartbeatBytes)
+                        out.flush()
                     }
-
-                    NexpadProtocol.encodeFeedback(
-                        feedback = lastFeedback,
-                        echoSequenceNumber = latestEchoSequence.get(),
-                        packetLossByte = latestLossPctByte.get().toByte(),
-                        out = feedbackBytes,
-                        offset = 0
-                    )
-
-                    out.write(feedbackBytes)
-                    out.flush()
                 }
             } catch (_: Exception) {}
         }
@@ -309,6 +313,7 @@ class AdbBridgeManager(
             val input = socket.getInputStream()
             val rawBuffer = ByteArray(READ_BUFFER_SIZE)
             val decoder = AoaFrameDecoder(NexpadProtocol.INPUT_PACKET_SIZE)
+            val echoBytes = ByteArray(NexpadProtocol.FEEDBACK_PACKET_SIZE)
             var hasLoggedFirstPacket = false
 
             var lastSequenceNumber = Int.MIN_VALUE
@@ -336,7 +341,6 @@ class AdbBridgeManager(
                         }
                         receivedInWindow++
                         lastSequenceNumber = gamepadInput.sequenceNumber
-                        latestEchoSequence.set(gamepadInput.sequenceNumber)
 
                         if (packetCount % STATS_WINDOW_PACKETS == 0) {
                             val total = lostInWindow + receivedInWindow
@@ -346,7 +350,18 @@ class AdbBridgeManager(
                             receivedInWindow = 0
                         }
 
-                        triggerOutChannel.trySend(Unit)
+                        // IMMEDIATE INLINE ECHO: Send echo back to phone instantly with zero thread hop or channel delay!
+                        synchronized(outLock) {
+                            NexpadProtocol.encodeFeedback(
+                                feedback = currentFeedback,
+                                echoSequenceNumber = gamepadInput.sequenceNumber,
+                                packetLossByte = latestLossPctByte.get().toByte(),
+                                out = echoBytes,
+                                offset = 0
+                            )
+                            out.write(echoBytes)
+                            out.flush()
+                        }
                     }
 
                     onInputReceived?.invoke(gamepadInput)

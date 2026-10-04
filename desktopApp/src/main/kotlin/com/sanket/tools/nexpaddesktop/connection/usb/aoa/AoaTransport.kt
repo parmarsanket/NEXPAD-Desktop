@@ -15,10 +15,16 @@ import org.usb4java.DeviceHandle
 import org.usb4java.LibUsb
 import java.nio.ByteBuffer
 import java.nio.IntBuffer
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.asCoroutineDispatcher
 
 object AoaTransport {
+
+    private val aoaDispatcher = Executors.newFixedThreadPool(2) { runnable ->
+        Thread(runnable, "AoaStreamThread").apply { isDaemon = true }
+    }.asCoroutineDispatcher()
 
     private const val BULK_READ_BUFFER_SIZE = 4096
     private const val FEEDBACK_BUFFER_SIZE = 10
@@ -63,8 +69,8 @@ object AoaTransport {
         val triggerOutChannel = Channel<Unit>(Channel.CONFLATED)
 
         try {
-            // Launch parallel IN/OUT coroutines
-            val inJob = launch(Dispatchers.IO) {
+            // Launch parallel IN/OUT coroutines on dedicated AOA thread pool
+            val inJob = launch(aoaDispatcher) {
                 runInLoop(
                     handle = handle,
                     bulkInEndpoint = endpoints.bulkIn,
@@ -76,7 +82,7 @@ object AoaTransport {
                     onInputReceived = onInputReceived
                 )
             }
-            val outJob = launch(Dispatchers.IO) {
+            val outJob = launch(aoaDispatcher) {
                 runOutLoop(handle, endpoints.bulkOut, feedbackChannel, fileSyncChannel, triggerOutChannel, latestEchoSequence, latestLossPctByte)
             }
 
@@ -143,7 +149,7 @@ object AoaTransport {
 
                 NexpadProtocol.encodeFeedback(
                     feedback = lastFeedback,
-                    echoSequenceNumber = latestEchoSequence.get(),
+                    echoSequenceNumber = latestEchoSequence.getAndSet(0),
                     packetLossByte = latestLossPctByte.get().toByte(),
                     out = feedbackBytes,
                     offset = 0

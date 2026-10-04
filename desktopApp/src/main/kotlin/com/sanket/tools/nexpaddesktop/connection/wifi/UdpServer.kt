@@ -16,6 +16,8 @@ import io.ktor.network.sockets.Datagram
 import io.ktor.network.sockets.SocketAddress
 import io.ktor.utils.io.core.ByteReadPacket
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.encodeToString
 
 import io.ktor.network.sockets.toJavaAddress
@@ -68,6 +70,7 @@ class UdpServer(
     @Volatile private var cachedLossPctByte: Byte = 0 // Cache last rumble state for Ping Echoes
     private var lostInWindow = 0
     private var receivedInWindow = 0
+    private val sendMutex = Mutex()
 
     // Single Active Transport Guard: drop incoming UDP packets if another transport is active
     var isExternalTransportActive: () -> Boolean = { false }
@@ -151,6 +154,7 @@ class UdpServer(
                 // Formal Handshake Protocol
                 if (firstByte == NexpadProtocol.PACKET_TYPE_CONNECT) {
                     println("🤝 [UDP DEBUG] Received CONNECT handshake from ${formatAddress(clientAddress)}")
+                    lastSequenceNumber = Int.MIN_VALUE
                     
                     var deviceName = "Unknown Device"
                     var connType = 1
@@ -185,7 +189,9 @@ class UdpServer(
                     buffer.put(safeLen.toByte())
                     buffer.put(pcBytes, 0, safeLen)
                     val responsePacket = Datagram(ByteReadPacket(buffer.array()), datagram.address)
-                    socket.send(responsePacket)
+                    sendMutex.withLock {
+                        socket.send(responsePacket)
+                    }
                     continue
                 } else if (firstByte == NexpadProtocol.PACKET_TYPE_DISCONNECT) {
                     println("👋 [UDP DEBUG] Received DISCONNECT from ${formatAddress(clientAddress)}")
@@ -251,7 +257,9 @@ class UdpServer(
         try {
             val bytes = NexpadProtocol.encodeFeedback(feedback, echoSequenceNumber, packetLossByte)
             val packet = Datagram(ByteReadPacket(bytes), target)
-            socket.send(packet)
+            sendMutex.withLock {
+                socket.send(packet)
+            }
         } catch (e: Exception) {
             e.printStackTrace()
         }
