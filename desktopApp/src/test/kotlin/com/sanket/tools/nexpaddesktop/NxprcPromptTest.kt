@@ -2153,13 +2153,29 @@ class NxprcPromptTest {
         assertEquals(VisualDensity.CLEAN, compactOpts.visualDensity)
         assertEquals(Creativity.LOW, compactOpts.creativity)
 
+        // Standard tier binds to Auto complexity & Balanced density
+        val standardOpts = AiDesignOptions(modelCapability = ModelCapability.STANDARD)
+        assertEquals(Complexity.AUTO, standardOpts.complexity)
+        assertEquals(VisualDensity.BALANCED, standardOpts.visualDensity)
+        assertEquals(Creativity.MEDIUM, standardOpts.creativity)
+
         // Frontier tier binds to Detailed complexity & Dense density
         val frontierOpts = AiDesignOptions(modelCapability = ModelCapability.FRONTIER)
         assertEquals(Complexity.DETAILED, frontierOpts.complexity)
         assertEquals(VisualDensity.DENSE, frontierOpts.visualDensity)
         assertEquals(Creativity.HIGH, frontierOpts.creativity)
 
-        // User custom style integration
+        // Default empty request enters interactive mode (user dictates style to AI directly in chat)
+        val defaultStandardPrompt = NxprcAiPromptBuilder.buildPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(modelCapability = ModelCapability.STANDARD)
+        )
+        assertTrue(defaultStandardPrompt.contains("INTERACTIVE MODE"))
+
+        // User custom style integration when provided programmatically
         val themedPrompt = NxprcAiPromptBuilder.buildPrompt(
             control = "A",
             category = "BUTTON",

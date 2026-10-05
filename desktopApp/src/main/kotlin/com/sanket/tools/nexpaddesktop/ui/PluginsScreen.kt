@@ -121,7 +121,6 @@ fun PluginsScreen(
 
     var showAiPromptModal by remember { mutableStateOf(false) }
     var selectedPromptTier by remember { mutableStateOf(PromptTier.STANDARD) }
-    var userThemeText by remember { mutableStateOf("") }
     var showFullAuditPreview by remember { mutableStateOf(false) }
     var showFullScreenLayerStudio by remember { mutableStateOf(false) }
     var promptCopiedBanner by remember { mutableStateOf<String?>(null) }
@@ -310,11 +309,7 @@ fun PluginsScreen(
                             category = category,
                             widthDp = targetWidthDp,
                             heightDp = targetHeightDp,
-                            options = AiDesignOptions(
-                                modelCapability = selectedPromptTier.modelCapability,
-                                style = userThemeText.takeIf { it.isNotBlank() },
-                                userRequest = userThemeText
-                            )
+                            options = AiDesignOptions(modelCapability = selectedPromptTier.modelCapability)
                         )
                         val ok = safeCopyToClipboard(prompt)
                         promptCopiedBanner = if (ok) "✓ ${selectedPromptTier.icon} ${selectedPromptTier.displayName} AI Prompt for $defaultControl ($category) copied!" else "⚠️ Clipboard busy — please try again"
@@ -462,11 +457,7 @@ fun PluginsScreen(
                                     category = category,
                                     widthDp = targetWidthDp,
                                     heightDp = targetHeightDp,
-                                    options = AiDesignOptions(
-                                        modelCapability = selectedPromptTier.modelCapability,
-                                        style = userThemeText.takeIf { it.isNotBlank() },
-                                        userRequest = userThemeText
-                                    )
+                                    options = AiDesignOptions(modelCapability = selectedPromptTier.modelCapability)
                                 )
                                 val ok = safeCopyToClipboard(prompt)
                                 promptCopiedBanner = if (ok) "✓ ${selectedPromptTier.icon} ${selectedPromptTier.displayName} AI Prompt for $defaultControl ($category) copied!" else "⚠️ Clipboard busy — please try again"
@@ -542,16 +533,14 @@ fun PluginsScreen(
         // ==========================================
         if (showAiPromptModal) {
             var modalTier by remember { mutableStateOf(selectedPromptTier) }
-            val generatedPrompt = remember(defaultControl, category, targetWidthDp, targetHeightDp, modalTier, userThemeText) {
+            val generatedPrompt = remember(defaultControl, category, targetWidthDp, targetHeightDp, modalTier) {
                 NxprcHtmlCssConverter.generateAiPrompt(
                     control = defaultControl,
                     category = category,
                     widthDp = targetWidthDp,
                     heightDp = targetHeightDp,
                     options = AiDesignOptions(
-                        modelCapability = modalTier.modelCapability,
-                        style = userThemeText.takeIf { it.isNotBlank() },
-                        userRequest = userThemeText
+                        modelCapability = modalTier.modelCapability
                     )
                 )
             }
@@ -646,84 +635,6 @@ fun PluginsScreen(
                                         color = if (modalTier == tier) Color.White else Color.White.copy(alpha = 0.6f),
                                         fontWeight = if (modalTier == tier) FontWeight.Bold else FontWeight.Normal,
                                         fontSize = 11.5.sp
-                                    )
-                                }
-                            }
-                        }
-
-                        // Style / Theme / Concept User Input
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedTextField(
-                                value = userThemeText,
-                                onValueChange = { userThemeText = it },
-                                placeholder = {
-                                    Text(
-                                        "Enter style, theme or custom prompt (e.g. Cyberpunk Neon, Spider-Man, Anime Mecha...)",
-                                        color = Color.Gray,
-                                        fontSize = 11.5.sp
-                                    )
-                                },
-                                label = {
-                                    Text("🎨 Style / Theme / Concept", color = NeonPalette.Cyan, fontSize = 11.sp)
-                                },
-                                singleLine = true,
-                                modifier = Modifier.weight(1f),
-                                textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = Color.White),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = NeonPalette.Cyan,
-                                    unfocusedBorderColor = Color(0xFF2A364F),
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    cursorColor = NeonPalette.Cyan
-                                )
-                            )
-                            if (userThemeText.isNotBlank()) {
-                                OutlinedButton(
-                                    onClick = { userThemeText = "" },
-                                    shape = RoundedCornerShape(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                    modifier = Modifier.height(42.dp)
-                                ) {
-                                    Text("Clear", color = Color.LightGray, fontSize = 11.sp)
-                                }
-                            }
-                        }
-
-                        // Quick Suggestion Chips
-                        Row(
-                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            val presetThemes = listOf(
-                                "Cyberpunk Neon",
-                                "Spider-Man",
-                                "Retro Arcade",
-                                "Anime Mecha",
-                                "Glassmorphism",
-                                "Brushed Metal"
-                            )
-                            presetThemes.forEach { theme ->
-                                val isSelected = userThemeText.equals(theme, ignoreCase = true)
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(if (isSelected) NeonPalette.Cyan.copy(alpha = 0.2f) else Color(0xFF131A2A))
-                                        .border(1.dp, if (isSelected) NeonPalette.Cyan else Color(0xFF222F46), RoundedCornerShape(6.dp))
-                                        .clickable {
-                                            userThemeText = if (isSelected) "" else theme
-                                        }
-                                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                                ) {
-                                    Text(
-                                        text = theme,
-                                        fontSize = 10.5.sp,
-                                        color = if (isSelected) NeonPalette.Cyan else Color.White.copy(alpha = 0.75f),
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                     )
                                 }
                             }
