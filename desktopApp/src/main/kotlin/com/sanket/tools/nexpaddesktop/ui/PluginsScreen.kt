@@ -66,7 +66,7 @@ private enum class PromptTier(
 ) {
     COMPACT("⚡", "Compact", "Simple • Clean • Small/Local LLMs", ModelCapability.COMPACT),
     STANDARD("🎮", "Standard", "Auto • Balanced • GPT-4o, Claude Sonnet", ModelCapability.STANDARD),
-    FRONTIER("🚀", "Frontier", "Detailed • Dense • Claude 3.7, o1/o3", ModelCapability.FRONTIER)
+    FRONTIER("🚀", "Frontier", "Unlimited • Dense • Claude 3.7, o1/o3", ModelCapability.FRONTIER)
 }
 
 private fun safeCopyToClipboard(text: String): Boolean {
@@ -578,7 +578,7 @@ fun PluginsScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    "${modalTier.icon} ${modalTier.displayName} tier (${modalTier.modelCapability.defaultComplexity.name.lowercase().replaceFirstChar { it.uppercase() }} • ${modalTier.modelCapability.defaultVisualDensity.name.lowercase().replaceFirstChar { it.uppercase() }}) • Compatible with: ${when(modalTier) {
+                                    "${modalTier.icon} ${modalTier.displayName} tier (${if (modalTier == PromptTier.FRONTIER) "Unlimited" else modalTier.modelCapability.defaultComplexity.name.lowercase().replaceFirstChar { it.uppercase() }} • ${modalTier.modelCapability.defaultVisualDensity.name.lowercase().replaceFirstChar { it.uppercase() }}) • Compatible with: ${when(modalTier) {
                                         PromptTier.COMPACT -> "Gemma, Llama 3.2, DeepSeek R1-Distill, Haiku"
                                         PromptTier.STANDARD -> "GPT-4o, Claude 3.5 Sonnet, Gemini 1.5 Pro"
                                         PromptTier.FRONTIER -> "Claude 3.7 Opus, o1/o3, GPT-4.5, Gemini 2.0 Pro"

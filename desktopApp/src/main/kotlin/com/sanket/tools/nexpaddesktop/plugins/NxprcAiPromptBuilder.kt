@@ -60,8 +60,13 @@ data class ComplexityBudget(
     val maxLayers: Int,
     val maxSvgNodes: Int,
     val guidance: String,
-    val targetLayers: Int = (minLayers + maxLayers) / 2
-)
+    val targetLayers: Int = (minLayers + (if (maxLayers >= 1000) 16 else maxLayers)) / 2
+) {
+    val isUnlimitedLayers: Boolean get() = maxLayers >= 1000
+    val isUnlimitedSvg: Boolean get() = maxSvgNodes >= 1000
+    val layersDisplay: String get() = if (isUnlimitedLayers) "${minLayers}+ layers (unlimited)" else "$minLayers..$maxLayers layers"
+    val svgNodesDisplay: String get() = if (isUnlimitedSvg) "unlimited SVG nodes" else "up to $maxSvgNodes SVG nodes"
+}
 
 /**
  * Visual layering, vector detail, and mechanical construction complexity target.
@@ -84,8 +89,14 @@ enum class Complexity(
         ComplexityBudget(minLayers = 5, maxLayers = 9, maxSvgNodes = 10, guidance = "Use multiple meaningful layers, material transitions, secondary detailing, and moderately complex SVG geometry", targetLayers = 7)
     ),
     EXTREME(
-        "Extreme (use the full supported CSS/SVG expressive range when useful, including intricate vector geometry and layered surface treatment; do not add meaningless decoration just to increase complexity)",
-        ComplexityBudget(minLayers = 7, maxLayers = 14, maxSvgNodes = 20, guidance = "Use the full supported CSS/SVG expressive range when useful, including intricate vector geometry and layered surface treatment", targetLayers = 10)
+        "Extreme (use the full supported CSS/SVG expressive range; unconstrained architectural freedom with zero artificial layer or SVG caps)",
+        ComplexityBudget(
+            minLayers = 8,
+            maxLayers = Int.MAX_VALUE,
+            maxSvgNodes = Int.MAX_VALUE,
+            guidance = "No artificial caps on layers or SVG vector nodes; scale freely to match the most intricate and complex design concepts",
+            targetLayers = 16
+        )
     )
 }
 
@@ -165,9 +176,9 @@ enum class ModelCapability(
     ),
     FRONTIER(
         id = "frontier",
-        maxContextTokens = 8192,
+        maxContextTokens = Int.MAX_VALUE,
         syntaxSkeletonRecommended = false,
-        defaultComplexity = Complexity.DETAILED,
+        defaultComplexity = Complexity.EXTREME,
         defaultCreativity = Creativity.HIGH,
         defaultVisualDensity = VisualDensity.DENSE,
         defaultFidelity = Fidelity.INSPIRED
@@ -252,7 +263,7 @@ data class AiDesignOptions(
         val sb = StringBuilder()
         sb.append("### USER DESIGN PARAMETERS & PREFERENCES:\n")
         sb.append("- **CREATIVITY**: ${creativity.promptDescription}\n")
-        sb.append("- **COMPLEXITY**: ${complexity.promptDescription} (Budget: ${complexity.budget.minLayers}..${complexity.budget.maxLayers} layers, target ${complexity.budget.targetLayers}, up to ${complexity.budget.maxSvgNodes} SVG nodes)\n")
+        sb.append("- **COMPLEXITY**: ${complexity.promptDescription} (Budget: ${complexity.budget.layersDisplay}, target ${complexity.budget.targetLayers}, ${complexity.budget.svgNodesDisplay})\n")
         sb.append("- **FIDELITY**: ${fidelity.promptDescription}\n")
         sb.append("- **VISUAL DENSITY**: ${visualDensity.promptDescription}\n")
         if (!style.isNullOrBlank()) sb.append("- **STYLE**: $style\n")
@@ -484,7 +495,9 @@ data class ResolvedDesign(
         }
         sb.append("- **LABEL**: ${label.value} [${label.source}]\n")
         sb.append("- **CREATIVITY**: ${creativity.promptDescription}\n")
-        sb.append("- **COMPLEXITY**: ${complexity.promptDescription} (Target: ${complexity.budget.targetLayers} layers, max ${complexity.budget.maxLayers} layers, up to ${complexity.budget.maxSvgNodes} SVG nodes)\n")
+        val maxLayerText = if (complexity.budget.isUnlimitedLayers) "unlimited" else "${complexity.budget.maxLayers}"
+        val maxSvgText = if (complexity.budget.isUnlimitedSvg) "unlimited" else "up to ${complexity.budget.maxSvgNodes}"
+        sb.append("- **COMPLEXITY**: ${complexity.promptDescription} (Target: ${complexity.budget.targetLayers} layers, max $maxLayerText layers, $maxSvgText SVG nodes)\n")
         sb.append("- **FIDELITY**: ${fidelity.promptDescription}\n")
         sb.append("- **VISUAL DENSITY**: ${visualDensity.promptDescription}\n")
         return sb.toString()
@@ -964,6 +977,12 @@ To ensure reliable programmatic compilation, return ONLY the complete, self-cont
 """.trimIndent()
 
     private fun frontierEngineBoundaries(rootClass: String, widthDp: Int = 96, heightDp: Int = 96): String = """
+### SECTION F0 — UNLIMITED ARCHITECTURAL EXPRESSION & ZERO COMPLEXITY CAPS
+Frontier reasoning models possess unconstrained token capacity and deep structural synthesis intelligence. There is NO upper limit on layer count, SVG geometry complexity, or mechanical detailing:
+- **Unlimited Layering**: There is NO upper limit on DOM layer count or structural depth. Stack as many background, bevel, texture, shadow, gloss, emblem, and mechanical plates as necessary to build an ultra-complex, authentic physical component.
+- **Unlimited SVG Vector Detail**: You have complete freedom to author intricate multi-path SVG geometry, complex engravings, mechanical linework, and high-fidelity emblems without fear of complexity limits.
+- **Uncompromising Craftsmanship**: When asked for complex, high-end, or intricate designs, realize every nuance with full expressive power.
+
 ### SECTION F1 — COMPILATION PIPELINE TRANSPARENCY (FRONTIER DEPTH)
 The NXPRC compiler processes your HTML+CSS through this exact pipeline:
 1. **HTML Parsing**: Your HTML is parsed into a `DomNode` tree and embedded `<style>` into a `CssStylesheet`.
@@ -1062,7 +1081,7 @@ Before writing ANY HTML/CSS code, you MUST execute this reasoning chain:
 
 **Step 4 — TRANSFORM CHECK**: Verify ALL transforms are 2D affine only. No `perspective`, `rotateX`, `rotateY`, or `rotate3d`. Confirm `transform-origin` is set explicitly when using rotate/scale.
 
-**Step 5 — BUDGET CHECK**: Count total DOM nodes vs. the complexity budget. Estimate compiled layer count vs. `targetLayers`. Verify spring physics variables are in `:root`.
+**Step 5 — BUDGET CHECK**: Count total DOM nodes. For Frontier tier, there is NO artificial layer or SVG cap — you have complete architectural freedom to produce ultra-complex, high-density designs with unconstrained layering and SVG paths as requested by the user. Verify spring physics variables are in `:root`.
 """.trimIndent()
 
     private fun renderVisualProfileOrCustomDirective(

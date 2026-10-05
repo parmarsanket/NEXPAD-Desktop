@@ -2159,11 +2159,25 @@ class NxprcPromptTest {
         assertEquals(VisualDensity.BALANCED, standardOpts.visualDensity)
         assertEquals(Creativity.MEDIUM, standardOpts.creativity)
 
-        // Frontier tier binds to Detailed complexity & Dense density
+        // Frontier tier binds to Extreme/Unlimited complexity & Dense density, with unlimited context tokens
         val frontierOpts = AiDesignOptions(modelCapability = ModelCapability.FRONTIER)
-        assertEquals(Complexity.DETAILED, frontierOpts.complexity)
+        assertEquals(Complexity.EXTREME, frontierOpts.complexity)
         assertEquals(VisualDensity.DENSE, frontierOpts.visualDensity)
         assertEquals(Creativity.HIGH, frontierOpts.creativity)
+        assertEquals(Int.MAX_VALUE, ModelCapability.FRONTIER.maxContextTokens)
+        assertTrue(frontierOpts.complexity.budget.isUnlimitedLayers)
+        assertTrue(frontierOpts.complexity.budget.isUnlimitedSvg)
+
+        // Frontier prompt contains Section F0 for unlimited architectural freedom
+        val frontierBasePrompt = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = frontierOpts
+        )
+        assertTrue(frontierBasePrompt.contains("SECTION F0 — UNLIMITED ARCHITECTURAL EXPRESSION & ZERO COMPLEXITY CAPS"))
+        assertTrue(frontierBasePrompt.contains("No Layer Limit") || frontierBasePrompt.contains("Unlimited Layering"))
 
         // Default empty request enters interactive mode (user dictates style to AI directly in chat)
         val defaultStandardPrompt = NxprcAiPromptBuilder.buildPrompt(
