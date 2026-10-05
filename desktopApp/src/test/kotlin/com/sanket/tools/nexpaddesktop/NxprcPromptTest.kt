@@ -2144,6 +2144,37 @@ class NxprcPromptTest {
         val glyph = doc.canvas.layers[7] as com.sanket.tools.nexpad.nxprc.CanvasLayer.CenterGlyph
         assertEquals("A", glyph.text, "Glyph text must be 'A'")
     }
+
+    @Test
+    fun testTierAutomaticBindingAndStylePromptIntegration() {
+        // Compact tier binds to Simple complexity & Clean density
+        val compactOpts = AiDesignOptions(modelCapability = ModelCapability.COMPACT)
+        assertEquals(Complexity.SIMPLE, compactOpts.complexity)
+        assertEquals(VisualDensity.CLEAN, compactOpts.visualDensity)
+        assertEquals(Creativity.LOW, compactOpts.creativity)
+
+        // Frontier tier binds to Detailed complexity & Dense density
+        val frontierOpts = AiDesignOptions(modelCapability = ModelCapability.FRONTIER)
+        assertEquals(Complexity.DETAILED, frontierOpts.complexity)
+        assertEquals(VisualDensity.DENSE, frontierOpts.visualDensity)
+        assertEquals(Creativity.HIGH, frontierOpts.creativity)
+
+        // User custom style integration
+        val themedPrompt = NxprcAiPromptBuilder.buildPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(
+                modelCapability = ModelCapability.FRONTIER,
+                style = "Cyberpunk Neon",
+                userRequest = "Cyberpunk Neon"
+            )
+        )
+        assertTrue(themedPrompt.contains("Cyberpunk Neon"))
+        assertTrue(themedPrompt.contains("<user_request>"))
+        assertTrue(themedPrompt.contains("### USER CUSTOM DESIGN DIRECTIVE [AUTHORITATIVE]"))
+    }
 }
 
 

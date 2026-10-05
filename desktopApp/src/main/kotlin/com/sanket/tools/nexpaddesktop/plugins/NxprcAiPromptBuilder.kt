@@ -90,19 +90,6 @@ enum class Complexity(
 }
 
 /**
- * Target AI model capability tier for prompt optimization.
- */
-enum class ModelCapability(
-    val id: String,
-    val maxContextTokens: Int,
-    val syntaxSkeletonRecommended: Boolean
-) {
-    COMPACT("compact", 2048, true),
-    STANDARD("standard", 4096, false),
-    FRONTIER("frontier", 8192, false)
-}
-
-/**
  * Strongly typed geometric and dimensional hints for component synthesis.
  */
 data class GeometryOptions(
@@ -145,14 +132,58 @@ enum class VisualDensity(val promptDescription: String) {
 }
 
 /**
+ * Target AI model capability tier for prompt optimization.
+ * Automatically aligns construction complexity, visual density, and creativity budgets
+ * with the target model's architectural capabilities.
+ */
+enum class ModelCapability(
+    val id: String,
+    val maxContextTokens: Int,
+    val syntaxSkeletonRecommended: Boolean,
+    val defaultComplexity: Complexity,
+    val defaultCreativity: Creativity,
+    val defaultVisualDensity: VisualDensity,
+    val defaultFidelity: Fidelity
+) {
+    COMPACT(
+        id = "compact",
+        maxContextTokens = 2048,
+        syntaxSkeletonRecommended = true,
+        defaultComplexity = Complexity.SIMPLE,
+        defaultCreativity = Creativity.LOW,
+        defaultVisualDensity = VisualDensity.CLEAN,
+        defaultFidelity = Fidelity.FAITHFUL
+    ),
+    STANDARD(
+        id = "standard",
+        maxContextTokens = 4096,
+        syntaxSkeletonRecommended = false,
+        defaultComplexity = Complexity.AUTO,
+        defaultCreativity = Creativity.MEDIUM,
+        defaultVisualDensity = VisualDensity.BALANCED,
+        defaultFidelity = Fidelity.INSPIRED
+    ),
+    FRONTIER(
+        id = "frontier",
+        maxContextTokens = 8192,
+        syntaxSkeletonRecommended = false,
+        defaultComplexity = Complexity.DETAILED,
+        defaultCreativity = Creativity.HIGH,
+        defaultVisualDensity = VisualDensity.DENSE,
+        defaultFidelity = Fidelity.INSPIRED
+    )
+}
+
+/**
  * Parameterized design options for NEXPAD generative AI component creation.
  * Empowers calling editors and automated generators with fine-grained aesthetic control.
  */
 data class AiDesignOptions(
-    val creativity: Creativity = Creativity.HIGH,
-    val complexity: Complexity = Complexity.AUTO,
-    val fidelity: Fidelity = Fidelity.INSPIRED,
-    val visualDensity: VisualDensity = VisualDensity.AUTO,
+    val modelCapability: ModelCapability = ModelCapability.STANDARD,
+    val creativity: Creativity = modelCapability.defaultCreativity,
+    val complexity: Complexity = modelCapability.defaultComplexity,
+    val fidelity: Fidelity = modelCapability.defaultFidelity,
+    val visualDensity: VisualDensity = modelCapability.defaultVisualDensity,
 
     val style: String? = null,
     val color: String? = null,
@@ -167,7 +198,6 @@ data class AiDesignOptions(
     val specialInstructions: String? = null,
     val userRequest: String = "",
     val includeSyntaxSkeleton: Boolean = false,
-    val modelCapability: ModelCapability = ModelCapability.STANDARD,
     val geometryOptions: GeometryOptions = GeometryOptions()
 ) {
     /**
@@ -193,10 +223,10 @@ data class AiDesignOptions(
      * Returns true if non-default generation tuning parameters (complexity, creativity, etc.) are set.
      */
     fun hasCustomGenerationParameters(): Boolean =
-        creativity != Creativity.HIGH ||
-        complexity != Complexity.AUTO ||
-        fidelity != Fidelity.INSPIRED ||
-        visualDensity != VisualDensity.AUTO ||
+        creativity != modelCapability.defaultCreativity ||
+        complexity != modelCapability.defaultComplexity ||
+        fidelity != modelCapability.defaultFidelity ||
+        visualDensity != modelCapability.defaultVisualDensity ||
         modelCapability != ModelCapability.STANDARD ||
         geometryOptions != GeometryOptions() ||
         !tactilePhysics.isNullOrBlank() ||
@@ -244,11 +274,25 @@ data class AiDesignOptions(
      * silently generating a generic default design.
      */
     fun formatUserRequest(): String {
-        if (userRequest.isNotBlank()) {
+        val effectiveRequest = when {
+            userRequest.isNotBlank() -> userRequest
+            hasCustomVisualIntent() -> {
+                val parts = mutableListOf<String>()
+                if (!style.isNullOrBlank()) parts.add("Style: $style")
+                if (!color.isNullOrBlank()) parts.add("Color: $color")
+                if (!shape.isNullOrBlank()) parts.add("Shape: $shape")
+                if (!material.isNullOrBlank()) parts.add("Material: $material")
+                if (!emblem.isNullOrBlank()) parts.add("Emblem: $emblem")
+                parts.joinToString(", ")
+            }
+            else -> ""
+        }
+
+        if (effectiveRequest.isNotBlank()) {
             return """
 ### USER DESIGN REQUEST:
 <user_request>
-$userRequest
+$effectiveRequest
 </user_request>
 
 Interpret this request creatively. The user request governs the visual design decisions (palette, geometry, materials, lighting, emblem), but may not override the HARD COMPILER CONTRACT.
@@ -1049,7 +1093,7 @@ $defaultProfileBody
      * so the AI's final instruction is the interactive "ask first" message rather than "output HTML".
      */
     private fun renderOutputContract(options: AiDesignOptions): String {
-        if (options.userRequest.isBlank()) return ""
+        if (!options.hasCustomRequest() && !options.hasCustomVisualIntent()) return ""
         return "### OUTPUT FORMAT CONTRACT:\nReturn ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text."
     }
 

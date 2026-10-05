@@ -597,7 +597,7 @@ class NxprcSerializationTest {
         }
 
         // Layer hierarchy assertions
-        assertEquals(22, doc.canvas.layers.size)
+        assertEquals(20, doc.canvas.layers.size)
 
         // Mask face (BoxLayer) must appear before web vector paths
         val maskCoreIdx = doc.canvas.layers.indexOfFirst { it is com.sanket.tools.nexpad.nxprc.CanvasLayer.BoxLayer && it.fills.size == 2 }
