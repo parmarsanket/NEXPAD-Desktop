@@ -209,7 +209,9 @@ data class AiDesignOptions(
     val specialInstructions: String? = null,
     val userRequest: String = "",
     val includeSyntaxSkeleton: Boolean = false,
-    val geometryOptions: GeometryOptions = GeometryOptions()
+    val geometryOptions: GeometryOptions = GeometryOptions(),
+    val seed: Long? = null,
+    val componentName: String? = null
 ) {
     /**
      * Returns true if explicit custom visual/thematic intent (style, color, shape, etc.) was provided.
@@ -1220,6 +1222,7 @@ ${NxprcPresets.getSyntaxSkeleton(control, category, widthDp, heightDp)}
 
     internal fun generateAbxyPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         val resolved = DesignResolver.resolve(control, category, options)
+        val seedProfile = NxprcSeedEngine.resolve(control, category, options.seed, options.componentName)
         val profile = when (control.uppercase()) {
             NexpadKeys.X -> ColorProfile("Vibrant Sapphire Blue", "#00B0FF", "rgba(0, 176, 255, 0.6)", "linear-gradient(145deg, #0284c7 0%, #0369a1 50%, #0c4a6e 100%)")
             NexpadKeys.Y -> ColorProfile("Radiant Solar Yellow", "#FFCC00", "rgba(255, 204, 0, 0.6)", "linear-gradient(145deg, #eab308 0%, #ca8a04 50%, #713f12 100%)")
@@ -1232,12 +1235,7 @@ ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Face Action Button for NEXPAD.
 
-### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control (Standard Gamepad Face Button)
-- **Category [GLOBAL-REQUIRED]**: $category
-- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
-- **Standard Color Profile [RECOMMENDED]**: ${profile.name} (Accent: ${profile.hexCode}, Glow: ${profile.glowRgba})
-- **Standard Core [RECOMMENDED]**: ${profile.coreGradient}
+${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, profile, "Standard Gamepad Face Button")}
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Momentary discrete user actuation with tactile depression and instant spring release.
@@ -1284,6 +1282,7 @@ ${renderOutputContract(options)}
 
     internal fun generateDpadPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         val resolved = DesignResolver.resolve(control, category, options)
+        val seedProfile = NxprcSeedEngine.resolve(control, category, options.seed, options.componentName)
         val arrowGlyph = when (control.uppercase()) {
             NexpadKeys.DOWN -> "▼"
             NexpadKeys.LEFT -> "◀"
@@ -1297,10 +1296,7 @@ ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller D-Pad Component for NEXPAD.
 
-### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control (${if (control.uppercase() == NexpadKeys.DPAD) "Unified 4-Way Cross Pad" else "Directional Arrow Button"})
-- **Category [GLOBAL-REQUIRED]**: $category
-- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px;
+${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, if (control.uppercase() == NexpadKeys.DPAD) "Unified 4-Way Cross Pad" else "Directional Arrow Button")}
 - **Directional Glyph [RECOMMENDED]**: $arrowGlyph
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
@@ -1346,15 +1342,15 @@ ${renderOutputContract(options)}
 
     internal fun generateTriggerPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         val resolved = DesignResolver.resolve(control, category, options)
+        val seedProfile = NxprcSeedEngine.resolve(control, category, options.seed, options.componentName)
+        val triggerRole = if (control.uppercase() == NexpadKeys.LT) "Left Trigger" else "Right Trigger"
+
         return """
 ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Analog Trigger for NEXPAD.
 
-### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control (${if (control.uppercase() == NexpadKeys.LT) "Left Trigger" else "Right Trigger"})
-- **Category [GLOBAL-REQUIRED]**: $category
-- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
+${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, triggerRole)}
 - **Labels [RECOMMENDED]**: Primary "$control"
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
@@ -1400,15 +1396,15 @@ ${renderOutputContract(options)}
 
     internal fun generateBumperPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         val resolved = DesignResolver.resolve(control, category, options)
+        val seedProfile = NxprcSeedEngine.resolve(control, category, options.seed, options.componentName)
+        val bumperRole = if (control.uppercase() == NexpadKeys.LB) "Left Bumper" else "Right Bumper"
+
         return """
 ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Shoulder Bumper for NEXPAD.
 
-### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control (${if (control.uppercase() == NexpadKeys.LB) "Left Bumper" else "Right Bumper"})
-- **Category [GLOBAL-REQUIRED]**: $category
-- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
+${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, bumperRole)}
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Shallow tactile shoulder lever/rocker actuation with crisp microswitch click feedback.
@@ -1452,15 +1448,13 @@ ${renderOutputContract(options)}
 
     internal fun generateStickPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         val resolved = DesignResolver.resolve(control, category, options)
+        val seedProfile = NxprcSeedEngine.resolve(control, category, options.seed, options.componentName)
         return """
 ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Analog Thumbstick Component for NEXPAD.
 
-### TARGET COMPONENT IDENTITY:
-- **Control Key [COMPONENT-REQUIRED]**: $control (Analog Thumbstick - NO center click button)
-- **Category [GLOBAL-REQUIRED]**: $category
-- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
+${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, "Analog Thumbstick - NO center click button")}
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Continuous 360-degree analog navigation. IMPORTANT: In NEXPAD, Analog Joysticks have NO center button or click mechanism. Stick click is strictly separated into standalone LSB/RSB buttons to prevent accidental clicks while dragging.
@@ -1530,6 +1524,7 @@ ${renderOutputContract(options)}
 
     internal fun generateStickButtonPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         val resolved = DesignResolver.resolve(control, category, options)
+        val seedProfile = NxprcSeedEngine.resolve(control, category, options.seed, options.componentName)
         val clickLabel = if (control.uppercase() == NexpadKeys.RSB || control.uppercase() == "RSB") "Right Stick Click (RSB / R3)" else "Left Stick Click (LSB / L3)"
 
         return """
@@ -1537,10 +1532,7 @@ ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Stick Click Button Component for NEXPAD.
 
-### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control ($clickLabel)
-- **Category [GLOBAL-REQUIRED]**: $category (Specialized Thumbstick Click Button under Sticks category, compiled as BUTTON)
-- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
+${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, clickLabel)}
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Instant tactile thumbstick cap depression / axial click ($clickLabel action). Unlike continuous 360° analog sticks, this is a dedicated digital button for reliable, rapid stick clicks during high-intensity gameplay.
@@ -1592,6 +1584,7 @@ ${renderOutputContract(options)}
 
     internal fun generateTouchpadPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         val resolved = DesignResolver.resolve(control, category, options)
+        val seedProfile = NxprcSeedEngine.resolve(control, category, options.seed, options.componentName)
         val isLeft = control.equals("LTP", ignoreCase = true)
         val padRole = if (isLeft) "Left Touch Movement Pad (Floating Dynamic-Center Stick)" else "Right Touch Camera Look Pad (Free-Look Swipe Trackpad)"
         val interactionDesc = if (isLeft) {
@@ -1603,11 +1596,7 @@ ${renderOutputContract(options)}
         return """
 ${genAiHeader()}
 
-### TARGET COMPONENT IDENTITY:
-- **Canonical Control Key [GLOBAL-REQUIRED]**: $control
-- **Component Role**: $padRole
-- **Category [GLOBAL-REQUIRED]**: $category (Touchpad Surface under Sticks category)
-- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
+${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, padRole)}
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: $interactionDesc IMPORTANT: Touchpads are pure flat, stationary laptop-style trackpad surfaces. Strictly NO center button, NO center dot, NO movable ring, and NO tap-to-click mechanism. Stick click is strictly separated into standalone LSB/RSB buttons to prevent accidental sprint or melee triggers during camera panning or movement. The touchpad operates as a pure continuous speed-to-distance surface.
@@ -1649,15 +1638,15 @@ ${renderOutputContract(options)}
 
     internal fun generateSystemPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         val resolved = DesignResolver.resolve(control, category, options)
+        val seedProfile = NxprcSeedEngine.resolve(control, category, options.seed, options.componentName)
+        val systemRole = when(control.uppercase()) { NexpadKeys.MENU, NexpadKeys.START -> "Menu / Pause / Start"; NexpadKeys.VIEW, NexpadKeys.BACK -> "View / Back / Select"; else -> "Home / Guide / Nexus" }
+
         return """
 ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller System/Utility Button for NEXPAD.
 
-### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control (${when(control.uppercase()) { NexpadKeys.MENU, NexpadKeys.START -> "Menu / Pause / Start"; NexpadKeys.VIEW, NexpadKeys.BACK -> "View / Back / Select"; else -> "Home / Guide / Nexus" }})
-- **Category [GLOBAL-REQUIRED]**: $category
-- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px;
+${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, systemRole)}
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Secondary console utility actions (menu, pause, guide, view, options).

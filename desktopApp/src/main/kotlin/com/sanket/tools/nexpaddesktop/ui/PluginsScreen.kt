@@ -18,6 +18,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -32,6 +35,7 @@ import com.sanket.tools.nexpaddesktop.plugins.DesktopPluginManager
 import com.sanket.tools.nexpaddesktop.plugins.NxprcComponentDetector
 import com.sanket.tools.nexpaddesktop.plugins.NxprcExporter
 import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
+import com.sanket.tools.nexpaddesktop.plugins.NxprcSeedEngine
 import com.sanket.tools.nexpaddesktop.plugins.UniversalPushManager
 import com.sanket.tools.nexpaddesktop.ui.components.glassCard
 import com.sanket.tools.nexpaddesktop.ui.designer.FullAuditPreviewScreen
@@ -106,11 +110,25 @@ fun PluginsScreen(
     }
 
     val defaultCtrl = ControlKey.A
+    val initialDetected = remember {
+        NxprcComponentDetector.detect(
+            html = NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A,
+            fallbackCategory = defaultCtrl.componentType.name,
+            fallbackControl = defaultCtrl.key,
+            fallbackId = defaultCtrl.defaultId,
+            fallbackName = defaultCtrl.defaultName,
+            fallbackWidthDp = defaultCtrl.defaultWidthDp,
+            fallbackHeightDp = defaultCtrl.defaultHeightDp
+        )
+    }
+    var currentSeed by remember { mutableStateOf(initialDetected.seed ?: NxprcSeedEngine.canonicalSeedFor(defaultCtrl.key)) }
+    var htmlCodeSeed by remember { mutableStateOf(initialDetected.seed ?: currentSeed) }
+    val initialSeedProfile = remember(currentSeed) { NxprcSeedEngine.resolve(defaultCtrl.key, defaultCtrl.componentType.name, currentSeed) }
     var selectedCategory by remember { mutableStateOf(defaultCtrl.categoryType.id) }
     var selectedButtonKey by remember { mutableStateOf(defaultCtrl.key) }
     var htmlSource by remember { mutableStateOf(NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A) }
-    var componentId by remember { mutableStateOf(defaultCtrl.defaultId) }
-    var componentName by remember { mutableStateOf(defaultCtrl.defaultName) }
+    var componentId by remember { mutableStateOf(if (initialDetected.componentId.isNotBlank()) initialDetected.componentId else initialSeedProfile.componentId) }
+    var componentName by remember { mutableStateOf(if (initialDetected.componentName.isNotBlank()) initialDetected.componentName else initialSeedProfile.skinName) }
     var category by remember { mutableStateOf(defaultCtrl.componentType.name) }
     var defaultControl by remember { mutableStateOf(defaultCtrl.key) }
     var targetWidthDp by remember { mutableStateOf(defaultCtrl.defaultWidthDp) }
@@ -173,8 +191,8 @@ fun PluginsScreen(
         }
     }
 
-    LaunchedEffect(htmlSource) {
-        delay(350) // Debounce keystrokes
+    LaunchedEffect(htmlSource, currentSeed) {
+        delay(250) // Debounce keystrokes / rapid seed typing
         withContext(Dispatchers.Default) {
             val detected = NxprcComponentDetector.detect(
                 html = htmlSource,
@@ -185,20 +203,134 @@ fun PluginsScreen(
                 fallbackWidthDp = targetWidthDp,
                 fallbackHeightDp = targetHeightDp
             )
+
+            // When HTML code in editor has an explicit seed that changed, sync code seed & sandbox seed
+            val detectedSeed = detected.seed
+            if (detectedSeed != null && detectedSeed != htmlCodeSeed) {
+                htmlCodeSeed = detectedSeed
+                currentSeed = detectedSeed
+            }
+
+            // If sandbox preview seed differs from HTML code's seed, compile preview with currentSeed applied dynamically
+            // (Preserves original htmlSource in code editor intact!)
+            val effectiveSource = if (currentSeed != htmlCodeSeed) {
+                NxprcSeedEngine.applySeedToHtml(
+                    currentHtml = htmlSource,
+                    control = detected.defaultControl.ifBlank { defaultControl },
+                    category = detected.category.ifBlank { category },
+                    seed = currentSeed
+                )
+            } else {
+                htmlSource
+            }
+
             try {
+                val previewDetected = if (effectiveSource !== htmlSource) {
+                    NxprcComponentDetector.detect(
+                        html = effectiveSource,
+                        fallbackCategory = category,
+                        fallbackControl = defaultControl,
+                        fallbackId = componentId,
+                        fallbackName = componentName,
+                        fallbackWidthDp = targetWidthDp,
+                        fallbackHeightDp = targetHeightDp
+                    )
+                } else detected
+
                 val doc = NxprcHtmlCssConverter.convert(
-                    source = htmlSource,
-                    id = detected.componentId,
-                    name = detected.componentName,
-                    category = detected.category,
-                    defaultControl = detected.defaultControl
+                    source = effectiveSource,
+                    id = previewDetected.componentId,
+                    name = previewDetected.componentName,
+                    category = previewDetected.category,
+                    defaultControl = previewDetected.defaultControl
                 )
                 compiledDoc = doc
                 compileError = null
+                if (previewDetected.isExplicitlyDefined && previewDetected.componentName.isNotBlank() && previewDetected.componentName != componentName) {
+                    componentName = previewDetected.componentName
+                    componentId = previewDetected.componentId
+                }
             } catch (e: Exception) {
                 compileError = e.message ?: "Compilation error"
             }
         }
+    }
+
+    val handleSetSeed: (Long) -> Unit = { newSeed ->
+        currentSeed = newSeed
+        val profile = NxprcSeedEngine.resolve(defaultControl, category, newSeed, componentName)
+        componentName = profile.skinName
+        componentId = profile.componentId
+        promptCopiedBanner = "🎲 Seed #${newSeed} previewing in Live Sandbox (${profile.palette.name})"
+    }
+
+    val handleRerollSeed: () -> Unit = {
+        var newSeed = NxprcSeedEngine.randomSeed()
+        val currentProfile = NxprcSeedEngine.resolve(defaultControl, category, currentSeed)
+        var newProfile = NxprcSeedEngine.resolve(defaultControl, category, newSeed)
+        var attempts = 0
+        while (newProfile.palette.hexCode == currentProfile.palette.hexCode && attempts < 50) {
+            newSeed = NxprcSeedEngine.randomSeed()
+            newProfile = NxprcSeedEngine.resolve(defaultControl, category, newSeed)
+            attempts++
+        }
+        handleSetSeed(newSeed)
+    }
+
+    val handleResetToCodeSeed: () -> Unit = {
+        val detected = NxprcComponentDetector.detect(
+            html = htmlSource,
+            fallbackCategory = category,
+            fallbackControl = defaultControl,
+            fallbackId = componentId,
+            fallbackName = componentName
+        )
+        val codeSeed = detected.seed ?: htmlCodeSeed
+        currentSeed = codeSeed
+        htmlCodeSeed = codeSeed
+        val profile = NxprcSeedEngine.resolve(defaultControl, category, codeSeed, detected.componentName.ifBlank { componentName })
+        componentName = profile.skinName
+        componentId = profile.componentId
+        promptCopiedBanner = "↺ Reset to HTML code seed #${codeSeed} (${profile.palette.name})"
+    }
+
+    val getLiveExportDoc: () -> NxprcDocument = {
+        val currentEffectiveSource = if (currentSeed != htmlCodeSeed) {
+            NxprcSeedEngine.applySeedToHtml(
+                currentHtml = htmlSource,
+                control = defaultControl,
+                category = category,
+                seed = currentSeed
+            )
+        } else {
+            htmlSource
+        }
+        val detected = NxprcComponentDetector.detect(
+            html = currentEffectiveSource,
+            fallbackCategory = category,
+            fallbackControl = defaultControl,
+            fallbackId = componentId,
+            fallbackName = componentName,
+            fallbackWidthDp = targetWidthDp,
+            fallbackHeightDp = targetHeightDp
+        )
+        val baseDoc = try {
+            NxprcHtmlCssConverter.convert(
+                source = currentEffectiveSource,
+                id = detected.componentId,
+                name = detected.componentName,
+                category = detected.category,
+                defaultControl = detected.defaultControl
+            )
+        } catch (e: Exception) {
+            compiledDoc
+        }
+        baseDoc.copy(
+            manifest = baseDoc.manifest.copy(
+                id = componentId.ifBlank { baseDoc.manifest.id },
+                name = componentName.ifBlank { baseDoc.manifest.name }
+            )
+        )
     }
 
     val handleSelectButton: (SubCategoryDefinition) -> Unit = { btn ->
@@ -206,17 +338,35 @@ fun PluginsScreen(
         defaultControl = btn.key
         val btnCat = if (btn.categoryType == CategoryType.MACROS) "MACRO" else btn.componentType.name
         category = btnCat
-        componentId = btn.defaultId
-        componentName = btn.defaultName
         targetWidthDp = btn.defaultWidthDp
         targetHeightDp = btn.defaultHeightDp
-        val newSource = btn.starterHtmlPreset ?: NxprcHtmlCssConverter.getReferenceTemplate(btn.key, btn.categoryType.id)
-        htmlSource = newSource
+
+        val baseSource = btn.starterHtmlPreset ?: NxprcHtmlCssConverter.getReferenceTemplate(btn.key, btn.categoryType.id)
+        val detected = NxprcComponentDetector.detect(
+            html = baseSource,
+            fallbackCategory = btnCat,
+            fallbackControl = btn.key,
+            fallbackId = btn.defaultId,
+            fallbackName = btn.defaultName,
+            fallbackWidthDp = btn.defaultWidthDp,
+            fallbackHeightDp = btn.defaultHeightDp
+        )
+
+        val buttonSeed = detected.seed ?: NxprcSeedEngine.canonicalSeedFor(btn.key)
+        currentSeed = buttonSeed
+        htmlCodeSeed = buttonSeed
+
+        val profile = NxprcSeedEngine.resolve(btn.key, btnCat, buttonSeed, detected.componentName.ifBlank { btn.defaultName })
+        componentId = if (detected.componentId.isNotBlank()) detected.componentId else profile.componentId
+        componentName = if (detected.componentName.isNotBlank()) detected.componentName else profile.skinName
+
+        htmlSource = baseSource
+
         try {
             val newDoc = NxprcHtmlCssConverter.convert(
-                source = newSource,
-                id = btn.defaultId,
-                name = btn.defaultName,
+                source = baseSource,
+                id = componentId,
+                name = componentName,
                 category = btnCat,
                 defaultControl = btn.key
             )
@@ -237,12 +387,29 @@ fun PluginsScreen(
     }
 
     val handleLoadStarter: () -> Unit = {
-        val newSource = NxprcHtmlCssConverter.getReferenceTemplate(defaultControl, category)
-        htmlSource = newSource
-        promptCopiedBanner = "✓ Loaded starter template for $defaultControl ($category)!"
+        val base = NxprcHtmlCssConverter.getReferenceTemplate(defaultControl, category)
+        val detected = NxprcComponentDetector.detect(
+            html = base,
+            fallbackCategory = category,
+            fallbackControl = defaultControl,
+            fallbackId = componentId,
+            fallbackName = componentName,
+            fallbackWidthDp = targetWidthDp,
+            fallbackHeightDp = targetHeightDp
+        )
+        val starterSeed = detected.seed ?: NxprcSeedEngine.canonicalSeedFor(defaultControl)
+        currentSeed = starterSeed
+        htmlCodeSeed = starterSeed
+
+        val profile = NxprcSeedEngine.resolve(defaultControl, category, starterSeed, detected.componentName.ifBlank { componentName })
+        componentId = if (detected.componentId.isNotBlank()) detected.componentId else profile.componentId
+        componentName = if (detected.componentName.isNotBlank()) detected.componentName else profile.skinName
+
+        htmlSource = base
+        promptCopiedBanner = "✓ Loaded starter template for $defaultControl ($category) [Seed #$starterSeed]!"
         try {
             val newDoc = NxprcHtmlCssConverter.convert(
-                source = newSource,
+                source = base,
                 id = componentId,
                 name = componentName,
                 category = category,
@@ -309,10 +476,14 @@ fun PluginsScreen(
                             category = category,
                             widthDp = targetWidthDp,
                             heightDp = targetHeightDp,
-                            options = AiDesignOptions(modelCapability = selectedPromptTier.modelCapability)
+                            options = AiDesignOptions(
+                                modelCapability = selectedPromptTier.modelCapability,
+                                seed = currentSeed,
+                                componentName = componentName
+                            )
                         )
                         val ok = safeCopyToClipboard(prompt)
-                        promptCopiedBanner = if (ok) "✓ ${selectedPromptTier.icon} ${selectedPromptTier.displayName} AI Prompt for $defaultControl ($category) copied!" else "⚠️ Clipboard busy — please try again"
+                        promptCopiedBanner = if (ok) "✓ ${selectedPromptTier.icon} ${selectedPromptTier.displayName} AI Prompt for $defaultControl ($category) [Seed #$currentSeed] copied!" else "⚠️ Clipboard busy — please try again"
                     },
                     onOpenPromptModal = { showAiPromptModal = true },
                     onLoadStarter = handleLoadStarter,
@@ -342,6 +513,11 @@ fun PluginsScreen(
                     componentName = componentName,
                     defaultControl = defaultControl,
                     category = category,
+                    currentSeed = currentSeed,
+                    htmlCodeSeed = htmlCodeSeed,
+                    onSeedChange = handleSetSeed,
+                    onRerollSeed = handleRerollSeed,
+                    onResetSeed = handleResetToCodeSeed,
                     compileError = compileError,
                     exportStatus = exportStatus,
                     isExporting = isExporting,
@@ -350,7 +526,7 @@ fun PluginsScreen(
                     onExport = {
                         scope.launch {
                             isExporting = true
-                            val exportDoc = compiledDoc
+                            val exportDoc = getLiveExportDoc()
                             val res = NxprcExporter.exportToFile(exportDoc)
                             res.fold(
                                 onSuccess = { file ->
@@ -367,7 +543,7 @@ fun PluginsScreen(
                     onPush = {
                         scope.launch {
                             isExporting = true
-                            val exportDoc = compiledDoc
+                            val exportDoc = getLiveExportDoc()
                             exportStatus = "Pushing ${exportDoc.canvas.layers.size} layers to phone via ${activeTransport.displayName}..."
                             val res = UniversalPushManager.pushComponent(exportDoc)
                             res.fold(
@@ -457,10 +633,14 @@ fun PluginsScreen(
                                     category = category,
                                     widthDp = targetWidthDp,
                                     heightDp = targetHeightDp,
-                                    options = AiDesignOptions(modelCapability = selectedPromptTier.modelCapability)
+                                    options = AiDesignOptions(
+                                        modelCapability = selectedPromptTier.modelCapability,
+                                        seed = currentSeed,
+                                        componentName = componentName
+                                    )
                                 )
                                 val ok = safeCopyToClipboard(prompt)
-                                promptCopiedBanner = if (ok) "✓ ${selectedPromptTier.icon} ${selectedPromptTier.displayName} AI Prompt for $defaultControl ($category) copied!" else "⚠️ Clipboard busy — please try again"
+                                promptCopiedBanner = if (ok) "✓ ${selectedPromptTier.icon} ${selectedPromptTier.displayName} AI Prompt for $defaultControl ($category) [Seed #$currentSeed] copied!" else "⚠️ Clipboard busy — please try again"
                             },
                             onOpenPromptModal = { showAiPromptModal = true },
                             onLoadStarter = handleLoadStarter,
@@ -487,6 +667,11 @@ fun PluginsScreen(
                             componentName = componentName,
                             defaultControl = defaultControl,
                             category = category,
+                            currentSeed = currentSeed,
+                            htmlCodeSeed = htmlCodeSeed,
+                            onSeedChange = handleSetSeed,
+                            onRerollSeed = handleRerollSeed,
+                            onResetSeed = handleResetToCodeSeed,
                             compileError = compileError,
                             exportStatus = exportStatus,
                             isExporting = isExporting,
@@ -495,7 +680,7 @@ fun PluginsScreen(
                             onExport = {
                                 scope.launch {
                                     isExporting = true
-                                    val exportDoc = compiledDoc
+                                    val exportDoc = getLiveExportDoc()
                                     val res = NxprcExporter.exportToFile(exportDoc)
                                     res.fold(
                                         onSuccess = { file ->
@@ -512,7 +697,7 @@ fun PluginsScreen(
                             onPush = {
                                 scope.launch {
                                     isExporting = true
-                                    val exportDoc = compiledDoc
+                                    val exportDoc = getLiveExportDoc()
                                     exportStatus = "Pushing ${exportDoc.canvas.layers.size} layers to phone via ${activeTransport.displayName}..."
                                     val res = UniversalPushManager.pushComponent(exportDoc)
                                     res.fold(
@@ -533,14 +718,16 @@ fun PluginsScreen(
         // ==========================================
         if (showAiPromptModal) {
             var modalTier by remember { mutableStateOf(selectedPromptTier) }
-            val generatedPrompt = remember(defaultControl, category, targetWidthDp, targetHeightDp, modalTier) {
+            val generatedPrompt = remember(defaultControl, category, targetWidthDp, targetHeightDp, modalTier, currentSeed, componentName) {
                 NxprcHtmlCssConverter.generateAiPrompt(
                     control = defaultControl,
                     category = category,
                     widthDp = targetWidthDp,
                     heightDp = targetHeightDp,
                     options = AiDesignOptions(
-                        modelCapability = modalTier.modelCapability
+                        modelCapability = modalTier.modelCapability,
+                        seed = currentSeed,
+                        componentName = componentName
                     )
                 )
             }
@@ -1080,7 +1267,7 @@ private fun ComponentEditorPane(
             Text("Native GPU Skia Compiler", color = Color.White.copy(alpha = 0.5f), fontSize = 10.sp)
         }
 
-        // 6. Monospace Code Editor
+        // 7. Monospace Code Editor
         OutlinedTextField(
             value = htmlSource,
             onValueChange = onHtmlSourceChange,
@@ -1111,6 +1298,11 @@ private fun LiveSandboxPane(
     componentName: String,
     defaultControl: String,
     category: String,
+    currentSeed: Long,
+    htmlCodeSeed: Long?,
+    onSeedChange: (Long) -> Unit,
+    onRerollSeed: () -> Unit,
+    onResetSeed: () -> Unit,
     compileError: String?,
     exportStatus: String?,
     isExporting: Boolean,
@@ -1273,6 +1465,171 @@ private fun LiveSandboxPane(
                 Text("Idle: ${compiledDoc.animations.idleType}", color = Color.White.copy(alpha = 0.8f), fontSize = 10.5.sp)
             }
             Text("Touch: ${if (isStick) "360° Analog" else compiledDoc.animations.pressFeedback}", color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp)
+        }
+
+        // Procedural Seed & Theme Control Bar in Live Sandbox
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF0D1527)),
+            shape = RoundedCornerShape(8.dp),
+            border = androidx.compose.foundation.BorderStroke(
+                1.dp,
+                if (htmlCodeSeed != null && currentSeed != htmlCodeSeed) Color(0xFFF59E0B).copy(alpha = 0.6f) else Color(0xFF1E293B)
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = if (isShort) 5.dp else 7.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Seed Input Area: Clear label + obvious editable text field with '#' prefix and pencil '✏️'
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "🎲 Seed:",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.5.sp
+                        )
+
+                        var seedInputText by remember(currentSeed) { mutableStateOf(currentSeed.toString()) }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFF060B14))
+                                .border(1.2.dp, NeonPalette.Cyan.copy(alpha = 0.75f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 7.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = "#",
+                                color = NeonPalette.Cyan,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            Spacer(Modifier.width(2.dp))
+                            BasicTextField(
+                                value = seedInputText,
+                                onValueChange = { newVal ->
+                                    val digits = newVal.filter { it.isDigit() }.take(10)
+                                    seedInputText = digits
+                                    val parsed = digits.toLongOrNull()
+                                    if (parsed != null && parsed != currentSeed) {
+                                        onSeedChange(parsed)
+                                    }
+                                },
+                                textStyle = TextStyle(
+                                    color = Color.White,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                ),
+                                singleLine = true,
+                                cursorBrush = SolidColor(NeonPalette.Cyan),
+                                modifier = Modifier
+                                    .width(IntrinsicSize.Min)
+                                    .widthIn(min = 50.dp, max = 85.dp)
+                            )
+                            Spacer(Modifier.width(3.dp))
+                            Text(
+                                text = "✏️",
+                                fontSize = 9.sp,
+                                color = Color.White.copy(alpha = 0.5f)
+                            )
+                        }
+                    }
+
+                    // Action Controls: Reroll, Reset, Apply
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // 🎲 Reroll Button
+                        OutlinedButton(
+                            onClick = onRerollSeed,
+                            shape = RoundedCornerShape(6.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B)),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = Color(0xFFF59E0B).copy(alpha = 0.15f)
+                            ),
+                            contentPadding = PaddingValues(horizontal = if (isNarrow) 6.dp else 9.dp, vertical = 2.dp),
+                            modifier = Modifier.height(26.dp)
+                        ) {
+                            Text(
+                                text = "🎲 Reroll",
+                                color = Color(0xFFFCD34D),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.5.sp
+                            )
+                        }
+
+                        // ↺ Reset Button: Reverts sandbox back to HTML code's seed
+                        val isModifiedFromCode = htmlCodeSeed != null && currentSeed != htmlCodeSeed
+                        OutlinedButton(
+                            onClick = onResetSeed,
+                            enabled = isModifiedFromCode,
+                            shape = RoundedCornerShape(6.dp),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (isModifiedFromCode) Color(0xFF64748B) else Color(0xFF334155).copy(alpha = 0.4f)
+                            ),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = if (isModifiedFromCode) Color(0xFF1E293B) else Color.Transparent,
+                                disabledContainerColor = Color.Transparent
+                            ),
+                            contentPadding = PaddingValues(horizontal = if (isNarrow) 6.dp else 10.dp, vertical = 2.dp),
+                            modifier = Modifier.height(26.dp)
+                        ) {
+                            Text(
+                                text = "↺ Reset",
+                                color = if (isModifiedFromCode) Color(0xFFE2E8F0) else Color(0xFF64748B),
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 10.5.sp
+                            )
+                        }
+                    }
+                }
+
+                // Row 2: Status & Resolved Palette
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val isModifiedFromCode = htmlCodeSeed != null && currentSeed != htmlCodeSeed
+                    val profile = remember(currentSeed, effControl, effCategory) {
+                        NxprcSeedEngine.resolve(effControl, effCategory, currentSeed)
+                    }
+                    Text(
+                        text = if (isModifiedFromCode) {
+                            "⚡ Active Sandbox Seed: #${currentSeed} (Original Code: #${htmlCodeSeed})"
+                        } else {
+                            "✓ Matches HTML Code Seed (#${currentSeed})"
+                        },
+                        color = if (isModifiedFromCode) Color(0xFFF59E0B) else Color(0xFF10B981),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    Text(
+                        text = "Theme: ${profile.palette.name} (${profile.skinName})",
+                        color = Color.White.copy(alpha = 0.65f),
+                        fontSize = 10.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
         }
 
         // Compact Glass Metadata Strip (Responsive against line wrapping)

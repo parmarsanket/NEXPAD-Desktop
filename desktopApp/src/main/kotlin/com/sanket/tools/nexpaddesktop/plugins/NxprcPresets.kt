@@ -322,7 +322,7 @@ object NxprcPresets {
       radial-gradient(circle at 35% 25%, rgba(0, 255, 163, 0.25) 0%, transparent 40%),
       radial-gradient(circle at 65% 75%, rgba(0, 0, 0, 0.7) 0%, transparent 55%),
       linear-gradient(145deg, #111822 0%, #0a0e14 40%, #040608 100%);
-    border: 1.5px solid rgba(0, 255, 163, 0.75);
+    border: 1.5px solid var(--accent-core);
     box-shadow: 
       inset 0 2px 5px rgba(255, 255, 255, 0.35),
       inset 0 -5px 10px rgba(0, 0, 0, 0.85);
@@ -348,7 +348,7 @@ object NxprcPresets {
 </style>
 </head>
 <body>
-  <button class="nexpad-btn" data-control="A" data-category="BUTTON" data-name="Neo Tactile A">
+  <button class="nexpad-btn" data-control="A" data-category="BUTTON" data-codename="Neo Tactile" data-name="Neo Tactile A" data-seed="16166">
     <div class="btn-core">
       <span class="btn-label">A</span>
     </div>
@@ -427,7 +427,7 @@ object NxprcPresets {
       radial-gradient(circle at 35% 25%, rgba(255, 42, 109, 0.25) 0%, transparent 40%),
       radial-gradient(circle at 65% 75%, rgba(0, 0, 0, 0.7) 0%, transparent 55%),
       linear-gradient(145deg, #221217 0%, #12060a 40%, #060203 100%);
-    border: 1.5px solid rgba(255, 42, 109, 0.75);
+    border: 1.5px solid var(--accent-core);
     box-shadow: 
       inset 0 2px 5px rgba(255, 255, 255, 0.35),
       inset 0 -5px 10px rgba(0, 0, 0, 0.85);
@@ -453,7 +453,7 @@ object NxprcPresets {
 </style>
 </head>
 <body>
-  <button class="nexpad-btn" data-control="B" data-category="BUTTON" data-name="Neo Tactile B">
+  <button class="nexpad-btn" data-control="B" data-category="BUTTON" data-codename="Neo Tactile" data-name="Neo Tactile B" data-seed="24892">
     <div class="btn-core">
       <span class="btn-label">B</span>
     </div>
@@ -532,7 +532,7 @@ object NxprcPresets {
       radial-gradient(circle at 35% 25%, rgba(0, 229, 255, 0.25) 0%, transparent 40%),
       radial-gradient(circle at 65% 75%, rgba(0, 0, 0, 0.7) 0%, transparent 55%),
       linear-gradient(145deg, #0d1b28 0%, #050e18 40%, #020509 100%);
-    border: 1.5px solid rgba(0, 229, 255, 0.75);
+    border: 1.5px solid var(--accent-core);
     box-shadow: 
       inset 0 2px 5px rgba(255, 255, 255, 0.35),
       inset 0 -5px 10px rgba(0, 0, 0, 0.85);
@@ -558,7 +558,7 @@ object NxprcPresets {
 </style>
 </head>
 <body>
-  <button class="nexpad-btn" data-control="X" data-category="BUTTON" data-name="Neo Tactile X">
+  <button class="nexpad-btn" data-control="X" data-category="BUTTON" data-codename="Neo Tactile" data-name="Neo Tactile X" data-seed="38120">
     <div class="btn-core">
       <span class="btn-label">X</span>
     </div>
@@ -637,7 +637,7 @@ object NxprcPresets {
       radial-gradient(circle at 35% 25%, rgba(255, 214, 0, 0.25) 0%, transparent 40%),
       radial-gradient(circle at 65% 75%, rgba(0, 0, 0, 0.7) 0%, transparent 55%),
       linear-gradient(145deg, #241c0a 0%, #120e03 40%, #050401 100%);
-    border: 1.5px solid rgba(255, 214, 0, 0.75);
+    border: 1.5px solid var(--accent-core);
     box-shadow: 
       inset 0 2px 5px rgba(255, 255, 255, 0.35),
       inset 0 -5px 10px rgba(0, 0, 0, 0.85);
@@ -663,7 +663,7 @@ object NxprcPresets {
 </style>
 </head>
 <body>
-  <button class="nexpad-btn" data-control="Y" data-category="BUTTON" data-name="Neo Tactile Y">
+  <button class="nexpad-btn" data-control="Y" data-category="BUTTON" data-codename="Neo Tactile" data-name="Neo Tactile Y" data-seed="49551">
     <div class="btn-core">
       <span class="btn-label">Y</span>
     </div>

@@ -16,7 +16,8 @@ data class DetectedComponent(
     val componentName: String,
     val widthDp: Int,
     val heightDp: Int,
-    val isExplicitlyDefined: Boolean
+    val isExplicitlyDefined: Boolean,
+    val seed: Long? = null
 )
 
 /**
@@ -40,10 +41,10 @@ object NxprcComponentDetector {
      */
     fun detect(
         html: String,
-        fallbackCategory: String,
-        fallbackControl: String,
-        fallbackId: String,
-        fallbackName: String,
+        fallbackCategory: String = "BUTTON",
+        fallbackControl: String = "A",
+        fallbackId: String = "rc.a_001",
+        fallbackName: String = "A Button",
         fallbackWidthDp: Int = 96,
         fallbackHeightDp: Int = 96
     ): DetectedComponent {
@@ -66,6 +67,8 @@ object NxprcComponentDetector {
         val rawCategory = extractAttribute(html, "data-category")
         val rawId = extractAttribute(html, "data-id") ?: extractButtonId(html)
         val rawName = extractAttribute(html, "data-name")
+        val rawCodename = extractAttribute(html, "data-codename") ?: extractAttribute(html, "data-code-name") ?: extractAttribute(html, "data-style")
+        val rawSeed = extractAttribute(html, "data-seed")?.toLongOrNull()
 
         // 2. Extract explicit CSS pixel dimensions
         val parsedWidth = extractPixelDimension(html, "width")
@@ -109,8 +112,19 @@ object NxprcComponentDetector {
             val compType = resolvedControl.componentType.name
             val effWidth = parsedWidth ?: resolvedControl.defaultWidthDp
             val effHeight = parsedHeight ?: resolvedControl.defaultHeightDp
-            val effId = rawId ?: resolvedControl.defaultId
-            val effName = rawName ?: resolvedControl.defaultName
+            val defaultName = resolvedControl.defaultName
+            val effName = when {
+                rawName != null && rawName.isNotBlank() -> rawName
+                rawCodename != null && rawCodename.isNotBlank() ->
+                    NxprcSeedEngine.formatComponentName(rawCodename, resolvedControl.key, rawSeed)
+                rawSeed != null -> NxprcSeedEngine.resolve(resolvedControl.key, compType, rawSeed).skinName
+                else -> defaultName
+            }
+            val effId = when {
+                rawId != null -> if (rawId.startsWith("rc.")) rawId else "rc.$rawId"
+                rawSeed != null -> "rc.${resolvedControl.key.lowercase()}_$rawSeed"
+                else -> resolvedControl.defaultId
+            }
             val effCategory = if (rawCategory != null && rawCategory.isNotBlank()) {
                 val cat = CategoryType.fromIdentifier(rawCategory)
                 when (cat) {
@@ -134,7 +148,8 @@ object NxprcComponentDetector {
                 componentName = effName,
                 widthDp = effWidth,
                 heightDp = effHeight,
-                isExplicitlyDefined = true
+                isExplicitlyDefined = true,
+                seed = rawSeed
             )
         }
 
@@ -144,8 +159,20 @@ object NxprcComponentDetector {
             val primaryCtrl = catType?.let { ControlKey.of(it).firstOrNull() }
             val catName = rawCategory?.uppercase() ?: catType?.name ?: fallbackCategory
             val effControl = primaryCtrl?.key ?: fallbackControl
-            val effId = rawId ?: primaryCtrl?.defaultId ?: fallbackId
-            val effName = rawName ?: primaryCtrl?.defaultName ?: fallbackName
+            val primaryDefaultName = primaryCtrl?.defaultName ?: fallbackName
+            val effName = when {
+                rawName != null && rawName.isNotBlank() -> rawName
+                rawCodename != null && rawCodename.isNotBlank() ->
+                    NxprcSeedEngine.formatComponentName(rawCodename, effControl, rawSeed)
+                rawSeed != null -> NxprcSeedEngine.resolve(effControl, catName, rawSeed).skinName
+                else -> primaryDefaultName
+            }
+            val defaultId = primaryCtrl?.defaultId ?: fallbackId
+            val effId = when {
+                rawId != null -> if (rawId.startsWith("rc.")) rawId else "rc.$rawId"
+                rawSeed != null -> "rc.${effControl.lowercase()}_$rawSeed"
+                else -> defaultId
+            }
             val effWidth = parsedWidth ?: primaryCtrl?.defaultWidthDp ?: fallbackWidthDp
             val effHeight = parsedHeight ?: primaryCtrl?.defaultHeightDp ?: fallbackHeightDp
 
@@ -158,7 +185,8 @@ object NxprcComponentDetector {
                 componentName = effName,
                 widthDp = effWidth,
                 heightDp = effHeight,
-                isExplicitlyDefined = true
+                isExplicitlyDefined = true,
+                seed = rawSeed
             )
         }
 
