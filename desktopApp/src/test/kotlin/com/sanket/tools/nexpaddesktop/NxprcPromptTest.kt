@@ -1900,6 +1900,18 @@ class NxprcPromptTest {
             frontierPrompt.contains("SECTION F1 — COMPILATION PIPELINE TRANSPARENCY"),
             "Frontier prompt MUST contain Frontier depth sections"
         )
+        assertTrue(
+            frontierPrompt.contains("SECTION F8 — NATIVE HARDWARE AMBIENT ANIMATION ENGINES"),
+            "Frontier prompt MUST contain Section F8 ambient animation engines"
+        )
+        assertTrue(
+            frontierPrompt.contains("SECTION F9 — ANALOG JOYSTICK ARCHITECTURE & THUMB-CAP DECOUPLING"),
+            "Frontier prompt MUST contain Section F9 joystick decoupling"
+        )
+        assertTrue(
+            frontierPrompt.contains("SECTION F10 — NATIVE HARDWARE SHADER & SKIA COMPILATION"),
+            "Frontier prompt MUST contain Section F10 native shaders"
+        )
     }
 
     @Test

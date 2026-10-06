@@ -1082,6 +1082,65 @@ Before writing ANY HTML/CSS code, you MUST execute this reasoning chain:
 **Step 4 — TRANSFORM CHECK**: Verify ALL transforms are 2D affine only. No `perspective`, `rotateX`, `rotateY`, or `rotate3d`. Confirm `transform-origin` is set explicitly when using rotate/scale.
 
 **Step 5 — BUDGET CHECK**: Count total DOM nodes. For Frontier tier, there is NO artificial layer or SVG cap — you have complete architectural freedom to produce ultra-complex, high-density designs with unconstrained layering and SVG paths as requested by the user. Verify spring physics variables are in `:root`.
+
+### SECTION F8 — NATIVE HARDWARE AMBIENT ANIMATION ENGINES (IDLE LOOPS)
+The NEXPAD native runtime features hardware-accelerated continuous idle animation loops running on Compose's `rememberInfiniteTransition` at 60/120 FPS. The compiler recognizes standard CSS `@keyframes` declarations and compiles them into typed runtime animation drivers:
+1. **Continuous GPU Rotation (`ROTATE`)**:
+   - Trigger: Any `@keyframes` rule whose name contains `rotate` or `spin` (e.g. `@keyframes spin-core { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`), applied via `animation: spin-core 4s linear infinite;`.
+   - Engine Mapping: Sets `document.animations.idleType = "ROTATE"`.
+   - Runtime: Continuously rotates the target layer around its `transform-origin` (defaults to pivot `0.5, 0.5`).
+   - Use Cases: Rotating reactor cores, turbine fans, sci-fi HUD reticles, mystical runes, radar sweeps, or tech gears.
+2. **Harmonic Alpha/Glow Pulsing (`PULSE`)**:
+   - Trigger: Any `@keyframes` rule whose name contains `pulse`, `glow`, or `breathe` (e.g. `@keyframes pulse-aura { 0%, 100% { opacity: 0.4; } 50% { opacity: 1.0; } }`), applied via `animation: pulse-aura 2s ease-in-out infinite;`.
+   - Engine Mapping: Sets `document.animations.idleType = "PULSE"`.
+   - Runtime: Smoothly oscillates layer alpha or `GlowRing` atmospheric intensity between minimum and maximum bounds using `RepeatMode.Reverse`.
+   - Use Cases: Bioluminescent glows, breathing power LEDs, pulsating energy crystals, and neon halo under-glow.
+3. **Hardware 360° Chromatic Cycle (`RGB_CYCLE`)**:
+   - Trigger: Any `@keyframes` rule or property whose name contains `rgb`, `rainbow`, `chroma`, or `hue` (e.g. `@keyframes rgb-chroma { from { filter: hue-rotate(0deg); } to { filter: hue-rotate(360deg); } }`).
+   - Engine Mapping: Sets `document.animations.idleType = "RGB_CYCLE"`.
+   - Runtime: Drives a real-time GPU trigonometric `ColorMatrix` through the full 360° chromatic spectrum at 60/120 FPS.
+   - Use Cases: Cyberpunk RGB gamer peripherals, chromatic energy barriers, and iridescent metallic sheen rings.
+- **Rules & Constraints**: Only animate `transform: rotate(...)`, `opacity`, or `filter: hue-rotate(...)`. Layout property animations (`width`, `height`, `left`, `top`, `margin`) are dropped by the compiler to guarantee 120 FPS rendering without layout thrashing.
+
+### SECTION F9 — ANALOG JOYSTICK ARCHITECTURE & THUMB-CAP DECOUPLING
+When authoring components for `data-category="JOYSTICK"`, the compiler and runtime enforce a strict 2-tier mechanical deconstruction:
+1. **Stationary Base / Socket Well (`data-layer-role="base"`)**:
+   - Root `<button class="stick-btn" data-category="JOYSTICK" ...>` and outer housing elements.
+   - Slotted into fixed z-order zones (`GlowRing ~1000`, `BezelSocket ~2000`, `Surface ~3000`).
+   - Remains stationary on the controller canvas during gameplay.
+   - Houses outer socket shadows, perimeter bezel rings, directional ticks, and travel limits.
+2. **Interactive Movable Thumb Cap (`data-layer-role="thumb-cap"`)**:
+   - The central stick dome, textured grip, and top insignia.
+   - MUST be marked with `data-layer-role="thumb-cap"` (or class `thumb-cap`).
+   - Slotted into elevated z-order zone `+20,000` (`LayerStack.ZONE_THUMB_CAP`).
+   - The Android runtime automatically extracts this layer hierarchy and binds it to touch drag kinematics:
+     - 2D offset translation dynamically tracking thumb drag vectors.
+     - Travel limit clamping (`maxDeflection = min(width, height) * 0.35`).
+     - Circular radial deadzone filtering.
+     - 12-sample `VelocityRingBuffer` tracking flick velocity.
+     - Damped spring return to center on touch release (`waitForUpOrCancellation`).
+- **Architectural Rule**: Always center the thumb cap within the socket bounds (e.g. `width: 56px; height: 56px; left: 20px; top: 20px; position: absolute;` inside a 96x96px root) so physical deflection originates from exact mathematical zero.
+
+### SECTION F10 — NATIVE HARDWARE SHADER & SKIA COMPILATION
+CSS paint declarations are parsed by `GradientParser`, `ShadowParser`, and `BoxLayerBuilder` into direct hardware-accelerated Skia / Compose graphics shaders:
+1. **Linear Gradients (`linear-gradient(angle, stops...)`)**:
+   - Parsed into normalized `ColorStop` arrays and compiled to native `Brush.linearGradient(colors, stops, start, end)`.
+   - Angles in `deg` or `turn` are geometrically projected onto the bounding box to calculate precise start/end coordinates.
+   - Use for directional light slopes, metallic chamfer bevels, and surface rake angles.
+2. **Radial Gradients (`radial-gradient(shape at position, stops...)`)**:
+   - Compiled to native `Brush.radialGradient(colors, center, radius)`.
+   - Positions like `center`, `top left`, or `circle at 35% 30%` establish 3D specular focal centers.
+   - Use for spherical doming, convex thumb wells, concave dish surfaces, and ambient spotlights.
+3. **Conic / Sweep Gradients (`conic-gradient(from angle at pos, stops...)`)**:
+   - Compiled to native `Brush.sweepGradient(colors, stops, center)`.
+   - Rotational sweeps around the center point.
+   - Ideal for anisotropic brushed-metal bezels, segmented dial ticks, and radial gauge meters.
+4. **Physically Accurate Inset Shadows (`box-shadow: inset ...`)**:
+   - Compiled to `CanvasLayer.InnerShadow`.
+   - Rendered natively via Skia inverted path clipping (`clipPath` with inverse drop-shadow), producing authentic recessed keycap wells and sunken socket depth.
+5. **Embedded SVG Vector Paint Servers (`<defs>`)**:
+   - Embedded `<svg>` supports `<defs>` blocks containing `<linearGradient id="...">` or `<radialGradient id="...">`.
+   - Referenced via `fill="url(#id)"` or `stroke="url(#id)"` on vector `<path>` elements, pre-compiled into native hardware vector shaders.
 """.trimIndent()
 
     private fun renderVisualProfileOrCustomDirective(
