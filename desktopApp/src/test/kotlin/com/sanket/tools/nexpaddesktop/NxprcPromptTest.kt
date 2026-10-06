@@ -2230,6 +2230,378 @@ class NxprcPromptTest {
         assertTrue(themedPrompt.contains("<user_request>"))
         assertTrue(themedPrompt.contains("### USER CUSTOM DESIGN DIRECTIVE [AUTHORITATIVE]"))
     }
+
+    private data class ControlAuditSpec(
+        val control: String,
+        val category: String,
+        val expectedRootClass: String,
+        val isJoystick: Boolean = false,
+        val widthDp: Int = 96,
+        val heightDp: Int = 96
+    )
+
+    @Test
+    fun testFullMatrixDeepAuditAllButtonsAndTiers() {
+        val controlsToAudit = listOf(
+            // 1. ABXY Face Action Buttons
+            ControlAuditSpec("A", "BUTTON", "nexpad-btn"),
+            ControlAuditSpec("B", "BUTTON", "nexpad-btn"),
+            ControlAuditSpec("X", "BUTTON", "nexpad-btn"),
+            ControlAuditSpec("Y", "BUTTON", "nexpad-btn"),
+
+            // 2. D-Pad Directional Controls
+            ControlAuditSpec("UP", "DPAD", "dpad-btn"),
+            ControlAuditSpec("DOWN", "DPAD", "dpad-btn"),
+            ControlAuditSpec("LEFT", "DPAD", "dpad-btn"),
+            ControlAuditSpec("RIGHT", "DPAD", "dpad-btn"),
+            ControlAuditSpec("DPAD", "DPAD", "dpad-btn", widthDp = 140, heightDp = 140),
+
+            // 3. Triggers
+            ControlAuditSpec("LT", "TRIGGER", "trigger-btn", widthDp = 110, heightDp = 140),
+            ControlAuditSpec("RT", "TRIGGER", "trigger-btn", widthDp = 110, heightDp = 140),
+
+            // 4. Bumpers
+            ControlAuditSpec("LB", "BUMPER", "bumper-btn", widthDp = 120, heightDp = 60),
+            ControlAuditSpec("RB", "BUMPER", "bumper-btn", widthDp = 120, heightDp = 60),
+
+            // 5. Analog Joysticks (Movable Thumb-Cap Decoupling enabled)
+            ControlAuditSpec("LS", "JOYSTICK", "stick-btn", isJoystick = true, widthDp = 130, heightDp = 130),
+            ControlAuditSpec("RS", "JOYSTICK", "stick-btn", isJoystick = true, widthDp = 130, heightDp = 130),
+
+            // 6. Thumbstick Click Buttons (Digital button, NOT joystick, F9 excluded)
+            ControlAuditSpec("LSB", "STICKS", "stick-btn-ctl", isJoystick = false, widthDp = 72, heightDp = 72),
+            ControlAuditSpec("RSB", "STICKS", "stick-btn-ctl", isJoystick = false, widthDp = 72, heightDp = 72),
+
+            // 7. Touchpad Surfaces (Continuous trackpad, NOT joystick, F9 excluded)
+            ControlAuditSpec("LTP", "STICKS", "touchpad-ctl", isJoystick = false, widthDp = 180, heightDp = 180),
+            ControlAuditSpec("RTP", "STICKS", "touchpad-ctl", isJoystick = false, widthDp = 180, heightDp = 180),
+
+            // 8. System & Utility Buttons
+            ControlAuditSpec("MENU", "SYSTEM", "system-btn", isJoystick = false, widthDp = 70, heightDp = 70),
+            ControlAuditSpec("VIEW", "SYSTEM", "system-btn", isJoystick = false, widthDp = 70, heightDp = 70),
+            ControlAuditSpec("GUIDE", "SYSTEM", "system-btn", isJoystick = false, widthDp = 84, heightDp = 84),
+            ControlAuditSpec("SHARE", "SYSTEM", "system-btn", isJoystick = false, widthDp = 70, heightDp = 70),
+
+            // 9. Macro Paddles
+            ControlAuditSpec("M1", "MACRO", "system-btn", isJoystick = false, widthDp = 72, heightDp = 72)
+        )
+
+        controlsToAudit.forEach { spec ->
+            val tag = "[${spec.control}/${spec.category}]"
+
+            // ── COMPACT TIER AUDIT ──
+            val compactPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = spec.control,
+                category = spec.category,
+                widthDp = spec.widthDp,
+                heightDp = spec.heightDp,
+                options = AiDesignOptions(modelCapability = ModelCapability.COMPACT)
+            )
+
+            assertTrue(
+                compactPrompt.contains("SECTION 1 — STRICT COMPILER & ENGINE CONTRACT (LEAN COMPACT MODE)"),
+                "$tag Compact missing Lean Compact Mode anchor"
+            )
+            assertTrue(
+                compactPrompt.contains("class=\"${spec.expectedRootClass}\""),
+                "$tag Compact missing root class ${spec.expectedRootClass}"
+            )
+            assertTrue(
+                compactPrompt.contains(".${spec.expectedRootClass}:active"),
+                "$tag Compact missing active selector for ${spec.expectedRootClass}"
+            )
+            assertTrue(
+                compactPrompt.contains("width: ${spec.widthDp}px; height: ${spec.heightDp}px;"),
+                "$tag Compact missing explicit ${spec.widthDp}px x ${spec.heightDp}px bounds"
+            )
+            assertTrue(compactPrompt.contains("--spring-damping:"), "$tag Compact missing spring-damping")
+            assertTrue(compactPrompt.contains("--spring-stiffness:"), "$tag Compact missing spring-stiffness")
+            assertTrue(compactPrompt.contains("--press-scale:"), "$tag Compact missing press-scale")
+
+            // Strict Compact Exclusion Boundaries
+            assertFalse(
+                compactPrompt.contains("SECTION 1 — INSTRUCTION PRIORITY & CONFLICT RESOLUTION"),
+                "$tag Compact leaked Standard Section 1"
+            )
+            assertFalse(
+                compactPrompt.contains("SECTION 2 — RULE CLASSIFICATION HIERARCHY"),
+                "$tag Compact leaked Standard Section 2"
+            )
+            assertFalse(
+                compactPrompt.contains("SECTION 5 — HARD COMPILER CONTRACT & STRICT BOUNDARIES"),
+                "$tag Compact leaked Standard Section 5"
+            )
+            assertFalse(
+                compactPrompt.contains("SECTION 10 — GEOMETRY & VISUAL QA CHECKLIST"),
+                "$tag Compact leaked Standard Section 10"
+            )
+            assertFalse(
+                compactPrompt.contains("SECTION F0 — UNLIMITED ARCHITECTURAL EXPRESSION"),
+                "$tag Compact leaked Frontier Section F0"
+            )
+            assertFalse(
+                compactPrompt.contains("SECTION F1 — COMPILATION PIPELINE TRANSPARENCY"),
+                "$tag Compact leaked Frontier Section F1"
+            )
+            assertFalse(
+                compactPrompt.contains("SECTION F8 — NATIVE HARDWARE AMBIENT ANIMATION ENGINES"),
+                "$tag Compact leaked Frontier Section F8"
+            )
+            assertFalse(
+                compactPrompt.contains("SECTION F9 — ANALOG JOYSTICK ARCHITECTURE"),
+                "$tag Compact leaked Frontier Section F9"
+            )
+            assertFalse(
+                compactPrompt.contains("SECTION F10 — NATIVE HARDWARE SHADER"),
+                "$tag Compact leaked Frontier Section F10"
+            )
+
+            // ── STANDARD TIER AUDIT ──
+            val standardPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = spec.control,
+                category = spec.category,
+                widthDp = spec.widthDp,
+                heightDp = spec.heightDp,
+                options = AiDesignOptions(modelCapability = ModelCapability.STANDARD)
+            )
+
+            assertTrue(
+                standardPrompt.contains("SECTION 1 — INSTRUCTION PRIORITY & CONFLICT RESOLUTION"),
+                "$tag Standard missing Section 1"
+            )
+            assertTrue(
+                standardPrompt.contains("SECTION 2 — RULE CLASSIFICATION HIERARCHY"),
+                "$tag Standard missing Section 2"
+            )
+            assertTrue(
+                standardPrompt.contains("SECTION 3 — USER CREATIVE AUTHORITY & FREE-HAND MODE"),
+                "$tag Standard missing Section 3"
+            )
+            assertTrue(
+                standardPrompt.contains("SECTION 4 — INTERPRETATION & FIDELITY MODES"),
+                "$tag Standard missing Section 4"
+            )
+            assertTrue(
+                standardPrompt.contains("SECTION 5 — HARD COMPILER CONTRACT & STRICT BOUNDARIES"),
+                "$tag Standard missing Section 5"
+            )
+            assertTrue(
+                standardPrompt.contains("SECTION 6 — COMPILER CAPABILITIES — WHAT PRIMITIVES ARE BEST FOR:"),
+                "$tag Standard missing Section 6"
+            )
+            assertTrue(
+                standardPrompt.contains("SECTION 7 — ARCHITECTURAL PATTERN:"),
+                "$tag Standard missing Section 7"
+            )
+            assertTrue(
+                standardPrompt.contains("SECTION 8 — DESIGN QUALITY CRITERIA"),
+                "$tag Standard missing Section 8"
+            )
+            assertTrue(
+                standardPrompt.contains("SECTION 9 — ADAPTATION RULES"),
+                "$tag Standard missing Section 9"
+            )
+            assertTrue(
+                standardPrompt.contains("SECTION 10 — GEOMETRY & VISUAL QA CHECKLIST"),
+                "$tag Standard missing Section 10"
+            )
+            assertTrue(
+                standardPrompt.contains("class=\"${spec.expectedRootClass}\""),
+                "$tag Standard missing root class ${spec.expectedRootClass}"
+            )
+            assertTrue(
+                standardPrompt.contains(".${spec.expectedRootClass}:active"),
+                "$tag Standard missing active selector for ${spec.expectedRootClass}"
+            )
+            assertTrue(
+                standardPrompt.contains("width: ${spec.widthDp}px; height: ${spec.heightDp}px;"),
+                "$tag Standard missing explicit bounds"
+            )
+            assertTrue(standardPrompt.contains("--spring-damping:"), "$tag Standard missing spring-damping")
+            assertTrue(standardPrompt.contains("--spring-stiffness:"), "$tag Standard missing spring-stiffness")
+
+            // Strict Standard Exclusion Boundaries
+            assertFalse(
+                standardPrompt.contains("LEAN COMPACT MODE"),
+                "$tag Standard leaked Compact Mode"
+            )
+            assertFalse(
+                standardPrompt.contains("SECTION F0 — UNLIMITED ARCHITECTURAL EXPRESSION"),
+                "$tag Standard leaked Frontier Section F0"
+            )
+            assertFalse(
+                standardPrompt.contains("SECTION F1 — COMPILATION PIPELINE TRANSPARENCY"),
+                "$tag Standard leaked Frontier Section F1"
+            )
+            assertFalse(
+                standardPrompt.contains("SECTION F8 — NATIVE HARDWARE AMBIENT ANIMATION ENGINES"),
+                "$tag Standard leaked Frontier Section F8"
+            )
+            assertFalse(
+                standardPrompt.contains("SECTION F9 — ANALOG JOYSTICK ARCHITECTURE"),
+                "$tag Standard leaked Frontier Section F9"
+            )
+            assertFalse(
+                standardPrompt.contains("SECTION F10 — NATIVE HARDWARE SHADER"),
+                "$tag Standard leaked Frontier Section F10"
+            )
+
+            // ── FRONTIER TIER AUDIT ──
+            val frontierPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = spec.control,
+                category = spec.category,
+                widthDp = spec.widthDp,
+                heightDp = spec.heightDp,
+                options = AiDesignOptions(modelCapability = ModelCapability.FRONTIER)
+            )
+
+            // Frontier includes Standard foundation
+            assertTrue(
+                frontierPrompt.contains("SECTION 1 — INSTRUCTION PRIORITY & CONFLICT RESOLUTION"),
+                "$tag Frontier missing Section 1"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION 5 — HARD COMPILER CONTRACT & STRICT BOUNDARIES"),
+                "$tag Frontier missing Section 5"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION 10 — GEOMETRY & VISUAL QA CHECKLIST"),
+                "$tag Frontier missing Section 10"
+            )
+
+            // Frontier includes all F0–F10 blueprint sections
+            assertTrue(
+                frontierPrompt.contains("SECTION F0 — UNLIMITED ARCHITECTURAL EXPRESSION & ZERO COMPLEXITY CAPS"),
+                "$tag Frontier missing Section F0"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION F1 — COMPILATION PIPELINE TRANSPARENCY (FRONTIER DEPTH)"),
+                "$tag Frontier missing Section F1"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION F2 — LAYER TYPE MAPPING"),
+                "$tag Frontier missing Section F2"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION F3 — SVG PATH PRE-BAKING PIPELINE"),
+                "$tag Frontier missing Section F3"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION F4 — AFFINE TRANSFORM DECOMPOSITION"),
+                "$tag Frontier missing Section F4"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION F5 — SPRING PHYSICS KINEMATICS"),
+                "$tag Frontier missing Section F5"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION F6 — CLASSIFIER INTELLIGENCE"),
+                "$tag Frontier missing Section F6"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION F7 — MANDATORY 5-STEP REASONING PROTOCOL"),
+                "$tag Frontier missing Section F7"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION F8 — NATIVE HARDWARE AMBIENT ANIMATION ENGINES (IDLE LOOPS)"),
+                "$tag Frontier missing Section F8"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION F10 — NATIVE HARDWARE SHADER & SKIA COMPILATION"),
+                "$tag Frontier missing Section F10"
+            )
+
+            // CRITICAL CONDITIONAL F9 CHECK: Strictly for joysticks (LS, RS) only
+            if (spec.isJoystick) {
+                assertTrue(
+                    frontierPrompt.contains("SECTION F9 — ANALOG JOYSTICK ARCHITECTURE & THUMB-CAP DECOUPLING"),
+                    "$tag Frontier Joystick MUST contain Section F9"
+                )
+                assertTrue(
+                    frontierPrompt.contains("data-layer-role=\"thumb-cap\""),
+                    "$tag Frontier Joystick missing thumb-cap role specification"
+                )
+                assertTrue(
+                    frontierPrompt.contains("data-layer-role=\"base\""),
+                    "$tag Frontier Joystick missing base role specification"
+                )
+                assertTrue(
+                    frontierPrompt.contains("+20,000"),
+                    "$tag Frontier Joystick missing +20,000 z-order elevation"
+                )
+            } else {
+                assertFalse(
+                    frontierPrompt.contains("SECTION F9 — ANALOG JOYSTICK ARCHITECTURE"),
+                    "$tag Frontier non-joystick button must NOT leak Section F9"
+                )
+                assertFalse(
+                    frontierPrompt.contains("THUMB-CAP DECOUPLING"),
+                    "$tag Frontier non-joystick button must NOT leak thumb-cap decoupling"
+                )
+            }
+
+            assertTrue(
+                frontierPrompt.contains("class=\"${spec.expectedRootClass}\""),
+                "$tag Frontier missing root class ${spec.expectedRootClass}"
+            )
+            assertTrue(
+                frontierPrompt.contains(".${spec.expectedRootClass}:active"),
+                "$tag Frontier missing active selector for ${spec.expectedRootClass}"
+            )
+            assertTrue(
+                frontierPrompt.contains("width: ${spec.widthDp}px; height: ${spec.heightDp}px;"),
+                "$tag Frontier missing explicit bounds"
+            )
+            assertTrue(frontierPrompt.contains("--spring-damping:"), "$tag Frontier missing spring-damping")
+            assertTrue(frontierPrompt.contains("--spring-stiffness:"), "$tag Frontier missing spring-stiffness")
+
+            // ── MONOTONIC PROMPT LENGTH PROGRESSION ──
+            assertTrue(
+                compactPrompt.length < standardPrompt.length,
+                "$tag Compact prompt (${compactPrompt.length} chars) must be strictly shorter than Standard prompt (${standardPrompt.length} chars)"
+            )
+            assertTrue(
+                standardPrompt.length < frontierPrompt.length,
+                "$tag Standard prompt (${standardPrompt.length} chars) must be strictly shorter than Frontier prompt (${frontierPrompt.length} chars)"
+            )
+
+            // ── CROSS-CLASS ACTIVE SELECTOR ISOLATION ──
+            if (spec.expectedRootClass != "nexpad-btn") {
+                assertFalse(
+                    compactPrompt.contains(".nexpad-btn:active"),
+                    "$tag Compact leaked .nexpad-btn:active selector"
+                )
+                assertFalse(
+                    standardPrompt.contains(".nexpad-btn:active"),
+                    "$tag Standard leaked .nexpad-btn:active selector"
+                )
+                assertFalse(
+                    frontierPrompt.contains(".nexpad-btn:active"),
+                    "$tag Frontier leaked .nexpad-btn:active selector"
+                )
+            }
+        }
+    }
+
+    @Test
+    fun testPresetCompilationAcrossAllCategories() {
+        val presets = listOf(
+            "A" to NxprcHtmlCssConverter.PRESET_ULTRA_NEXPAD_A,
+            "DPAD_UP" to NxprcHtmlCssConverter.PRESET_DPAD_UP,
+            "TRIGGER_LT" to NxprcHtmlCssConverter.PRESET_TRIGGER_LT,
+            "BUMPER_LB" to NxprcHtmlCssConverter.PRESET_BUMPER_LB,
+            "THUMBSTICK_LS" to NxprcHtmlCssConverter.PRESET_THUMBSTICK_LS,
+            "SYSTEM_MENU" to NxprcHtmlCssConverter.PRESET_SYSTEM_MENU,
+            "STICK_BUTTON_LSB" to NxprcHtmlCssConverter.PRESET_STICK_BUTTON_LSB,
+            "TOUCHPAD_LTP" to NxprcHtmlCssConverter.PRESET_TOUCHPAD_LTP
+        )
+
+        presets.forEach { (name, html) ->
+            val doc = NxprcHtmlCssConverter.convert(html, "id_$name", name)
+            assertTrue(doc.canvas.layers.isNotEmpty(), "Compiled preset $name produced 0 layers")
+            assertTrue(doc.manifest.springPhysics.enabled, "Compiled preset $name has springPhysics disabled")
+        }
+    }
 }
 
 
