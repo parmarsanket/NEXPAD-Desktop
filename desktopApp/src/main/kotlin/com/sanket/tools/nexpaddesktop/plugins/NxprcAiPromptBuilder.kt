@@ -976,7 +976,31 @@ Self-check before output:
 To ensure reliable programmatic compilation, return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text outside it.
 """.trimIndent()
 
-    private fun frontierEngineBoundaries(rootClass: String, widthDp: Int = 96, heightDp: Int = 96): String = """
+    private fun frontierEngineBoundaries(rootClass: String, widthDp: Int = 96, heightDp: Int = 96): String {
+        val isJoystick = rootClass == "stick-btn"
+        val joystickSection = if (isJoystick) """
+
+### SECTION F9 — ANALOG JOYSTICK ARCHITECTURE & THUMB-CAP DECOUPLING
+When authoring components for `data-category="JOYSTICK"`, the compiler and runtime enforce a strict 2-tier mechanical deconstruction:
+1. **Stationary Base / Socket Well (`data-layer-role="base"`)**:
+   - Root `<button class="stick-btn" data-category="JOYSTICK" ...>` and outer housing elements.
+   - Slotted into fixed z-order zones (`GlowRing ~1000`, `BezelSocket ~2000`, `Surface ~3000`).
+   - Remains stationary on the controller canvas during gameplay.
+   - Houses outer socket shadows, perimeter bezel rings, directional ticks, and travel limits.
+2. **Interactive Movable Thumb Cap (`data-layer-role="thumb-cap"`)**:
+   - The central stick dome, textured grip, and top insignia.
+   - MUST be marked with `data-layer-role="thumb-cap"` (or class `thumb-cap`).
+   - Slotted into elevated z-order zone `+20,000` (`LayerStack.ZONE_THUMB_CAP`).
+   - The Android runtime automatically extracts this layer hierarchy and binds it to touch drag kinematics:
+     - 2D offset translation dynamically tracking thumb drag vectors.
+     - Travel limit clamping (`maxDeflection = min(width, height) * 0.35`).
+     - Circular radial deadzone filtering.
+     - 12-sample `VelocityRingBuffer` tracking flick velocity.
+     - Damped spring return to center on touch release (`waitForUpOrCancellation`).
+- **Architectural Rule**: Always center the thumb cap within the socket bounds (e.g. `width: 56px; height: 56px; left: 20px; top: 20px; position: absolute;` inside a 96x96px root) so physical deflection originates from exact mathematical zero.
+""" else ""
+
+        return """
 ### SECTION F0 — UNLIMITED ARCHITECTURAL EXPRESSION & ZERO COMPLEXITY CAPS
 Frontier reasoning models possess unconstrained token capacity and deep structural synthesis intelligence. There is NO upper limit on layer count, SVG geometry complexity, or mechanical detailing:
 - **Unlimited Layering**: There is NO upper limit on DOM layer count or structural depth. Stack as many background, bevel, texture, shadow, gloss, emblem, and mechanical plates as necessary to build an ultra-complex, authentic physical component.
@@ -1101,26 +1125,7 @@ The NEXPAD native runtime features hardware-accelerated continuous idle animatio
    - Runtime: Drives a real-time GPU trigonometric `ColorMatrix` through the full 360° chromatic spectrum at 60/120 FPS.
    - Use Cases: Cyberpunk RGB gamer peripherals, chromatic energy barriers, and iridescent metallic sheen rings.
 - **Rules & Constraints**: Only animate `transform: rotate(...)`, `opacity`, or `filter: hue-rotate(...)`. Layout property animations (`width`, `height`, `left`, `top`, `margin`) are dropped by the compiler to guarantee 120 FPS rendering without layout thrashing.
-
-### SECTION F9 — ANALOG JOYSTICK ARCHITECTURE & THUMB-CAP DECOUPLING
-When authoring components for `data-category="JOYSTICK"`, the compiler and runtime enforce a strict 2-tier mechanical deconstruction:
-1. **Stationary Base / Socket Well (`data-layer-role="base"`)**:
-   - Root `<button class="stick-btn" data-category="JOYSTICK" ...>` and outer housing elements.
-   - Slotted into fixed z-order zones (`GlowRing ~1000`, `BezelSocket ~2000`, `Surface ~3000`).
-   - Remains stationary on the controller canvas during gameplay.
-   - Houses outer socket shadows, perimeter bezel rings, directional ticks, and travel limits.
-2. **Interactive Movable Thumb Cap (`data-layer-role="thumb-cap"`)**:
-   - The central stick dome, textured grip, and top insignia.
-   - MUST be marked with `data-layer-role="thumb-cap"` (or class `thumb-cap`).
-   - Slotted into elevated z-order zone `+20,000` (`LayerStack.ZONE_THUMB_CAP`).
-   - The Android runtime automatically extracts this layer hierarchy and binds it to touch drag kinematics:
-     - 2D offset translation dynamically tracking thumb drag vectors.
-     - Travel limit clamping (`maxDeflection = min(width, height) * 0.35`).
-     - Circular radial deadzone filtering.
-     - 12-sample `VelocityRingBuffer` tracking flick velocity.
-     - Damped spring return to center on touch release (`waitForUpOrCancellation`).
-- **Architectural Rule**: Always center the thumb cap within the socket bounds (e.g. `width: 56px; height: 56px; left: 20px; top: 20px; position: absolute;` inside a 96x96px root) so physical deflection originates from exact mathematical zero.
-
+$joystickSection
 ### SECTION F10 — NATIVE HARDWARE SHADER & SKIA COMPILATION
 CSS paint declarations are parsed by `GradientParser`, `ShadowParser`, and `BoxLayerBuilder` into direct hardware-accelerated Skia / Compose graphics shaders:
 1. **Linear Gradients (`linear-gradient(angle, stops...)`)**:
@@ -1142,6 +1147,7 @@ CSS paint declarations are parsed by `GradientParser`, `ShadowParser`, and `BoxL
    - Embedded `<svg>` supports `<defs>` blocks containing `<linearGradient id="...">` or `<radialGradient id="...">`.
    - Referenced via `fill="url(#id)"` or `stroke="url(#id)"` on vector `<path>` elements, pre-compiled into native hardware vector shaders.
 """.trimIndent()
+    }
 
     private fun renderVisualProfileOrCustomDirective(
         defaultProfileTitle: String,
