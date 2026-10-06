@@ -26,7 +26,7 @@ import javax.imageio.ImageIO
  */
 class NxprcCategoryParityTest {
 
-    private val brainDir = File("C:\\Users\\parma\\.gemini\\antigravity\\brain\\988b000e-5aeb-432b-aa81-d784a06545f7")
+    private val brainDir = File("C:\\Users\\parma\\.gemini\\antigravity\\brain\\d05c2fb8-838a-4bb1-b221-1288db0fe677")
     private val scratchDir = File(brainDir, "scratch").apply { mkdirs() }
     private val chromePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
 
@@ -925,7 +925,7 @@ body {
         val viewBoxH = doc.canvas.viewBoxHeight.coerceAtLeast(1f)
 
         // Target display dimensions (proportional scaling)
-        val maxTargetDim = 280f
+        val maxTargetDim = minOf(width.toFloat() * 0.92f, height.toFloat() * 0.92f, 280f)
         val viewScale = minOf(maxTargetDim / viewBoxW, maxTargetDim / viewBoxH)
         val btnW = viewBoxW * viewScale
         val btnH = viewBoxH * viewScale
@@ -1794,9 +1794,100 @@ body {
         }
 
         sg.dispose()
-        val outFile = File("C:\\Users\\parma\\.gemini\\antigravity\\brain\\988b000e-5aeb-432b-aa81-d784a06545f7\\modern_art_abxy_verification.png")
+        val outFile = File(brainDir, "modern_art_abxy_verification.png")
         ImageIO.write(showcase, "PNG", outFile)
         println("Generated modern art ABXY showcase: ${outFile.absolutePath}")
+    }
+
+    @Test
+    fun testModernArtAllStartersShowcase() {
+        println("=== GENERATING ALL STARTER BUTTONS SHOWCASE ===")
+        val rows = listOf(
+            "FACE ACTION BUTTONS (ABXY)" to listOf(
+                Triple("Action A", com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.PRESET_NEO_TACTILE_A, "A"),
+                Triple("Action B", com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.PRESET_NEO_TACTILE_B, "B"),
+                Triple("Action X", com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.PRESET_NEO_TACTILE_X, "X"),
+                Triple("Action Y", com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.PRESET_NEO_TACTILE_Y, "Y")
+            ),
+            "DIRECTIONAL D-PAD" to listOf(
+                Triple("D-Pad Up", com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.PRESET_DPAD_UP, "UP"),
+                Triple("D-Pad Down", com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.PRESET_DPAD_DOWN, "DOWN"),
+                Triple("D-Pad Left", com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.PRESET_DPAD_LEFT, "LEFT"),
+                Triple("D-Pad Right", com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.PRESET_DPAD_RIGHT, "RIGHT"),
+                Triple("Cross Pad", com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.PRESET_DPAD_CROSS, "DPAD")
+            ),
+            "SHOULDERS & TRIGGERS" to listOf(
+                Triple("Bumper LB", com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.PRESET_BUMPER_LB, "LB"),
+                Triple("Bumper RB", com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.PRESET_BUMPER_RB, "RB"),
+                Triple("Trigger LT", com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.PRESET_TRIGGER_LT, "LT"),
+                Triple("Trigger RT", com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.PRESET_TRIGGER_RT, "RT")
+            ),
+            "ANALOG STICKS & CLICK BUTTONS" to listOf(
+                Triple("Left Stick LS", com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.PRESET_THUMBSTICK_LS, "LS"),
+                Triple("Right Stick RS", com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.PRESET_THUMBSTICK_RS, "RS"),
+                Triple("Stick Button LSB", com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.PRESET_STICK_BUTTON_LSB, "LSB"),
+                Triple("Stick Button RSB", com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.PRESET_STICK_BUTTON_RSB, "RSB")
+            ),
+            "TOUCHPADS, SYSTEM & MACRO" to listOf(
+                Triple("Touch Move LTP", com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.PRESET_TOUCHPAD_LTP, "LTP"),
+                Triple("Touch Look RTP", com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.PRESET_TOUCHPAD_RTP, "RTP"),
+                Triple("System Menu", com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.PRESET_SYSTEM_MENU, "MENU"),
+                Triple("System Home", com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.PRESET_SYSTEM_HOME, "HOME"),
+                Triple("Macro Paddle M1", com.sanket.tools.nexpaddesktop.plugins.NxprcPresets.PRESET_MACRO_M1, "M1")
+            )
+        )
+
+        val cardW = 190
+        val cardH = 190
+        val cellW = 205
+        val cellH = 240
+        val headerH = 45
+        val totalW = 5 * cellW + 60
+        val totalH = rows.size * (cellH + headerH) + 60
+
+        val img = BufferedImage(totalW, totalH, BufferedImage.TYPE_INT_ARGB)
+        val g2 = img.createGraphics()
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
+        g2.color = Color(0x07, 0x0A, 0x10)
+        g2.fillRect(0, 0, totalW, totalH)
+
+        var curY = 30
+        rows.forEach { (sectionTitle, items) ->
+            g2.font = Font("SansSerif", Font.BOLD, 15)
+            g2.color = Color(0x00, 0xF0, 0xFF)
+            g2.drawString(sectionTitle, 30, curY + 20)
+            curY += headerH
+
+            items.forEachIndexed { col, (label, src, key) ->
+                val cat = when {
+                    key in listOf("UP", "DOWN", "LEFT", "RIGHT", "DPAD") -> "DPAD"
+                    key in listOf("LT", "RT") -> "TRIGGER"
+                    key in listOf("LB", "RB") -> "BUMPER"
+                    key in listOf("LS", "RS") -> "JOYSTICK"
+                    key in listOf("LTP", "RTP") -> "TOUCHPAD"
+                    key in listOf("MENU", "HOME") -> "SYSTEM"
+                    key.startsWith("M") -> "MACRO"
+                    else -> "BUTTON"
+                }
+                val doc = NxprcPackager.compile(src, "rc.${key.lowercase()}", label, cat, key)
+                val btnImg = renderNxprcToImage(doc, cardW, cardH)
+                val x = 30 + col * cellW
+                g2.drawImage(btnImg, x, curY, cardW, cardH, null)
+                g2.color = Color(255, 255, 255, 25)
+                g2.drawRoundRect(x - 2, curY - 2, cardW + 4, cardH + 4, 10, 10)
+
+                g2.font = Font("SansSerif", Font.BOLD, 12)
+                g2.color = Color(0xCC, 0xD4, 0xE0)
+                g2.drawString(label, x + 8, curY + cardH + 20)
+            }
+            curY += cellH
+        }
+
+        g2.dispose()
+        val outFile = File(brainDir, "modern_all_starters_preview.png")
+        ImageIO.write(img, "PNG", outFile)
+        println("Generated all starters showcase: ${outFile.absolutePath}")
     }
 
     @Test
@@ -2242,7 +2333,12 @@ body {
 
     @Test
     fun testUserAnimeButtonDiagnostics() {
-        val html = File(scratchDir, "user_anime_button.html").readText()
+        val file = File(scratchDir, "user_anime_button.html")
+        if (!file.exists()) {
+            println("Skipping testUserAnimeButtonDiagnostics: user_anime_button.html not found")
+            return
+        }
+        val html = file.readText()
         val doc = NxprcPackager.compile(
             html = html,
             id = "rc.anime_a",

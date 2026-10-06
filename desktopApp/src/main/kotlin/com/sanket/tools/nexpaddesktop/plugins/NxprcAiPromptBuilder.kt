@@ -938,6 +938,19 @@ When the user requests a character, hero, creature, vehicle, weapon, insignia, o
    - Real DOM text for the gamepad key ensuring instantaneous legibility during high-speed gaming.
    - ⚠️ **NO TEXT ROTATION**: Keep labels, sub-labels, and hardware text markings in straight, unrotated `<span>` elements (avoid `transform: rotate(...)` on text nodes to ensure 100% crisp subpixel font rasterization on mobile displays).
 
+### SECTION 7B — ATMOSPHERIC AURA & RGB SOCKET LIGHTING ENGINE
+NEXPAD features a high-performance atmospheric lighting engine (`.drawBehind` / `CanvasLayer.GlowRing`) that projects an unclipped, luminous ambient aura behind the button socket onto the gamepad surface:
+
+1. **Automatic Aura Color Detection**:
+   - If the user specifies an explicit accent color or neon theme (e.g. via `--accent`, `box-shadow: 0 0 24px <color>`, or a `.glow-ring` element), that exact color is automatically sampled for the atmospheric aura.
+   - If no custom aura color or style is specified, NEXPAD's engine automatically detects and harmonizes the aura based on the button's hardware identity and active color profile (e.g., A = Emerald Green `#4ADE80`, B = Crimson `#F87171`, X = Sapphire `#60A5FA`, Y = Solar Gold `#FBBF24`, LS = Neon Cyan `#00E5FF`, RS = Neon Magenta `#FF007F`).
+   - Custom colors are honored, while unstyled buttons automatically gain rich, native atmospheric lighting.
+
+2. **How to Express Aura in HTML/CSS**:
+   - Explicit Glow Ring Layer: Add a dedicated ambient element: `<div class="glow-ring"></div>` with `position: absolute; border-radius: 50%; box-shadow: 0 0 28px var(--accent-glow);` or `background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);`.
+   - Outset Box Shadows: Include radiant socket glow in the root button's `box-shadow`: e.g., `box-shadow: 0 8px 24px rgba(0,0,0,0.65), 0 0 28px var(--accent-glow);`.
+   - Kinematic Spring Reactivity: During button depression (`:active`), the engine dynamically intensifies the atmospheric aura bloom alpha from idle (0.40) to actuation peak (0.90) with physical spring damping.
+
 ### SECTION 8 — DESIGN QUALITY CRITERIA & CONDITIONAL RESTRAINT
 **DESIGN QUALITY CRITERIA**:
 1. *Recognizability*: Instantly identifiable key identity during gameplay.
@@ -1146,6 +1159,19 @@ CSS paint declarations are parsed by `GradientParser`, `ShadowParser`, and `BoxL
 5. **Embedded SVG Vector Paint Servers (`<defs>`)**:
    - Embedded `<svg>` supports `<defs>` blocks containing `<linearGradient id="...">` or `<radialGradient id="...">`.
    - Referenced via `fill="url(#id)"` or `stroke="url(#id)"` on vector `<path>` elements, pre-compiled into native hardware vector shaders.
+
+### SECTION F11 — ATMOSPHERIC AURA & RGB SOCKET LIGHTING ENGINE
+NEXPAD features a high-performance atmospheric lighting engine (`.drawBehind` / `CanvasLayer.GlowRing`) that projects an unclipped, luminous ambient aura behind the button socket onto the gamepad surface:
+
+1. **Automatic Aura Color Detection**:
+   - If an explicit accent color or neon theme is defined (via `--accent`, `box-shadow: 0 0 24px <color>`, or a `.glow-ring` element), that exact color is automatically sampled for the atmospheric aura.
+   - If no custom aura color or style is specified, NEXPAD's engine automatically detects and harmonizes the aura based on the button's hardware identity and active color profile (e.g., A = Emerald Green `#4ADE80`, B = Crimson `#F87171`, X = Sapphire `#60A5FA`, Y = Solar Gold `#FBBF24`, LS = Neon Cyan `#00E5FF`, RS = Neon Magenta `#FF007F`).
+   - Custom colors are honored, while unstyled buttons automatically gain rich, native atmospheric lighting.
+
+2. **How to Express Aura in HTML/CSS**:
+   - Explicit Glow Ring Layer: Add a dedicated ambient element: `<div class="glow-ring"></div>` with `position: absolute; border-radius: 50%; box-shadow: 0 0 28px var(--accent-glow);` or `background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);`.
+   - Outset Box Shadows: Include radiant socket glow in the root button's `box-shadow`: e.g., `box-shadow: 0 8px 24px rgba(0,0,0,0.65), 0 0 28px var(--accent-glow);`.
+   - Kinematic Spring Reactivity: During button depression (`:active`), the engine dynamically intensifies the atmospheric aura bloom alpha from idle (0.40) to actuation peak (0.90) with physical spring damping.
 """.trimIndent()
     }
 

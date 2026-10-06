@@ -2394,6 +2394,10 @@ class NxprcPromptTest {
                 "$tag Standard missing Section 7"
             )
             assertTrue(
+                standardPrompt.contains("SECTION 7B — ATMOSPHERIC AURA & RGB SOCKET LIGHTING ENGINE"),
+                "$tag Standard missing Section 7B"
+            )
+            assertTrue(
                 standardPrompt.contains("SECTION 8 — DESIGN QUALITY CRITERIA"),
                 "$tag Standard missing Section 8"
             )
@@ -2509,6 +2513,10 @@ class NxprcPromptTest {
             assertTrue(
                 frontierPrompt.contains("SECTION F10 — NATIVE HARDWARE SHADER & SKIA COMPILATION"),
                 "$tag Frontier missing Section F10"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION F11 — ATMOSPHERIC AURA & RGB SOCKET LIGHTING ENGINE"),
+                "$tag Frontier missing Section F11"
             )
 
             // CRITICAL CONDITIONAL F9 CHECK: Strictly for joysticks (LS, RS) only

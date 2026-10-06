@@ -29,7 +29,7 @@ object NxprcPresets {
 <style>
   :root {
     --core-color: #00FFA3;
-    --core-glow: rgba(0, 255, 163, 0.6);
+    --core-glow: rgba(0, 255, 163, 0.65);
     --spring-damping: 0.70;
     --spring-stiffness: 460;
     --press-scale: 0.93;
@@ -40,13 +40,14 @@ object NxprcPresets {
     height: 88px;
     border-radius: 50%;
     background:
-      radial-gradient(circle at 50% 50%, #06120c 0%, #020604 70%, #000000 100%);
-    border: 2px solid #1a3828;
+      radial-gradient(circle at 35% 25%, rgba(0, 255, 163, 0.22) 0%, transparent 50%),
+      radial-gradient(circle at 50% 50%, #06180f 0%, #020a06 70%, #000000 100%);
+    border: 2px solid #1a4a30;
     box-shadow:
-      0 10px 24px rgba(0, 0, 0, 0.8),
-      0 0 0 3px #0a1610,
-      0 0 20px var(--core-glow),
-      inset 0 2px 4px rgba(255, 255, 255, 0.3),
+      0 14px 30px rgba(0, 0, 0, 0.85),
+      0 0 0 3px #0a1f14,
+      0 0 28px var(--core-glow),
+      inset 0 2px 4px rgba(255, 255, 255, 0.38),
       inset 0 -6px 14px rgba(0, 0, 0, 0.9);
     display: flex;
     align-items: center;
@@ -57,8 +58,8 @@ object NxprcPresets {
     position: absolute;
     inset: 6px;
     border-radius: 50%;
-    border: 1.5px dashed rgba(0, 255, 163, 0.45);
-    background: radial-gradient(circle at 35% 25%, rgba(0, 255, 163, 0.15) 0%, transparent 60%);
+    border: 1.5px dashed rgba(0, 255, 163, 0.6);
+    background: radial-gradient(circle at 35% 25%, rgba(0, 255, 163, 0.22) 0%, transparent 60%);
   }
   .button-a::after {
     content: "";
@@ -68,16 +69,20 @@ object NxprcPresets {
     width: 68%;
     height: 36%;
     border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.75) 0%, transparent 75%);
+    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.85) 0%, transparent 75%);
     transform: rotate(-12deg);
+    border-top: 1.5px solid rgba(255, 255, 255, 0.55);
   }
   .button-a .reactor-core {
     width: 58px;
     height: 58px;
     border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, #15803d 0%, #064e3b 50%, #022c22 100%);
+    background: radial-gradient(circle at 35% 30%, #16a34a 0%, #065f46 50%, #022c22 100%);
     border: 1.5px solid #22c55e;
-    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.4), inset 0 -4px 8px rgba(0, 0, 0, 0.85), 0 0 14px var(--core-glow);
+    box-shadow:
+      inset 0 2px 5px rgba(255, 255, 255, 0.5),
+      inset 0 -4px 10px rgba(0, 0, 0, 0.85),
+      0 0 18px var(--core-glow);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -86,7 +91,10 @@ object NxprcPresets {
     font-size: 32px;
     font-weight: 900;
     color: #FFFFFF;
-    text-shadow: 0 0 10px #00FFA3, 0 2px 4px rgba(0, 0, 0, 0.95), 0 1px 0 rgba(255, 255, 255, 0.8);
+    text-shadow:
+      0 0 14px #00FFA3,
+      0 2px 4px rgba(0, 0, 0, 0.95),
+      0 1px 0 rgba(255, 255, 255, 0.9);
     z-index: 5;
   }
   .button-a:active {
@@ -112,7 +120,7 @@ object NxprcPresets {
 <style>
   :root {
     --accent: #FF0055;
-    --accent-glow: rgba(255, 0, 85, 0.55);
+    --accent-glow: rgba(255, 0, 85, 0.65);
     --spring-damping: 0.68;
     --spring-stiffness: 480;
     --press-scale: 0.92;
@@ -123,7 +131,11 @@ object NxprcPresets {
     height: 92px;
     clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
     background: radial-gradient(circle at 35% 25%, #e11d48 0%, #9f1239 45%, #3f0713 85%, #180206 100%);
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.8), inset 0 2px 5px rgba(255, 255, 255, 0.4), inset 0 -6px 12px rgba(0, 0, 0, 0.9), 0 0 22px var(--accent-glow);
+    box-shadow:
+      0 14px 30px rgba(0, 0, 0, 0.85),
+      inset 0 2px 5px rgba(255, 255, 255, 0.5),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.9),
+      0 0 26px var(--accent-glow);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -133,7 +145,7 @@ object NxprcPresets {
     position: absolute;
     inset: 5px;
     clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
-    border: 1.5px solid rgba(255, 255, 255, 0.25);
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
   }
   .crimson-octa::after {
     content: "";
@@ -143,13 +155,16 @@ object NxprcPresets {
     width: 48px;
     height: 18px;
     border-radius: 9px;
-    background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.6) 0%, transparent 80%);
+    background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.7) 0%, transparent 80%);
   }
   .octa-label {
     font-size: 34px;
     font-weight: 900;
     color: #FFFFFF;
-    text-shadow: 0 0 12px #FF0055, 0 2px 4px rgba(0, 0, 0, 0.95), 0 1px 0 rgba(255, 255, 255, 0.8);
+    text-shadow:
+      0 0 16px #FF0055,
+      0 2px 4px rgba(0, 0, 0, 0.95),
+      0 1px 0 rgba(255, 255, 255, 0.9);
     z-index: 5;
   }
   .crimson-octa:active {
@@ -173,7 +188,7 @@ object NxprcPresets {
 <style>
   :root {
     --accent: #FFB800;
-    --accent-glow: rgba(255, 184, 0, 0.55);
+    --accent-glow: rgba(255, 184, 0, 0.65);
     --spring-damping: 0.72;
     --spring-stiffness: 500;
     --press-scale: 0.91;
@@ -184,9 +199,14 @@ object NxprcPresets {
     height: 90px;
     border-radius: 22px;
     background:
-      radial-gradient(circle at 35% 25%, #382e18 0%, #171206 65%, #080602 100%);
-    border: 2px solid #5a4722;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.8), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -6px 12px rgba(0, 0, 0, 0.9), 0 0 20px var(--accent-glow);
+      radial-gradient(circle at 35% 25%, #4a3c1b 0%, #1c1507 65%, #080602 100%);
+    border: 2px solid #735a26;
+    box-shadow:
+      0 14px 30px rgba(0, 0, 0, 0.85),
+      0 0 0 2px rgba(26, 20, 7, 0.95),
+      inset 0 2px 4px rgba(255, 255, 255, 0.38),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.9),
+      0 0 24px var(--accent-glow);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -198,13 +218,16 @@ object NxprcPresets {
     position: absolute;
     inset: 4px;
     border-radius: 18px;
-    border: 1px dashed rgba(255, 184, 0, 0.35);
+    border: 1px dashed rgba(255, 184, 0, 0.45);
   }
   .turbo-label {
     font-size: 30px;
     font-weight: 900;
     color: #FFFFFF;
-    text-shadow: 0 0 10px #FFB800, 0 2px 4px rgba(0, 0, 0, 0.95), 0 1px 0 rgba(255, 255, 255, 0.8);
+    text-shadow:
+      0 0 14px #FFB800,
+      0 2px 4px rgba(0, 0, 0, 0.95),
+      0 1px 0 rgba(255, 255, 255, 0.9);
     z-index: 5;
   }
   .turbo-sub {
@@ -212,7 +235,7 @@ object NxprcPresets {
     font-weight: 900;
     letter-spacing: 1.5px;
     color: var(--accent);
-    text-shadow: 0 0 6px var(--accent);
+    text-shadow: 0 0 8px var(--accent);
     z-index: 5;
   }
   .speed-turbo:active {
@@ -250,15 +273,14 @@ object NxprcPresets {
     height: var(--btn-size);
     border-radius: 50%;
     background:
-      radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.28) 0%, transparent 40%),
-      radial-gradient(circle at 68% 78%, rgba(0, 0, 0, 0.7) 0%, transparent 55%),
-      radial-gradient(circle at 50% 50%, #0d1a13 0%, #06100a 65%, #020503 100%);
-    border: 2px solid #1c3d2a;
+      radial-gradient(circle at 45% 35%, rgba(0, 255, 163, 0.12) 0%, transparent 60%),
+      radial-gradient(circle at 50% 50%, #151b22 0%, #0b0e13 65%, #030406 100%);
+    border: 2px solid #1f2937;
     box-shadow: 
-      0 12px 28px rgba(0, 0, 0, 0.8),
-      0 0 0 3px rgba(18, 40, 26, 0.95),
+      0 14px 30px rgba(0, 0, 0, 0.85),
+      0 0 0 3px rgba(17, 24, 39, 0.95),
       0 0 24px var(--accent-glow),
-      inset 0 2px 4px rgba(255, 255, 255, 0.32),
+      inset 0 2px 4px rgba(255, 255, 255, 0.25),
       inset 0 -6px 14px rgba(0, 0, 0, 0.9);
     display: flex;
     align-items: center;
@@ -271,11 +293,11 @@ object NxprcPresets {
     inset: 0;
     border-radius: 50%;
     background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.2) 0%, transparent 45%),
-      conic-gradient(from 180deg at 50% 50%, #173322, #326343, #122418, #478c5e, #173322, #326343, #122418);
+      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.15) 0%, transparent 45%),
+      conic-gradient(from 180deg at 50% 50%, #17202a, #2b3a4a, #131a22, #384d63, #17202a, #2b3a4a, #131a22);
     box-shadow: 
-      inset 0 3px 6px rgba(255, 255, 255, 0.25),
-      inset 0 -6px 14px rgba(0, 0, 0, 0.8);
+      inset 0 3px 6px rgba(255, 255, 255, 0.22),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.85);
   }
 
   .nexpad-btn::after {
@@ -286,9 +308,9 @@ object NxprcPresets {
     width: 72%;
     height: 40%;
     border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.2) 42%, transparent 75%);
+    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.08) 45%, transparent 75%);
     transform: rotate(-10deg);
-    border-top: 1.5px solid rgba(255, 255, 255, 0.55);
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
   }
 
   .nexpad-btn .btn-core {
@@ -297,13 +319,13 @@ object NxprcPresets {
     height: 68px;
     border-radius: 50%;
     background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.55) 0%, transparent 35%),
-      radial-gradient(circle at 68% 75%, rgba(0, 0, 0, 0.55) 0%, transparent 50%),
-      linear-gradient(145deg, #10b981 0%, #059669 35%, #047857 70%, #064e3b 100%);
+      radial-gradient(circle at 35% 25%, rgba(0, 255, 163, 0.25) 0%, transparent 40%),
+      radial-gradient(circle at 65% 75%, rgba(0, 0, 0, 0.7) 0%, transparent 55%),
+      linear-gradient(145deg, #111822 0%, #0a0e14 40%, #040608 100%);
     border: 1.5px solid rgba(0, 255, 163, 0.75);
     box-shadow: 
-      inset 0 2px 5px rgba(255, 255, 255, 0.45),
-      inset 0 -5px 10px rgba(0, 0, 0, 0.75);
+      inset 0 2px 5px rgba(255, 255, 255, 0.35),
+      inset 0 -5px 10px rgba(0, 0, 0, 0.85);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -356,15 +378,14 @@ object NxprcPresets {
     height: var(--btn-size);
     border-radius: 50%;
     background:
-      radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.28) 0%, transparent 40%),
-      radial-gradient(circle at 68% 78%, rgba(0, 0, 0, 0.7) 0%, transparent 55%),
-      radial-gradient(circle at 50% 50%, #220b12 0%, #120408 65%, #050102 100%);
-    border: 2px solid #4a1524;
+      radial-gradient(circle at 45% 35%, rgba(255, 42, 109, 0.12) 0%, transparent 60%),
+      radial-gradient(circle at 50% 50%, #1f1418 0%, #10080c 65%, #050203 100%);
+    border: 2px solid #381a24;
     box-shadow: 
-      0 12px 28px rgba(0, 0, 0, 0.8),
-      0 0 0 3px rgba(60, 15, 25, 0.95),
+      0 14px 30px rgba(0, 0, 0, 0.85),
+      0 0 0 3px rgba(35, 15, 22, 0.95),
       0 0 24px var(--accent-glow),
-      inset 0 2px 4px rgba(255, 255, 255, 0.32),
+      inset 0 2px 4px rgba(255, 255, 255, 0.25),
       inset 0 -6px 14px rgba(0, 0, 0, 0.9);
     display: flex;
     align-items: center;
@@ -377,11 +398,11 @@ object NxprcPresets {
     inset: 0;
     border-radius: 50%;
     background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.2) 0%, transparent 45%),
-      conic-gradient(from 180deg at 50% 50%, #3b101c, #63182c, #260810, #8c2944, #3b101c, #63182c, #260810);
+      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.15) 0%, transparent 45%),
+      conic-gradient(from 180deg at 50% 50%, #2a141b, #4a1f2c, #1a0a10, #612739, #2a141b, #4a1f2c, #1a0a10);
     box-shadow: 
-      inset 0 3px 6px rgba(255, 255, 255, 0.25),
-      inset 0 -6px 14px rgba(0, 0, 0, 0.8);
+      inset 0 3px 6px rgba(255, 255, 255, 0.22),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.85);
   }
 
   .nexpad-btn::after {
@@ -392,9 +413,9 @@ object NxprcPresets {
     width: 72%;
     height: 40%;
     border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.2) 42%, transparent 75%);
+    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.08) 45%, transparent 75%);
     transform: rotate(-10deg);
-    border-top: 1.5px solid rgba(255, 255, 255, 0.55);
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
   }
 
   .nexpad-btn .btn-core {
@@ -403,13 +424,13 @@ object NxprcPresets {
     height: 68px;
     border-radius: 50%;
     background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.55) 0%, transparent 35%),
-      radial-gradient(circle at 68% 75%, rgba(0, 0, 0, 0.55) 0%, transparent 50%),
-      linear-gradient(145deg, #f43f5e 0%, #e11d48 35%, #be123c 70%, #881337 100%);
+      radial-gradient(circle at 35% 25%, rgba(255, 42, 109, 0.25) 0%, transparent 40%),
+      radial-gradient(circle at 65% 75%, rgba(0, 0, 0, 0.7) 0%, transparent 55%),
+      linear-gradient(145deg, #221217 0%, #12060a 40%, #060203 100%);
     border: 1.5px solid rgba(255, 42, 109, 0.75);
     box-shadow: 
-      inset 0 2px 5px rgba(255, 255, 255, 0.45),
-      inset 0 -5px 10px rgba(0, 0, 0, 0.75);
+      inset 0 2px 5px rgba(255, 255, 255, 0.35),
+      inset 0 -5px 10px rgba(0, 0, 0, 0.85);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -462,15 +483,14 @@ object NxprcPresets {
     height: var(--btn-size);
     border-radius: 50%;
     background:
-      radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.28) 0%, transparent 40%),
-      radial-gradient(circle at 68% 78%, rgba(0, 0, 0, 0.7) 0%, transparent 55%),
-      radial-gradient(circle at 50% 50%, #0b1a24 0%, #050f16 65%, #010406 100%);
-    border: 2px solid #19384d;
+      radial-gradient(circle at 45% 35%, rgba(0, 229, 255, 0.12) 0%, transparent 60%),
+      radial-gradient(circle at 50% 50%, #111a24 0%, #060e16 65%, #010408 100%);
+    border: 2px solid #163147;
     box-shadow: 
-      0 12px 28px rgba(0, 0, 0, 0.8),
-      0 0 0 3px rgba(15, 38, 55, 0.95),
+      0 14px 30px rgba(0, 0, 0, 0.85),
+      0 0 0 3px rgba(12, 30, 45, 0.95),
       0 0 24px var(--accent-glow),
-      inset 0 2px 4px rgba(255, 255, 255, 0.32),
+      inset 0 2px 4px rgba(255, 255, 255, 0.25),
       inset 0 -6px 14px rgba(0, 0, 0, 0.9);
     display: flex;
     align-items: center;
@@ -483,11 +503,11 @@ object NxprcPresets {
     inset: 0;
     border-radius: 50%;
     background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.2) 0%, transparent 45%),
-      conic-gradient(from 180deg at 50% 50%, #102638, #1c4b6e, #0c1c2b, #256a9e, #102638, #1c4b6e, #0c1c2b);
+      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.15) 0%, transparent 45%),
+      conic-gradient(from 180deg at 50% 50%, #112638, #1c4b6e, #0c1c2b, #256a9e, #112638, #1c4b6e, #0c1c2b);
     box-shadow: 
-      inset 0 3px 6px rgba(255, 255, 255, 0.25),
-      inset 0 -6px 14px rgba(0, 0, 0, 0.8);
+      inset 0 3px 6px rgba(255, 255, 255, 0.22),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.85);
   }
 
   .nexpad-btn::after {
@@ -498,9 +518,9 @@ object NxprcPresets {
     width: 72%;
     height: 40%;
     border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.2) 42%, transparent 75%);
+    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.08) 45%, transparent 75%);
     transform: rotate(-10deg);
-    border-top: 1.5px solid rgba(255, 255, 255, 0.55);
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
   }
 
   .nexpad-btn .btn-core {
@@ -509,13 +529,13 @@ object NxprcPresets {
     height: 68px;
     border-radius: 50%;
     background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.55) 0%, transparent 35%),
-      radial-gradient(circle at 68% 75%, rgba(0, 0, 0, 0.55) 0%, transparent 50%),
-      linear-gradient(145deg, #06b6d4 0%, #0284c7 35%, #0369a1 70%, #0c4a6e 100%);
+      radial-gradient(circle at 35% 25%, rgba(0, 229, 255, 0.25) 0%, transparent 40%),
+      radial-gradient(circle at 65% 75%, rgba(0, 0, 0, 0.7) 0%, transparent 55%),
+      linear-gradient(145deg, #0d1b28 0%, #050e18 40%, #020509 100%);
     border: 1.5px solid rgba(0, 229, 255, 0.75);
     box-shadow: 
-      inset 0 2px 5px rgba(255, 255, 255, 0.45),
-      inset 0 -5px 10px rgba(0, 0, 0, 0.75);
+      inset 0 2px 5px rgba(255, 255, 255, 0.35),
+      inset 0 -5px 10px rgba(0, 0, 0, 0.85);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -568,15 +588,14 @@ object NxprcPresets {
     height: var(--btn-size);
     border-radius: 50%;
     background:
-      radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.28) 0%, transparent 40%),
-      radial-gradient(circle at 68% 78%, rgba(0, 0, 0, 0.7) 0%, transparent 55%),
-      radial-gradient(circle at 50% 50%, #241c09 0%, #140e03 65%, #050301 100%);
-    border: 2px solid #523f14;
+      radial-gradient(circle at 45% 35%, rgba(255, 214, 0, 0.12) 0%, transparent 60%),
+      radial-gradient(circle at 50% 50%, #1f1a10 0%, #110e06 65%, #050401 100%);
+    border: 2px solid #3d3319;
     box-shadow: 
-      0 12px 28px rgba(0, 0, 0, 0.8),
-      0 0 0 3px rgba(60, 45, 12, 0.95),
+      0 14px 30px rgba(0, 0, 0, 0.85),
+      0 0 0 3px rgba(36, 29, 10, 0.95),
       0 0 24px var(--accent-glow),
-      inset 0 2px 4px rgba(255, 255, 255, 0.32),
+      inset 0 2px 4px rgba(255, 255, 255, 0.25),
       inset 0 -6px 14px rgba(0, 0, 0, 0.9);
     display: flex;
     align-items: center;
@@ -589,11 +608,11 @@ object NxprcPresets {
     inset: 0;
     border-radius: 50%;
     background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.2) 0%, transparent 45%),
-      conic-gradient(from 180deg at 50% 50%, #362a0c, #695116, #241a05, #94721c, #362a0c, #695116, #241a05);
+      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.15) 0%, transparent 45%),
+      conic-gradient(from 180deg at 50% 50%, #291f0c, #4a3814, #1c1406, #634d19, #291f0c, #4a3814, #1c1406);
     box-shadow: 
-      inset 0 3px 6px rgba(255, 255, 255, 0.25),
-      inset 0 -6px 14px rgba(0, 0, 0, 0.8);
+      inset 0 3px 6px rgba(255, 255, 255, 0.22),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.85);
   }
 
   .nexpad-btn::after {
@@ -604,9 +623,9 @@ object NxprcPresets {
     width: 72%;
     height: 40%;
     border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.2) 42%, transparent 75%);
+    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.08) 45%, transparent 75%);
     transform: rotate(-10deg);
-    border-top: 1.5px solid rgba(255, 255, 255, 0.55);
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
   }
 
   .nexpad-btn .btn-core {
@@ -615,13 +634,13 @@ object NxprcPresets {
     height: 68px;
     border-radius: 50%;
     background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.55) 0%, transparent 35%),
-      radial-gradient(circle at 68% 75%, rgba(0, 0, 0, 0.55) 0%, transparent 50%),
-      linear-gradient(145deg, #f59e0b 0%, #d97706 35%, #b45309 70%, #78350f 100%);
+      radial-gradient(circle at 35% 25%, rgba(255, 214, 0, 0.25) 0%, transparent 40%),
+      radial-gradient(circle at 65% 75%, rgba(0, 0, 0, 0.7) 0%, transparent 55%),
+      linear-gradient(145deg, #241c0a 0%, #120e03 40%, #050401 100%);
     border: 1.5px solid rgba(255, 214, 0, 0.75);
     box-shadow: 
-      inset 0 2px 5px rgba(255, 255, 255, 0.45),
-      inset 0 -5px 10px rgba(0, 0, 0, 0.75);
+      inset 0 2px 5px rgba(255, 255, 255, 0.35),
+      inset 0 -5px 10px rgba(0, 0, 0, 0.85);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -668,18 +687,23 @@ object NxprcPresets {
     --press-scale: 0.92;
   }
   .dpad-btn {
+    position: relative;
     width: var(--dpad-size);
     height: var(--dpad-size);
     border-radius: 18px;
     background: 
-      radial-gradient(circle at 50% 20%, rgba(0, 240, 255, 0.22) 0%, transparent 55%),
+      radial-gradient(circle at 50% 20%, rgba(0, 240, 255, 0.25) 0%, transparent 55%),
       linear-gradient(180deg, #262d3a 0%, #151821 60%, #080a0e 100%);
     border: 2px solid #384254;
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -5px 10px rgba(0, 0, 0, 0.85), 0 0 16px var(--accent-glow);
+    box-shadow:
+      0 12px 24px rgba(0, 0, 0, 0.8),
+      0 0 0 2px rgba(18, 22, 30, 0.95),
+      0 0 20px var(--accent-glow),
+      inset 0 2px 4px rgba(255, 255, 255, 0.35),
+      inset 0 -6px 12px rgba(0, 0, 0, 0.9);
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
   }
   .dpad-btn::before {
     content: "";
@@ -700,13 +724,16 @@ object NxprcPresets {
     width: 72%;
     height: 36%;
     border-radius: 12px;
-    background: radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.5) 0%, transparent 70%);
+    background: radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.35) 0%, transparent 70%);
   }
   .dpad-arrow {
     font-size: 32px;
     font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0,0,0,0.95), 0 -1px 0 rgba(255,255,255,0.7);
+    color: #FFFFFF;
+    text-shadow:
+      0 0 16px var(--accent),
+      0 0 8px var(--accent),
+      0 2px 4px rgba(0, 0, 0, 0.95);
     z-index: 5;
   }
   .dpad-btn:active {
@@ -737,18 +764,23 @@ object NxprcPresets {
     --press-scale: 0.92;
   }
   .dpad-btn {
+    position: relative;
     width: var(--dpad-size);
     height: var(--dpad-size);
     border-radius: 18px;
     background: 
-      radial-gradient(circle at 50% 80%, rgba(0, 240, 255, 0.22) 0%, transparent 55%),
+      radial-gradient(circle at 50% 80%, rgba(0, 240, 255, 0.25) 0%, transparent 55%),
       linear-gradient(0deg, #262d3a 0%, #151821 60%, #080a0e 100%);
     border: 2px solid #384254;
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -5px 10px rgba(0, 0, 0, 0.85), 0 0 16px var(--accent-glow);
+    box-shadow:
+      0 12px 24px rgba(0, 0, 0, 0.8),
+      0 0 0 2px rgba(18, 22, 30, 0.95),
+      0 0 20px var(--accent-glow),
+      inset 0 2px 4px rgba(255, 255, 255, 0.35),
+      inset 0 -6px 12px rgba(0, 0, 0, 0.9);
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
   }
   .dpad-btn::before {
     content: "";
@@ -769,13 +801,16 @@ object NxprcPresets {
     width: 72%;
     height: 36%;
     border-radius: 12px;
-    background: radial-gradient(ellipse at 50% 70%, rgba(255, 255, 255, 0.5) 0%, transparent 70%);
+    background: radial-gradient(ellipse at 50% 70%, rgba(255, 255, 255, 0.35) 0%, transparent 70%);
   }
   .dpad-arrow {
     font-size: 32px;
     font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0,0,0,0.95), 0 -1px 0 rgba(255,255,255,0.7);
+    color: #FFFFFF;
+    text-shadow:
+      0 0 16px var(--accent),
+      0 0 8px var(--accent),
+      0 2px 4px rgba(0, 0, 0, 0.95);
     z-index: 5;
   }
   .dpad-btn:active {
@@ -806,18 +841,23 @@ object NxprcPresets {
     --press-scale: 0.92;
   }
   .dpad-btn {
+    position: relative;
     width: var(--dpad-size);
     height: var(--dpad-size);
     border-radius: 18px;
     background: 
-      radial-gradient(circle at 20% 50%, rgba(0, 240, 255, 0.22) 0%, transparent 55%),
+      radial-gradient(circle at 20% 50%, rgba(0, 240, 255, 0.25) 0%, transparent 55%),
       linear-gradient(90deg, #262d3a 0%, #151821 60%, #080a0e 100%);
     border: 2px solid #384254;
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -5px 10px rgba(0, 0, 0, 0.85), 0 0 16px var(--accent-glow);
+    box-shadow:
+      0 12px 24px rgba(0, 0, 0, 0.8),
+      0 0 0 2px rgba(18, 22, 30, 0.95),
+      0 0 20px var(--accent-glow),
+      inset 0 2px 4px rgba(255, 255, 255, 0.35),
+      inset 0 -6px 12px rgba(0, 0, 0, 0.9);
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
   }
   .dpad-btn::before {
     content: "";
@@ -838,13 +878,16 @@ object NxprcPresets {
     width: 36%;
     height: 72%;
     border-radius: 12px;
-    background: radial-gradient(ellipse at 30% 50%, rgba(255, 255, 255, 0.5) 0%, transparent 70%);
+    background: radial-gradient(ellipse at 30% 50%, rgba(255, 255, 255, 0.35) 0%, transparent 70%);
   }
   .dpad-arrow {
     font-size: 32px;
     font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0,0,0,0.95), 0 -1px 0 rgba(255,255,255,0.7);
+    color: #FFFFFF;
+    text-shadow:
+      0 0 16px var(--accent),
+      0 0 8px var(--accent),
+      0 2px 4px rgba(0, 0, 0, 0.95);
     z-index: 5;
   }
   .dpad-btn:active {
@@ -875,18 +918,23 @@ object NxprcPresets {
     --press-scale: 0.92;
   }
   .dpad-btn {
+    position: relative;
     width: var(--dpad-size);
     height: var(--dpad-size);
     border-radius: 18px;
     background: 
-      radial-gradient(circle at 80% 50%, rgba(0, 240, 255, 0.22) 0%, transparent 55%),
+      radial-gradient(circle at 80% 50%, rgba(0, 240, 255, 0.25) 0%, transparent 55%),
       linear-gradient(270deg, #262d3a 0%, #151821 60%, #080a0e 100%);
     border: 2px solid #384254;
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -5px 10px rgba(0, 0, 0, 0.85), 0 0 16px var(--accent-glow);
+    box-shadow:
+      0 12px 24px rgba(0, 0, 0, 0.8),
+      0 0 0 2px rgba(18, 22, 30, 0.95),
+      0 0 20px var(--accent-glow),
+      inset 0 2px 4px rgba(255, 255, 255, 0.35),
+      inset 0 -6px 12px rgba(0, 0, 0, 0.9);
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
   }
   .dpad-btn::before {
     content: "";
@@ -907,13 +955,16 @@ object NxprcPresets {
     width: 36%;
     height: 72%;
     border-radius: 12px;
-    background: radial-gradient(ellipse at 70% 50%, rgba(255, 255, 255, 0.5) 0%, transparent 70%);
+    background: radial-gradient(ellipse at 70% 50%, rgba(255, 255, 255, 0.35) 0%, transparent 70%);
   }
   .dpad-arrow {
     font-size: 32px;
     font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0,0,0,0.95), 0 -1px 0 rgba(255,255,255,0.7);
+    color: #FFFFFF;
+    text-shadow:
+      0 0 16px var(--accent),
+      0 0 8px var(--accent),
+      0 2px 4px rgba(0, 0, 0, 0.95);
     z-index: 5;
   }
   .dpad-btn:active {
@@ -938,12 +989,13 @@ object NxprcPresets {
   :root {
     --cross-size: 144px;
     --accent: #00F0FF;
-    --accent-glow: rgba(0, 240, 255, 0.4);
+    --accent-glow: rgba(0, 240, 255, 0.45);
     --spring-damping: 0.72;
     --spring-stiffness: 480;
     --press-scale: 0.95;
   }
   .dpad-cross {
+    position: relative;
     width: var(--cross-size);
     height: var(--cross-size);
     border-radius: 28px;
@@ -951,38 +1003,38 @@ object NxprcPresets {
       radial-gradient(circle at 50% 50%, #1e2430 0%, #101319 65%, #06070a 100%);
     border: 2px solid #343d4e;
     box-shadow: 
-      0 12px 28px rgba(0, 0, 0, 0.8), 
+      0 12px 28px rgba(0, 0, 0, 0.8),
+      0 0 0 3px rgba(14, 17, 24, 0.95),
       inset 0 2px 5px rgba(255, 255, 255, 0.28), 
       inset 0 -6px 14px rgba(0, 0, 0, 0.9), 
       0 0 24px var(--accent-glow);
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
   }
   .dpad-cross::before {
     content: "";
     position: absolute;
-    width: 50px;
-    height: 50px;
+    width: 52px;
+    height: 52px;
     border-radius: 50%;
     background: radial-gradient(circle at 45% 45%, #262e3d 0%, #0b0d12 100%);
     box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.95), 0 1px 2px rgba(255, 255, 255, 0.25);
-    border: 1.5px solid rgba(0, 240, 255, 0.35);
+    border: 1.5px solid rgba(0, 240, 255, 0.4);
   }
   .dpad-cross::after {
     content: "";
     position: absolute;
-    width: 100px;
-    height: 100px;
+    width: 104px;
+    height: 104px;
     border-radius: 50%;
     border: 1.5px dashed rgba(0, 240, 255, 0.35);
   }
   .cross-center {
     font-size: 22px;
     font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0,0,0,0.9);
+    color: #FFFFFF;
+    text-shadow: 0 0 16px var(--accent), 0 0 8px var(--accent), 0 2px 4px rgba(0, 0, 0, 0.95);
     z-index: 5;
   }
   .dpad-cross:active {
@@ -1012,19 +1064,26 @@ object NxprcPresets {
     --press-scale: 0.94;
   }
   .trigger-btn {
+    position: relative;
     width: 74px;
     height: 112px;
     border-radius: 20px;
-    background: linear-gradient(180deg, #262d3a 0%, #141720 45%, #080a0e 100%);
-    border: 2px solid #384254;
-    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.32), inset 0 -8px 16px rgba(0, 0, 0, 0.85), 0 0 18px var(--accent-glow);
+    background:
+      radial-gradient(circle at 50% 25%, rgba(255, 255, 255, 0.16) 0%, transparent 60%),
+      linear-gradient(180deg, #2a3140 0%, #161a24 45%, #080a0e 100%);
+    border: 2px solid #3c485c;
+    box-shadow:
+      0 14px 28px rgba(0, 0, 0, 0.8),
+      0 0 0 2px rgba(18, 22, 30, 0.95),
+      0 0 22px var(--accent-glow),
+      inset 0 2px 4px rgba(255, 255, 255, 0.35),
+      inset 0 -8px 16px rgba(0, 0, 0, 0.9);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
     padding-top: 18px;
     box-sizing: border-box;
-    position: relative;
   }
   .trigger-btn::before {
     content: "";
@@ -1033,14 +1092,30 @@ object NxprcPresets {
     width: 44px;
     height: 4px;
     border-radius: 2px;
-    background: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 8px 0 rgba(255, 255, 255, 0.14), 0 16px 0 rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.22);
+    box-shadow:
+      0 8px 0 rgba(255, 255, 255, 0.16),
+      0 16px 0 rgba(255, 255, 255, 0.10);
+  }
+  .trigger-btn::after {
+    content: "";
+    position: absolute;
+    top: 6px;
+    left: 12px;
+    width: 50px;
+    height: 18px;
+    border-radius: 9px;
+    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.40) 0%, transparent 75%);
   }
   .trigger-label {
     font-size: 28px;
     font-weight: 900;
     color: #FFFFFF;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.9), 0 0 12px var(--accent);
+    text-shadow:
+      0 0 16px var(--accent),
+      0 0 8px var(--accent),
+      0 2px 4px rgba(0, 0, 0, 0.95);
+    z-index: 5;
   }
   .trigger-btn:active {
     transform: scaleY(0.94) translateY(4px);
@@ -1069,19 +1144,26 @@ object NxprcPresets {
     --press-scale: 0.94;
   }
   .trigger-btn {
+    position: relative;
     width: 74px;
     height: 112px;
     border-radius: 20px;
-    background: linear-gradient(180deg, #262d3a 0%, #141720 45%, #080a0e 100%);
-    border: 2px solid #384254;
-    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.32), inset 0 -8px 16px rgba(0, 0, 0, 0.85), 0 0 18px var(--accent-glow);
+    background:
+      radial-gradient(circle at 50% 25%, rgba(255, 255, 255, 0.16) 0%, transparent 60%),
+      linear-gradient(180deg, #2a3140 0%, #161a24 45%, #080a0e 100%);
+    border: 2px solid #3c485c;
+    box-shadow:
+      0 14px 28px rgba(0, 0, 0, 0.8),
+      0 0 0 2px rgba(18, 22, 30, 0.95),
+      0 0 22px var(--accent-glow),
+      inset 0 2px 4px rgba(255, 255, 255, 0.35),
+      inset 0 -8px 16px rgba(0, 0, 0, 0.9);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
     padding-top: 18px;
     box-sizing: border-box;
-    position: relative;
   }
   .trigger-btn::before {
     content: "";
@@ -1090,14 +1172,30 @@ object NxprcPresets {
     width: 44px;
     height: 4px;
     border-radius: 2px;
-    background: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 8px 0 rgba(255, 255, 255, 0.14), 0 16px 0 rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.22);
+    box-shadow:
+      0 8px 0 rgba(255, 255, 255, 0.16),
+      0 16px 0 rgba(255, 255, 255, 0.10);
+  }
+  .trigger-btn::after {
+    content: "";
+    position: absolute;
+    top: 6px;
+    left: 12px;
+    width: 50px;
+    height: 18px;
+    border-radius: 9px;
+    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.40) 0%, transparent 75%);
   }
   .trigger-label {
     font-size: 28px;
     font-weight: 900;
     color: #FFFFFF;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.9), 0 0 12px var(--accent);
+    text-shadow:
+      0 0 16px var(--accent),
+      0 0 8px var(--accent),
+      0 2px 4px rgba(0, 0, 0, 0.95);
+    z-index: 5;
   }
   .trigger-btn:active {
     transform: scaleY(0.94) translateY(4px);
@@ -1120,22 +1218,29 @@ object NxprcPresets {
 <style>
   :root {
     --accent: #00F0FF;
-    --accent-glow: rgba(0, 240, 255, 0.4);
+    --accent-glow: rgba(0, 240, 255, 0.45);
     --spring-damping: 0.75;
     --spring-stiffness: 520;
     --press-scale: 0.95;
   }
   .bumper-btn {
+    position: relative;
     width: 120px;
     height: 52px;
     border-radius: 18px;
-    background: linear-gradient(180deg, #262e3c 0%, #151822 60%, #080a0e 100%);
-    border: 2px solid #384357;
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.7), inset 0 2px 4px rgba(255, 255, 255, 0.32), inset 0 -5px 10px rgba(0, 0, 0, 0.8), 0 0 18px var(--accent-glow);
+    background:
+      radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.12) 0%, transparent 60%),
+      linear-gradient(180deg, #2b3342 0%, #161a24 60%, #080a0e 100%);
+    border: 2px solid #3c485c;
+    box-shadow:
+      0 12px 24px rgba(0, 0, 0, 0.75),
+      0 0 0 2px rgba(18, 22, 30, 0.95),
+      0 0 20px var(--accent-glow),
+      inset 0 2px 4px rgba(255, 255, 255, 0.35),
+      inset 0 -5px 12px rgba(0, 0, 0, 0.85);
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
   }
   .bumper-btn::after {
     content: "";
@@ -1145,13 +1250,17 @@ object NxprcPresets {
     width: 76%;
     height: 35%;
     border-radius: 10px;
-    background: radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.45) 0%, transparent 75%);
+    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.40) 0%, transparent 75%);
   }
   .bumper-label {
     font-size: 24px;
     font-weight: 900;
     color: #FFFFFF;
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7), 0 -1px 0 rgba(0, 0, 0, 0.95), 0 0 12px var(--accent);
+    text-shadow:
+      0 0 16px var(--accent),
+      0 0 8px var(--accent),
+      0 2px 4px rgba(0, 0, 0, 0.95);
+    z-index: 5;
   }
   .bumper-btn:active {
     transform: scale(0.95) translateY(2px);
@@ -1174,22 +1283,29 @@ object NxprcPresets {
 <style>
   :root {
     --accent: #00F0FF;
-    --accent-glow: rgba(0, 240, 255, 0.4);
+    --accent-glow: rgba(0, 240, 255, 0.45);
     --spring-damping: 0.75;
     --spring-stiffness: 520;
     --press-scale: 0.95;
   }
   .bumper-btn {
+    position: relative;
     width: 120px;
     height: 52px;
     border-radius: 18px;
-    background: linear-gradient(180deg, #262e3c 0%, #151822 60%, #080a0e 100%);
-    border: 2px solid #384357;
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.7), inset 0 2px 4px rgba(255, 255, 255, 0.32), inset 0 -5px 10px rgba(0, 0, 0, 0.8), 0 0 18px var(--accent-glow);
+    background:
+      radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.12) 0%, transparent 60%),
+      linear-gradient(180deg, #2b3342 0%, #161a24 60%, #080a0e 100%);
+    border: 2px solid #3c485c;
+    box-shadow:
+      0 12px 24px rgba(0, 0, 0, 0.75),
+      0 0 0 2px rgba(18, 22, 30, 0.95),
+      0 0 20px var(--accent-glow),
+      inset 0 2px 4px rgba(255, 255, 255, 0.35),
+      inset 0 -5px 12px rgba(0, 0, 0, 0.85);
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
   }
   .bumper-btn::after {
     content: "";
@@ -1199,13 +1315,17 @@ object NxprcPresets {
     width: 76%;
     height: 35%;
     border-radius: 10px;
-    background: radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.45) 0%, transparent 75%);
+    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.40) 0%, transparent 75%);
   }
   .bumper-label {
     font-size: 24px;
     font-weight: 900;
     color: #FFFFFF;
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7), 0 -1px 0 rgba(0, 0, 0, 0.95), 0 0 12px var(--accent);
+    text-shadow:
+      0 0 16px var(--accent),
+      0 0 8px var(--accent),
+      0 2px 4px rgba(0, 0, 0, 0.95);
+    z-index: 5;
   }
   .bumper-btn:active {
     transform: scale(0.95) translateY(2px);
@@ -1228,8 +1348,8 @@ object NxprcPresets {
 <style>
   :root {
     --stick-size: 104px;
-    --accent: #4ADE80;
-    --accent-glow: rgba(74, 222, 128, 0.3);
+    --accent: #00E5FF;
+    --accent-glow: rgba(0, 229, 255, 0.5);
     --spring-damping: 0.70;
     --spring-stiffness: 420;
     --press-scale: 0.92;
@@ -1253,9 +1373,15 @@ object NxprcPresets {
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    background: radial-gradient(circle at 45% 40%, #262d3a 0%, #12151d 65%, #06070a 100%);
-    border: 3px solid #384355;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.75), inset 0 3px 6px rgba(255, 255, 255, 0.28), inset 0 -8px 16px rgba(0, 0, 0, 0.85), 0 0 20px var(--accent-glow);
+    background:
+      radial-gradient(circle at 45% 40%, #2a313f 0%, #141720 65%, #06070a 100%);
+    border: 3px solid #3c485c;
+    box-shadow:
+      0 14px 28px rgba(0, 0, 0, 0.8),
+      0 0 0 2px rgba(18, 22, 30, 0.95),
+      0 0 22px var(--accent-glow),
+      inset 0 3px 6px rgba(255, 255, 255, 0.28),
+      inset 0 -8px 18px rgba(0, 0, 0, 0.9);
     box-sizing: border-box;
   }
   .stick-cap {
@@ -1263,8 +1389,11 @@ object NxprcPresets {
     width: 68px;
     height: 68px;
     border-radius: 50%;
-    background: radial-gradient(circle at 50% 50%, #181c24 0%, #0a0c10 100%);
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.95), 0 0 0 2px rgba(255, 255, 255, 0.14);
+    background:
+      radial-gradient(circle at 50% 45%, #242a36 0%, #12151d 65%, #080a0d 100%);
+    box-shadow:
+      inset 0 0 12px rgba(0, 0, 0, 0.95),
+      0 0 0 2px rgba(255, 255, 255, 0.16);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1275,14 +1404,17 @@ object NxprcPresets {
     width: 46px;
     height: 46px;
     border-radius: 50%;
-    border: 2px dashed rgba(74, 222, 128, 0.55);
+    border: 2px dashed rgba(0, 229, 255, 0.55);
     box-sizing: border-box;
   }
   .stick-label {
     font-size: 20px;
     font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 8px var(--accent);
+    color: #FFFFFF;
+    text-shadow:
+      0 0 16px var(--accent),
+      0 0 8px var(--accent),
+      0 2px 4px rgba(0, 0, 0, 0.95);
     z-index: 5;
   }
   .stick-btn:active .stick-cap {
@@ -1310,8 +1442,8 @@ object NxprcPresets {
 <style>
   :root {
     --stick-size: 104px;
-    --accent: #00B0FF;
-    --accent-glow: rgba(0, 176, 255, 0.4);
+    --accent: #FF007F;
+    --accent-glow: rgba(255, 0, 127, 0.5);
     --spring-damping: 0.70;
     --spring-stiffness: 420;
     --press-scale: 0.92;
@@ -1335,9 +1467,15 @@ object NxprcPresets {
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    background: radial-gradient(circle at 45% 40%, #262d3a 0%, #12151d 65%, #06070a 100%);
-    border: 3px solid #384355;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.75), inset 0 3px 6px rgba(255, 255, 255, 0.28), inset 0 -8px 16px rgba(0, 0, 0, 0.85), 0 0 20px var(--accent-glow);
+    background:
+      radial-gradient(circle at 45% 40%, #2a313f 0%, #141720 65%, #06070a 100%);
+    border: 3px solid #3c485c;
+    box-shadow:
+      0 14px 28px rgba(0, 0, 0, 0.8),
+      0 0 0 2px rgba(18, 22, 30, 0.95),
+      0 0 22px var(--accent-glow),
+      inset 0 3px 6px rgba(255, 255, 255, 0.28),
+      inset 0 -8px 18px rgba(0, 0, 0, 0.9);
     box-sizing: border-box;
   }
   .stick-cap {
@@ -1345,8 +1483,11 @@ object NxprcPresets {
     width: 68px;
     height: 68px;
     border-radius: 50%;
-    background: radial-gradient(circle at 50% 50%, #181c24 0%, #0a0c10 100%);
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.95), 0 0 0 2px rgba(255, 255, 255, 0.14);
+    background:
+      radial-gradient(circle at 50% 45%, #242a36 0%, #12151d 65%, #080a0d 100%);
+    box-shadow:
+      inset 0 0 12px rgba(0, 0, 0, 0.95),
+      0 0 0 2px rgba(255, 255, 255, 0.16);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1357,14 +1498,17 @@ object NxprcPresets {
     width: 46px;
     height: 46px;
     border-radius: 50%;
-    border: 2px dashed rgba(0, 176, 255, 0.55);
+    border: 2px dashed rgba(255, 0, 127, 0.55);
     box-sizing: border-box;
   }
   .stick-label {
     font-size: 20px;
     font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 8px var(--accent);
+    color: #FFFFFF;
+    text-shadow:
+      0 0 16px var(--accent),
+      0 0 8px var(--accent),
+      0 2px 4px rgba(0, 0, 0, 0.95);
     z-index: 5;
   }
   .stick-btn:active .stick-cap {
@@ -1393,27 +1537,34 @@ object NxprcPresets {
   :root {
     --btn-size: 70px;
     --accent: #00E5FF;
-    --accent-glow: rgba(0, 229, 255, 0.45);
+    --accent-glow: rgba(0, 229, 255, 0.5);
     --spring-damping: 0.72;
     --spring-stiffness: 480;
     --press-scale: 0.90;
   }
   .stick-btn-ctl {
+    position: relative;
     width: var(--btn-size);
     height: var(--btn-size);
     border-radius: 50%;
     background: radial-gradient(circle at 35% 35%, #2a2f3b 0%, #101217 100%);
     border: 2px solid #384254;
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.7), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -6px 12px rgba(0, 0, 0, 0.85), 0 0 18px var(--accent-glow);
+    box-shadow:
+      0 12px 24px rgba(0, 0, 0, 0.75),
+      0 0 0 2px rgba(18, 22, 30, 0.95),
+      inset 0 2px 4px rgba(255, 255, 255, 0.35),
+      inset 0 -6px 12px rgba(0, 0, 0, 0.85),
+      0 0 20px var(--accent-glow);
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
     box-sizing: border-box;
   }
   .stick-btn-ctl::before {
     content: "";
     position: absolute;
+    left: 7px;
+    top: 7px;
     width: 56px;
     height: 56px;
     border-radius: 50%;
@@ -1432,10 +1583,10 @@ object NxprcPresets {
     box-sizing: border-box;
   }
   .stick-btn-label {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 8px var(--accent);
+    color: #FFFFFF;
+    text-shadow: 0 0 10px var(--accent), 0 1px 3px rgba(0, 0, 0, 0.95);
     letter-spacing: 0.5px;
   }
   .stick-btn-ctl:active {
@@ -1462,27 +1613,34 @@ object NxprcPresets {
   :root {
     --btn-size: 70px;
     --accent: #FF007F;
-    --accent-glow: rgba(255, 0, 127, 0.45);
+    --accent-glow: rgba(255, 0, 127, 0.5);
     --spring-damping: 0.72;
     --spring-stiffness: 480;
     --press-scale: 0.90;
   }
   .stick-btn-ctl {
+    position: relative;
     width: var(--btn-size);
     height: var(--btn-size);
     border-radius: 50%;
     background: radial-gradient(circle at 35% 35%, #2a2f3b 0%, #101217 100%);
     border: 2px solid #384254;
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.7), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -6px 12px rgba(0, 0, 0, 0.85), 0 0 18px var(--accent-glow);
+    box-shadow:
+      0 12px 24px rgba(0, 0, 0, 0.75),
+      0 0 0 2px rgba(18, 22, 30, 0.95),
+      inset 0 2px 4px rgba(255, 255, 255, 0.35),
+      inset 0 -6px 12px rgba(0, 0, 0, 0.85),
+      0 0 20px var(--accent-glow);
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
     box-sizing: border-box;
   }
   .stick-btn-ctl::before {
     content: "";
     position: absolute;
+    left: 7px;
+    top: 7px;
     width: 56px;
     height: 56px;
     border-radius: 50%;
@@ -1501,10 +1659,10 @@ object NxprcPresets {
     box-sizing: border-box;
   }
   .stick-btn-label {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 8px var(--accent);
+    color: #FFFFFF;
+    text-shadow: 0 0 10px var(--accent), 0 1px 3px rgba(0, 0, 0, 0.95);
     letter-spacing: 0.5px;
   }
   .stick-btn-ctl:active {
@@ -1531,15 +1689,20 @@ object NxprcPresets {
   :root {
     --pad-size: 180px;
     --accent: #00E5FF;
-    --accent-glow: rgba(0, 229, 255, 0.35);
+    --accent-glow: rgba(0, 229, 255, 0.4);
   }
   .touchpad-ctl {
     width: var(--pad-size);
     height: var(--pad-size);
     border-radius: 26px;
-    background: radial-gradient(circle at 40% 40%, #20232a 0%, #111317 60%, #07080a 100%);
-    border: 2px solid #333a47;
-    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.18), inset 0 -6px 14px rgba(0, 0, 0, 0.85), 0 0 18px var(--accent-glow);
+    background: radial-gradient(circle at 45% 40%, #242934 0%, #13161d 60%, #07080b 100%);
+    border: 2px solid #363e4f;
+    box-shadow:
+      0 14px 28px rgba(0, 0, 0, 0.8),
+      0 0 0 2px rgba(18, 22, 30, 0.95),
+      0 0 22px var(--accent-glow),
+      inset 0 2px 4px rgba(255, 255, 255, 0.22),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.9);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1553,24 +1716,32 @@ object NxprcPresets {
     position: absolute;
     inset: 14px;
     border-radius: 18px;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.02) 0%, transparent 80%);
-    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.35);
+    border: 1.5px solid rgba(255, 255, 255, 0.12);
+    background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.05) 0%, transparent 80%);
+    box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.6);
     pointer-events: none;
   }
   .touchpad-title {
-    font-size: 10px;
+    font-size: 15px;
     font-weight: 900;
-    color: var(--accent);
+    color: #FFFFFF;
     letter-spacing: 1.2px;
     text-transform: uppercase;
-    z-index: 2;
+    text-shadow:
+      0 0 16px var(--accent),
+      0 0 8px var(--accent),
+      0 2px 4px rgba(0, 0, 0, 0.95);
+    z-index: 5;
   }
   .touchpad-sub {
-    font-size: 9px;
-    color: rgba(255, 255, 255, 0.45);
-    letter-spacing: 0.8px;
-    z-index: 2;
+    font-size: 12px;
+    font-weight: 700;
+    color: #FFFFFF;
+    letter-spacing: 1.0px;
+    text-shadow:
+      0 0 12px var(--accent),
+      0 1px 3px rgba(0, 0, 0, 0.95);
+    z-index: 5;
   }
 </style>
 </head>
@@ -1593,15 +1764,20 @@ object NxprcPresets {
   :root {
     --pad-size: 180px;
     --accent: #FF007F;
-    --accent-glow: rgba(255, 0, 127, 0.35);
+    --accent-glow: rgba(255, 0, 127, 0.4);
   }
   .touchpad-ctl {
     width: var(--pad-size);
     height: var(--pad-size);
     border-radius: 26px;
-    background: radial-gradient(circle at 40% 40%, #20232a 0%, #111317 60%, #07080a 100%);
-    border: 2px solid #333a47;
-    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.18), inset 0 -6px 14px rgba(0, 0, 0, 0.85), 0 0 18px var(--accent-glow);
+    background: radial-gradient(circle at 45% 40%, #242934 0%, #13161d 60%, #07080b 100%);
+    border: 2px solid #363e4f;
+    box-shadow:
+      0 14px 28px rgba(0, 0, 0, 0.8),
+      0 0 0 2px rgba(18, 22, 30, 0.95),
+      0 0 22px var(--accent-glow),
+      inset 0 2px 4px rgba(255, 255, 255, 0.22),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.9);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1615,24 +1791,32 @@ object NxprcPresets {
     position: absolute;
     inset: 14px;
     border-radius: 18px;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.02) 0%, transparent 80%);
-    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.35);
+    border: 1.5px solid rgba(255, 255, 255, 0.12);
+    background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.05) 0%, transparent 80%);
+    box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.6);
     pointer-events: none;
   }
   .touchpad-title {
-    font-size: 10px;
+    font-size: 15px;
     font-weight: 900;
-    color: var(--accent);
+    color: #FFFFFF;
     letter-spacing: 1.2px;
     text-transform: uppercase;
-    z-index: 2;
+    text-shadow:
+      0 0 16px var(--accent),
+      0 0 8px var(--accent),
+      0 2px 4px rgba(0, 0, 0, 0.95);
+    z-index: 5;
   }
   .touchpad-sub {
-    font-size: 9px;
-    color: rgba(255, 255, 255, 0.45);
-    letter-spacing: 0.8px;
-    z-index: 2;
+    font-size: 12px;
+    font-weight: 700;
+    color: #FFFFFF;
+    letter-spacing: 1.0px;
+    text-shadow:
+      0 0 12px var(--accent),
+      0 1px 3px rgba(0, 0, 0, 0.95);
+    z-index: 5;
   }
 </style>
 </head>
@@ -1663,7 +1847,11 @@ object NxprcPresets {
     border-radius: 14px;
     background: radial-gradient(circle at 50% 30%, #252b37 0%, #101217 100%);
     border: 1.5px solid #363e4f;
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.65), inset 0 1px 3px rgba(255, 255, 255, 0.32), inset 0 -3px 6px rgba(0, 0, 0, 0.8);
+    box-shadow:
+      0 10px 20px rgba(0, 0, 0, 0.7),
+      0 0 0 2px rgba(18, 22, 30, 0.95),
+      inset 0 1px 3px rgba(255, 255, 255, 0.35),
+      inset 0 -4px 8px rgba(0, 0, 0, 0.85);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1675,7 +1863,7 @@ object NxprcPresets {
     height: 3px;
     border-radius: 1.5px;
     background: #FFFFFF;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.85), 0 0 6px rgba(255,255,255,0.45);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 8px rgba(255, 255, 255, 0.5);
   }
   .system-btn:active {
     transform: scale(0.92) translateY(2px);
@@ -1709,7 +1897,11 @@ object NxprcPresets {
     border-radius: 14px;
     background: radial-gradient(circle at 50% 30%, #252b37 0%, #101217 100%);
     border: 1.5px solid #363e4f;
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.65), inset 0 1px 3px rgba(255, 255, 255, 0.32), inset 0 -3px 6px rgba(0, 0, 0, 0.8);
+    box-shadow:
+      0 10px 20px rgba(0, 0, 0, 0.7),
+      0 0 0 2px rgba(18, 22, 30, 0.95),
+      inset 0 1px 3px rgba(255, 255, 255, 0.35),
+      inset 0 -4px 8px rgba(0, 0, 0, 0.85);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1718,7 +1910,7 @@ object NxprcPresets {
     font-size: 22px;
     font-weight: 900;
     color: #FFFFFF;
-    text-shadow: 0 0 10px rgba(0, 240, 255, 0.65), 0 1px 2px rgba(0,0,0,0.95);
+    text-shadow: 0 0 12px rgba(0, 240, 255, 0.75), 0 1px 2px rgba(0, 0, 0, 0.95);
   }
   .system-btn:active {
     transform: scale(0.92) translateY(2px);
@@ -1750,7 +1942,13 @@ object NxprcPresets {
     border-radius: 50%;
     background: radial-gradient(circle at 50% 35%, #2a303f 0%, #12151d 70%, #050608 100%);
     border: 2px solid #455064;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.8), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -6px 12px rgba(0, 0, 0, 0.85), 0 0 22px rgba(255, 255, 255, 0.4);
+    box-shadow:
+      0 12px 26px rgba(0, 0, 0, 0.85),
+      0 0 0 2px rgba(18, 22, 30, 0.95),
+      inset 0 2px 4px rgba(255, 255, 255, 0.35),
+      inset 0 -6px 12px rgba(0, 0, 0, 0.85),
+      0 0 24px rgba(0, 240, 255, 0.55),
+      0 0 14px rgba(255, 255, 255, 0.4);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1760,7 +1958,10 @@ object NxprcPresets {
     font-size: 32px;
     font-weight: 900;
     color: #FFFFFF;
-    text-shadow: 0 0 14px rgba(255, 255, 255, 0.9), 0 0 22px rgba(0, 240, 255, 0.55), 0 2px 4px rgba(0,0,0,0.95);
+    text-shadow:
+      0 0 16px rgba(255, 255, 255, 0.95),
+      0 0 24px rgba(0, 240, 255, 0.65),
+      0 2px 4px rgba(0, 0, 0, 0.95);
   }
   .system-home-btn:active {
     transform: scale(0.93) translateY(2px);
@@ -1792,7 +1993,11 @@ object NxprcPresets {
     border-radius: 50%;
     background: radial-gradient(circle at 50% 35%, #2a303f 0%, #12151d 70%, #050608 100%);
     border: 2px solid #455064;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.8), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -6px 12px rgba(0, 0, 0, 0.85);
+    box-shadow:
+      0 12px 26px rgba(0, 0, 0, 0.85),
+      0 0 0 2px rgba(18, 22, 30, 0.95),
+      inset 0 2px 4px rgba(255, 255, 255, 0.35),
+      inset 0 -6px 12px rgba(0, 0, 0, 0.85);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1802,7 +2007,7 @@ object NxprcPresets {
     font-size: 28px;
     font-weight: 900;
     color: #FFFFFF;
-    text-shadow: 0 0 14px rgba(255, 255, 255, 0.9), 0 2px 4px rgba(0,0,0,0.95);
+    text-shadow: 0 0 14px rgba(255, 255, 255, 0.9), 0 2px 4px rgba(0, 0, 0, 0.95);
   }
   .system-share-btn:active {
     transform: scale(0.93) translateY(2px);
@@ -1836,7 +2041,12 @@ object NxprcPresets {
     border-radius: 16px;
     background: radial-gradient(circle at 40% 30%, #232936 0%, #12161f 65%, #080a0f 100%);
     border: 2px solid #3b4559;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.25), inset 0 -4px 10px rgba(0, 0, 0, 0.85);
+    box-shadow:
+      0 10px 22px rgba(0, 0, 0, 0.75),
+      0 0 0 2px rgba(18, 22, 30, 0.95),
+      inset 0 2px 4px rgba(255, 255, 255, 0.28),
+      inset 0 -5px 12px rgba(0, 0, 0, 0.85),
+      0 0 20px rgba(245, 158, 11, 0.35);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1848,18 +2058,18 @@ object NxprcPresets {
     position: absolute;
     inset: 4px;
     border-radius: 12px;
-    border: 1px dashed rgba(245, 158, 11, 0.35);
+    border: 1px dashed rgba(245, 158, 11, 0.4);
   }
   .macro-bolt {
     font-size: 14px;
     color: var(--macro-accent);
-    text-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+    text-shadow: 0 0 10px rgba(245, 158, 11, 0.7);
   }
   .macro-label {
     font-size: 20px;
     font-weight: 900;
     color: #FFFFFF;
-    text-shadow: 0 0 10px rgba(245, 158, 11, 0.8), 0 2px 4px rgba(0, 0, 0, 0.9);
+    text-shadow: 0 0 10px rgba(245, 158, 11, 0.85), 0 2px 4px rgba(0, 0, 0, 0.9);
   }
   .macro-paddle:active {
     transform: scale(0.94) translateY(2px);
@@ -1979,14 +2189,41 @@ object NxprcPresets {
 <head>
 <meta charset="UTF-8">
 <style>
+  :root {
+    --pad-w: ${widthDp}px;
+    --pad-h: ${heightDp}px;
+    --spring-damping: 0.78;
+    --spring-stiffness: 500;
+    --press-scale: 0.98;
+  }
   .touchpad-ctl {
-    width: ${'$'}{widthDp}px;
-    height: ${'$'}{heightDp}px;
-    border-radius: 26px;
+    width: var(--pad-w);
+    height: var(--pad-h);
     position: relative;
+    border-radius: 26px;
     box-sizing: border-box;
+    background: radial-gradient(circle at 50% 45%, #181c24 0%, #0d1016 70%, #06080b 100%);
+    border: 2px solid #232a36;
+    box-shadow: 
+      0 10px 24px rgba(0, 0, 0, 0.75),
+      inset 0 2px 4px rgba(255, 255, 255, 0.22),
+      inset 0 -6px 12px rgba(0, 0, 0, 0.85);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     /* Pure flat, stationary laptop trackpad surface (2.0x default ballistics). */
     /* Strictly NO center button, NO center dot, NO movable ring, and NO tap-to-click. */
+  }
+  .touchpad-title {
+    font-size: 20px;
+    font-weight: 900;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #94A3B8;
+    letter-spacing: 1.5px;
+  }
+  .touchpad-ctl:active {
+    transform: scale(0.98);
   }
 </style>
 </head>
@@ -2013,11 +2250,37 @@ object NxprcPresets {
     --press-scale: 0.90;
   }
   .stick-btn-ctl {
-    width: ${'$'}{widthDp}px;
-    height: ${'$'}{heightDp}px;
+    width: ${widthDp}px;
+    height: ${heightDp}px;
     position: relative;
     border-radius: 50%;
-    /* Visually design the knurled rim, recessed thumb dish, and label here */
+    box-sizing: border-box;
+    background: radial-gradient(circle at 45% 40%, #20242e 0%, #12151d 65%, #08090c 100%);
+    border: 2px solid #2e3544;
+    box-shadow: 
+      0 8px 20px rgba(0, 0, 0, 0.8),
+      inset 0 2px 4px rgba(255, 255, 255, 0.25),
+      inset 0 -6px 12px rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .stick-btn-ctl::before {
+    content: "";
+    position: absolute;
+    width: ${(widthDp * 0.70).toInt()}px;
+    height: ${(heightDp * 0.70).toInt()}px;
+    border-radius: 50%;
+    border: 2px dashed rgba(255, 255, 255, 0.22);
+    box-sizing: border-box;
+  }
+  .stick-btn-label {
+    font-size: 22px;
+    font-weight: 900;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #FFFFFF;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+    z-index: 5;
   }
   .stick-btn-ctl:active {
     transform: scale(0.90) translateY(2px);
@@ -2050,13 +2313,16 @@ object NxprcPresets {
     --press-scale: 0.92;
   }
   .stick-btn {
-    width: ${'$'}{widthDp}px;
-    height: ${'$'}{heightDp}px;
+    width: ${widthDp}px;
+    height: ${heightDp}px;
     position: relative;
     background: transparent;
     border: none;
     padding: 0;
     outline: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   /* Stationary Gimbal Base (remains at 0, 0) */
   .stick-base {
@@ -2065,16 +2331,47 @@ object NxprcPresets {
     top: 0;
     width: 100%;
     height: 100%;
-    /* Visually design the stationary socket, bezel, and directional tick markers here */
+    border-radius: 50%;
+    background: radial-gradient(circle at 45% 40%, #202530 0%, #101319 65%, #06070a 100%);
+    border: 3px solid #2e3544;
+    box-shadow: 
+      0 12px 28px rgba(0, 0, 0, 0.8),
+      inset 0 3px 6px rgba(255, 255, 255, 0.25),
+      inset 0 -8px 16px rgba(0, 0, 0, 0.9);
+    box-sizing: border-box;
   }
   /* Movable Analog Thumb Cap (translates on thumb drag) */
   .stick-cap {
     position: absolute;
-    left: ${'$'}{(widthDp * 0.18).toInt()}px;
-    top: ${'$'}{(heightDp * 0.18).toInt()}px;
-    width: ${'$'}{(widthDp * 0.64).toInt()}px;
-    height: ${'$'}{(heightDp * 0.64).toInt()}px;
-    /* Visually design the thumb dish, knurled traction rings, vector art, and label here */
+    left: ${(widthDp * 0.18).toInt()}px;
+    top: ${(heightDp * 0.18).toInt()}px;
+    width: ${(widthDp * 0.64).toInt()}px;
+    height: ${(heightDp * 0.64).toInt()}px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, #1a1e26 0%, #0c0e12 100%);
+    border: 2px solid #333a4a;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.95), 0 0 0 2px rgba(255, 255, 255, 0.14);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+  .stick-cap::before {
+    content: "";
+    position: absolute;
+    width: ${(widthDp * 0.44).toInt()}px;
+    height: ${(heightDp * 0.44).toInt()}px;
+    border-radius: 50%;
+    border: 2px dashed rgba(255, 255, 255, 0.25);
+    box-sizing: border-box;
+  }
+  .stick-label {
+    font-size: 20px;
+    font-weight: 900;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #FFFFFF;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+    z-index: 5;
   }
   .stick-btn:active .stick-cap {
     transform: scale(0.92);
@@ -2083,9 +2380,7 @@ object NxprcPresets {
 </head>
 <body>
   <button class="stick-btn" data-control="$control" data-category="JOYSTICK" data-name="Analog Stick $control">
-    <div class="stick-base">
-      <!-- Stationary socket layers: bezel, well cavity, directional ticks -->
-    </div>
+    <div class="stick-base"></div>
     <div class="stick-cap">
       <!-- Movable thumb cap layers: 360° analog stick navigation with NO center button -->
       <span class="stick-label">$control</span>
@@ -2107,22 +2402,39 @@ object NxprcPresets {
     --press-scale: 0.94;
   }
   .trigger-btn {
-    width: ${'$'}{widthDp}px;
-    height: ${'$'}{heightDp}px;
+    width: ${widthDp}px;
+    height: ${heightDp}px;
     position: relative;
     box-sizing: border-box;
+    border-radius: 20px 20px 28px 28px;
+    background: linear-gradient(180deg, #242934 0%, #151820 60%, #0b0c10 100%);
+    border: 2px solid #333a48;
+    box-shadow: 
+      0 12px 28px rgba(0, 0, 0, 0.8),
+      inset 0 3px 6px rgba(255, 255, 255, 0.3),
+      inset 0 -8px 16px rgba(0, 0, 0, 0.9);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
     padding-top: 18px;
-    /* Visually design the trigger paddle body, curvature gradient, bevels, and shadows here */
+  }
+  .trigger-btn::after {
+    content: "";
+    position: absolute;
+    bottom: 16%;
+    width: 60%;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.18);
   }
   .trigger-label {
     font-size: 28px;
     font-weight: 900;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    /* Visually design the label typography and embossed shadows here */
+    color: #FFFFFF;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+    z-index: 5;
   }
   .trigger-btn:active {
     transform: scaleY(0.94) translateY(4px);
@@ -2149,20 +2461,28 @@ object NxprcPresets {
     --press-scale: 0.96;
   }
   .bumper-btn {
-    width: ${'$'}{widthDp}px;
-    height: ${'$'}{heightDp}px;
+    width: ${widthDp}px;
+    height: ${heightDp}px;
     position: relative;
     box-sizing: border-box;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #252b36 0%, #151820 70%, #0a0c10 100%);
+    border: 2px solid #343b4a;
+    box-shadow: 
+      0 10px 24px rgba(0, 0, 0, 0.75),
+      inset 0 2px 4px rgba(255, 255, 255, 0.3),
+      inset 0 -6px 12px rgba(0, 0, 0, 0.85);
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Visually design the shoulder lever rocker, curvature specular highlight, and socket recess here */
   }
   .bumper-label {
     font-size: 24px;
     font-weight: 900;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    /* Visually design the bumper label typography and embossed shadows here */
+    color: #FFFFFF;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+    z-index: 5;
   }
   .bumper-btn:active {
     transform: scale(0.96) translateY(2px);
@@ -2186,31 +2506,40 @@ object NxprcPresets {
   :root {
     --spring-damping: 0.72;
     --spring-stiffness: 480;
-    --press-scale: ${'$'}{if (control.uppercase() == ControlKey.DPAD.key) "0.95" else "0.92"};
+    --press-scale: ${if (control.uppercase() == ControlKey.DPAD.key) "0.95" else "0.92"};
   }
   .dpad-btn {
-    width: ${'$'}{widthDp}px;
-    height: ${'$'}{heightDp}px;
+    width: ${widthDp}px;
+    height: ${heightDp}px;
     position: relative;
     box-sizing: border-box;
+    border-radius: ${if (control.uppercase() == ControlKey.DPAD.key) "28px" else "18px"};
+    background: radial-gradient(circle at 45% 40%, #222732 0%, #12151c 65%, #08090d 100%);
+    border: 2px solid #303746;
+    box-shadow: 
+      0 10px 24px rgba(0, 0, 0, 0.8),
+      inset 0 2px 5px rgba(255, 255, 255, 0.28),
+      inset 0 -6px 12px rgba(0, 0, 0, 0.85);
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Visually design the directional pad geometry, rocker pivot well, and shading here */
   }
   .dpad-glyph {
     font-size: 28px;
     font-weight: 900;
-    /* Visually design the directional indicator (or embedded SVG chevron/arrow) here */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #FFFFFF;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+    z-index: 5;
   }
   .dpad-btn:active {
-    transform: ${'$'}{if (control.uppercase() == ControlKey.DPAD.key) "scale(0.95)" else "scale(0.92) translateY(2px)"};
+    transform: ${if (control.uppercase() == ControlKey.DPAD.key) "scale(0.95)" else "scale(0.92) translateY(2px)"};
   }
 </style>
 </head>
 <body>
   <button class="dpad-btn" data-control="$control" data-category="DPAD" data-name="D-Pad $control">
-    <span class="dpad-glyph">${'$'}{dpadGlyph(control)}</span>
+    <span class="dpad-glyph">${dpadGlyph(control)}</span>
   </button>
 </body>
 </html>
@@ -2228,14 +2557,28 @@ object NxprcPresets {
     --press-scale: 0.92;
   }
   .system-btn {
-    width: ${'$'}{widthDp}px;
-    height: ${'$'}{heightDp}px;
+    width: ${widthDp}px;
+    height: ${heightDp}px;
     position: relative;
     box-sizing: border-box;
+    border-radius: 18px;
+    background: radial-gradient(circle at 45% 40%, #20242e 0%, #12151d 65%, #08090c 100%);
+    border: 2px solid #2e3544;
+    box-shadow: 
+      0 8px 20px rgba(0, 0, 0, 0.75),
+      inset 0 2px 4px rgba(255, 255, 255, 0.25),
+      inset 0 -5px 10px rgba(0, 0, 0, 0.85);
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Visually design the low-profile utility switch body, socket bevels, and lighting here */
+  }
+  .system-label {
+    font-size: 18px;
+    font-weight: 900;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #FFFFFF;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+    z-index: 5;
   }
   .system-btn:active {
     transform: scale(0.92) translateY(2px);
@@ -2244,7 +2587,7 @@ object NxprcPresets {
 </head>
 <body>
   <button class="system-btn" data-control="$control" data-category="SYSTEM" data-name="System $control">
-    <!-- Visually design vector iconography (e.g. flex hamburger bars, overlapping windows, or emblem) here -->
+    <span class="system-label">$control</span>
   </button>
 </body>
 </html>
@@ -2262,19 +2605,35 @@ object NxprcPresets {
     --press-scale: 0.92;
   }
   .nexpad-btn {
-    width: ${'$'}{widthDp}px;
-    height: ${'$'}{heightDp}px;
+    width: ${widthDp}px;
+    height: ${heightDp}px;
     position: relative;
     box-sizing: border-box;
+    border-radius: 50%;
+    background: radial-gradient(circle at 45% 40%, #202530 0%, #12151d 65%, #08090c 100%);
+    border: 2px solid #2e3544;
+    box-shadow: 
+      0 10px 26px rgba(0, 0, 0, 0.8),
+      inset 0 2px 5px rgba(255, 255, 255, 0.3),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.9);
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Visually design the face button silhouette, physical material, depth, and socket recess here */
   }
-  /* Optional: embedded SVG emblem for complex characters or icons */
+  .nexpad-btn::after {
+    content: "";
+    position: absolute;
+    top: 8%;
+    left: 18%;
+    width: 64%;
+    height: 34%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.6) 0%, transparent 75%);
+    transform: rotate(-10deg);
+  }
   .btn-emblem {
-    width: ${'$'}{(widthDp * 0.58).toInt()}px;
-    height: ${'$'}{(heightDp * 0.58).toInt()}px;
+    width: ${(widthDp * 0.58).toInt()}px;
+    height: ${(heightDp * 0.58).toInt()}px;
     position: absolute;
     pointer-events: none;
   }
@@ -2282,7 +2641,9 @@ object NxprcPresets {
     font-size: 34px;
     font-weight: 900;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    /* Visually design the extruded 3D typography and text shadows here */
+    color: #FFFFFF;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.95);
+    z-index: 5;
   }
   .nexpad-btn:active {
     transform: scale(0.93) translateY(3px);
@@ -2291,7 +2652,6 @@ object NxprcPresets {
 </head>
 <body>
   <button class="nexpad-btn" data-control="$control" data-category="BUTTON" data-name="Action $control">
-    <!-- If designing a character, hero emblem, or custom icon, embed an <svg class="btn-emblem" viewBox="0 0 100 100"><path d="..."/></svg> here -->
     <span class="btn-label">$control</span>
   </button>
 </body>
