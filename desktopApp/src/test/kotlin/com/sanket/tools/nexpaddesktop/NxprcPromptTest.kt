@@ -1908,17 +1908,19 @@ class NxprcPromptTest {
             frontierPrompt.contains("SECTION F9 — ANALOG JOYSTICK ARCHITECTURE"),
             "Button A prompt must NOT contain joystick-specific Section F9"
         )
-        val frontierJoystickPrompt = NxprcHtmlCssConverter.generateAiPrompt(
-            control = "LS",
-            category = "JOYSTICK",
-            widthDp = 96,
-            heightDp = 96,
-            options = AiDesignOptions(modelCapability = ModelCapability.FRONTIER)
-        )
-        assertTrue(
-            frontierJoystickPrompt.contains("SECTION F9 — ANALOG JOYSTICK ARCHITECTURE & THUMB-CAP DECOUPLING"),
-            "Joystick prompt MUST contain Section F9 joystick decoupling"
-        )
+        listOf("LS", "RS").forEach { stickControl ->
+            val frontierJoystickPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = stickControl,
+                category = "JOYSTICK",
+                widthDp = 96,
+                heightDp = 96,
+                options = AiDesignOptions(modelCapability = ModelCapability.FRONTIER)
+            )
+            assertTrue(
+                frontierJoystickPrompt.contains("SECTION F9 — ANALOG JOYSTICK ARCHITECTURE & THUMB-CAP DECOUPLING"),
+                "Joystick $stickControl prompt MUST contain Section F9 joystick decoupling"
+            )
+        }
         assertTrue(
             frontierPrompt.contains("SECTION F10 — NATIVE HARDWARE SHADER & SKIA COMPILATION"),
             "Frontier prompt MUST contain Section F10 native shaders"
