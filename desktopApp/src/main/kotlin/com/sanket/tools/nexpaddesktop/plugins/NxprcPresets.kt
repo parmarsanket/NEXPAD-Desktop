@@ -98,7 +98,7 @@ object NxprcPresets {
     z-index: 5;
   }
   .button-a:active {
-    transform: scale(0.93) translateY(2px);
+    transform: scale(0.93);
   }
 </style>
 </head>
@@ -168,7 +168,7 @@ object NxprcPresets {
     z-index: 5;
   }
   .crimson-octa:active {
-    transform: scale(0.92) translateY(2px);
+    transform: scale(0.92);
   }
 </style>
 </head>
@@ -239,7 +239,7 @@ object NxprcPresets {
     z-index: 5;
   }
   .speed-turbo:active {
-    transform: scale(0.91) translateY(2px);
+    transform: scale(0.91);
   }
 </style>
 </head>
@@ -343,7 +343,7 @@ object NxprcPresets {
   }
 
   .nexpad-btn:active {
-    transform: scale(0.93) translateY(3px);
+    transform: scale(0.93);
   }
 </style>
 </head>
@@ -448,7 +448,7 @@ object NxprcPresets {
   }
 
   .nexpad-btn:active {
-    transform: scale(0.93) translateY(3px);
+    transform: scale(0.93);
   }
 </style>
 </head>
@@ -553,7 +553,7 @@ object NxprcPresets {
   }
 
   .nexpad-btn:active {
-    transform: scale(0.93) translateY(3px);
+    transform: scale(0.93);
   }
 </style>
 </head>
@@ -658,7 +658,7 @@ object NxprcPresets {
   }
 
   .nexpad-btn:active {
-    transform: scale(0.93) translateY(3px);
+    transform: scale(0.93);
   }
 </style>
 </head>
@@ -1495,7 +1495,7 @@ object NxprcPresets {
     z-index: 5;
   }
   .bumper-btn:active {
-    transform: scale(0.95) translateY(2px);
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>
@@ -1572,7 +1572,7 @@ object NxprcPresets {
     z-index: 5;
   }
   .bumper-btn:active {
-    transform: scale(0.95) translateY(2px);
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>
@@ -1845,7 +1845,7 @@ object NxprcPresets {
     letter-spacing: 0.5px;
   }
   .stick-btn-ctl:active {
-    transform: scale(0.90) translateY(2px);
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>
@@ -1924,7 +1924,7 @@ object NxprcPresets {
     letter-spacing: 0.5px;
   }
   .stick-btn-ctl:active {
-    transform: scale(0.90) translateY(2px);
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>
@@ -2125,7 +2125,7 @@ object NxprcPresets {
     box-shadow: 0 0 8px rgba(0, 240, 255, 0.5), 0 1px 2px rgba(0, 0, 0, 0.9);
   }
   .system-btn:active {
-    transform: scale(0.92) translateY(2px);
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>
@@ -2173,7 +2173,7 @@ object NxprcPresets {
     text-shadow: 0 0 14px rgba(0, 240, 255, 0.85), 0 1px 3px rgba(0, 0, 0, 0.95);
   }
   .system-btn:active {
-    transform: scale(0.92) translateY(2px);
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>
@@ -2223,7 +2223,7 @@ object NxprcPresets {
       0 2px 4px rgba(0, 0, 0, 0.95);
   }
   .system-home-btn:active {
-    transform: scale(0.93) translateY(2px);
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>
@@ -2270,7 +2270,7 @@ object NxprcPresets {
     text-shadow: 0 0 16px rgba(0, 240, 255, 0.9), 0 2px 4px rgba(0, 0, 0, 0.95);
   }
   .system-share-btn:active {
-    transform: scale(0.93) translateY(2px);
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>
@@ -2333,7 +2333,7 @@ object NxprcPresets {
     text-shadow: 0 0 12px rgba(245, 158, 11, 0.9), 0 2px 4px rgba(0, 0, 0, 0.95);
   }
   .macro-paddle:active {
-    transform: scale(0.94) translateY(2px);
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>
@@ -2544,7 +2544,7 @@ object NxprcPresets {
     z-index: 5;
   }
   .stick-btn-ctl:active {
-    transform: scale(0.90) translateY(2px);
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>

@@ -813,6 +813,7 @@ $previousHtml
 9. Ensure the label/icon remains clearly readable with strong contrast in an unrotated DOM text node.
 10. Return ONLY the complete, self-contained HTML/CSS inside one code block.
 11. NEXPAD supports dual button labeling styles (Xbox: A, B, X, Y, LB, RB, LT, RT, LSB, RSB vs PlayStation: ✕, ○, □, △, L1, R1, L2, R2, L3, R3) and dynamically translates standard controller labels at runtime while preserving custom action text (e.g. ATTACK, DASH, JUMP).
+12. ZERO MOBILITY PRESS MANDATE: On `:active`, use stationary centered uniform scale (`transform: scale(var(--press-scale));` with `transform-origin: 50% 50%;`). NEVER use `translateY(...)`, `translateX(...)`, or any animation that moves, shifts, or displaces the button or its layers on press. Mobile screens have tightly compact layout slots where movable displacement causes clipping and looks bad.
 """.trimIndent()
 
     private fun engineBoundaries(
@@ -846,7 +847,7 @@ $previousHtml
 6. **Vector Graphics & Dual-Engine Architecture**: Complex graphics/emblems MUST use embedded `<svg class="button-emblem" viewBox="0 0 100 100"><path d="..."/></svg>`. Do NOT use SVG `<filter>` graphs (`feGaussianBlur`); place an underlying HTML/CSS `<span class="emblem-ambient">` with `box-shadow` or `filter: blur()` underneath for glow!
 7. **Tactile Spring Micro-Physics [COMPONENT-REQUIRED]**: Declare in `:root`:
    `--spring-damping: ${physics.damping}; --spring-stiffness: ${physics.stiffness.toInt()}; --press-scale: ${physics.pressScaleFormatted};`
-   Define active press: `.$rootClass:active { transform: scale(var(--press-scale)); }` (centered in-place uniform scale; keep transform-origin at 50% 50% without shifting root bounds on mobile displays).
+   Define active press: `.$rootClass:active { transform: scale(var(--press-scale)); }` (strictly in-place centered uniform scale; keep `transform-origin: 50% 50%`; NEVER use `translateY` or directional translation; zero mobile displacement).
 8. **Shape Freedom & Semantics**: `data-category` is metadata, not a shape instruction. Preserve the user's requested shape.
 9. **Self-check before output**: Verify single root `<button>`, explicit px bounds, unrotated DOM text, and no forbidden CSS.
 10. **Authoritative Output Contract**: Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text outside it.
@@ -908,7 +909,7 @@ Output Format:        STRICT  (Single ```html ... ``` block, zero markdown conve
 6. **Text must be real DOM text without rotation [GLOBAL-REQUIRED]**: Labels and markings in unrotated `<span>` (`NO TEXT ROTATION`). When iconography is needed, use SVG/vector graphics; do not add text only because the component is a button.
 7. **Stable CSS only [GLOBAL-REQUIRED]**: Do not use `@media`, `@supports`, `:hover`, or `:focus`. CSS transitions and layout animations are prohibited. For idle/ambient animation loops (pulsing, subtle rotation, shimmer), standard CSS `@keyframes` on transform/opacity properties are supported by the engine. Press feedback uses `.$rootClass:active` with spring micro-physics.
 8. **Optical filters [GLOBAL-REQUIRED]**: GPU `filter: blur()`, `brightness()`, `contrast()`, `saturate()`, `hue-rotate()`. Do not use `backdrop-filter` or `mix-blend-mode`.
-9. **Tactile active interaction [COMPONENT-REQUIRED]**: Always define `.$rootClass:active { transform: scale(var(--press-scale)); }` (centered in-place uniform scale; keep `transform-origin: 50% 50%` without shifting root bounds on mobile displays).
+9. **Tactile active interaction & Zero-Displacement Mandate [COMPONENT-REQUIRED]**: Always define `.$rootClass:active { transform: scale(var(--press-scale)); }` (centered in-place uniform scale; keep `transform-origin: 50% 50%`). ⚠️ **STRICT MOBILE ZERO-MOBILITY / ZERO-DISPLACEMENT MANDATE**: NEVER use `translateY(...)`, `translateX(...)`, downward displacement, sliding, or position shifting on press (`:active`) on the root button OR on any child layers. Mobile gamepad screens have strictly bounded, compact layout slots. Shifting or movable button animations cause layout jitter, clip adjacent controls, detach from touch hitboxes, and look terrible. All tactile depth and travel must be 100% stationary in place (via internal shaders, gauge fills, lighting, or scale).
 10. **Tactile spring micro-physics [COMPONENT-REQUIRED]**: Component MUST declare spring variables in `:root`:
     `--spring-damping: <number>;`, `--spring-stiffness: <number>;`, `--press-scale: <number>;`
     Use user-specified tactile physics when provided; otherwise use category defaults (e.g. Triggers: ${SpringPhysics.TRIGGER.damping} / ${SpringPhysics.TRIGGER.stiffness.toInt()} / ${SpringPhysics.TRIGGER.pressScaleFormatted}; Bumpers: ${SpringPhysics.BUMPER.damping} / ${SpringPhysics.BUMPER.stiffness.toInt()} / ${SpringPhysics.BUMPER.pressScaleFormatted}; Stick Buttons: ${SpringPhysics.STICK_BUTTON.damping} / ${SpringPhysics.STICK_BUTTON.stiffness.toInt()} / ${SpringPhysics.STICK_BUTTON.pressScaleFormatted}; D-Pad: ${SpringPhysics.DPAD.damping} / ${SpringPhysics.DPAD.stiffness.toInt()} / ${SpringPhysics.DPAD.pressScaleFormatted}; Face/System: ${SpringPhysics.DEFAULT.damping} / ${SpringPhysics.DEFAULT.stiffness.toInt()} / ${SpringPhysics.DEFAULT.pressScaleFormatted}). If neither is specified, use global defaults: `${SpringPhysics.DEFAULT.toDeclarations()}`.
@@ -1034,10 +1035,10 @@ When authoring components for `data-category="TRIGGER"`, the compiler and runtim
 1. **Stationary Housing Cavity**:
    - The root `<button class="trigger-btn" data-category="TRIGGER" ...>` defines the fixed controller cavity (${widthDp}px x ${heightDp}px).
    - Recessed cavity gradient and contact shadows provide progressive travel depth receding into the controller shell.
-2. **In-Place Actuation Kinematics**:
-   - On `:active` touch depression, use centered uniform scaling (`transform: scale(var(--press-scale));`) matching native NEXPAD gamepad kinematics.
-   - ⚠️ **MOBILE ZERO-DISPLACEMENT CONTRACT**: Root `<button>` MUST NOT use `translateY(...)` or directional translation. Translating the root element on mobile gamepads causes layout jitter and clips outside touch bounding boxes.
-   - Internal visual layers (e.g., paddle face, traction ribs, optical window) can express progressive travel through internal shading, lighting shifts, or spring-damped deformation while the root button remains stably anchored.
+2. **Zero-Mobility In-Place Actuation Kinematics**:
+   - On `:active` touch depression, use strictly centered uniform scaling (`transform: scale(var(--press-scale));`) with `transform-origin: 50% 50%;`.
+   - ⚠️ **MOBILE ZERO-DISPLACEMENT CONTRACT & ZERO-MOBILITY MANDATE**: The root `<button>` and ALL child elements MUST NOT use `translateY(...)`, `translateX(...)`, or any animation that moves, shifts, or plunges downward on press. In compact mobile controller HUDs, shifting or moving buttons causes layout jitter, clips against neighbor controls, and detaches touch hitboxes.
+   - **Internal Stationary Depth Expression**: Analog progressive travel must be communicated purely through stationary visual depth changes: progressive gauge meter fill (`.trigger-fill`), internal shadow deepening, specular shifts, and dynamic LED glow bloom — with 0px physical movement.
 3. **Calibrated Trigger Spring Physics**:
    - Damping: `${SpringPhysics.TRIGGER.damping}` (optimal harmonic damping ratio without erratic overshoot)
    - Stiffness: `${SpringPhysics.TRIGGER.stiffness.toInt()}` (natural progressive trigger resistance)
@@ -1436,14 +1437,14 @@ ${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Analog progressive pull, pressure, and travel communication (throttle, brake, aim, fire).
-- **Visual Affordance [RECOMMENDED]**: Analog Travel Affordance — progressive travel, depth, directional pull cues, tactile spring depression (`transform: scale(var(--press-scale));` centered in-place; do NOT use `translateY` on root button to prevent mobile layout clipping).
+- **Visual Affordance [RECOMMENDED]**: Analog Travel Affordance — progressive travel, depth, directional pull cues, tactile spring depression (`transform: scale(var(--press-scale));` centered in-place; do NOT use `translateY` or any position mobility animation on press to prevent mobile layout clipping).
 - **Optional Visual Language [OPTIONAL]**: Horizontal friction ribs, stippling, curved rake paddle angle, digital pressure telemetry.
 - **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. Ergonomic curved paddle, angular wedge, minimal capsule, or custom silhouette. Preserve the user's requested shape.
 
 ${renderVisualProfileOrCustomDirective(
     "CONSOLE/XBOX INDUSTRIAL REALISM",
     """
-    1. **Progressive Analog Travel Mechanics**: Authentic analog triggers communicate progressive depth and travel within the bounding box (${widthDp}px x ${heightDp}px) with a gradient receding into the controller housing cavity, communicating analog travel and finger placement. On press (`:active`), use centered uniform scale (`transform: scale(var(--press-scale));`) matching native mobile gamepad kinematics without shifting the root button out of its layout slot.
+    1. **Progressive Analog Travel Mechanics (Zero Mobility Displacement)**: Authentic analog triggers communicate progressive depth and travel within the bounding box (${widthDp}px x ${heightDp}px) with a gradient receding into the controller housing cavity, communicating analog travel and finger placement. On press (`:active`), use centered uniform scale (`transform: scale(var(--press-scale));`) matching native mobile gamepad kinematics with ZERO downward mobility, displacement, or translation (`translateY: 0`). Depth and travel must be rendered via internal gauge meter fill or shading, keeping the trigger stationary in its compact mobile slot.
     2. **Molded Traction Ribs**: Physical molded horizontal friction ridges (via Flexbox column or `::before` layered shadows) providing authentic fingertip grip for throttling, braking, or aiming.
     3. **High-Contrast Clean Typography**: Prominent primary key indicator ("$control", font-size 26-30px, weight 900). Keep the typography clean and authentic to real console gamepads without artificial secondary sub-labels.
     4. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic triggers focus on ergonomic paddle curvature, molded grip traction, and deep socket shadow wells.
@@ -1498,7 +1499,7 @@ ${renderVisualProfileOrCustomDirective(
     """
     1. **Physical Shoulder Lever/Rocker Architecture**: Authentic gamepad bumpers are physical shoulder levers seated directly in a recessed chassis housing seam or socket on the controller shell, rather than floating abstract pills. The lever surface catches ambient light along its top shoulder contour.
     2. **Convex Curvature Specular Sheen**: Specular highlight arc communicating convex molded polycarbonate catching studio light.
-    3. **Microswitch Click Actuation**: Unlike analog triggers, shoulder bumpers use crisp tactile microswitches with shallow travel displacement (`scale(${SpringPhysics.BUMPER.pressScaleFormatted}) translateY(2px)`) and snappy spring return (`${SpringPhysics.BUMPER.toDeclarations()}`).
+    3. **Microswitch Click Actuation**: Unlike analog triggers, shoulder bumpers use crisp tactile microswitches with snappy spring return (`scale(${SpringPhysics.BUMPER.pressScaleFormatted})`) and zero mobile displacement (`${SpringPhysics.BUMPER.toDeclarations()}`).
     4. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic bumpers feature clean industrial dark tones (`#2c3342` to `#0c0e13`), chassis seam contact shadows, and crisp high-contrast labels.
     """.trimIndent(),
     options
@@ -1744,7 +1745,7 @@ ${renderVisualProfileOrCustomDirective(
        - `VIEW`: Overlapping dual windows/rectangles symbol (`⧉`) or vector path.
        - `HOME` / `GUIDE`: Central nexus orb / emblem with subtle radial glow and chamfered bezel ring.
     3. **Zero Text Collision on Graphic Buttons**: Iconographic system buttons (such as MENU hamburger bars or VIEW windows) must NEVER have automatic text stamped over their icons. The icon itself is the visual identity.
-    4. **Restrained Lighting & Tactile Click**: Subtle recessed socket well (`box-shadow: inset 0 1px 3px rgba(255,255,255,0.25), inset 0 -3px 6px rgba(0,0,0,0.75)`), matte chassis darks, and shallow tactile micro-travel (`scale(0.92) translateY(2px)`).
+    4. **Restrained Lighting & Tactile Click**: Subtle recessed socket well (`box-shadow: inset 0 1px 3px rgba(255,255,255,0.25), inset 0 -3px 6px rgba(0,0,0,0.75)`), matte chassis darks, and shallow tactile micro-click (`scale(0.92)` with zero displacement).
     """.trimIndent(),
     options
 )}

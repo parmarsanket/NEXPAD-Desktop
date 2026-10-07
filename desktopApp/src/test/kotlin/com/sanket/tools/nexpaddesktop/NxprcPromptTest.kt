@@ -14,6 +14,7 @@ import com.sanket.tools.nexpaddesktop.plugins.GeometryOptions
 import com.sanket.tools.nexpaddesktop.plugins.ModelCapability
 import com.sanket.tools.nexpaddesktop.plugins.NxprcAiPromptBuilder
 import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
+import com.sanket.tools.nexpaddesktop.plugins.NxprcPresets
 import com.sanket.tools.nexpaddesktop.plugins.SpringPhysics
 import com.sanket.tools.nexpaddesktop.plugins.CategoryDefaultsRegistry
 import com.sanket.tools.nexpaddesktop.plugins.DesignResolver
@@ -720,8 +721,39 @@ class NxprcPromptTest {
         assertFalse(prompt.contains("PULL"), "Prescriptive PULL sub-label leaked into trigger prompt")
         assertFalse(prompt.contains("BRAKE"), "Prescriptive BRAKE sub-label leaked into trigger prompt")
         assertFalse(prompt.contains("translateY(4px)"), "translateY(4px) must not leak into trigger prompt")
+        assertFalse(prompt.contains("translateY(2px)"), "translateY(2px) must not leak into trigger prompt")
+        assertFalse(prompt.contains("translateY(3px)"), "translateY(3px) must not leak into trigger prompt")
         assertFalse(prompt.contains("scaleY(0.94)"), "scaleY(0.94) must not leak into trigger prompt")
         assertTrue(prompt.contains("scale(var(--press-scale))"), "Trigger prompt should recommend scale(var(--press-scale))")
+        assertTrue(prompt.contains("ZERO-MOBILITY"), "Trigger prompt must enforce ZERO-MOBILITY")
+        assertTrue(prompt.contains("ZERO downward mobility"), "Trigger prompt must mandate ZERO downward mobility")
+    }
+
+    @Test
+    fun allPresetsHaveZeroTranslateYDisplacement() {
+        val presets = listOf(
+            NxprcPresets.PRESET_CYBER_REACTOR,
+            NxprcPresets.PRESET_CRIMSON_OCTA,
+            NxprcPresets.PRESET_SPEED_TURBO,
+            NxprcPresets.PRESET_NEO_TACTILE_A,
+            NxprcPresets.PRESET_NEO_TACTILE_B,
+            NxprcPresets.PRESET_NEO_TACTILE_X,
+            NxprcPresets.PRESET_NEO_TACTILE_Y,
+            NxprcPresets.PRESET_TRIGGER_LT,
+            NxprcPresets.PRESET_TRIGGER_RT,
+            NxprcPresets.PRESET_BUMPER_LB,
+            NxprcPresets.PRESET_BUMPER_RB,
+            NxprcPresets.PRESET_STICK_BUTTON_LSB,
+            NxprcPresets.PRESET_STICK_BUTTON_RSB,
+            NxprcPresets.PRESET_SYSTEM_MENU,
+            NxprcPresets.PRESET_SYSTEM_VIEW,
+            NxprcPresets.PRESET_SYSTEM_HOME,
+            NxprcPresets.PRESET_SYSTEM_SHARE,
+            NxprcPresets.createPresetMacroPaddle("M1")
+        )
+        presets.forEach { presetHtml ->
+            assertFalse(presetHtml.contains("translateY"), "Preset must not contain translateY: $presetHtml")
+        }
     }
 
     @Test

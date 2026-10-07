@@ -413,7 +413,7 @@ class WebEngineTest {
         assertEquals("rc.neo_abxy_a", doc.manifest.id)
         assertEquals("Neo Tactile A", doc.manifest.name)
         assertEquals(0.93f, doc.animations.pressScale, 0.01f)
-        assertEquals(3.0f, doc.animations.pressOffsetY, 0.01f)
+        assertEquals(0f, doc.animations.pressOffsetY, 0.01f)
 
         // Validate Outer Glow Ring
         assertTrue(doc.canvas.layers.any { it is CanvasLayer.GlowRing })
