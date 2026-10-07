@@ -358,7 +358,8 @@ object NxprcSeedEngine {
         heightDp: Int,
         profile: SeedProfile,
         standardProfile: ColorProfile? = null,
-        controlRoleDescription: String? = null
+        controlRoleDescription: String? = null,
+        rootClass: String = "nexpad-btn"
     ): String {
         val roleDesc = if (controlRoleDescription != null) " ($controlRoleDescription)" else ""
         val standardSection = if (standardProfile != null && standardProfile.hexCode != profile.palette.hexCode) {
@@ -385,7 +386,7 @@ object NxprcSeedEngine {
 $standardSection
 ### SEED IDENTITY & ANTI-DUPLICATION CONTRACT:
 1. **Root Button Attributes [MANDATORY]**: The root `<button>` element MUST declare:
-   `<button class="nexpad-btn" data-control="$control" data-category="$category" data-codename="$styleTitle" data-name="$fullName" data-seed="${profile.seed}" id="${profile.componentId}">`
+   `<button class="$rootClass" data-control="$control" data-category="$category" data-codename="$styleTitle" data-name="$fullName" data-seed="${profile.seed}" id="${profile.componentId}">`
 2. **Procedural Seed Creativity**: Use Seed #${profile.seed} and its procedural theme, shape, surface texture, and aura lighting to craft a distinct, high-quality controller component.
 3. **Inbuilt Anti-Duplication**: Using unique seeds and ID "${profile.componentId}" guarantees this button has an independent identity and will never overwrite previous designs in NEXPAD when pushed via Wi-Fi.
 """.trimIndent()

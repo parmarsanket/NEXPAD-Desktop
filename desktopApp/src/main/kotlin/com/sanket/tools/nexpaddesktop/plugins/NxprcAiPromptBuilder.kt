@@ -37,8 +37,10 @@ data class SpringPhysics(
         const val DEFAULT_PRESS_SCALE = 0.92f
 
         val DEFAULT = SpringPhysics(DEFAULT_DAMPING, DEFAULT_STIFFNESS, DEFAULT_PRESS_SCALE)
+        val TRIGGER = SpringPhysics(damping = 0.68f, stiffness = 440f, pressScale = 0.95f)
         val BUMPER = SpringPhysics(damping = 0.75f, stiffness = 520f, pressScale = 0.96f)
         val STICK_BUTTON = SpringPhysics(damping = 0.72f, stiffness = 480f, pressScale = 0.90f)
+        val DPAD = SpringPhysics(damping = 0.68f, stiffness = 460f, pressScale = 0.95f)
     }
 }
 
@@ -826,7 +828,15 @@ $previousHtml
         }
     }
 
-    private fun compactEngineBoundaries(rootClass: String, widthDp: Int = 96, heightDp: Int = 96): String = """
+    private fun compactEngineBoundaries(rootClass: String, widthDp: Int = 96, heightDp: Int = 96): String {
+        val physics = when (rootClass) {
+            "trigger-btn" -> SpringPhysics.TRIGGER
+            "bumper-btn" -> SpringPhysics.BUMPER
+            "stick-btn-ctl" -> SpringPhysics.STICK_BUTTON
+            "dpad-btn" -> SpringPhysics.DPAD
+            else -> SpringPhysics.DEFAULT
+        }
+        return """
 ### SECTION 1 — STRICT COMPILER & ENGINE CONTRACT (LEAN COMPACT MODE):
 1. **Single Button Root [GLOBAL-REQUIRED]**: `<body>` must contain exactly one root `<button class="$rootClass" data-control="..." data-category="..." data-name="...">`. Keep every visual child inside it.
 2. **Explicit Dimensions [GLOBAL-REQUIRED]**: Root component dimensions MUST use explicit `px` bounds (`position: relative; width: ${widthDp}px; height: ${heightDp}px;`). Set `position: absolute`, `left`, `top`, `width`, and `height` on decorative layered children, or use Flexbox (`display: flex; gap; justify-content; align-items`). Dynamic `calc()` and `aspect-ratio` are supported on children.
@@ -835,12 +845,13 @@ $previousHtml
 5. **Real DOM Text [GLOBAL-REQUIRED]**: Labels and markings in straight, unrotated `<span>` (Text must be real DOM text without rotation).
 6. **Vector Graphics & Dual-Engine Architecture**: Complex graphics/emblems MUST use embedded `<svg class="button-emblem" viewBox="0 0 100 100"><path d="..."/></svg>`. Do NOT use SVG `<filter>` graphs (`feGaussianBlur`); place an underlying HTML/CSS `<span class="emblem-ambient">` with `box-shadow` or `filter: blur()` underneath for glow!
 7. **Tactile Spring Micro-Physics [COMPONENT-REQUIRED]**: Declare in `:root`:
-   `--spring-damping: ${SpringPhysics.DEFAULT.damping}; --spring-stiffness: ${SpringPhysics.DEFAULT.stiffness.toInt()}; --press-scale: ${SpringPhysics.DEFAULT.pressScaleFormatted};`
-   Define active press: `.$rootClass:active { transform: scale(${SpringPhysics.DEFAULT.pressScaleFormatted}) translateY(2px); }`.
+   `--spring-damping: ${physics.damping}; --spring-stiffness: ${physics.stiffness.toInt()}; --press-scale: ${physics.pressScaleFormatted};`
+   Define active press: `.$rootClass:active { transform: scale(var(--press-scale)); }` (centered in-place uniform scale; keep transform-origin at 50% 50% without shifting root bounds on mobile displays).
 8. **Shape Freedom & Semantics**: `data-category` is metadata, not a shape instruction. Preserve the user's requested shape.
 9. **Self-check before output**: Verify single root `<button>`, explicit px bounds, unrotated DOM text, and no forbidden CSS.
 10. **Authoritative Output Contract**: Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text outside it.
 """.trimIndent()
+    }
 
     private fun standardEngineBoundaries(rootClass: String, widthDp: Int = 96, heightDp: Int = 96): String = """
 ### SECTION 1 — INSTRUCTION PRIORITY & CONFLICT RESOLUTION
@@ -897,10 +908,10 @@ Output Format:        STRICT  (Single ```html ... ``` block, zero markdown conve
 6. **Text must be real DOM text without rotation [GLOBAL-REQUIRED]**: Labels and markings in unrotated `<span>` (`NO TEXT ROTATION`). When iconography is needed, use SVG/vector graphics; do not add text only because the component is a button.
 7. **Stable CSS only [GLOBAL-REQUIRED]**: Do not use `@media`, `@supports`, `:hover`, or `:focus`. CSS transitions and layout animations are prohibited. For idle/ambient animation loops (pulsing, subtle rotation, shimmer), standard CSS `@keyframes` on transform/opacity properties are supported by the engine. Press feedback uses `.$rootClass:active` with spring micro-physics.
 8. **Optical filters [GLOBAL-REQUIRED]**: GPU `filter: blur()`, `brightness()`, `contrast()`, `saturate()`, `hue-rotate()`. Do not use `backdrop-filter` or `mix-blend-mode`.
-9. **Tactile active interaction [COMPONENT-REQUIRED]**: Always define `.$rootClass:active { transform: scale(...) translateY(...); }`.
+9. **Tactile active interaction [COMPONENT-REQUIRED]**: Always define `.$rootClass:active { transform: scale(var(--press-scale)); }` (centered in-place uniform scale; keep `transform-origin: 50% 50%` without shifting root bounds on mobile displays).
 10. **Tactile spring micro-physics [COMPONENT-REQUIRED]**: Component MUST declare spring variables in `:root`:
     `--spring-damping: <number>;`, `--spring-stiffness: <number>;`, `--press-scale: <number>;`
-    Use user-specified tactile physics when provided; otherwise use category defaults (e.g. Bumpers: ${SpringPhysics.BUMPER.damping} / ${SpringPhysics.BUMPER.stiffness.toInt()} / ${SpringPhysics.BUMPER.pressScaleFormatted}; Stick Buttons: ${SpringPhysics.STICK_BUTTON.damping} / ${SpringPhysics.STICK_BUTTON.stiffness.toInt()} / ${SpringPhysics.STICK_BUTTON.pressScaleFormatted}; Face/Dpad/System: ${SpringPhysics.DEFAULT.damping} / ${SpringPhysics.DEFAULT.stiffness.toInt()} / ${SpringPhysics.DEFAULT.pressScaleFormatted}). If neither is specified, use global defaults: `${SpringPhysics.DEFAULT.toDeclarations()}`.
+    Use user-specified tactile physics when provided; otherwise use category defaults (e.g. Triggers: ${SpringPhysics.TRIGGER.damping} / ${SpringPhysics.TRIGGER.stiffness.toInt()} / ${SpringPhysics.TRIGGER.pressScaleFormatted}; Bumpers: ${SpringPhysics.BUMPER.damping} / ${SpringPhysics.BUMPER.stiffness.toInt()} / ${SpringPhysics.BUMPER.pressScaleFormatted}; Stick Buttons: ${SpringPhysics.STICK_BUTTON.damping} / ${SpringPhysics.STICK_BUTTON.stiffness.toInt()} / ${SpringPhysics.STICK_BUTTON.pressScaleFormatted}; D-Pad: ${SpringPhysics.DPAD.damping} / ${SpringPhysics.DPAD.stiffness.toInt()} / ${SpringPhysics.DPAD.pressScaleFormatted}; Face/System: ${SpringPhysics.DEFAULT.damping} / ${SpringPhysics.DEFAULT.stiffness.toInt()} / ${SpringPhysics.DEFAULT.pressScaleFormatted}). If neither is specified, use global defaults: `${SpringPhysics.DEFAULT.toDeclarations()}`.
 
 ### SECTION 6 — COMPILER CAPABILITIES — WHAT PRIMITIVES ARE BEST FOR:
 #### ✅ FULLY SUPPORTED:
@@ -983,7 +994,7 @@ Self-check before output:
 - [ ] SVG ViewBox Integrity: SVG artwork coordinates stay within the declared viewBox; no arbitrary clipping.
 - [ ] Transform Origin Intent: Explicit `transform-origin` specified when rotations or scaling are applied to prevent unexpected drift.
 - [ ] Visual Stacking & Occlusion: Foreground vector artwork and labels have higher z-index (or appear after) opaque background/surface plates.
-- [ ] Tactile Physics: Valid active state `.$rootClass:active` with spring micro-physics (`--spring-damping`, `--spring-stiffness`) in `:root`.
+- [ ] Tactile Physics: Valid active state `.$rootClass:active { transform: scale(var(--press-scale)); }` with spring micro-physics (`--spring-damping`, `--spring-stiffness`, `--press-scale`) in `:root`.
 - [ ] Clean Engine Profile: No forbidden properties (no `@media`, no external fonts, no external scripts, no `mix-blend-mode`, no `backdrop-filter`, no CSS Grid).
 - [ ] Complex Graphics Architecture: If a character, emblem, or complex graphic is requested, uses an embedded `<svg class="button-emblem" viewBox="...">` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks. For vector glow, use an underlying CSS `<span>` with `filter: blur()` or `box-shadow` (no SVG `<filter>` graphs).
 
@@ -1013,6 +1024,48 @@ When authoring components for `data-category="JOYSTICK"`, the compiler and runti
      - 12-sample `VelocityRingBuffer` tracking flick velocity.
      - Damped spring return to center on touch release (`waitForUpOrCancellation`).
 - **Architectural Rule**: Always center the thumb cap within the socket bounds (e.g. `width: 56px; height: 56px; left: 20px; top: 20px; position: absolute;` inside a 96x96px root) so physical deflection originates from exact mathematical zero.
+""" else ""
+
+        val isTrigger = rootClass == "trigger-btn"
+        val triggerSection = if (isTrigger) """
+
+### SECTION F9-TRIGGER — ANALOG TRIGGER ARCHITECTURE & RECEDING PADDLE KINEMATICS
+When authoring components for `data-category="TRIGGER"`, the compiler and runtime enforce mobile-safe ergonomics:
+1. **Stationary Housing Cavity**:
+   - The root `<button class="trigger-btn" data-category="TRIGGER" ...>` defines the fixed controller cavity (${widthDp}px x ${heightDp}px).
+   - Recessed cavity gradient and contact shadows provide progressive travel depth receding into the controller shell.
+2. **In-Place Actuation Kinematics**:
+   - On `:active` touch depression, use centered uniform scaling (`transform: scale(var(--press-scale));`) matching native NEXPAD gamepad kinematics.
+   - ⚠️ **MOBILE ZERO-DISPLACEMENT CONTRACT**: Root `<button>` MUST NOT use `translateY(...)` or directional translation. Translating the root element on mobile gamepads causes layout jitter and clips outside touch bounding boxes.
+   - Internal visual layers (e.g., paddle face, traction ribs, optical window) can express progressive travel through internal shading, lighting shifts, or spring-damped deformation while the root button remains stably anchored.
+3. **Calibrated Trigger Spring Physics**:
+   - Damping: `${SpringPhysics.TRIGGER.damping}` (optimal harmonic damping ratio without erratic overshoot)
+   - Stiffness: `${SpringPhysics.TRIGGER.stiffness.toInt()}` (natural progressive trigger resistance)
+   - Press Scale: `${SpringPhysics.TRIGGER.pressScaleFormatted}` (subtle tactile depression)
+""" else ""
+
+        val isDpad = rootClass == "dpad-btn"
+        val dpadSection = if (isDpad) """
+
+### SECTION F9-DPAD — DIRECTIONAL PAD ARCHITECTURE & 4-WAY CARDINAL KINEMATICS
+When authoring components for `data-category="DPAD"`, the compiler and runtime enforce console-authentic ergonomics, physical 4-way gamepad geometry, and multi-directional touch mechanics:
+1. **D-Pad Component Taxonomy (5 Controls)**:
+   - **4 Discrete Directional Buttons (`UP`, `DOWN`, `LEFT`, `RIGHT`)**: Used when a gamer places individual directional keys one by one (e.g. 80px x 80px). Each has a single directional chevron pointing along its respective travel axis.
+   - **Unified 4-Way D-Pad (`DPAD`, ${widthDp}px x ${heightDp}px)**: The COMPLETE 4-WAY GAMEPAD D-PAD featuring all 4 directional buttons / arms (`UP`, `DOWN`, `LEFT`, `RIGHT`) integrated into one unified physical controller mechanism.
+2. **Physical 4-Arm Geometry (Anti-Flat-Squircle Rule)**:
+   - ⚠️ **NEVER GENERATE A GENERIC FLAT SQUIRCLE OR ROUND BUTTON WITH 4 ARROWS PRINTED ON IT!** A real gamepad D-Pad is NOT a flat box or touchpad with icons stamped on the surface.
+   - The geometry MUST sculpt **4 distinct physical directional arms / buttons** radiating cardinally from a central pivot (forming an authentic 12-sided physical cross shape `+` via vertical `.dpad-arm-v` and horizontal `.dpad-arm-h` cross bars, or 4 cardinal arm button plates `.dpad-arm-top`, `.dpad-arm-bottom`, `.dpad-arm-left`, `.dpad-arm-right` as seen in Android Button Studio `RealisticDPad.kt` and `CapsulesDPad.kt`).
+   - **Recessed Chassis Socket Well**: Deep circular cavity in the gamepad body (`border-radius: 50%`) with dark radial gradient, outer bevel rim, and cavity drop shadow.
+   - **Central Concave Rocker Pivot Cup**: Deep spherical indentation (`.dpad-pivot`, ~44px x 44px) where the player's thumb rests and rocks between cardinal directions.
+   - **4 Cardinal Directional Markings**: Crisp arrow indicators (`▲ UP`, `▼ DOWN`, `◀ LEFT`, `▶ RIGHT`) positioned on the 4 respective arm face plates. Strictly do NOT reduce a 4-way D-Pad to a single center placeholder glyph or single center emblem.
+   - **8-Way Mechanical Clearance**: The cross perimeter provides clearance within the recessed controller socket bezel.
+3. **In-Place Actuation Kinematics & Mobile Zero-Displacement**:
+   - On `:active` touch depression, use centered uniform scaling (`transform: scale(var(--press-scale));`) matching native NEXPAD gamepad kinematics (`RealisticDPad.kt`).
+   - ⚠️ **MOBILE ZERO-DISPLACEMENT CONTRACT**: Root `<button>` MUST NOT use `translateY(...)` or directional translation. Translating the root element on mobile gamepads causes layout jitter, clips outside touch bounding boxes, and corrupts multi-touch directional vector calculation.
+4. **Calibrated D-Pad Spring Physics**:
+   - Damping: `${SpringPhysics.DPAD.damping}` (optimal harmonic damping for fast rocker transitions)
+   - Stiffness: `${SpringPhysics.DPAD.stiffness.toInt()}` (snappy tactile directional feedback)
+   - Press Scale: `${SpringPhysics.DPAD.pressScaleFormatted}` (subtle tactile depression)
 """ else ""
 
         return """
@@ -1084,7 +1137,7 @@ Where:
 - `ωₙ` = `√(--spring-stiffness / mass)` (natural frequency). Tested range: `380 – 520`. Values < 300 = slow return; > 600 = very snappy.
 - `ωd` = `ωₙ · √(1 - ζ²)` (damped frequency).
 - `A` = determined by `--press-scale` (amplitude). Tested range: `0.92 – 0.96`.
-- `.$rootClass:active { transform: scale(--press-scale) translateY(Npx); }` maps to the spring trajectory target.
+- `.$rootClass:active { transform: scale(var(--press-scale)); }` maps to the spring trajectory target.
 
 ### SECTION F6 — CLASSIFIER INTELLIGENCE
 The compiler uses two classifiers to interpret your DOM structure:
@@ -1140,7 +1193,7 @@ The NEXPAD native runtime features hardware-accelerated continuous idle animatio
    - Runtime: Drives a real-time GPU trigonometric `ColorMatrix` through the full 360° chromatic spectrum at 60/120 FPS.
    - Use Cases: Cyberpunk RGB gamer peripherals, chromatic energy barriers, and iridescent metallic sheen rings.
 - **Rules & Constraints**: Only animate `transform: rotate(...)`, `opacity`, or `filter: hue-rotate(...)`. Layout property animations (`width`, `height`, `left`, `top`, `margin`) are dropped by the compiler to guarantee 120 FPS rendering without layout thrashing.
-$joystickSection
+$joystickSection$triggerSection$dpadSection
 ### SECTION F10 — NATIVE HARDWARE SHADER & SKIA COMPILATION
 CSS paint declarations are parsed by `GradientParser`, `ShadowParser`, and `BoxLayerBuilder` into direct hardware-accelerated Skia / Compose graphics shaders:
 1. **Linear Gradients (`linear-gradient(angle, stops...)`)**:
@@ -1283,12 +1336,45 @@ ${renderOutputContract(options)}
     internal fun generateDpadPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         val resolved = DesignResolver.resolve(control, category, options)
         val seedProfile = NxprcSeedEngine.resolve(control, category, options.seed, options.componentName)
+        val isFullDpad = control.uppercase() == NexpadKeys.DPAD
         val arrowGlyph = when (control.uppercase()) {
             NexpadKeys.DOWN -> "▼"
             NexpadKeys.LEFT -> "◀"
             NexpadKeys.RIGHT -> "▶"
-            NexpadKeys.DPAD -> "❖"
+            NexpadKeys.DPAD -> "▲ UP, ▼ DOWN, ◀ LEFT, ▶ RIGHT"
             else -> "▲"
+        }
+        val roleDesc = if (isFullDpad) "Full 4-Way Gamepad D-Pad (Integrated 4-Button Cross)" else "Directional Arrow Button"
+        val directionalLabelNote = if (isFullDpad) {
+            """
+- **D-Pad Taxonomy (5 Controls)**: Discrete keys (`UP`, `DOWN`, `LEFT`, `RIGHT`) are single individual buttons placed one by one. The 4-Way D-Pad (`DPAD`, ${widthDp}px x ${heightDp}px) is the COMPLETE integrated gamepad pad containing all 4 directional buttons / arms (`UP`, `DOWN`, `LEFT`, `RIGHT`) in one unified mechanism.
+- **Directional Markings [COMPONENT-REQUIRED]**: 4 Cardinal Directions: `▲ UP`, `▼ DOWN`, `◀ LEFT`, `▶ RIGHT` arranged along the four arms/quadrants around the central rocker pivot cup (`.dpad-pivot`). Do NOT use a single center placeholder glyph; all 4 cardinal directions must be explicitly present on their respective physical arms.
+            """.trimIndent()
+        } else {
+            "- **Directional Glyph [RECOMMENDED]**: $arrowGlyph"
+        }
+
+        val affordance = if (isFullDpad) {
+            "Directional Cross & Rocker Pivot Affordance — authentic console 4-way cross or cardinal cluster with 4 distinct physical directional arms projecting from a central concave thumb rest cup (`.dpad-pivot`), resting in a recessed circular chassis socket well, with tactile spring depression (`transform: scale(var(--press-scale));` centered in-place; do NOT use `translateY` on root button to prevent mobile layout clipping)."
+        } else {
+            "Clear directional affordance, directional slope shading along travel axis, tactile spring depression (`transform: scale(var(--press-scale));` centered in-place; do NOT use `translateY` on root button to prevent mobile layout clipping)."
+        }
+
+        val realismGuidance = if (isFullDpad) {
+            """
+            1. **Textured Matte ABS Plastic & Chassis Housing**: Deep chassis body tones (`#14171e`, `#1c202a`, `#08090c`) with a recessed circular socket well (`border-radius: 50%`) with perimeter bevels and cavity drop shadow.
+            2. **Authentic 4-Arm Cross Architecture (Anti-Squircle Rule)**: ⚠️ DO NOT generate a flat square or squircle button with 4 arrows printed on it! A real gamepad D-Pad sculpts 4 distinct physical directional arms / buttons (UP, DOWN, LEFT, RIGHT) radiating cardinally from a central pivot (forming an authentic 12-sided physical cross shape `+` via vertical `.dpad-arm-v` and horizontal `.dpad-arm-h` cross bars, or 4 cardinal arm button plates `.dpad-arm-top`, `.dpad-arm-bottom`, `.dpad-arm-left`, `.dpad-arm-right` as seen in Android Button Studio `RealisticDPad.kt` and `CapsulesDPad.kt`).
+            3. **Central Concave Rocker Pivot Well**: Console D-pads pivot around a central spherical cup (`.dpad-pivot` or circular indent with radial gradient and highlight rim). This physically guides the player's thumb between cardinal vectors.
+            4. **Crisp 4-Cardinal Directional Chevrons**: Delineate all 4 directions with high-contrast markings (`▲` UP, `▼` DOWN, `◀` LEFT, `▶` RIGHT) or illuminated LED indicators positioned on their respective physical arms.
+            5. **In-Place Rocker Kinematics**: On press (`:active`), use centered uniform scale (`transform: scale(var(--press-scale));`) matching native mobile gamepad kinematics without shifting the root button out of its layout slot.
+            """.trimIndent()
+        } else {
+            """
+            1. **Textured Matte ABS Plastic**: Deep chassis body tones (`#14171e`, `#1c202a`, `#08090c`) with subtle perimeter bevels, NOT flat grey or pure `#000`.
+            2. **Directional Travel Bevel**: Individual directional keycap with tactile inward slope/bevel angled along the direction of travel, communicating tactile inward tilt.
+            3. **High-Contrast Directional Indicator**: Crisp directional indicator (arrow glyph $arrowGlyph, chevron, or vector path) with high contrast against the dark textured housing.
+            4. **In-Place Actuation Kinematics**: On press (`:active`), use centered uniform scale (`transform: scale(var(--press-scale));`) matching native mobile gamepad kinematics without shifting the root button out of its layout slot.
+            """.trimIndent()
         }
 
         return """
@@ -1296,23 +1382,18 @@ ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller D-Pad Component for NEXPAD.
 
-${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, if (control.uppercase() == NexpadKeys.DPAD) "Unified 4-Way Cross Pad" else "Directional Arrow Button")}
-- **Directional Glyph [RECOMMENDED]**: $arrowGlyph
+${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, roleDesc, "dpad-btn")}
+$directionalLabelNote
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Directional navigation with crisp actuation along cardinal or diagonal axes.
-- **Visual Affordance [RECOMMENDED]**: Clear directional affordance, central rocker pivot affordance, distinct directional touch zones.
+- **Visual Affordance [RECOMMENDED]**: $affordance
 - **Optional Visual Language [OPTIONAL]**: Recessed pivot well, laser-etched chevron markings, sloped directional gradients, tactile nubs.
 - **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. Cross, wedge, arrow, star, disc, or organic form are all valid. Preserve the user's requested shape.
 
 ${renderVisualProfileOrCustomDirective(
     "CONSOLE/XBOX INDUSTRIAL REALISM",
-    """
-    1. **Textured Matte ABS Plastic**: Deep chassis body tones (`#14171e`, `#1c202a`, `#08090c`) with subtle perimeter bevels, NOT flat grey or pure `#000`.
-    2. **Central Rocker Pivot Mechanics**: Authentic console D-pads rock around a central spherical pivot. When designing a 4-way cross or dish, include a recessed central pivot well (`::before` circular indent) simulating the physical rocker mechanism. When designing an individual directional button, slope the gradient along the direction of travel to communicate tactile inward tilt.
-    3. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic directional pads prioritize tactile finger purchase, molded cardinal bevels, and crisp physical contact shadows.
-    4. **High-Contrast Cardinal Directional Affordance**: Crisp directional indicators (arrow glyph $arrowGlyph, chevron, or vector path) with high contrast against the dark textured housing.
-    """.trimIndent(),
+    realismGuidance,
     options
 )}
 
@@ -1350,19 +1431,19 @@ ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Analog Trigger for NEXPAD.
 
-${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, triggerRole)}
+${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, triggerRole, "trigger-btn")}
 - **Labels [RECOMMENDED]**: Primary "$control"
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Analog progressive pull, pressure, and travel communication (throttle, brake, aim, fire).
-- **Visual Affordance [RECOMMENDED]**: Analog Travel Affordance — progressive travel, depth, directional pull cues, active travel displacement (`scaleY(0.94) translateY(4px)`).
+- **Visual Affordance [RECOMMENDED]**: Analog Travel Affordance — progressive travel, depth, directional pull cues, tactile spring depression (`transform: scale(var(--press-scale));` centered in-place; do NOT use `translateY` on root button to prevent mobile layout clipping).
 - **Optional Visual Language [OPTIONAL]**: Horizontal friction ribs, stippling, curved rake paddle angle, digital pressure telemetry.
 - **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. Ergonomic curved paddle, angular wedge, minimal capsule, or custom silhouette. Preserve the user's requested shape.
 
 ${renderVisualProfileOrCustomDirective(
     "CONSOLE/XBOX INDUSTRIAL REALISM",
     """
-    1. **Progressive Analog Travel Mechanics**: Authentic analog triggers communicate progressive depth and travel within the bounding box (${widthDp}px x ${heightDp}px) with a gradient receding into the controller housing cavity, communicating analog travel and finger placement.
+    1. **Progressive Analog Travel Mechanics**: Authentic analog triggers communicate progressive depth and travel within the bounding box (${widthDp}px x ${heightDp}px) with a gradient receding into the controller housing cavity, communicating analog travel and finger placement. On press (`:active`), use centered uniform scale (`transform: scale(var(--press-scale));`) matching native mobile gamepad kinematics without shifting the root button out of its layout slot.
     2. **Molded Traction Ribs**: Physical molded horizontal friction ridges (via Flexbox column or `::before` layered shadows) providing authentic fingertip grip for throttling, braking, or aiming.
     3. **High-Contrast Clean Typography**: Prominent primary key indicator ("$control", font-size 26-30px, weight 900). Keep the typography clean and authentic to real console gamepads without artificial secondary sub-labels.
     4. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic triggers focus on ergonomic paddle curvature, molded grip traction, and deep socket shadow wells.

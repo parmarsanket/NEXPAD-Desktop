@@ -9,7 +9,7 @@ private fun dpadGlyph(control: String): String = when (control.uppercase()) {
     ControlKey.DOWN.key  -> "▼"
     ControlKey.LEFT.key  -> "◀"
     ControlKey.RIGHT.key -> "▶"
-    ControlKey.DPAD.key  -> "❖"
+    ControlKey.DPAD.key  -> "▲"
     else                 -> "▲"
 }
 
@@ -682,8 +682,8 @@ object NxprcPresets {
     --dpad-size: 76px;
     --accent: #00F0FF;
     --accent-glow: rgba(0, 240, 255, 0.5);
-    --spring-damping: 0.72;
-    --spring-stiffness: 480;
+    --spring-damping: 0.68;
+    --spring-stiffness: 460;
     --press-scale: 0.92;
   }
   .dpad-btn {
@@ -704,6 +704,7 @@ object NxprcPresets {
     display: flex;
     align-items: center;
     justify-content: center;
+    transform-origin: 50% 50%;
   }
   .dpad-btn::before {
     content: "";
@@ -737,7 +738,7 @@ object NxprcPresets {
     z-index: 5;
   }
   .dpad-btn:active {
-    transform: scale(0.92) translateY(2px);
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>
@@ -759,8 +760,8 @@ object NxprcPresets {
     --dpad-size: 76px;
     --accent: #00F0FF;
     --accent-glow: rgba(0, 240, 255, 0.5);
-    --spring-damping: 0.72;
-    --spring-stiffness: 480;
+    --spring-damping: 0.68;
+    --spring-stiffness: 460;
     --press-scale: 0.92;
   }
   .dpad-btn {
@@ -781,6 +782,7 @@ object NxprcPresets {
     display: flex;
     align-items: center;
     justify-content: center;
+    transform-origin: 50% 50%;
   }
   .dpad-btn::before {
     content: "";
@@ -814,7 +816,7 @@ object NxprcPresets {
     z-index: 5;
   }
   .dpad-btn:active {
-    transform: scale(0.92) translateY(2px);
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>
@@ -836,8 +838,8 @@ object NxprcPresets {
     --dpad-size: 76px;
     --accent: #00F0FF;
     --accent-glow: rgba(0, 240, 255, 0.5);
-    --spring-damping: 0.72;
-    --spring-stiffness: 480;
+    --spring-damping: 0.68;
+    --spring-stiffness: 460;
     --press-scale: 0.92;
   }
   .dpad-btn {
@@ -858,6 +860,7 @@ object NxprcPresets {
     display: flex;
     align-items: center;
     justify-content: center;
+    transform-origin: 50% 50%;
   }
   .dpad-btn::before {
     content: "";
@@ -891,7 +894,7 @@ object NxprcPresets {
     z-index: 5;
   }
   .dpad-btn:active {
-    transform: scale(0.92) translateY(2px);
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>
@@ -913,8 +916,8 @@ object NxprcPresets {
     --dpad-size: 76px;
     --accent: #00F0FF;
     --accent-glow: rgba(0, 240, 255, 0.5);
-    --spring-damping: 0.72;
-    --spring-stiffness: 480;
+    --spring-damping: 0.68;
+    --spring-stiffness: 460;
     --press-scale: 0.92;
   }
   .dpad-btn {
@@ -935,6 +938,7 @@ object NxprcPresets {
     display: flex;
     align-items: center;
     justify-content: center;
+    transform-origin: 50% 50%;
   }
   .dpad-btn::before {
     content: "";
@@ -968,7 +972,7 @@ object NxprcPresets {
     z-index: 5;
   }
   .dpad-btn:active {
-    transform: scale(0.92) translateY(2px);
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>
@@ -987,64 +991,182 @@ object NxprcPresets {
 <meta charset="UTF-8">
 <style>
   :root {
-    --cross-size: 144px;
+    --cross-size: 140px;
     --accent: #00F0FF;
     --accent-glow: rgba(0, 240, 255, 0.45);
-    --spring-damping: 0.72;
-    --spring-stiffness: 480;
+    --spring-damping: 0.68;
+    --spring-stiffness: 460;
     --press-scale: 0.95;
   }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 140px;
+    height: 140px;
+    background: transparent;
+  }
+
+  /* 0: Root controller button — Recessed circular chassis socket well in gamepad body */
   .dpad-cross {
     position: relative;
     width: var(--cross-size);
     height: var(--cross-size);
-    border-radius: 28px;
-    background: 
-      radial-gradient(circle at 50% 50%, #1e2430 0%, #101319 65%, #06070a 100%);
-    border: 2px solid #343d4e;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, #161b24 0%, #0d1017 65%, #05070a 100%);
+    border: 2px solid #2a3342;
     box-shadow: 
-      0 12px 28px rgba(0, 0, 0, 0.8),
-      0 0 0 3px rgba(14, 17, 24, 0.95),
-      inset 0 2px 5px rgba(255, 255, 255, 0.28), 
-      inset 0 -6px 14px rgba(0, 0, 0, 0.9), 
+      0 12px 28px rgba(0, 0, 0, 0.85),
+      0 0 0 3px rgba(10, 13, 18, 0.95),
+      inset 0 6px 14px rgba(0, 0, 0, 0.95),
+      inset 0 -2px 5px rgba(255, 255, 255, 0.08),
       0 0 24px var(--accent-glow);
+    display: block;
+    cursor: pointer;
+    outline: none;
+    padding: 0;
+    transform-origin: 50% 50%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .dpad-cross > * { position: absolute; }
+
+  /* 1: Recessed circular socket cavity trim ring */
+  .dpad-socket-trim {
+    inset: 4px;
+    border-radius: 50%;
+    border: 1.5px dashed rgba(0, 240, 255, 0.3);
+    pointer-events: none;
+  }
+
+  /* 2: Vertical physical cross arm bar */
+  .dpad-arm-v {
+    left: 47px;
+    top: 8px;
+    width: 46px;
+    height: 124px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #2c3545 0%, #1a202a 35%, #12161e 65%, #222a38 100%);
+    border: 1.5px solid rgba(255, 255, 255, 0.18);
+    box-shadow:
+      0 6px 14px rgba(0, 0, 0, 0.75),
+      inset 0 2px 4px rgba(255, 255, 255, 0.25),
+      inset 0 -4px 8px rgba(0, 0, 0, 0.85);
+  }
+
+  /* 3: Horizontal physical cross arm bar */
+  .dpad-arm-h {
+    left: 8px;
+    top: 47px;
+    width: 124px;
+    height: 46px;
+    border-radius: 10px;
+    background: linear-gradient(90deg, #2c3545 0%, #1a202a 35%, #12161e 65%, #222a38 100%);
+    border: 1.5px solid rgba(255, 255, 255, 0.18);
+    box-shadow:
+      0 6px 14px rgba(0, 0, 0, 0.75),
+      inset 0 2px 4px rgba(255, 255, 255, 0.25),
+      inset 0 -4px 8px rgba(0, 0, 0, 0.85);
+  }
+
+  /* 4: Tactile directional arm button face plates (UP, DOWN, LEFT, RIGHT) */
+  .dpad-arm {
+    box-sizing: border-box;
+    z-index: 3;
+  }
+  .dpad-arm-top {
+    top: 10px;
+    left: 49px;
+    width: 42px;
+    height: 38px;
+    border-radius: 8px 8px 3px 3px;
+    background: linear-gradient(180deg, #384357 0%, #1c222c 100%);
+    box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.3), inset 0 -2px 4px rgba(0, 0, 0, 0.6);
+  }
+  .dpad-arm-bottom {
+    bottom: 10px;
+    left: 49px;
+    width: 42px;
+    height: 38px;
+    border-radius: 3px 3px 8px 8px;
+    background: linear-gradient(0deg, #384357 0%, #1c222c 100%);
+    box-shadow: inset 0 -2px 3px rgba(255, 255, 255, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.6);
+  }
+  .dpad-arm-left {
+    left: 10px;
+    top: 49px;
+    width: 38px;
+    height: 42px;
+    border-radius: 8px 3px 3px 8px;
+    background: linear-gradient(90deg, #384357 0%, #1c222c 100%);
+    box-shadow: inset 2px 0 3px rgba(255, 255, 255, 0.3), inset -2px 0 4px rgba(0, 0, 0, 0.6);
+  }
+  .dpad-arm-right {
+    right: 10px;
+    top: 49px;
+    width: 38px;
+    height: 42px;
+    border-radius: 3px 8px 8px 3px;
+    background: linear-gradient(270deg, #384357 0%, #1c222c 100%);
+    box-shadow: inset -2px 0 3px rgba(255, 255, 255, 0.3), inset 2px 0 4px rgba(0, 0, 0, 0.6);
+  }
+
+  /* 5: Central concave thumb rest cup / rocker pivot */
+  .dpad-pivot {
+    left: 48px;
+    top: 48px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 45% 45%, #080a0e 0%, #141923 60%, #1e2531 100%);
+    box-shadow:
+      inset 0 3px 6px rgba(0, 0, 0, 0.95),
+      0 1px 2px rgba(255, 255, 255, 0.2);
+    border: 1.5px solid rgba(0, 240, 255, 0.45);
+    z-index: 4;
+  }
+
+  /* 6: Cardinal directional chevrons / arrows */
+  .dpad-arrow {
+    position: absolute;
+    font-size: 18px;
+    font-weight: 900;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #FFFFFF;
+    text-shadow: 0 0 12px var(--accent), 0 0 6px var(--accent), 0 2px 4px rgba(0, 0, 0, 0.95);
+    z-index: 5;
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 28px;
+    height: 28px;
+    user-select: none;
   }
-  .dpad-cross::before {
-    content: "";
-    position: absolute;
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 45% 45%, #262e3d 0%, #0b0d12 100%);
-    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.95), 0 1px 2px rgba(255, 255, 255, 0.25);
-    border: 1.5px solid rgba(0, 240, 255, 0.4);
-  }
-  .dpad-cross::after {
-    content: "";
-    position: absolute;
-    width: 104px;
-    height: 104px;
-    border-radius: 50%;
-    border: 1.5px dashed rgba(0, 240, 255, 0.35);
-  }
-  .cross-center {
-    font-size: 22px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 0 0 16px var(--accent), 0 0 8px var(--accent), 0 2px 4px rgba(0, 0, 0, 0.95);
-    z-index: 5;
-  }
+  .dpad-up    { top: 15px; left: 56px; }
+  .dpad-down  { bottom: 15px; left: 56px; }
+  .dpad-left  { left: 15px; top: 56px; }
+  .dpad-right { right: 15px; top: 56px; }
+
+  /* In-place uniform scale kinematics (zero displacement) */
   .dpad-cross:active {
-    transform: scale(0.95);
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>
 <body>
   <button class="dpad-btn dpad-cross" data-control="DPAD" data-category="DPAD" data-name="Tactile Cross Pad">
-    <span class="cross-center">❖</span>
+    <div class="dpad-socket-trim"></div>
+    <div class="dpad-arm-v"></div>
+    <div class="dpad-arm-h"></div>
+    <div class="dpad-arm dpad-arm-top"></div>
+    <div class="dpad-arm dpad-arm-bottom"></div>
+    <div class="dpad-arm dpad-arm-left"></div>
+    <div class="dpad-arm dpad-arm-right"></div>
+    <div class="dpad-pivot"></div>
+    <span class="dpad-arrow dpad-up">▲</span>
+    <span class="dpad-arrow dpad-right">▶</span>
+    <span class="dpad-arrow dpad-down">▼</span>
+    <span class="dpad-arrow dpad-left">◀</span>
   </button>
 </body>
 </html>
@@ -1059,9 +1181,9 @@ object NxprcPresets {
   :root {
     --accent: #00F0FF;
     --accent-glow: rgba(0, 240, 255, 0.5);
-    --spring-damping: 0.65;
-    --spring-stiffness: 380;
-    --press-scale: 0.94;
+    --spring-damping: 0.68;
+    --spring-stiffness: 440;
+    --press-scale: 0.95;
   }
   .trigger-btn {
     position: relative;
@@ -1084,6 +1206,7 @@ object NxprcPresets {
     justify-content: flex-start;
     padding-top: 18px;
     box-sizing: border-box;
+    transform-origin: 50% 50%;
   }
   .trigger-btn::before {
     content: "";
@@ -1118,7 +1241,7 @@ object NxprcPresets {
     z-index: 5;
   }
   .trigger-btn:active {
-    transform: scaleY(0.94) translateY(4px);
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>
@@ -1139,9 +1262,9 @@ object NxprcPresets {
   :root {
     --accent: #FF3366;
     --accent-glow: rgba(255, 51, 102, 0.5);
-    --spring-damping: 0.65;
-    --spring-stiffness: 380;
-    --press-scale: 0.94;
+    --spring-damping: 0.68;
+    --spring-stiffness: 440;
+    --press-scale: 0.95;
   }
   .trigger-btn {
     position: relative;
@@ -1164,6 +1287,7 @@ object NxprcPresets {
     justify-content: flex-start;
     padding-top: 18px;
     box-sizing: border-box;
+    transform-origin: 50% 50%;
   }
   .trigger-btn::before {
     content: "";
@@ -1198,7 +1322,7 @@ object NxprcPresets {
     z-index: 5;
   }
   .trigger-btn:active {
-    transform: scaleY(0.94) translateY(4px);
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>
@@ -2397,9 +2521,9 @@ object NxprcPresets {
 <meta charset="UTF-8">
 <style>
   :root {
-    --spring-damping: 0.65;
-    --spring-stiffness: 380;
-    --press-scale: 0.94;
+    --spring-damping: 0.68;
+    --spring-stiffness: 440;
+    --press-scale: 0.95;
   }
   .trigger-btn {
     width: ${widthDp}px;
@@ -2418,6 +2542,7 @@ object NxprcPresets {
     align-items: center;
     justify-content: flex-start;
     padding-top: 18px;
+    transform-origin: 50% 50%;
   }
   .trigger-btn::after {
     content: "";
@@ -2437,7 +2562,7 @@ object NxprcPresets {
     z-index: 5;
   }
   .trigger-btn:active {
-    transform: scaleY(0.94) translateY(4px);
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>
@@ -2497,23 +2622,183 @@ object NxprcPresets {
 </html>
             """.trimIndent()
 
-            CategoryType.DPAD -> """
+            CategoryType.DPAD -> if (control.uppercase() == ControlKey.DPAD.key) {
+                """
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <style>
   :root {
-    --spring-damping: 0.72;
-    --spring-stiffness: 480;
-    --press-scale: ${if (control.uppercase() == ControlKey.DPAD.key) "0.95" else "0.92"};
+    --spring-damping: 0.68;
+    --spring-stiffness: 460;
+    --press-scale: 0.95;
+    --accent: #00F0FF;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .dpad-cross {
+    width: ${widthDp}px;
+    height: ${heightDp}px;
+    position: relative;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, #161b24 0%, #0d1017 65%, #05070a 100%);
+    border: 2px solid #2a3342;
+    box-shadow: 
+      0 12px 28px rgba(0, 0, 0, 0.85),
+      0 0 0 3px rgba(10, 13, 18, 0.95),
+      inset 0 6px 14px rgba(0, 0, 0, 0.95),
+      inset 0 -2px 5px rgba(255, 255, 255, 0.08);
+    display: block;
+    cursor: pointer;
+    outline: none;
+    padding: 0;
+    transform-origin: 50% 50%;
+  }
+  .dpad-cross > * { position: absolute; }
+  .dpad-socket-trim {
+    inset: 4px;
+    border-radius: 50%;
+    border: 1.5px dashed rgba(0, 240, 255, 0.3);
+    pointer-events: none;
+  }
+  .dpad-arm-v {
+    left: ${(widthDp * 0.335).toInt()}px;
+    top: ${(heightDp * 0.06).toInt()}px;
+    width: ${(widthDp * 0.33).toInt()}px;
+    height: ${(heightDp * 0.88).toInt()}px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #2c3545 0%, #1a202a 35%, #12161e 65%, #222a38 100%);
+    border: 1.5px solid rgba(255, 255, 255, 0.18);
+    box-shadow:
+      0 6px 14px rgba(0, 0, 0, 0.75),
+      inset 0 2px 4px rgba(255, 255, 255, 0.25),
+      inset 0 -4px 8px rgba(0, 0, 0, 0.85);
+  }
+  .dpad-arm-h {
+    left: ${(widthDp * 0.06).toInt()}px;
+    top: ${(heightDp * 0.335).toInt()}px;
+    width: ${(widthDp * 0.88).toInt()}px;
+    height: ${(heightDp * 0.33).toInt()}px;
+    border-radius: 10px;
+    background: linear-gradient(90deg, #2c3545 0%, #1a202a 35%, #12161e 65%, #222a38 100%);
+    border: 1.5px solid rgba(255, 255, 255, 0.18);
+    box-shadow:
+      0 6px 14px rgba(0, 0, 0, 0.75),
+      inset 0 2px 4px rgba(255, 255, 255, 0.25),
+      inset 0 -4px 8px rgba(0, 0, 0, 0.85);
+  }
+  .dpad-arm {
+    box-sizing: border-box;
+    z-index: 3;
+  }
+  .dpad-arm-top {
+    top: ${(heightDp * 0.07).toInt()}px;
+    left: ${(widthDp * 0.35).toInt()}px;
+    width: ${(widthDp * 0.30).toInt()}px;
+    height: ${(heightDp * 0.27).toInt()}px;
+    border-radius: 8px 8px 3px 3px;
+    background: linear-gradient(180deg, #384357 0%, #1c222c 100%);
+    box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.3), inset 0 -2px 4px rgba(0, 0, 0, 0.6);
+  }
+  .dpad-arm-bottom {
+    bottom: ${(heightDp * 0.07).toInt()}px;
+    left: ${(widthDp * 0.35).toInt()}px;
+    width: ${(widthDp * 0.30).toInt()}px;
+    height: ${(heightDp * 0.27).toInt()}px;
+    border-radius: 3px 3px 8px 8px;
+    background: linear-gradient(0deg, #384357 0%, #1c222c 100%);
+    box-shadow: inset 0 -2px 3px rgba(255, 255, 255, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.6);
+  }
+  .dpad-arm-left {
+    left: ${(widthDp * 0.07).toInt()}px;
+    top: ${(heightDp * 0.35).toInt()}px;
+    width: ${(widthDp * 0.27).toInt()}px;
+    height: ${(heightDp * 0.30).toInt()}px;
+    border-radius: 8px 3px 3px 8px;
+    background: linear-gradient(90deg, #384357 0%, #1c222c 100%);
+    box-shadow: inset 2px 0 3px rgba(255, 255, 255, 0.3), inset -2px 0 4px rgba(0, 0, 0, 0.6);
+  }
+  .dpad-arm-right {
+    right: ${(widthDp * 0.07).toInt()}px;
+    top: ${(heightDp * 0.35).toInt()}px;
+    width: ${(widthDp * 0.27).toInt()}px;
+    height: ${(heightDp * 0.30).toInt()}px;
+    border-radius: 3px 8px 8px 3px;
+    background: linear-gradient(270deg, #384357 0%, #1c222c 100%);
+    box-shadow: inset -2px 0 3px rgba(255, 255, 255, 0.3), inset 2px 0 4px rgba(0, 0, 0, 0.6);
+  }
+  .dpad-pivot {
+    position: absolute;
+    width: ${(widthDp * 0.32).toInt()}px;
+    height: ${(heightDp * 0.32).toInt()}px;
+    left: ${(widthDp * 0.34).toInt()}px;
+    top: ${(heightDp * 0.34).toInt()}px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 45% 45%, #080a0e 0%, #141923 60%, #1e2531 100%);
+    border: 1.5px solid rgba(0, 240, 255, 0.45);
+    box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.95), 0 1px 2px rgba(255, 255, 255, 0.2);
+    z-index: 4;
+  }
+  .dpad-arrow {
+    position: absolute;
+    font-size: 18px;
+    font-weight: 900;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #FFFFFF;
+    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0, 0, 0, 0.95);
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    user-select: none;
+  }
+  .dpad-up    { top: ${(heightDp * 0.10).toInt()}px; left: ${(widthDp * 0.40).toInt()}px; }
+  .dpad-down  { bottom: ${(heightDp * 0.10).toInt()}px; left: ${(widthDp * 0.40).toInt()}px; }
+  .dpad-left  { left: ${(widthDp * 0.10).toInt()}px; top: ${(heightDp * 0.40).toInt()}px; }
+  .dpad-right { right: ${(widthDp * 0.10).toInt()}px; top: ${(heightDp * 0.40).toInt()}px; }
+  .dpad-cross:active {
+    transform: scale(var(--press-scale));
+  }
+</style>
+</head>
+<body>
+  <button class="dpad-btn dpad-cross" data-control="DPAD" data-category="DPAD" data-name="D-Pad $control">
+    <div class="dpad-socket-trim"></div>
+    <div class="dpad-arm-v"></div>
+    <div class="dpad-arm-h"></div>
+    <div class="dpad-arm dpad-arm-top"></div>
+    <div class="dpad-arm dpad-arm-bottom"></div>
+    <div class="dpad-arm dpad-arm-left"></div>
+    <div class="dpad-arm dpad-arm-right"></div>
+    <div class="dpad-pivot"></div>
+    <span class="dpad-arrow dpad-up">▲</span>
+    <span class="dpad-arrow dpad-right">▶</span>
+    <span class="dpad-arrow dpad-down">▼</span>
+    <span class="dpad-arrow dpad-left">◀</span>
+  </button>
+</body>
+</html>
+                """.trimIndent()
+            } else {
+                """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --spring-damping: 0.68;
+    --spring-stiffness: 460;
+    --press-scale: 0.92;
   }
   .dpad-btn {
     width: ${widthDp}px;
     height: ${heightDp}px;
     position: relative;
     box-sizing: border-box;
-    border-radius: ${if (control.uppercase() == ControlKey.DPAD.key) "28px" else "18px"};
+    border-radius: 18px;
     background: radial-gradient(circle at 45% 40%, #222732 0%, #12151c 65%, #08090d 100%);
     border: 2px solid #303746;
     box-shadow: 
@@ -2523,6 +2808,7 @@ object NxprcPresets {
     display: flex;
     align-items: center;
     justify-content: center;
+    transform-origin: 50% 50%;
   }
   .dpad-glyph {
     font-size: 28px;
@@ -2533,7 +2819,7 @@ object NxprcPresets {
     z-index: 5;
   }
   .dpad-btn:active {
-    transform: ${if (control.uppercase() == ControlKey.DPAD.key) "scale(0.95)" else "scale(0.92) translateY(2px)"};
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>
@@ -2543,7 +2829,8 @@ object NxprcPresets {
   </button>
 </body>
 </html>
-            """.trimIndent()
+                """.trimIndent()
+            }
 
             CategoryType.SYSTEM, CategoryType.MACROS -> """
 <!DOCTYPE html>

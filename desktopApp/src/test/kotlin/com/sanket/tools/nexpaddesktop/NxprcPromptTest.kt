@@ -560,15 +560,15 @@ class NxprcPromptTest {
         assertFalse(6 in doc.canvas.capLayerIndices, "Layer #6 (.tick-s) must be stationary on base")
         assertFalse(7 in doc.canvas.capLayerIndices, "Layer #7 (.tick-w) must be stationary on base")
 
-        // Sparkles (layers 11, 12) must remain stationary on base
-        assertFalse(11 in doc.canvas.capLayerIndices, "Layer #11 (.sparkle-a) must be stationary on base")
-        assertFalse(12 in doc.canvas.capLayerIndices, "Layer #12 (.sparkle-b) must be stationary on base")
+        // Sparkles (layers 8, 9) must remain stationary on base
+        assertFalse(8 in doc.canvas.capLayerIndices, "Layer #8 (.sparkle-a) must be stationary on base")
+        assertFalse(9 in doc.canvas.capLayerIndices, "Layer #9 (.sparkle-b) must be stationary on base")
 
-        // Thumb cap elements (layers 2, 8, 9, 10, 13) must be in capLayerIndices
+        // Thumb cap elements (layers 2, 10, 11, 12, 13) must be in capLayerIndices
         assertTrue(2 in doc.canvas.capLayerIndices, "Layer #2 (.stick-cap) must move")
-        assertTrue(8 in doc.canvas.capLayerIndices, "Layer #8 (.cap-shine) must move")
-        assertTrue(9 in doc.canvas.capLayerIndices, "Layer #9 (.knurled-ring) must move")
-        assertTrue(10 in doc.canvas.capLayerIndices, "Layer #10 (.knurled-ring-inner) must move")
+        assertTrue(10 in doc.canvas.capLayerIndices, "Layer #10 (.cap-shine) must move")
+        assertTrue(11 in doc.canvas.capLayerIndices, "Layer #11 (.knurled-ring) must move")
+        assertTrue(12 in doc.canvas.capLayerIndices, "Layer #12 (.knurled-ring-inner) must move")
         assertTrue(13 in doc.canvas.capLayerIndices, "Layer #13 (CenterGlyph) must move")
     }
 
@@ -719,6 +719,21 @@ class NxprcPromptTest {
         assertFalse(prompt.contains("Elongated vertical paddle silhouette"), "Prescriptive elongated paddle leaked into QA checklist")
         assertFalse(prompt.contains("PULL"), "Prescriptive PULL sub-label leaked into trigger prompt")
         assertFalse(prompt.contains("BRAKE"), "Prescriptive BRAKE sub-label leaked into trigger prompt")
+        assertFalse(prompt.contains("translateY(4px)"), "translateY(4px) must not leak into trigger prompt")
+        assertFalse(prompt.contains("scaleY(0.94)"), "scaleY(0.94) must not leak into trigger prompt")
+        assertTrue(prompt.contains("scale(var(--press-scale))"), "Trigger prompt should recommend scale(var(--press-scale))")
+    }
+
+    @Test
+    fun dpadPromptEnforces4WayCardinalArchitectureAndZeroDisplacement() {
+        val prompt = NxprcHtmlCssConverter.generateAiPrompt("DPAD", "DPAD", 140, 140)
+
+        assertTrue(prompt.contains("4 Cardinal Directions: `▲ UP`, `▼ DOWN`, `◀ LEFT`, `▶ RIGHT`"), "D-Pad prompt must contain 4 cardinal directions")
+        assertTrue(prompt.contains(".dpad-pivot"), "D-Pad prompt must reference .dpad-pivot central rocker well")
+        assertTrue(prompt.contains("Directional Cross & Rocker Pivot Affordance"), "Missing directional cross & rocker pivot affordance")
+        assertTrue(prompt.contains("scale(var(--press-scale))"), "D-Pad prompt must recommend scale(var(--press-scale))")
+        assertFalse(prompt.contains("translateY(2px)"), "translateY(2px) must not leak into D-Pad prompt")
+        assertFalse(prompt.contains("❖"), "Placeholder ❖ glyph must not leak into 4-way D-Pad prompt")
     }
 
     @Test
@@ -1231,6 +1246,12 @@ class NxprcPromptTest {
         assertTrue(defaultPhysics.toDeclarations().contains("--press-scale: 0.92;"))
         assertTrue(defaultPhysics.toRootBlock().contains(":root {"))
 
+        val triggerPhysics = SpringPhysics.TRIGGER
+        assertEquals(0.68f, triggerPhysics.damping)
+        assertEquals(440f, triggerPhysics.stiffness)
+        assertEquals(0.95f, triggerPhysics.pressScale)
+        assertEquals("0.95", triggerPhysics.pressScaleFormatted)
+
         val bumperPhysics = SpringPhysics.BUMPER
         assertEquals(0.75f, bumperPhysics.damping)
         assertEquals(520f, bumperPhysics.stiffness)
@@ -1240,6 +1261,12 @@ class NxprcPromptTest {
         assertEquals(0.72f, stickButtonPhysics.damping)
         assertEquals(480f, stickButtonPhysics.stiffness)
         assertEquals("0.90", stickButtonPhysics.pressScaleFormatted)
+
+        val dpadPhysics = SpringPhysics.DPAD
+        assertEquals(0.68f, dpadPhysics.damping)
+        assertEquals(460f, dpadPhysics.stiffness)
+        assertEquals(0.95f, dpadPhysics.pressScale)
+        assertEquals("0.95", dpadPhysics.pressScaleFormatted)
 
         // Bridge to :protocol SpringPhysicsDef
         val protocolDef = defaultPhysics.toSpringPhysicsDef()
@@ -2545,6 +2572,36 @@ class NxprcPromptTest {
                 assertFalse(
                     frontierPrompt.contains("THUMB-CAP DECOUPLING"),
                     "$tag Frontier non-joystick button must NOT leak thumb-cap decoupling"
+                )
+            }
+
+            if (spec.category == "TRIGGER") {
+                assertTrue(
+                    frontierPrompt.contains("SECTION F9-TRIGGER — ANALOG TRIGGER ARCHITECTURE & RECEDING PADDLE KINEMATICS"),
+                    "$tag Frontier Trigger MUST contain Section F9-TRIGGER"
+                )
+                assertTrue(
+                    frontierPrompt.contains("MOBILE ZERO-DISPLACEMENT CONTRACT"),
+                    "$tag Frontier Trigger missing zero-displacement contract"
+                )
+                assertTrue(
+                    frontierPrompt.contains("scale(var(--press-scale))"),
+                    "$tag Frontier Trigger missing in-place scale(var(--press-scale))"
+                )
+            }
+
+            if (spec.category == "DPAD") {
+                assertTrue(
+                    frontierPrompt.contains("SECTION F9-DPAD — DIRECTIONAL PAD ARCHITECTURE & 4-WAY CARDINAL KINEMATICS"),
+                    "$tag Frontier DPAD MUST contain Section F9-DPAD"
+                )
+                assertTrue(
+                    frontierPrompt.contains("MOBILE ZERO-DISPLACEMENT CONTRACT"),
+                    "$tag Frontier DPAD missing zero-displacement contract"
+                )
+                assertTrue(
+                    frontierPrompt.contains("scale(var(--press-scale))"),
+                    "$tag Frontier DPAD missing in-place scale(var(--press-scale))"
                 )
             }
 

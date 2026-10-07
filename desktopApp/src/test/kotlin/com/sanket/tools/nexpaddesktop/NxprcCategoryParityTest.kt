@@ -160,8 +160,8 @@ class NxprcCategoryParityTest {
                     assertTrue("Dpad must have inset shadows", root.boxShadows.any { it.isInset })
                     val allTexts = doc.canvas.layers.filterIsInstance<CanvasLayer.CenterGlyph>().mapNotNull { it.text } +
                             doc.canvas.layers.filterIsInstance<CanvasLayer.TextLayer>().map { it.text }
-                    assertTrue("Dpad cross must preserve directional glyph ❖", allTexts.any { it.contains("❖") })
-                    println("  [PASS] Zero-Tolerance: Cross pad glyph and recessed well preserved")
+                    assertTrue("Dpad cross must preserve cardinal directional indicators", allTexts.contains("▲") && allTexts.contains("▼") && allTexts.contains("◀") && allTexts.contains("▶"))
+                    println("  [PASS] Zero-Tolerance: 4-way DPad cross arrows (▲, ▼, ◀, ▶) and recessed well preserved")
                 }
                 "ABXY" -> {
                     val root = doc.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull { it.widthRatio >= 0.95f }
@@ -698,6 +698,393 @@ body {
             val cardOut = File(brainDir, "user_trigger_side_by_side.png")
             ImageIO.write(sideBySideCard, "PNG", cardOut)
             println("USER TRIGGER PARITY SCORE: $parityScore%")
+            println("SAVED CARD: ${cardOut.absolutePath}")
+        }
+    }
+
+    @Test
+    fun testUserRealisticStickLsbTrigger() {
+        val rawHtml = """<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Realistic Stick LSB LT #62900</title>
+<style>
+  :root {
+    --accent: #F97316;
+    --accent-glow: rgba(249, 115, 22, 0.65);
+    --spring-damping: 0.70;
+    --spring-stiffness: 460;
+    --press-scale: 0.94;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 110px;
+    height: 140px;
+    background: transparent;
+  }
+
+  .nexpad-btn {
+    position: relative;
+    display: block;
+    width: 110px;
+    height: 140px;
+    border: 0;
+    padding: 0;
+    border-radius: 40px 40px 32px 32px;
+    background: transparent;
+    cursor: pointer;
+    outline: none;
+    transform-origin: 50% 50%;
+    -webkit-tap-highlight-color: transparent;
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .nexpad-btn:active,
+  .trigger-btn:active {
+    transform: scaleY(0.94) translateY(4px);
+  }
+
+  .nexpad-btn > * { position: absolute; }
+
+  /* 0: backlight cavity aura (breathing) */
+  .glow-ring {
+    left: 6px; top: 6px; width: 98px; height: 128px;
+    border-radius: 38px 38px 30px 30px;
+    box-shadow: 0 0 28px var(--accent-glow);
+    opacity: 0.35;
+    animation: pulse-aura 3s ease-in-out infinite;
+  }
+
+  /* 1: recessed housing cavity (darker at top = paddle recedes into body) */
+  .housing {
+    left: 3px; top: 3px; width: 104px; height: 134px;
+    border-radius: 40px 40px 32px 32px;
+    background: linear-gradient(180deg, #040507 0%, #0b0d12 35%, #151922 100%);
+    box-shadow:
+      0 8px 20px rgba(0, 0, 0, 0.65),
+      inset 0 5px 10px rgba(0, 0, 0, 0.95),
+      inset 0 1px 1px rgba(255, 255, 255, 0.12),
+      inset 0 -2px 3px rgba(255, 255, 255, 0.06);
+  }
+
+  /* 2: flanged grip wings */
+  .wing-left {
+    left: 4px; top: 34px; width: 12px; height: 76px;
+    background: linear-gradient(90deg, #4b5465 0%, #20242e 55%, #0d0f14 100%);
+    clip-path: polygon(0% 10%, 100% 0%, 100% 100%, 0% 90%);
+  }
+  .wing-right {
+    left: 94px; top: 34px; width: 12px; height: 76px;
+    background: linear-gradient(270deg, #4b5465 0%, #20242e 55%, #0d0f14 100%);
+    clip-path: polygon(0% 0%, 100% 10%, 100% 90%, 0% 100%);
+  }
+
+  /* 3: wing grooves + status LEDs */
+  .wing-art {
+    left: 0; top: 0; width: 110px; height: 140px;
+  }
+
+  /* 4: cast shadow of the paddle inside the cavity */
+  .well-shadow {
+    left: 14px; top: 116px; width: 82px; height: 18px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.8);
+    filter: blur(5px);
+    opacity: 0.85;
+  }
+
+  /* 5: metallic chamfer bezel */
+  .bezel {
+    left: 13px; top: 10px; width: 84px; height: 122px;
+    border-radius: 36px 36px 26px 26px;
+    background: linear-gradient(160deg, #7a8498 0%, #2b303b 24%, #0f1218 58%, #4b5465 100%);
+    box-shadow:
+      0 6px 10px rgba(0, 0, 0, 0.7),
+      inset 0 1px 1px rgba(255, 255, 255, 0.4),
+      inset 0 -2px 3px rgba(0, 0, 0, 0.8);
+  }
+
+  /* 6: dark groove */
+  .groove {
+    left: 15px; top: 12px; width: 80px; height: 118px;
+    border-radius: 34px 34px 24px 24px;
+    background: linear-gradient(180deg, #05060a 0%, #0e1117 100%);
+    box-shadow:
+      inset 0 3px 5px rgba(0, 0, 0, 0.9),
+      inset 0 -1px 1px rgba(255, 255, 255, 0.08);
+  }
+
+  /* 7: edge LED trim (breathing) */
+  .led-ring {
+    left: 16px; top: 13px; width: 78px; height: 116px;
+    border-radius: 33px 33px 23px 23px;
+    border: 1.5px solid rgba(249, 115, 22, 0.6);
+    box-shadow:
+      0 0 6px rgba(249, 115, 22, 0.55),
+      inset 0 0 6px rgba(249, 115, 22, 0.4);
+    opacity: 0.45;
+    animation: pulse-led 3s ease-in-out infinite;
+  }
+
+  /* 8: paddle face (graphite polymer, lighter toward fingertip) */
+  .paddle-face {
+    left: 18px; top: 15px; width: 74px; height: 112px;
+    border-radius: 31px 31px 21px 21px;
+    background: linear-gradient(180deg, #12151c 0%, #1d222d 28%, #2b313f 62%, #3a4152 100%);
+    box-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.5),
+      inset 0 2px 3px rgba(255, 255, 255, 0.14),
+      inset 0 -6px 10px rgba(0, 0, 0, 0.6),
+      inset 0 0 0 1px rgba(0, 0, 0, 0.4);
+  }
+
+  /* 9: soft sheen where the finger rests */
+  .face-sheen {
+    left: 24px; top: 72px; width: 62px; height: 52px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 70%,
+      rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0) 70%);
+  }
+
+  /* 10: backlit trace glow under the circuit art (breathing) */
+  .emblem-ambient {
+    left: 22px; top: 22px; width: 66px; height: 50px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%,
+      rgba(249, 115, 22, 0.6) 0%, rgba(249, 115, 22, 0.2) 55%, rgba(249, 115, 22, 0) 80%);
+    filter: blur(6px);
+    opacity: 0.25;
+    animation: pulse-trace 3s ease-in-out infinite;
+  }
+
+  /* 11: micro-etched circuit traces */
+  .circuit-art {
+    left: 0; top: 0; width: 110px; height: 140px;
+  }
+
+  /* 12: pull chevrons + molded traction ribs */
+  .travel-art {
+    left: 0; top: 0; width: 110px; height: 140px;
+  }
+
+  /* 13: warm bounce light on the lower lip */
+  .bounce-light {
+    left: 38px; top: 120px; width: 34px; height: 6px;
+    border-radius: 0 0 50% 50%;
+    background: linear-gradient(0deg, rgba(249, 115, 22, 0.3) 0%, rgba(249, 115, 22, 0) 100%);
+  }
+
+  /* 14: specular arcs */
+  .gloss-art {
+    left: 0; top: 0; width: 110px; height: 140px;
+  }
+
+  /* 15: specular gloss */
+  .gloss {
+    left: 27px; top: 17px; width: 56px; height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.1) 60%, rgba(255, 255, 255, 0) 100%);
+  }
+
+  /* 16: molded-in label, real DOM text, no rotation */
+  .btn-label {
+    left: 0; top: 36px; width: 110px; height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    line-height: 1;
+    color: #ffebdd;
+    text-shadow:
+      0 0 8px rgba(249, 115, 22, 0.75),
+      0 1px 0 rgba(255, 255, 255, 0.18),
+      0 2px 3px rgba(0, 0, 0, 0.85);
+  }
+
+  /* Idle ambient loops */
+  @keyframes pulse-aura {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 1; }
+  }
+  @keyframes pulse-led {
+    0%, 100% { opacity: 0.45; }
+    50% { opacity: 1; }
+  }
+  @keyframes pulse-trace {
+    0%, 100% { opacity: 0.25; }
+    50% { opacity: 0.8; }
+  }
+</style>
+</head>
+<body>
+<button class="nexpad-btn trigger-btn" data-control="LT" data-category="TRIGGER" data-codename="Realistic Stick LSB" data-name="Realistic Stick LSB LT #62900" data-seed="62900" id="rc.lt_62900">
+
+  <span class="glow-ring"></span>
+  <span class="housing" data-layer-role="base"></span>
+  <span class="wing-left"></span>
+  <span class="wing-right"></span>
+
+  <svg class="wing-art" viewBox="0 0 110 140">
+    <!-- left wing grooves -->
+    <line x1="6" y1="50" x2="11" y2="49" stroke="rgba(0,0,0,0.75)" stroke-width="1.4" stroke-linecap="round"/>
+    <line x1="6" y1="51.4" x2="11" y2="50.4" stroke="rgba(255,255,255,0.14)" stroke-width="0.7" stroke-linecap="round"/>
+    <line x1="6" y1="58" x2="11" y2="58" stroke="rgba(0,0,0,0.75)" stroke-width="1.4" stroke-linecap="round"/>
+    <line x1="6" y1="59.4" x2="11" y2="59.4" stroke="rgba(255,255,255,0.14)" stroke-width="0.7" stroke-linecap="round"/>
+    <line x1="6" y1="86" x2="11" y2="86" stroke="rgba(0,0,0,0.75)" stroke-width="1.4" stroke-linecap="round"/>
+    <line x1="6" y1="87.4" x2="11" y2="87.4" stroke="rgba(255,255,255,0.14)" stroke-width="0.7" stroke-linecap="round"/>
+    <line x1="6" y1="94" x2="11" y2="95" stroke="rgba(0,0,0,0.75)" stroke-width="1.4" stroke-linecap="round"/>
+    <line x1="6" y1="95.4" x2="11" y2="96.4" stroke="rgba(255,255,255,0.14)" stroke-width="0.7" stroke-linecap="round"/>
+    <circle cx="8.5" cy="72" r="1.7" fill="rgba(249,115,22,0.95)" stroke="rgba(0,0,0,0.6)" stroke-width="0.8"/>
+
+    <!-- right wing grooves -->
+    <line x1="99" y1="49" x2="104" y2="50" stroke="rgba(0,0,0,0.75)" stroke-width="1.4" stroke-linecap="round"/>
+    <line x1="99" y1="50.4" x2="104" y2="51.4" stroke="rgba(255,255,255,0.14)" stroke-width="0.7" stroke-linecap="round"/>
+    <line x1="99" y1="58" x2="104" y2="58" stroke="rgba(0,0,0,0.75)" stroke-width="1.4" stroke-linecap="round"/>
+    <line x1="99" y1="59.4" x2="104" y2="59.4" stroke="rgba(255,255,255,0.14)" stroke-width="0.7" stroke-linecap="round"/>
+    <line x1="99" y1="86" x2="104" y2="86" stroke="rgba(0,0,0,0.75)" stroke-width="1.4" stroke-linecap="round"/>
+    <line x1="99" y1="87.4" x2="104" y2="87.4" stroke="rgba(255,255,255,0.14)" stroke-width="0.7" stroke-linecap="round"/>
+    <line x1="99" y1="95" x2="104" y2="94" stroke="rgba(0,0,0,0.75)" stroke-width="1.4" stroke-linecap="round"/>
+    <line x1="99" y1="96.4" x2="104" y2="95.4" stroke="rgba(255,255,255,0.14)" stroke-width="0.7" stroke-linecap="round"/>
+    <circle cx="101.5" cy="72" r="1.7" fill="rgba(249,115,22,0.95)" stroke="rgba(0,0,0,0.6)" stroke-width="0.8"/>
+  </svg>
+
+  <span class="well-shadow"></span>
+  <span class="bezel"></span>
+  <span class="groove"></span>
+  <span class="led-ring"></span>
+  <span class="paddle-face" data-layer-role="face"></span>
+  <span class="face-sheen"></span>
+  <span class="emblem-ambient"></span>
+
+  <svg class="circuit-art" viewBox="0 0 110 140">
+    <!-- etched trace channels -->
+    <path d="M27 33 H37 L41 28 H49" fill="none" stroke="rgba(0,0,0,0.55)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M83 33 H73 L69 28 H61" fill="none" stroke="rgba(0,0,0,0.55)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M55 22 V31" fill="none" stroke="rgba(0,0,0,0.55)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M25 41 V54 L29 58 V68" fill="none" stroke="rgba(0,0,0,0.55)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M85 41 V54 L81 58 V68" fill="none" stroke="rgba(0,0,0,0.55)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- backlit trace lines -->
+    <path d="M27 33 H37 L41 28 H49" fill="none" stroke="rgba(249,115,22,0.85)" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M83 33 H73 L69 28 H61" fill="none" stroke="rgba(249,115,22,0.85)" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M55 22 V31" fill="none" stroke="rgba(249,115,22,0.85)" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M25 41 V54 L29 58 V68" fill="none" stroke="rgba(249,115,22,0.85)" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M85 41 V54 L81 58 V68" fill="none" stroke="rgba(249,115,22,0.85)" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- solder pads -->
+    <circle cx="27" cy="33" r="1.5" fill="rgba(249,115,22,0.9)" stroke="rgba(0,0,0,0.6)" stroke-width="0.9"/>
+    <circle cx="83" cy="33" r="1.5" fill="rgba(249,115,22,0.9)" stroke="rgba(0,0,0,0.6)" stroke-width="0.9"/>
+    <circle cx="49" cy="28" r="1.8" fill="rgba(249,115,22,0.95)" stroke="rgba(0,0,0,0.6)" stroke-width="1"/>
+    <circle cx="61" cy="28" r="1.8" fill="rgba(249,115,22,0.95)" stroke="rgba(0,0,0,0.6)" stroke-width="1"/>
+    <circle cx="55" cy="22" r="1.7" fill="rgba(249,115,22,0.95)" stroke="rgba(0,0,0,0.6)" stroke-width="1"/>
+    <circle cx="25" cy="41" r="1.7" fill="rgba(249,115,22,0.95)" stroke="rgba(0,0,0,0.6)" stroke-width="1"/>
+    <circle cx="85" cy="41" r="1.7" fill="rgba(249,115,22,0.95)" stroke="rgba(0,0,0,0.6)" stroke-width="1"/>
+    <circle cx="29" cy="68" r="1.7" fill="rgba(249,115,22,0.95)" stroke="rgba(0,0,0,0.6)" stroke-width="1"/>
+    <circle cx="81" cy="68" r="1.7" fill="rgba(249,115,22,0.95)" stroke="rgba(0,0,0,0.6)" stroke-width="1"/>
+  </svg>
+
+  <svg class="travel-art" viewBox="0 0 110 140">
+    <!-- downward pull chevrons (brighter = further along the travel) -->
+    <path d="M46 71 L55 76 L64 71" fill="none" stroke="rgba(249,115,22,0.3)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M46 76 L55 81 L64 76" fill="none" stroke="rgba(249,115,22,0.6)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M46 81 L55 86 L64 81" fill="none" stroke="rgba(249,115,22,0.95)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- molded traction ribs: groove + highlight lip -->
+    <line x1="26" y1="92" x2="84" y2="92" stroke="rgba(0,0,0,0.7)" stroke-width="2.2" stroke-linecap="round"/>
+    <line x1="27" y1="93.8" x2="83" y2="93.8" stroke="rgba(255,255,255,0.14)" stroke-width="1" stroke-linecap="round"/>
+    <line x1="25" y1="98" x2="85" y2="98" stroke="rgba(0,0,0,0.7)" stroke-width="2.2" stroke-linecap="round"/>
+    <line x1="26" y1="99.8" x2="84" y2="99.8" stroke="rgba(255,255,255,0.14)" stroke-width="1" stroke-linecap="round"/>
+    <line x1="25" y1="104" x2="85" y2="104" stroke="rgba(0,0,0,0.7)" stroke-width="2.2" stroke-linecap="round"/>
+    <line x1="26" y1="105.8" x2="84" y2="105.8" stroke="rgba(255,255,255,0.14)" stroke-width="1" stroke-linecap="round"/>
+    <line x1="27" y1="110" x2="83" y2="110" stroke="rgba(0,0,0,0.7)" stroke-width="2.2" stroke-linecap="round"/>
+    <line x1="28" y1="111.8" x2="82" y2="111.8" stroke="rgba(255,255,255,0.14)" stroke-width="1" stroke-linecap="round"/>
+    <line x1="31" y1="116" x2="79" y2="116" stroke="rgba(0,0,0,0.7)" stroke-width="2.2" stroke-linecap="round"/>
+    <line x1="32" y1="117.8" x2="78" y2="117.8" stroke="rgba(255,255,255,0.14)" stroke-width="1" stroke-linecap="round"/>
+    <line x1="37" y1="121" x2="73" y2="121" stroke="rgba(0,0,0,0.7)" stroke-width="2.2" stroke-linecap="round"/>
+  </svg>
+
+  <span class="bounce-light"></span>
+
+  <svg class="gloss-art" viewBox="0 0 110 140">
+    <path d="M22.2 36.25 A28.5 28.5 0 0 1 41.6 18.5" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M88.85 112.5 A19 19 0 0 1 74.3 124.7" fill="none" stroke="rgba(249,115,22,0.55)" stroke-width="1.4" stroke-linecap="round"/>
+  </svg>
+
+  <span class="gloss"></span>
+  <span class="btn-label" data-layer-role="label">LT</span>
+
+</button>
+</body>
+</html>"""
+
+        println("=======================================================================")
+        println("AUDITING USER REALISTIC STICK LSB LT #62900 CODE")
+        println("=======================================================================")
+
+        val docConverted = NxprcHtmlCssConverter.convert(
+            source = rawHtml,
+            id = "rc.lt_62900",
+            name = "Realistic Stick LSB LT #62900",
+            category = "TRIGGER",
+            defaultControl = "LT"
+        )
+        println("Doc Converted viewBox: ${docConverted.canvas.viewBoxWidth} x ${docConverted.canvas.viewBoxHeight}")
+        println("Doc Converted total layers: ${docConverted.canvas.layers.size}")
+        docConverted.canvas.layers.forEachIndexed { i, l ->
+            println("  Layer #$i: ${l::class.simpleName}")
+            when (l) {
+                is CanvasLayer.BoxLayer -> {
+                    println("     BoxLayer: shape=${l.shapeType} w=${l.widthRatio} h=${l.heightRatio} x=${l.offsetXRatio} y=${l.offsetYRatio} r=${l.cornerRadiusTopLeft}/${l.cornerRadiusTopRight}/${l.cornerRadiusBottomRight}/${l.cornerRadiusBottomLeft} fill=${l.fill} fills=${l.fills.size} shadows=${l.boxShadows.size} stroke=${l.stroke} clip=${l.clipToBounds} pathData=${l.pathData.take(30)}")
+                }
+                is CanvasLayer.VectorPath -> {
+                    println("     VectorPath #$i: pathData='${l.pathData}' offX=${l.offsetXRatio} offY=${l.offsetYRatio} scale=${l.scale} stroke=${l.stroke} fill=${l.fill}")
+                }
+                is CanvasLayer.TextLayer -> {
+                    println("     TextLayer: text='${l.text}' size=${l.fontSizeSp} color=${l.textColor}")
+                }
+                is CanvasLayer.CenterGlyph -> {
+                    println("     CenterGlyph: text='${l.text}' size=${l.fontSizeSp} color=${l.textColor} offX=${l.offsetXRatio} offY=${l.offsetYRatio}")
+                }
+                is CanvasLayer.GlowRing -> {
+                    println("     GlowRing: blur=${l.blurRadius} color=${l.glowColor}")
+                }
+                else -> println("     Other: $l")
+            }
+        }
+
+        val canvasSize = 400
+        val nativeImg = renderNxprcToImage(docConverted, canvasSize, canvasSize)
+        val nativeOutFile = File(brainDir, "user_realistic_trigger_native.png")
+        ImageIO.write(nativeImg, "PNG", nativeOutFile)
+
+        val htmlFile = File(scratchDir, "preview_user_realistic_trigger.html")
+        val viewScale = minOf(280f / docConverted.canvas.viewBoxWidth.coerceAtLeast(1f), 280f / docConverted.canvas.viewBoxHeight.coerceAtLeast(1f))
+        val styledHtml = wrapHtmlForPreview(rawHtml, canvasSize, canvasSize, viewScale)
+        htmlFile.writeText(styledHtml)
+
+        val chromeImgFile = File(brainDir, "user_realistic_trigger_chrome.png")
+        val chromeOk = captureChromeScreenshot(htmlFile, chromeImgFile, canvasSize, canvasSize)
+        println("Chrome screenshot captured: $chromeOk")
+
+        if (chromeImgFile.exists()) {
+            val chromeImg = ImageIO.read(chromeImgFile)
+            val parityScore = computeVisualParity(chromeImg, nativeImg)
+            val sideBySideCard = generateSideBySideCard(
+                category = "TRIGGER",
+                displayName = "Realistic Stick LSB LT #62900",
+                chromeImg = chromeImg,
+                nativeImg = nativeImg,
+                parityScore = parityScore
+            )
+            val cardOut = File(brainDir, "user_realistic_trigger_side_by_side.png")
+            ImageIO.write(sideBySideCard, "PNG", cardOut)
+            println(">>> USER REALISTIC STICK LSB LT PARITY SCORE: $parityScore% <<<")
             println("SAVED CARD: ${cardOut.absolutePath}")
         }
     }
