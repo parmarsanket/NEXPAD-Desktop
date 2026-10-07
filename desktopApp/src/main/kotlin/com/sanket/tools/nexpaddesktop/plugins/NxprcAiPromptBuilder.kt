@@ -145,6 +145,45 @@ enum class VisualDensity(val promptDescription: String) {
 }
 
 /**
+ * Design freedom level governing adherence to console hardware ergonomics vs stylistic departure.
+ */
+enum class DesignFreedom(val promptDescription: String) {
+    OPEN("Open (unconstrained creative freedom; bold stylistic departure from standard gamepads)"),
+    GUIDED("Guided (balanced creativity honoring console ergonomic conventions while exploring custom aesthetics)"),
+    STRICT("Strict (authentic adherence to physical console gamepad hardware aesthetics and engineering)")
+}
+
+/**
+ * Native hardware ambient animation intensity for idle loop effects.
+ */
+enum class AnimationIntensity(val promptDescription: String) {
+    NONE("None (purely static design without idle animations)"),
+    SUBTLE("Subtle (gentle ambient pulse, breathing glow, or micro-shimmer)"),
+    ACTIVE("Active (noticeable idle loop: continuous rotation, rhythmic glow oscillation)"),
+    DYNAMIC("Dynamic (high-energy motion: fast rotating reactor, 360° RGB chromatic sweep)")
+}
+
+/**
+ * Geometric and visual budget allocation priority.
+ */
+enum class DetailPriority(val promptDescription: String) {
+    BALANCED("Balanced (even distribution between surface texture, bevels, and vector graphics)"),
+    SILHOUETTE("Silhouette (strong geometric contour, distinctive outline, bold massing)"),
+    MATERIAL("Material (tactile surface shaders, realistic specular sheens, micro-textures)"),
+    MECHANICS("Mechanics (seams, bolts, socket wells, knurled bezels, physical fixtures)"),
+    GRAPHICS("Graphics (intricate embedded SVG vector emblem, glyphs, and iconography)")
+}
+
+/**
+ * Reference interpretation mode separate from thematic fidelity.
+ */
+enum class Originality(val promptDescription: String) {
+    FAITHFUL("Faithful (closely preserve authentic gamepad conventions or requested motif)"),
+    INSPIRED("Inspired (creative reimagining and homage with distinctive flair)"),
+    EXPERIMENTAL("Experimental (radical, avant-garde synthesis and unconventional aesthetics)")
+}
+
+/**
  * Target AI model capability tier for prompt optimization.
  * Automatically aligns construction complexity, visual density, and creativity budgets
  * with the target model's architectural capabilities.
@@ -156,7 +195,11 @@ enum class ModelCapability(
     val defaultComplexity: Complexity,
     val defaultCreativity: Creativity,
     val defaultVisualDensity: VisualDensity,
-    val defaultFidelity: Fidelity
+    val defaultFidelity: Fidelity,
+    val defaultDesignFreedom: DesignFreedom = DesignFreedom.GUIDED,
+    val defaultAnimationIntensity: AnimationIntensity = AnimationIntensity.SUBTLE,
+    val defaultDetailPriority: DetailPriority = DetailPriority.BALANCED,
+    val defaultOriginality: Originality = Originality.INSPIRED
 ) {
     COMPACT(
         id = "compact",
@@ -165,7 +208,11 @@ enum class ModelCapability(
         defaultComplexity = Complexity.SIMPLE,
         defaultCreativity = Creativity.LOW,
         defaultVisualDensity = VisualDensity.CLEAN,
-        defaultFidelity = Fidelity.FAITHFUL
+        defaultFidelity = Fidelity.FAITHFUL,
+        defaultDesignFreedom = DesignFreedom.GUIDED,
+        defaultAnimationIntensity = AnimationIntensity.SUBTLE,
+        defaultDetailPriority = DetailPriority.BALANCED,
+        defaultOriginality = Originality.FAITHFUL
     ),
     STANDARD(
         id = "standard",
@@ -174,7 +221,11 @@ enum class ModelCapability(
         defaultComplexity = Complexity.AUTO,
         defaultCreativity = Creativity.MEDIUM,
         defaultVisualDensity = VisualDensity.BALANCED,
-        defaultFidelity = Fidelity.INSPIRED
+        defaultFidelity = Fidelity.INSPIRED,
+        defaultDesignFreedom = DesignFreedom.GUIDED,
+        defaultAnimationIntensity = AnimationIntensity.SUBTLE,
+        defaultDetailPriority = DetailPriority.BALANCED,
+        defaultOriginality = Originality.INSPIRED
     ),
     FRONTIER(
         id = "frontier",
@@ -183,7 +234,11 @@ enum class ModelCapability(
         defaultComplexity = Complexity.EXTREME,
         defaultCreativity = Creativity.HIGH,
         defaultVisualDensity = VisualDensity.DENSE,
-        defaultFidelity = Fidelity.INSPIRED
+        defaultFidelity = Fidelity.INSPIRED,
+        defaultDesignFreedom = DesignFreedom.OPEN,
+        defaultAnimationIntensity = AnimationIntensity.ACTIVE,
+        defaultDetailPriority = DetailPriority.BALANCED,
+        defaultOriginality = Originality.EXPERIMENTAL
     )
 }
 
@@ -197,6 +252,10 @@ data class AiDesignOptions(
     val complexity: Complexity = modelCapability.defaultComplexity,
     val fidelity: Fidelity = modelCapability.defaultFidelity,
     val visualDensity: VisualDensity = modelCapability.defaultVisualDensity,
+    val designFreedom: DesignFreedom = modelCapability.defaultDesignFreedom,
+    val animationIntensity: AnimationIntensity = modelCapability.defaultAnimationIntensity,
+    val detailPriority: DetailPriority = modelCapability.defaultDetailPriority,
+    val originality: Originality = modelCapability.defaultOriginality,
 
     val style: String? = null,
     val color: String? = null,
@@ -242,6 +301,10 @@ data class AiDesignOptions(
         complexity != modelCapability.defaultComplexity ||
         fidelity != modelCapability.defaultFidelity ||
         visualDensity != modelCapability.defaultVisualDensity ||
+        designFreedom != modelCapability.defaultDesignFreedom ||
+        animationIntensity != modelCapability.defaultAnimationIntensity ||
+        detailPriority != modelCapability.defaultDetailPriority ||
+        originality != modelCapability.defaultOriginality ||
         modelCapability != ModelCapability.STANDARD ||
         geometryOptions != GeometryOptions() ||
         !tactilePhysics.isNullOrBlank() ||
@@ -270,6 +333,10 @@ data class AiDesignOptions(
         sb.append("- **COMPLEXITY**: ${complexity.promptDescription} (Budget: ${complexity.budget.layersDisplay}, target ${complexity.budget.targetLayers}, ${complexity.budget.svgNodesDisplay})\n")
         sb.append("- **FIDELITY**: ${fidelity.promptDescription}\n")
         sb.append("- **VISUAL DENSITY**: ${visualDensity.promptDescription}\n")
+        sb.append("- **DESIGN FREEDOM**: ${designFreedom.promptDescription}\n")
+        sb.append("- **ANIMATION INTENSITY**: ${animationIntensity.promptDescription}\n")
+        sb.append("- **DETAIL PRIORITY**: ${detailPriority.promptDescription}\n")
+        sb.append("- **ORIGINALITY**: ${originality.promptDescription}\n")
         if (!style.isNullOrBlank()) sb.append("- **STYLE**: $style\n")
         if (!color.isNullOrBlank()) sb.append("- **COLOR / PALETTE**: $color\n")
         if (!shape.isNullOrBlank()) sb.append("- **SHAPE / SILHOUETTE**: $shape\n")
@@ -483,11 +550,16 @@ data class ResolvedDesign(
     val creativity: Creativity,
     val complexity: Complexity,
     val fidelity: Fidelity,
-    val visualDensity: VisualDensity
+    val visualDensity: VisualDensity,
+    val designFreedom: DesignFreedom = DesignFreedom.GUIDED,
+    val animationIntensity: AnimationIntensity = AnimationIntensity.SUBTLE,
+    val detailPriority: DetailPriority = DetailPriority.BALANCED,
+    val originality: Originality = Originality.INSPIRED
 ) {
     fun toPromptSpecification(): String {
         val sb = StringBuilder()
         sb.append("### RESOLVED DESIGN SPECIFICATION (PRE-RESOLVED INTENT):\n")
+        sb.append("> ⚠️ **PRECEDENCE NOTICE**: Values marked [CATEGORY_DEFAULT] provide default context ONLY. They carry zero override authority against user instructions. If the user's request or custom parameters specify a different style, shape, color, or effect, the user's explicit intent strictly supersedes the fallback default!\n")
         sb.append("- **STYLE**: ${style.value} [${style.source}]\n")
         sb.append("- **SHAPE**: ${shape.value} [${shape.source}]\n")
         sb.append("- **COLOR**: ${color.value} [${color.source}]\n")
@@ -504,6 +576,10 @@ data class ResolvedDesign(
         sb.append("- **COMPLEXITY**: ${complexity.promptDescription} (Target: ${complexity.budget.targetLayers} layers, max $maxLayerText layers, $maxSvgText SVG nodes)\n")
         sb.append("- **FIDELITY**: ${fidelity.promptDescription}\n")
         sb.append("- **VISUAL DENSITY**: ${visualDensity.promptDescription}\n")
+        sb.append("- **DESIGN FREEDOM**: ${designFreedom.promptDescription}\n")
+        sb.append("- **ANIMATION INTENSITY**: ${animationIntensity.promptDescription}\n")
+        sb.append("- **DETAIL PRIORITY**: ${detailPriority.promptDescription}\n")
+        sb.append("- **ORIGINALITY**: ${originality.promptDescription}\n")
         return sb.toString()
     }
 }
@@ -512,7 +588,7 @@ data class ResolvedDesign(
  * Resolves callers' AiDesignOptions against category hardware defaults.
  */
 object DesignResolver {
-    fun resolve(control: String, category: String, options: AiDesignOptions): ResolvedDesign {
+    fun resolve(control: String, category: String, options: AiDesignOptions = AiDesignOptions()): ResolvedDesign {
         val defaults = CategoryDefaultsRegistry.getDefaultsFor(control, category)
 
         val style = if (!options.style.isNullOrBlank()) {
@@ -581,7 +657,11 @@ object DesignResolver {
             creativity = options.creativity,
             complexity = options.complexity,
             fidelity = options.fidelity,
-            visualDensity = visualDensity
+            visualDensity = visualDensity,
+            designFreedom = options.designFreedom,
+            animationIntensity = options.animationIntensity,
+            detailPriority = options.detailPriority,
+            originality = options.originality
         )
     }
 }
@@ -855,16 +935,13 @@ $previousHtml
     }
 
     private fun standardEngineBoundaries(rootClass: String, widthDp: Int = 96, heightDp: Int = 96): String = """
-### SECTION 1 — INSTRUCTION PRIORITY & CONFLICT RESOLUTION
-When instructions conflict, resolve them in this strict order of authority:
-1. **Non-Negotiable Compiler Safety** [GLOBAL-REQUIRED] (Single button root, px bounds, DOM text, self-contained document, no external assets or scripts).
-2. **User's Explicit Customization [USER-OVERRIDE — UNIVERSAL LAW OF USER SUPREMACY]** (Highest design authority — user is sovereign. When the user explicitly demands ANY design choice, mobility, translation, custom plunge, shape, palette, or effect, user demand strictly overrides all recommendations, category defaults, and general restrictions).
-3. **Component Semantics** [COMPONENT-REQUIRED] (Preserve interaction meaning: tappable, directional, analog, etc.).
-4. **Accessibility & Readability** [GLOBAL-REQUIRED] (High-contrast label legibility, touch target visibility).
-5. **Design Quality Principles** [RECOMMENDED] (Physical coherence, balanced hierarchy, believable depth).
-6. **Category Defaults** [RECOMMENDED] (Color palette suggestions, default glyphs used when user specifies none).
-7. **Optional Inspiration** [OPTIONAL] (Theme suggestions, optional decorative flair).
-8. **Starter-Template Examples [NON-BINDING SYNTAX REFERENCE]** (Syntax structure only — never copy its geometry, proportions, colors, materials, layer count, visual hierarchy, or silhouette unless those properties are independently required by the component contract or explicitly requested by the user).
+### SECTION 1 — INSTRUCTION PRIORITY & CONFLICT RESOLUTION (5 LAYERS OF AUTHORITY)
+When instructions or suggestions conflict, resolve them in this strict order of authority:
+1. **Layer 1: Non-Negotiable Compiler Safety [GLOBAL-REQUIRED]** (Single button root, explicit px bounds, unrotated DOM text, self-contained document with zero external assets/scripts, single code block output — non-negotiable compiler safety foundation).
+2. **Layer 2: Component Semantics [COMPONENT-REQUIRED]** (Preserve the physical control's interaction meaning: tappable face button, progressive analog trigger travel, 4-way cardinal dpad rocker, 2-zone joystick cap/base).
+3. **Layer 3: User's Explicit Customization [USER-OVERRIDE — UNIVERSAL LAW OF USER SUPREMACY]** (Highest design authority — user is sovereign: "User is God". The user's explicit design intent, style, palette, geometry, textures, emblems, or demanded mobility/translation strictly overrides all recommendations, category defaults, aesthetic suggestions, non-binding examples, and general guidelines).
+4. **Layer 4: AI Creative Interpretation [FREE-HAND]** (Fill in unspecified details creatively: infer appropriate lighting, material transitions, specular sheens, and vector detailing without simplifying meaningful artwork).
+5. **Layer 5: Category Defaults & Fallback Hardware Profiles [FALLBACK ONLY — ZERO OVERRIDE AUTHORITY]** (Category profiles and hardware defaults serve strictly as fallback inspiration when the user specifies zero design direction. They have zero authority when they conflict with user intent).
 
 > **The Golden Rule (Universal Law of User Supremacy)**: The user is sovereign ("User is God"). The user's visual, artistic, and behavioral instructions always win over defaults, guidelines, and restrictions. If the user explicitly demands something normally restricted by default guidelines (such as custom mobility, translation, unusual geometry, or specific styling), the AI must avoid restriction and completely fulfill the user's demand within compiler safety.
 > **Conflict Rule**: User instructions always take precedence over optional recommendations, category defaults, or general design guidelines.
@@ -1071,7 +1148,8 @@ When authoring components for `data-category="DPAD"`, the compiler and runtime e
 
         return """
 ### SECTION F0 — UNLIMITED ARCHITECTURAL EXPRESSION & ZERO COMPLEXITY CAPS
-Frontier reasoning models possess unconstrained token capacity and deep structural synthesis intelligence. There is NO upper limit on layer count, SVG geometry complexity, or mechanical detailing:
+Frontier reasoning models possess unconstrained token capacity and deep structural synthesis intelligence. There is NO artificial aesthetic cap on layer count, SVG geometry complexity, or mechanical detailing:
+- **Adaptive Architectural Expression**: No artificial aesthetic cap. Scale geometry, layering, and mechanical linework freely to faithfully realize the user's concept, while ensuring every layer serves a clear visual purpose (avoid redundant stacking or decorative bloat).
 - **Unlimited Layering**: There is NO upper limit on DOM layer count or structural depth. Stack as many background, bevel, texture, shadow, gloss, emblem, and mechanical plates as necessary to build an ultra-complex, authentic physical component.
 - **Unlimited SVG Vector Detail**: You have complete freedom to author intricate multi-path SVG geometry, complex engravings, mechanical linework, and high-fidelity emblems without fear of complexity limits.
 - **Uncompromising Craftsmanship**: When asked for complex, high-end, or intricate designs, realize every nuance with full expressive power.
@@ -1161,7 +1239,7 @@ The compiler uses two classifiers to interpret your DOM structure:
 **Design Tip**: Use `data-layer-role` attributes on key structural elements to help the classifier produce optimal layer types. For joystick designs, mark the movable cap element with `data-layer-role="thumb-cap"` and the housing with `data-layer-role="base"`.
 
 ### SECTION F7 — MANDATORY 5-STEP REASONING PROTOCOL
-Before writing ANY HTML/CSS code, you MUST execute this reasoning chain:
+Before writing ANY HTML/CSS code, internally execute this 5-step validation chain (INTERNAL THINKING ONLY — DO NOT OUTPUT VISIBLY IN MARKDOWN). Produce ONLY the final self-contained ```html ... ``` block:
 
 **Step 1 — LAYER PLAN**: List every visual layer you intend to create and map each to its expected `CanvasLayer` type (BoxLayer, VectorPath, GradientShape, GlowRing, InnerShadow, GlossReflection, CenterGlyph, TextLayer).
 
@@ -1174,7 +1252,7 @@ Before writing ANY HTML/CSS code, you MUST execute this reasoning chain:
 
 **Step 4 — TRANSFORM CHECK**: Verify ALL transforms are 2D affine only. No `perspective`, `rotateX`, `rotateY`, or `rotate3d`. Confirm `transform-origin` is set explicitly when using rotate/scale.
 
-**Step 5 — BUDGET CHECK**: Count total DOM nodes. For Frontier tier, there is NO artificial layer or SVG cap — you have complete architectural freedom to produce ultra-complex, high-density designs with unconstrained layering and SVG paths as requested by the user. Verify spring physics variables are in `:root`.
+**Step 5 — BUDGET CHECK**: Count total DOM nodes. For Frontier tier, there is NO artificial layer or SVG cap — you have complete architectural freedom to produce ultra-complex, high-density designs with unconstrained layering and SVG paths as requested by the user, while keeping structural intent clean and purposeful. Verify spring physics variables are in `:root`.
 
 ### SECTION F8 — NATIVE HARDWARE AMBIENT ANIMATION ENGINES (IDLE LOOPS)
 The NEXPAD native runtime features hardware-accelerated continuous idle animation loops running on Compose's `rememberInfiniteTransition` at 60/120 FPS. The compiler recognizes standard CSS `@keyframes` declarations and compiles them into typed runtime animation drivers:
@@ -1291,6 +1369,10 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 
 ${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, profile, "Standard Gamepad Face Button")}
 
+${renderUserRequest(options)}
+
+${renderDesignParameters(options)}
+
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Momentary discrete user actuation with tactile depression and instant spring release.
 - **Visual Affordance [RECOMMENDED]**: Prominent elevation, tactile socket well, clear pressability, high-contrast center label.
@@ -1324,11 +1406,7 @@ The schema is a convenience, not a limitation. Users may describe any additional
 
 ${resolved.toPromptSpecification()}
 
-${renderDesignParameters(options)}
-
 ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
-
-${renderUserRequest(options)}
 
 ${renderOutputContract(options)}
 """.trimIndent()
@@ -1386,6 +1464,10 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 ${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, roleDesc, "dpad-btn")}
 $directionalLabelNote
 
+${renderUserRequest(options)}
+
+${renderDesignParameters(options)}
+
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Directional navigation with crisp actuation along cardinal or diagonal axes.
 - **Visual Affordance [RECOMMENDED]**: $affordance
@@ -1412,11 +1494,7 @@ The schema is a convenience, not a limitation. Users may describe any additional
 
 ${resolved.toPromptSpecification()}
 
-${renderDesignParameters(options)}
-
 ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
-
-${renderUserRequest(options)}
 
 ${renderOutputContract(options)}
 """.trimIndent()
@@ -1434,6 +1512,10 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 
 ${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, triggerRole, "trigger-btn")}
 - **Labels [RECOMMENDED]**: Primary "$control"
+
+${renderUserRequest(options)}
+
+${renderDesignParameters(options)}
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Analog progressive pull, pressure, and travel communication (throttle, brake, aim, fire).
@@ -1466,11 +1548,7 @@ The schema is a convenience, not a limitation. Users may describe any additional
 
 ${resolved.toPromptSpecification()}
 
-${renderDesignParameters(options)}
-
 ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
-
-${renderUserRequest(options)}
 
 ${renderOutputContract(options)}
 """.trimIndent()
@@ -1487,6 +1565,10 @@ ${genAiHeader()}
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Shoulder Bumper for NEXPAD.
 
 ${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, bumperRole)}
+
+${renderUserRequest(options)}
+
+${renderDesignParameters(options)}
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Shallow tactile shoulder lever/rocker actuation with crisp microswitch click feedback.
@@ -1518,11 +1600,7 @@ The schema is a convenience, not a limitation. Users may describe any additional
 
 ${resolved.toPromptSpecification()}
 
-${renderDesignParameters(options)}
-
 ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
-
-${renderUserRequest(options)}
 
 ${renderOutputContract(options)}
 """.trimIndent()
@@ -1537,6 +1615,10 @@ ${genAiHeader()}
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Analog Thumbstick Component for NEXPAD.
 
 ${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, "Analog Thumbstick - NO center click button")}
+
+${renderUserRequest(options)}
+
+${renderDesignParameters(options)}
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Continuous 360-degree analog navigation. IMPORTANT: In NEXPAD, Analog Joysticks have NO center button or click mechanism. Stick click is strictly separated into standalone LSB/RSB buttons to prevent accidental clicks while dragging.
@@ -1594,11 +1676,7 @@ The schema is a convenience, not a limitation. Users may describe any additional
 
 ${resolved.toPromptSpecification()}
 
-${renderDesignParameters(options)}
-
 ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
-
-${renderUserRequest(options)}
 
 ${renderOutputContract(options)}
 """.trimIndent()
@@ -1615,6 +1693,10 @@ ${genAiHeader()}
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Stick Click Button Component for NEXPAD.
 
 ${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, clickLabel)}
+
+${renderUserRequest(options)}
+
+${renderDesignParameters(options)}
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Instant tactile thumbstick cap depression / axial click ($clickLabel action). Unlike continuous 360° analog sticks, this is a dedicated digital button for reliable, rapid stick clicks during high-intensity gameplay.
@@ -1654,11 +1736,7 @@ Before outputting, verify your component against this checklist:
 
 ${resolved.toPromptSpecification()}
 
-${renderDesignParameters(options)}
-
 ${renderStarterTemplate(control, "BUTTON", widthDp, heightDp, options)}
-
-${renderUserRequest(options)}
 
 ${renderOutputContract(options)}
 """.trimIndent()
@@ -1679,6 +1757,10 @@ ${renderOutputContract(options)}
 ${genAiHeader()}
 
 ${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, padRole)}
+
+${renderUserRequest(options)}
+
+${renderDesignParameters(options)}
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: $interactionDesc IMPORTANT: Touchpads are pure flat, stationary laptop-style trackpad surfaces. Strictly NO center button, NO center dot, NO movable ring, and NO tap-to-click mechanism. Stick click is strictly separated into standalone LSB/RSB buttons to prevent accidental sprint or melee triggers during camera panning or movement. The touchpad operates as a pure continuous speed-to-distance surface.
@@ -1708,11 +1790,7 @@ The schema is a convenience, not a limitation. Users may describe any additional
 
 ${resolved.toPromptSpecification()}
 
-${renderDesignParameters(options)}
-
 ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
-
-${renderUserRequest(options)}
 
 ${renderOutputContract(options)}
 """.trimIndent()
@@ -1729,6 +1807,10 @@ ${genAiHeader()}
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller System/Utility Button for NEXPAD.
 
 ${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, systemRole)}
+
+${renderUserRequest(options)}
+
+${renderDesignParameters(options)}
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Secondary console utility actions (menu, pause, guide, view, options).
@@ -1763,11 +1845,7 @@ The schema is a convenience, not a limitation. Users may describe any additional
 
 ${resolved.toPromptSpecification()}
 
-${renderDesignParameters(options)}
-
 ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
-
-${renderUserRequest(options)}
 
 ${renderOutputContract(options)}
 """.trimIndent()

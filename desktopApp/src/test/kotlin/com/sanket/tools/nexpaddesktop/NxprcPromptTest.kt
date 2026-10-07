@@ -2,12 +2,15 @@ package com.sanket.tools.nexpaddesktop
 
 import com.sanket.tools.nexpaddesktop.plugins.AbxyPromptStrategy
 import com.sanket.tools.nexpaddesktop.plugins.AiDesignOptions
+import com.sanket.tools.nexpaddesktop.plugins.AnimationIntensity
 import com.sanket.tools.nexpaddesktop.plugins.BumperPromptStrategy
 import com.sanket.tools.nexpaddesktop.plugins.ColorProfile
 import com.sanket.tools.nexpaddesktop.plugins.Complexity
 import com.sanket.tools.nexpaddesktop.plugins.ComplexityBudget
 import com.sanket.tools.nexpaddesktop.plugins.ComponentPromptRegistry
 import com.sanket.tools.nexpaddesktop.plugins.Creativity
+import com.sanket.tools.nexpaddesktop.plugins.DesignFreedom
+import com.sanket.tools.nexpaddesktop.plugins.DetailPriority
 import com.sanket.tools.nexpaddesktop.plugins.DpadPromptStrategy
 import com.sanket.tools.nexpaddesktop.plugins.Fidelity
 import com.sanket.tools.nexpaddesktop.plugins.GeometryOptions
@@ -15,6 +18,7 @@ import com.sanket.tools.nexpaddesktop.plugins.ModelCapability
 import com.sanket.tools.nexpaddesktop.plugins.NxprcAiPromptBuilder
 import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
 import com.sanket.tools.nexpaddesktop.plugins.NxprcPresets
+import com.sanket.tools.nexpaddesktop.plugins.Originality
 import com.sanket.tools.nexpaddesktop.plugins.SpringPhysics
 import com.sanket.tools.nexpaddesktop.plugins.CategoryDefaultsRegistry
 import com.sanket.tools.nexpaddesktop.plugins.DesignResolver
@@ -2760,6 +2764,133 @@ class NxprcPromptTest {
             assertTrue(
                 dpadPrompt.contains("Universal Law of User Supremacy"),
                 "$cap D-Pad prompt must reference Universal Law of User Supremacy"
+            )
+        }
+    }
+
+    @Test
+    fun testDesignParametersUpgradeAndDefaultsAcrossModelTiers() {
+        val compactOpts = AiDesignOptions(modelCapability = ModelCapability.COMPACT)
+        assertEquals(DesignFreedom.GUIDED, compactOpts.designFreedom)
+        assertEquals(AnimationIntensity.SUBTLE, compactOpts.animationIntensity)
+        assertEquals(DetailPriority.BALANCED, compactOpts.detailPriority)
+        assertEquals(Originality.FAITHFUL, compactOpts.originality)
+
+        val standardOpts = AiDesignOptions(modelCapability = ModelCapability.STANDARD)
+        assertEquals(DesignFreedom.GUIDED, standardOpts.designFreedom)
+        assertEquals(AnimationIntensity.SUBTLE, standardOpts.animationIntensity)
+        assertEquals(DetailPriority.BALANCED, standardOpts.detailPriority)
+        assertEquals(Originality.INSPIRED, standardOpts.originality)
+
+        val frontierOpts = AiDesignOptions(modelCapability = ModelCapability.FRONTIER)
+        assertEquals(DesignFreedom.OPEN, frontierOpts.designFreedom)
+        assertEquals(AnimationIntensity.ACTIVE, frontierOpts.animationIntensity)
+        assertEquals(DetailPriority.BALANCED, frontierOpts.detailPriority)
+        assertEquals(Originality.EXPERIMENTAL, frontierOpts.originality)
+
+        val customOpts = AiDesignOptions(
+            designFreedom = DesignFreedom.OPEN,
+            animationIntensity = AnimationIntensity.DYNAMIC,
+            detailPriority = DetailPriority.MATERIAL,
+            originality = Originality.EXPERIMENTAL
+        )
+        val prompt = NxprcHtmlCssConverter.generateAiPrompt("A", "BUTTON", 96, 96, options = customOpts)
+        assertTrue(prompt.contains("DESIGN FREEDOM"))
+        assertTrue(prompt.contains("Open (unconstrained creative freedom"))
+        assertTrue(prompt.contains("ANIMATION INTENSITY"))
+        assertTrue(prompt.contains("Dynamic (high-energy motion"))
+        assertTrue(prompt.contains("DETAIL PRIORITY"))
+        assertTrue(prompt.contains("Material (tactile surface shaders"))
+        assertTrue(prompt.contains("ORIGINALITY"))
+        assertTrue(prompt.contains("Experimental (radical"))
+    }
+
+    @Test
+    fun testPrecedenceNoticeInResolvedDesign() {
+        val resolvedDefault = DesignResolver.resolve("LT", "TRIGGER")
+        val specDefault = resolvedDefault.toPromptSpecification()
+        assertTrue(specDefault.contains("PRECEDENCE NOTICE"))
+        assertTrue(specDefault.contains("CATEGORY_DEFAULT"))
+        assertTrue(specDefault.contains("provide default context ONLY"))
+        assertTrue(specDefault.contains("zero override authority against user instructions"))
+
+        val resolvedCustom = DesignResolver.resolve(
+            "LT", "TRIGGER",
+            AiDesignOptions(color = "#FF00FF", shape = "Diamond Shard")
+        )
+        val specCustom = resolvedCustom.toPromptSpecification()
+        assertTrue(specCustom.contains("[USER]"))
+        assertTrue(specCustom.contains("#FF00FF"))
+        assertTrue(specCustom.contains("Diamond Shard"))
+    }
+
+    @Test
+    fun testFiveLayersOfInstructionAuthorityInEngineBoundaries() {
+        val standardAndFrontier = listOf(
+            ModelCapability.STANDARD,
+            ModelCapability.FRONTIER
+        )
+
+        standardAndFrontier.forEach { cap ->
+            val prompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = "A",
+                category = "BUTTON",
+                widthDp = 96,
+                heightDp = 96,
+                options = AiDesignOptions(modelCapability = cap)
+            )
+
+            assertTrue(prompt.contains("SECTION 1 — INSTRUCTION PRIORITY & CONFLICT RESOLUTION (5 LAYERS OF AUTHORITY)"), "Missing Section 1 in $cap")
+            assertTrue(prompt.contains("Layer 1: Non-Negotiable Compiler Safety"), "Missing Layer 1 in $cap")
+            assertTrue(prompt.contains("Layer 2: Component Semantics"), "Missing Layer 2 in $cap")
+            assertTrue(prompt.contains("Layer 3: User's Explicit Customization"), "Missing Layer 3 in $cap")
+            assertTrue(prompt.contains("Layer 4: AI Creative Interpretation"), "Missing Layer 4 in $cap")
+            assertTrue(prompt.contains("Layer 5: Category Defaults & Fallback Hardware Profiles"), "Missing Layer 5 in $cap")
+            assertTrue(prompt.contains("Universal Law of User Supremacy"), "Missing Universal Law in $cap")
+        }
+
+        val compactPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(modelCapability = ModelCapability.COMPACT)
+        )
+        assertTrue(compactPrompt.contains("SECTION 1 — STRICT COMPILER & ENGINE CONTRACT (LEAN COMPACT MODE)"))
+    }
+
+    @Test
+    fun testInvertedUserRequestOrderAcrossAllEightCategories() {
+        val userReq = "CYBERPUNK_GLOWING_KATANA_NEON_TEST_SENTINEL"
+        val testCases = listOf(
+            Triple("A", "BUTTON", 96 to 96),
+            Triple("UP", "DPAD", 140 to 140),
+            Triple("LT", "TRIGGER", 110 to 140),
+            Triple("LB", "BUMPER", 130 to 70),
+            Triple("LS", "JOYSTICK", 160 to 160),
+            Triple("LSB", "BUTTON", 100 to 100),
+            Triple("LTP", "TOUCHPAD", 200 to 150),
+            Triple("MENU", "SYSTEM", 64 to 64)
+        )
+
+        testCases.forEach { (control, category, dims) ->
+            val (w, h) = dims
+            val prompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = control,
+                category = category,
+                widthDp = w,
+                heightDp = h,
+                options = AiDesignOptions(userRequest = userReq)
+            )
+
+            val userReqIndex = prompt.indexOf(userReq)
+            val categorySemanticsIndex = prompt.indexOf("### CATEGORY SEMANTICS & INTERACTION MEANING:")
+
+            assertTrue(userReqIndex != -1, "User request must be present in $control ($category) prompt")
+            assertTrue(categorySemanticsIndex != -1, "Category semantics must be present in $control ($category) prompt")
+            assertTrue(
+                userReqIndex < categorySemanticsIndex,
+                "User request (index $userReqIndex) must appear BEFORE category semantics (index $categorySemanticsIndex) in $control ($category)"
             )
         }
     }
