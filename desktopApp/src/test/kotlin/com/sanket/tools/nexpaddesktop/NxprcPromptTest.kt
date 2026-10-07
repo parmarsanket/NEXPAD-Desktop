@@ -2714,6 +2714,55 @@ class NxprcPromptTest {
             assertTrue(doc.manifest.springPhysics.enabled, "Compiled preset $name has springPhysics disabled")
         }
     }
+
+    @Test
+    fun testUniversalLawOfUserSupremacyEnshrinedAcrossAllTiersAndCategories() {
+        val capabilities = listOf(
+            ModelCapability.COMPACT,
+            ModelCapability.STANDARD,
+            ModelCapability.FRONTIER
+        )
+
+        capabilities.forEach { cap ->
+            val triggerPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = "LT",
+                category = "TRIGGER",
+                widthDp = 110,
+                heightDp = 140,
+                options = AiDesignOptions(modelCapability = cap)
+            )
+
+            assertTrue(
+                triggerPrompt.contains("UNIVERSAL LAW OF USER SUPREMACY"),
+                "$cap prompt must contain UNIVERSAL LAW OF USER SUPREMACY"
+            )
+            assertTrue(
+                triggerPrompt.contains("User is God") || triggerPrompt.contains("User is Sovereign") || triggerPrompt.contains("user is sovereign"),
+                "$cap prompt must enshrine user supremacy / user is sovereign / user is god"
+            )
+            assertTrue(
+                triggerPrompt.contains("Universal Law of User Supremacy"),
+                "$cap prompt must mention Universal Law of User Supremacy in rules"
+            )
+
+            val dpadPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = "DPAD",
+                category = "DPAD",
+                widthDp = 140,
+                heightDp = 140,
+                options = AiDesignOptions(modelCapability = cap)
+            )
+
+            assertTrue(
+                dpadPrompt.contains("UNIVERSAL LAW OF USER SUPREMACY"),
+                "$cap D-Pad prompt must contain UNIVERSAL LAW OF USER SUPREMACY"
+            )
+            assertTrue(
+                dpadPrompt.contains("Universal Law of User Supremacy"),
+                "$cap D-Pad prompt must reference Universal Law of User Supremacy"
+            )
+        }
+    }
 }
 
 
