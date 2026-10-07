@@ -2376,6 +2376,11 @@ class NxprcPromptTest {
             assertTrue(compactPrompt.contains("--spring-damping:"), "$tag Compact missing spring-damping")
             assertTrue(compactPrompt.contains("--spring-stiffness:"), "$tag Compact missing spring-stiffness")
             assertTrue(compactPrompt.contains("--press-scale:"), "$tag Compact missing press-scale")
+            assertTrue(compactPrompt.contains("ZERO MOBILITY PRESS MANDATE"), "$tag Compact missing ZERO MOBILITY PRESS MANDATE")
+            assertTrue(compactPrompt.contains("zero mobile displacement"), "$tag Compact missing zero mobile displacement")
+            assertFalse(compactPrompt.contains("translateY(2px)"), "$tag Compact leaked translateY(2px)")
+            assertFalse(compactPrompt.contains("translateY(3px)"), "$tag Compact leaked translateY(3px)")
+            assertFalse(compactPrompt.contains("translateY(4px)"), "$tag Compact leaked translateY(4px)")
 
             // Strict Compact Exclusion Boundaries
             assertFalse(
@@ -2482,6 +2487,11 @@ class NxprcPromptTest {
             )
             assertTrue(standardPrompt.contains("--spring-damping:"), "$tag Standard missing spring-damping")
             assertTrue(standardPrompt.contains("--spring-stiffness:"), "$tag Standard missing spring-stiffness")
+            assertTrue(standardPrompt.contains("ZERO MOBILITY PRESS MANDATE"), "$tag Standard missing ZERO MOBILITY PRESS MANDATE")
+            assertTrue(standardPrompt.contains("STRICT MOBILE ZERO-MOBILITY / ZERO-DISPLACEMENT MANDATE"), "$tag Standard missing ZERO-DISPLACEMENT MANDATE")
+            assertFalse(standardPrompt.contains("translateY(2px)"), "$tag Standard leaked translateY(2px)")
+            assertFalse(standardPrompt.contains("translateY(3px)"), "$tag Standard leaked translateY(3px)")
+            assertFalse(standardPrompt.contains("translateY(4px)"), "$tag Standard leaked translateY(4px)")
 
             // Strict Standard Exclusion Boundaries
             assertFalse(
@@ -2651,6 +2661,11 @@ class NxprcPromptTest {
             )
             assertTrue(frontierPrompt.contains("--spring-damping:"), "$tag Frontier missing spring-damping")
             assertTrue(frontierPrompt.contains("--spring-stiffness:"), "$tag Frontier missing spring-stiffness")
+            assertTrue(frontierPrompt.contains("ZERO MOBILITY PRESS MANDATE"), "$tag Frontier missing ZERO MOBILITY PRESS MANDATE")
+            assertTrue(frontierPrompt.contains("STRICT MOBILE ZERO-MOBILITY / ZERO-DISPLACEMENT MANDATE"), "$tag Frontier missing ZERO-DISPLACEMENT MANDATE")
+            assertFalse(frontierPrompt.contains("translateY(2px)"), "$tag Frontier leaked translateY(2px)")
+            assertFalse(frontierPrompt.contains("translateY(3px)"), "$tag Frontier leaked translateY(3px)")
+            assertFalse(frontierPrompt.contains("translateY(4px)"), "$tag Frontier leaked translateY(4px)")
 
             // ── MONOTONIC PROMPT LENGTH PROGRESSION ──
             assertTrue(

@@ -1138,7 +1138,7 @@ Where:
 - `ωₙ` = `√(--spring-stiffness / mass)` (natural frequency). Tested range: `380 – 520`. Values < 300 = slow return; > 600 = very snappy.
 - `ωd` = `ωₙ · √(1 - ζ²)` (damped frequency).
 - `A` = determined by `--press-scale` (amplitude). Tested range: `0.92 – 0.96`.
-- `.$rootClass:active { transform: scale(var(--press-scale)); }` maps to the spring trajectory target.
+- `.$rootClass:active { transform: scale(var(--press-scale)); }` maps to the spring trajectory target (strictly in-place centered uniform scale; NEVER use `translateY` or displacement on press).
 
 ### SECTION F6 — CLASSIFIER INTELLIGENCE
 The compiler uses two classifiers to interpret your DOM structure:
