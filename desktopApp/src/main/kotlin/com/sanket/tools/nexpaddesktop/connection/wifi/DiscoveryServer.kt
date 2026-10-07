@@ -49,6 +49,9 @@ class DiscoveryServer(private val port: Int = 9998) {
                     
                     val responsePacket = Datagram(ByteReadPacket(buffer.array()), datagram.address)
                     socket.send(responsePacket)
+                    // Burst redundancy to counteract Wi-Fi UDP packet loss
+                    kotlinx.coroutines.delay(10)
+                    socket.send(Datagram(ByteReadPacket(buffer.array()), datagram.address))
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e // Preserve structured concurrency
