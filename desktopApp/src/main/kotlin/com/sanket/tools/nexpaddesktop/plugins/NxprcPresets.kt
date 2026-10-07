@@ -2434,8 +2434,10 @@ object NxprcPresets {
   :root {
     --spring-damping: 0.70;
     --spring-stiffness: 420;
-    --press-scale: 0.92;
+    --press-scale: 0.94;
+    --glow: ${if (control.uppercase() == "RS") "#FF007F" else "#00E5FF"};
   }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
   .stick-btn {
     width: ${widthDp}px;
     height: ${heightDp}px;
@@ -2447,6 +2449,7 @@ object NxprcPresets {
     display: flex;
     align-items: center;
     justify-content: center;
+    cursor: pointer;
   }
   /* Stationary Gimbal Base (remains at 0, 0) */
   .stick-base {
@@ -2456,49 +2459,66 @@ object NxprcPresets {
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    background: radial-gradient(circle at 45% 40%, #202530 0%, #101319 65%, #06070a 100%);
-    border: 3px solid #2e3544;
+    background: radial-gradient(circle at 48% 42%, #262c38 0%, #12161f 65%, #06080b 100%);
+    border: 3px solid #323a4a;
     box-shadow: 
-      0 12px 28px rgba(0, 0, 0, 0.8),
-      inset 0 3px 6px rgba(255, 255, 255, 0.25),
-      inset 0 -8px 16px rgba(0, 0, 0, 0.9);
-    box-sizing: border-box;
+      0 0 24px rgba(0, 229, 255, 0.18),
+      0 14px 32px rgba(0, 0, 0, 0.88),
+      inset 0 3px 6px rgba(255, 255, 255, 0.28),
+      inset 0 -8px 18px rgba(0, 0, 0, 0.92);
   }
   /* Movable Analog Thumb Cap (translates on thumb drag) */
   .stick-cap {
     position: absolute;
-    left: ${(widthDp * 0.18).toInt()}px;
-    top: ${(heightDp * 0.18).toInt()}px;
-    width: ${(widthDp * 0.64).toInt()}px;
-    height: ${(heightDp * 0.64).toInt()}px;
+    left: ${(widthDp * 0.17).toInt()}px;
+    top: ${(heightDp * 0.17).toInt()}px;
+    width: ${(widthDp * 0.66).toInt()}px;
+    height: ${(heightDp * 0.66).toInt()}px;
     border-radius: 50%;
-    background: radial-gradient(circle at 50% 50%, #1a1e26 0%, #0c0e12 100%);
-    border: 2px solid #333a4a;
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.95), 0 0 0 2px rgba(255, 255, 255, 0.14);
+    background: radial-gradient(circle at 50% 45%, #222834 0%, #10141b 70%, #08090d 100%);
+    border: 2.5px solid #3a4558;
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.70),
+      inset 0 0 12px rgba(0, 0, 0, 0.95),
+      inset 0 2px 4px rgba(255, 255, 255, 0.25);
     display: flex;
     align-items: center;
     justify-content: center;
-    box-sizing: border-box;
+    overflow: hidden;
   }
+  /* Concave Grip Ring Knurling */
   .stick-cap::before {
     content: "";
     position: absolute;
-    width: ${(widthDp * 0.44).toInt()}px;
-    height: ${(heightDp * 0.44).toInt()}px;
+    width: ${(widthDp * 0.46).toInt()}px;
+    height: ${(heightDp * 0.46).toInt()}px;
     border-radius: 50%;
-    border: 2px dashed rgba(255, 255, 255, 0.25);
+    border: 2px dashed rgba(255, 255, 255, 0.28);
     box-sizing: border-box;
+    pointer-events: none;
+  }
+  /* Top Specular Crescent Sheen */
+  .stick-cap::after {
+    content: "";
+    position: absolute;
+    top: 6%;
+    left: 20%;
+    width: 60%;
+    height: 32%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 20%, rgba(255, 255, 255, 0.42) 0%, transparent 75%);
+    pointer-events: none;
   }
   .stick-label {
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 900;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: #FFFFFF;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+    text-shadow: 0 0 14px var(--glow), 0 2px 6px rgba(0, 0, 0, 0.95);
     z-index: 5;
   }
   .stick-btn:active .stick-cap {
-    transform: scale(0.92);
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>
@@ -2524,41 +2544,60 @@ object NxprcPresets {
     --spring-damping: 0.68;
     --spring-stiffness: 440;
     --press-scale: 0.95;
+    --glow: ${if (control.uppercase() == "RT") "#E055B8" else "#00E5FF"};
   }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
   .trigger-btn {
     width: ${widthDp}px;
     height: ${heightDp}px;
     position: relative;
-    box-sizing: border-box;
-    border-radius: 20px 20px 28px 28px;
-    background: linear-gradient(180deg, #242934 0%, #151820 60%, #0b0c10 100%);
-    border: 2px solid #333a48;
+    border-radius: 20px 20px 32px 32px;
+    background: linear-gradient(180deg, #282f3c 0%, #151922 60%, #090c10 100%);
+    border: 2px solid #353f50;
     box-shadow: 
-      0 12px 28px rgba(0, 0, 0, 0.8),
-      inset 0 3px 6px rgba(255, 255, 255, 0.3),
-      inset 0 -8px 16px rgba(0, 0, 0, 0.9);
+      0 0 24px rgba(0, 229, 255, 0.20),
+      0 14px 30px rgba(0, 0, 0, 0.85),
+      inset 0 3px 6px rgba(255, 255, 255, 0.32),
+      inset 0 -8px 18px rgba(0, 0, 0, 0.92);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
     padding-top: 18px;
+    cursor: pointer;
+    outline: none;
+    overflow: hidden;
     transform-origin: 50% 50%;
   }
+  /* Tactile Index Finger Friction Ridge */
   .trigger-btn::after {
     content: "";
     position: absolute;
-    bottom: 16%;
-    width: 60%;
-    height: 4px;
-    border-radius: 2px;
-    background: rgba(255, 255, 255, 0.18);
+    bottom: 14%;
+    width: 64%;
+    height: 5px;
+    border-radius: 3px;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.35) 50%, transparent 100%);
+    box-shadow: 0 0 8px var(--glow);
+  }
+  /* Top Specular Crest Reflection */
+  .trigger-btn::before {
+    content: "";
+    position: absolute;
+    top: 4px;
+    left: 15%;
+    width: 70%;
+    height: 16px;
+    border-radius: 10px;
+    background: radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.40) 0%, transparent 80%);
+    pointer-events: none;
   }
   .trigger-label {
-    font-size: 28px;
+    font-size: 30px;
     font-weight: 900;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: #FFFFFF;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+    text-shadow: 0 0 14px var(--glow), 0 2px 6px rgba(0, 0, 0, 0.95);
     z-index: 5;
   }
   .trigger-btn:active {
@@ -2584,33 +2623,62 @@ object NxprcPresets {
     --spring-damping: 0.75;
     --spring-stiffness: 520;
     --press-scale: 0.96;
+    --glow: ${if (control.uppercase() == "LB") "#A97CF0" else "#00E5FF"};
   }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
   .bumper-btn {
     width: ${widthDp}px;
     height: ${heightDp}px;
     position: relative;
-    box-sizing: border-box;
-    border-radius: 18px;
-    background: linear-gradient(180deg, #252b36 0%, #151820 70%, #0a0c10 100%);
-    border: 2px solid #343b4a;
+    border-radius: ${if (control.uppercase() == "LB") "12px 28px 14px 12px" else if (control.uppercase() == "RB") "28px 12px 12px 14px" else "20px"};
+    background: linear-gradient(180deg, #282e3b 0%, #151922 65%, #090c10 100%);
+    border: 2px solid #363e4f;
     box-shadow: 
-      0 10px 24px rgba(0, 0, 0, 0.75),
-      inset 0 2px 4px rgba(255, 255, 255, 0.3),
-      inset 0 -6px 12px rgba(0, 0, 0, 0.85);
+      0 0 22px rgba(169, 124, 240, 0.22),
+      0 12px 26px rgba(0, 0, 0, 0.80),
+      inset 0 2.5px 5px rgba(255, 255, 255, 0.32),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.90);
     display: flex;
     align-items: center;
     justify-content: center;
+    cursor: pointer;
+    outline: none;
+    overflow: hidden;
+  }
+  /* Tactile Microswitch Click Seam Accent */
+  .bumper-btn::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 15%;
+    width: 70%;
+    height: 3px;
+    border-radius: 2px 2px 0 0;
+    background: linear-gradient(90deg, transparent 0%, var(--glow) 50%, transparent 100%);
+    opacity: 0.65;
+  }
+  /* Top Specular Sheen Arc */
+  .bumper-btn::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 8%;
+    width: 84%;
+    height: 14px;
+    border-radius: 10px;
+    background: radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.35) 0%, transparent 80%);
+    pointer-events: none;
   }
   .bumper-label {
     font-size: 24px;
     font-weight: 900;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: #FFFFFF;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+    text-shadow: 0 0 12px var(--glow), 0 2px 5px rgba(0, 0, 0, 0.95);
     z-index: 5;
   }
   .bumper-btn:active {
-    transform: scale(0.96) translateY(2px);
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>
@@ -2791,31 +2859,48 @@ object NxprcPresets {
   :root {
     --spring-damping: 0.68;
     --spring-stiffness: 460;
-    --press-scale: 0.92;
+    --press-scale: 0.94;
+    --glow: #00E5FF;
   }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
   .dpad-btn {
     width: ${widthDp}px;
     height: ${heightDp}px;
     position: relative;
-    box-sizing: border-box;
-    border-radius: 18px;
-    background: radial-gradient(circle at 45% 40%, #222732 0%, #12151c 65%, #08090d 100%);
-    border: 2px solid #303746;
+    border-radius: 20px;
+    background: radial-gradient(circle at 45% 40%, #242935 0%, #12161f 65%, #080a0e 100%);
+    border: 2px solid #323b4c;
     box-shadow: 
-      0 10px 24px rgba(0, 0, 0, 0.8),
-      inset 0 2px 5px rgba(255, 255, 255, 0.28),
-      inset 0 -6px 12px rgba(0, 0, 0, 0.85);
+      0 0 20px rgba(0, 229, 255, 0.20),
+      0 10px 24px rgba(0, 0, 0, 0.85),
+      inset 0 2.5px 5px rgba(255, 255, 255, 0.30),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.90);
     display: flex;
     align-items: center;
     justify-content: center;
+    cursor: pointer;
+    outline: none;
+    overflow: hidden;
     transform-origin: 50% 50%;
   }
+  /* Directional Inward Slope Reflection */
+  .dpad-btn::after {
+    content: "";
+    position: absolute;
+    top: 6%;
+    left: 15%;
+    width: 70%;
+    height: 34%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 20%, rgba(255, 255, 255, 0.40) 0%, transparent 75%);
+    pointer-events: none;
+  }
   .dpad-glyph {
-    font-size: 28px;
+    font-size: 30px;
     font-weight: 900;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: #FFFFFF;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+    text-shadow: 0 0 14px var(--glow), 0 2px 5px rgba(0, 0, 0, 0.95);
     z-index: 5;
   }
   .dpad-btn:active {
@@ -2841,39 +2926,56 @@ object NxprcPresets {
   :root {
     --spring-damping: 0.78;
     --spring-stiffness: 500;
-    --press-scale: 0.92;
+    --press-scale: 0.94;
+    --glow: #00E5FF;
   }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
   .system-btn {
     width: ${widthDp}px;
     height: ${heightDp}px;
     position: relative;
-    box-sizing: border-box;
-    border-radius: 18px;
-    background: radial-gradient(circle at 45% 40%, #20242e 0%, #12151d 65%, #08090c 100%);
-    border: 2px solid #2e3544;
+    border-radius: 20px;
+    background: radial-gradient(circle at 48% 40%, #262c38 0%, #131720 65%, #080a0e 100%);
+    border: 2px solid #323b4c;
     box-shadow: 
-      0 8px 20px rgba(0, 0, 0, 0.75),
-      inset 0 2px 4px rgba(255, 255, 255, 0.25),
-      inset 0 -5px 10px rgba(0, 0, 0, 0.85);
+      0 0 18px rgba(0, 229, 255, 0.18),
+      0 10px 24px rgba(0, 0, 0, 0.80),
+      inset 0 2px 4px rgba(255, 255, 255, 0.28),
+      inset 0 -6px 12px rgba(0, 0, 0, 0.90);
     display: flex;
     align-items: center;
     justify-content: center;
+    cursor: pointer;
+    outline: none;
+    overflow: hidden;
+  }
+  /* Top Optical Crescent Reflection */
+  .system-btn::after {
+    content: "";
+    position: absolute;
+    top: 4%;
+    left: 15%;
+    width: 70%;
+    height: 32%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 20%, rgba(255, 255, 255, 0.38) 0%, transparent 75%);
+    pointer-events: none;
   }
   .system-label {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 900;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: #FFFFFF;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+    text-shadow: 0 0 12px var(--glow), 0 2px 5px rgba(0, 0, 0, 0.95);
     z-index: 5;
   }
   .system-btn:active {
-    transform: scale(0.92) translateY(2px);
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>
 <body>
-  <button class="system-btn" data-control="$control" data-category="SYSTEM" data-name="System $control">
+  <button class="system-btn" data-control="$control" data-category="${if (catType == CategoryType.MACROS) "MACROS" else "SYSTEM"}" data-name="System $control">
     <span class="system-label">$control</span>
   </button>
 </body>
@@ -2889,34 +2991,60 @@ object NxprcPresets {
   :root {
     --spring-damping: 0.68;
     --spring-stiffness: 440;
-    --press-scale: 0.92;
+    --press-scale: 0.94;
+    --glow: ${
+        when (control.uppercase()) {
+            "A" -> "#4ADE80"
+            "B" -> "#FF3366"
+            "X" -> "#00B0FF"
+            "Y" -> "#FFCC00"
+            else -> "#00E5FF"
+        }
+    };
   }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
   .nexpad-btn {
     width: ${widthDp}px;
     height: ${heightDp}px;
     position: relative;
-    box-sizing: border-box;
     border-radius: 50%;
-    background: radial-gradient(circle at 45% 40%, #202530 0%, #12151d 65%, #08090c 100%);
-    border: 2px solid #2e3544;
+    background: radial-gradient(circle at 46% 40%, #282f3c 0%, #141720 65%, #080a0e 100%);
+    border: 2.5px solid #343f52;
     box-shadow: 
-      0 10px 26px rgba(0, 0, 0, 0.8),
-      inset 0 2px 5px rgba(255, 255, 255, 0.3),
-      inset 0 -6px 14px rgba(0, 0, 0, 0.9);
+      0 0 24px rgba(0, 229, 255, 0.22),
+      0 12px 28px rgba(0, 0, 0, 0.85),
+      inset 0 2.5px 5px rgba(255, 255, 255, 0.35),
+      inset 0 -7px 15px rgba(0, 0, 0, 0.94);
     display: flex;
     align-items: center;
     justify-content: center;
+    cursor: pointer;
+    outline: none;
+    overflow: hidden;
   }
+  /* Optical Glass Crescent Highlight */
   .nexpad-btn::after {
     content: "";
     position: absolute;
-    top: 8%;
+    top: 6%;
     left: 18%;
     width: 64%;
-    height: 34%;
+    height: 36%;
     border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.6) 0%, transparent 75%);
-    transform: rotate(-10deg);
+    background: radial-gradient(ellipse at 50% 20%, rgba(255, 255, 255, 0.55) 0%, transparent 75%);
+    transform: rotate(-8deg);
+    pointer-events: none;
+  }
+  /* Subtle Internal Luminous Accent Trim */
+  .nexpad-btn::before {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: inset 0 0 8px var(--glow);
+    opacity: 0.50;
+    pointer-events: none;
   }
   .btn-emblem {
     width: ${(widthDp * 0.58).toInt()}px;
@@ -2929,11 +3057,11 @@ object NxprcPresets {
     font-weight: 900;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: #FFFFFF;
-    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.95);
+    text-shadow: 0 0 16px var(--glow), 0 2px 6px rgba(0, 0, 0, 0.95);
     z-index: 5;
   }
   .nexpad-btn:active {
-    transform: scale(0.93) translateY(3px);
+    transform: scale(var(--press-scale));
   }
 </style>
 </head>
