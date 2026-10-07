@@ -210,7 +210,8 @@ object NxprcAuditService {
         doc: NxprcDocument,
         width: Int,
         height: Int,
-        activeLayersOnly: List<CanvasLayer>? = null
+        activeLayersOnly: List<CanvasLayer>? = null,
+        isPressed: Boolean = false
     ): BufferedImage {
         val img = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
         val g2 = img.createGraphics()
@@ -220,6 +221,15 @@ object NxprcAuditService {
 
         g2.color = Color(0x0B, 0x0E, 0x14)
         g2.fillRect(0, 0, width, height)
+
+        if (isPressed) {
+            val scale = doc.manifest.springPhysics.pressedScale
+            val cx = width / 2.0
+            val cy = height / 2.0
+            g2.translate(cx, cy)
+            g2.scale(scale.toDouble(), scale.toDouble())
+            g2.translate(-cx, -cy)
+        }
 
         val viewBoxW = doc.canvas.viewBoxWidth.coerceAtLeast(1f)
         val viewBoxH = doc.canvas.viewBoxHeight.coerceAtLeast(1f)
@@ -262,19 +272,51 @@ object NxprcAuditService {
                         val r = ((layer.glowColor shr 16) and 0xFF).toInt()
                         val g = ((layer.glowColor shr 8) and 0xFF).toInt()
                         val b = (layer.glowColor and 0xFF).toInt()
+                        val rawAlpha = (((layer.glowColor shr 24) and 0xFF).toFloat() / 255f).coerceIn(0.01f, 1f)
                         val btnRad = minOf(btnW, btnH) / 2f
                         val blurSpread = (layer.blurRadius * density).coerceAtLeast(8f)
                         val totalRadius = (btnRad + blurSpread).coerceAtLeast(10f)
                         val innerFrac = (btnRad / totalRadius).coerceIn(0.1f, 0.85f)
                         val fractions = floatArrayOf(0f, innerFrac, (innerFrac + (1f - innerFrac) * 0.5f).coerceAtMost(0.95f), 1f)
+                        val a90 = (90 * rawAlpha).toInt().coerceIn(0, 255)
+                        val a75 = (75 * rawAlpha).toInt().coerceIn(0, 255)
+                        val a25 = (25 * rawAlpha).toInt().coerceIn(0, 255)
                         val colors = arrayOf(
-                            Color(r, g, b, 90),
-                            Color(r, g, b, 75),
-                            Color(r, g, b, 25),
+                            Color(r, g, b, a90),
+                            Color(r, g, b, a75),
+                            Color(r, g, b, a25),
                             Color(r, g, b, 0)
                         )
-                        gLayer.paint = RadialGradientPaint(width / 2f, height / 2f, totalRadius, fractions, colors)
-                        gLayer.fillOval((width / 2f - totalRadius).toInt(), (height / 2f - totalRadius).toInt(), (totalRadius * 2).toInt(), (totalRadius * 2).toInt())
+                        val centerX = btnLeft + btnW / 2f
+                        val centerY = btnTop + btnH / 2f
+                        if (isRootOval) {
+                            gLayer.paint = RadialGradientPaint(centerX, centerY, totalRadius, fractions, colors)
+                            gLayer.fillOval((centerX - totalRadius).toInt(), (centerY - totalRadius).toInt(), (totalRadius * 2).toInt(), (totalRadius * 2).toInt())
+                        } else {
+                            val sImg = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+                            val sg = sImg.createGraphics()
+                            sg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+                            sg.color = Color(r, g, b, (120 * rawAlpha).toInt().coerceIn(0, 255))
+                            val blurHalf = blurSpread * 0.4f
+                            val sShape = getBoxShape(
+                                btnLeft - blurHalf,
+                                btnTop - blurHalf,
+                                btnW + blurHalf * 2f,
+                                btnH + blurHalf * 2f,
+                                rootCornerArc / 2f + blurHalf,
+                                rootCornerArc / 2f + blurHalf,
+                                rootCornerArc / 2f + blurHalf,
+                                rootCornerArc / 2f + blurHalf,
+                                false,
+                                rootPathData,
+                                rootShapeType,
+                                rootPolySides
+                            )
+                            sg.fill(sShape)
+                            sg.dispose()
+                            val blurred = gaussianBlurRgba(sImg, blurSpread / 2f)
+                            gLayer.drawImage(blurred, 0, 0, null)
+                        }
                     }
                     is CanvasLayer.BoxLayer -> {
                         val boxW = btnW * layer.widthRatio
@@ -302,7 +344,11 @@ object NxprcAuditService {
                         val elementShape = getBoxShape(boxX, boxY, boxW, boxH, tl, tr, br, bl, isOval, layer.pathData, layer.shapeType, layer.polygonSides)
 
                         // 1. Outset Shadows (drawn bottom-to-top per CSS spec)
+                        val glowRing = doc.canvas.layers.filterIsInstance<CanvasLayer.GlowRing>().firstOrNull()
                         layer.boxShadows.filter { !it.isInset }.reversed().forEach { shadow ->
+                            if (glowRing != null && shadow.color == glowRing.glowColor && shadow.blurRadius == glowRing.blurRadius) {
+                                return@forEach
+                            }
                             val sp = shadow.spreadRadius * density
                             val sx = shadow.offsetX * density
                             val sy = shadow.offsetY * density

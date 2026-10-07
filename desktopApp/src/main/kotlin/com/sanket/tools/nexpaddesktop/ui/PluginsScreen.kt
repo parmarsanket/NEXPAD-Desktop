@@ -1400,7 +1400,7 @@ private fun LiveSandboxPane(
                     .border(1.5.dp, NeonPalette.Cyan.copy(alpha = 0.35f), RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                val previewDp = (minOf(boxW.value, boxH.value) * 0.85f).toInt().coerceAtLeast(60)
+                val previewDp = (minOf(boxW.value, boxH.value) * 0.95f).toInt().coerceAtLeast(60)
                 val previewLayers = remember(compiledDoc, activeLayerIndices, soloLayerIndex) {
                     val soloIdx = soloLayerIndex
                     when {

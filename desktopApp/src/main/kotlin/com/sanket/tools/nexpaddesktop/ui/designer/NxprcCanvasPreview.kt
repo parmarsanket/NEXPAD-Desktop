@@ -533,6 +533,13 @@ fun NxprcCanvasPreview(
     val capIndicesSet = remember(document) { if (isTouchpad) emptySet() else document.canvas.capLayerIndices.toSet() }
 
     val rawAuraColor = remember(document) { resolveAuraColor(document) }
+    val primaryBox = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull() }
+    val primaryShape = remember(document) { document.canvas.layers.filterIsInstance<CanvasLayer.GradientShape>().firstOrNull() }
+    val rootShapeType = remember(primaryBox, primaryShape) {
+        (primaryBox?.shapeType?.uppercase() ?: primaryShape?.shapeType?.uppercase() ?: "ROUNDED_RECT")
+    }
+    val rootIsOval = rootShapeType == "OVAL"
+
     val auraBloomAlpha = animateFloatAsState(
         targetValue = if (isPressed) 0.90f else 0.40f,
         animationSpec = spring(dampingRatio = 0.68f, stiffness = 440f),
@@ -619,21 +626,44 @@ fun NxprcCanvasPreview(
                         center = capPos
                     )
                 } else {
-                    // Unclipped button / trigger / dpad atmospheric socket bloom
-                    val auraRadius = size.minDimension * 0.85f
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                baseColor.copy(alpha = effAlpha * 0.45f),
-                                baseColor.copy(alpha = effAlpha * 0.18f),
-                                Color.Transparent
+                    // Shape-aware atmospheric socket bloom: matches button geometry and stays safely within container bounds
+                    val auraRadius = size.minDimension * 0.48f
+                    if (rootIsOval) {
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    baseColor.copy(alpha = effAlpha * 0.45f),
+                                    baseColor.copy(alpha = effAlpha * 0.18f),
+                                    Color.Transparent
+                                ),
+                                center = center,
+                                radius = auraRadius
                             ),
-                            center = center,
-                            radius = auraRadius
-                        ),
-                        radius = auraRadius,
-                        center = center
-                    )
+                            radius = auraRadius,
+                            center = center
+                        )
+                    } else {
+                        val cornerRadius = (primaryBox?.cornerRadiusTopLeft ?: primaryShape?.cornerRadius ?: 16f) * (size.minDimension / document.canvas.viewBoxWidth.coerceAtLeast(1f))
+                        val aspect = size.height / size.width.coerceAtLeast(1f)
+                        drawRoundRect(
+                            color = baseColor.copy(alpha = effAlpha * 0.12f),
+                            topLeft = Offset(center.x - auraRadius, center.y - auraRadius * aspect),
+                            size = Size(auraRadius * 2f, auraRadius * 2f * aspect),
+                            cornerRadius = CornerRadius(cornerRadius * 1.5f, cornerRadius * 1.5f)
+                        )
+                        drawRoundRect(
+                            color = baseColor.copy(alpha = effAlpha * 0.25f),
+                            topLeft = Offset(center.x - auraRadius * 0.82f, center.y - auraRadius * 0.82f * aspect),
+                            size = Size(auraRadius * 1.64f, auraRadius * 1.64f * aspect),
+                            cornerRadius = CornerRadius(cornerRadius * 1.3f, cornerRadius * 1.3f)
+                        )
+                        drawRoundRect(
+                            color = baseColor.copy(alpha = effAlpha * 0.40f),
+                            topLeft = Offset(center.x - auraRadius * 0.65f, center.y - auraRadius * 0.65f * aspect),
+                            size = Size(auraRadius * 1.30f, auraRadius * 1.30f * aspect),
+                            cornerRadius = CornerRadius(cornerRadius, cornerRadius)
+                        )
+                    }
                 }
             }
             .then(gestureModifier),
@@ -657,12 +687,19 @@ fun NxprcCanvasPreview(
             contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.size(sizeDp.dp).background(backgroundColor)) {
-                // Render the document viewBox at its real aspect ratio. The
-                // previous 90% constant made a 102px HTML button become 126px
-                // in a 140px preview and made parity comparisons misleading.
+                // Safe headroom calculation: Outset shadows, glow rings, and press glows
+                // require padding around the button body so they never collide with the
+                // Canvas hardware texture boundary and get clipped into squares.
                 val viewBoxW = document.canvas.viewBoxWidth.coerceAtLeast(1f)
                 val viewBoxH = document.canvas.viewBoxHeight.coerceAtLeast(1f)
-                val viewScale = minOf(size.width / viewBoxW, size.height / viewBoxH)
+                val outsets = document.canvas.canvasOutsets
+                val maxOutsetRatioX = if (viewBoxW > 0f) maxOf(outsets.left, outsets.right) / viewBoxW else 0f
+                val maxOutsetRatioY = if (viewBoxH > 0f) maxOf(outsets.top, outsets.bottom) / viewBoxH else 0f
+                val maxOutsetRatio = maxOf(maxOutsetRatioX, maxOutsetRatioY)
+                val fitFactor = (1.0f / (1.0f + maxOutsetRatio * 1.5f)).coerceIn(0.75f, 0.90f)
+
+                val baseScale = minOf(size.width / viewBoxW, size.height / viewBoxH)
+                val viewScale = baseScale * fitFactor
                 val buttonW = viewBoxW * viewScale
                 val buttonH = viewBoxH * viewScale
                 val buttonLeft = (size.width - buttonW) / 2f
@@ -774,7 +811,11 @@ fun NxprcCanvasPreview(
                                     }
 
                                     // 1. Outset box shadows (drawn bottom-to-top per CSS spec)
+                                    val glowRing = document.canvas.layers.filterIsInstance<CanvasLayer.GlowRing>().firstOrNull()
                                     layer.boxShadows.filter { !it.isInset }.reversed().forEach { shadow ->
+                                        if (glowRing != null && shadow.color == glowRing.glowColor && shadow.blurRadius == glowRing.blurRadius) {
+                                            return@forEach
+                                        }
                                         val shadowOffset = Offset(shadow.offsetX * pxPerUnit, shadow.offsetY * pxPerUnit)
                                         val sColor = Color(shadow.color)
                                         val spreadPx = shadow.spreadRadius * pxPerUnit
@@ -1044,22 +1085,51 @@ fun NxprcCanvasPreview(
                             val glowColor = Color(layer.glowColor)
                             val buttonRadius = minOf(buttonW, buttonH) / 2f
                             val blurPx = (layer.blurRadius * pxPerUnit).coerceAtLeast(8f * scaleRatio)
-                            val totalRadius = buttonRadius + blurPx
+                            val totalRadius = (buttonRadius + blurPx).coerceAtMost(size.minDimension * 0.49f)
                             val innerRatio = (buttonRadius / totalRadius).coerceIn(0.1f, 0.85f)
-                            drawCircle(
-                                brush = Brush.radialGradient(
-                                    colorStops = arrayOf(
-                                        0.0f to glowColor.copy(alpha = alpha * 0.35f),
-                                        innerRatio to glowColor.copy(alpha = alpha * 0.28f),
-                                        (innerRatio + (1f - innerRatio) * 0.5f) to glowColor.copy(alpha = alpha * 0.10f),
-                                        1.0f to Color.Transparent
+                            if (rootIsOval) {
+                                drawCircle(
+                                    brush = Brush.radialGradient(
+                                        colorStops = arrayOf(
+                                            0.0f to glowColor.copy(alpha = alpha * 0.35f),
+                                            innerRatio to glowColor.copy(alpha = alpha * 0.28f),
+                                            (innerRatio + (1f - innerRatio) * 0.5f) to glowColor.copy(alpha = alpha * 0.10f),
+                                            1.0f to Color.Transparent
+                                        ),
+                                        center = centerOffset,
+                                        radius = totalRadius
                                     ),
-                                    center = centerOffset,
-                                    radius = totalRadius
-                                ),
-                                radius = totalRadius,
-                                center = centerOffset
-                            )
+                                    radius = totalRadius,
+                                    center = centerOffset
+                                )
+                            } else {
+                                val glowRRect = if (rootIsPolygon) {
+                                    null
+                                } else {
+                                    SkRRect.makeXYWH(buttonLeft - blurPx * 0.4f, buttonTop - blurPx * 0.4f, buttonW + blurPx * 0.8f, buttonH + blurPx * 0.8f, rootTl + blurPx * 0.4f)
+                                }
+                                val skCanvas = drawContext.canvas.skiaCanvas
+                                val glowPaint = SkPaint().apply {
+                                    color = glowColor.copy(alpha = alpha * 0.35f).toArgb()
+                                    if (blurPx > 0f) {
+                                        maskFilter = SkMaskFilter.makeBlur(
+                                            SkFilterBlurMode.NORMAL,
+                                            (blurPx * 0.6f).coerceAtLeast(0.5f)
+                                        )
+                                    }
+                                }
+                                skCanvas.save()
+                                try {
+                                    if (glowRRect != null) {
+                                        skCanvas.drawRRect(glowRRect, glowPaint)
+                                    } else {
+                                        skCanvas.drawPath(rootClipShape.asSkiaPath(), glowPaint)
+                                    }
+                                } finally {
+                                    skCanvas.restore()
+                                    glowPaint.close()
+                                }
+                            }
                         }
                         is CanvasLayer.GradientShape -> {
                             val transform = layer.effectiveTransform
@@ -1336,7 +1406,13 @@ fun NxprcCanvasPreview(
         val textLayers = remember(document, effectiveLayers) { effectiveLayers.filterIsInstance<CanvasLayer.TextLayer>() }
         val viewBox = document.canvas.viewBoxWidth.coerceAtLeast(1f)
         val viewBoxH = document.canvas.viewBoxHeight.coerceAtLeast(1f)
-        val viewScale = minOf(sizeDp.toFloat() / viewBox, sizeDp.toFloat() / viewBoxH)
+        val outsets = document.canvas.canvasOutsets
+        val maxOutsetRatioX = if (viewBox > 0f) maxOf(outsets.left, outsets.right) / viewBox else 0f
+        val maxOutsetRatioY = if (viewBoxH > 0f) maxOf(outsets.top, outsets.bottom) / viewBoxH else 0f
+        val maxOutsetRatio = maxOf(maxOutsetRatioX, maxOutsetRatioY)
+        val fitFactor = (1.0f / (1.0f + maxOutsetRatio * 1.5f)).coerceIn(0.75f, 0.90f)
+        val baseScale = minOf(sizeDp.toFloat() / viewBox, sizeDp.toFloat() / viewBoxH)
+        val viewScale = baseScale * fitFactor
         val buttonW = viewBox * viewScale
         val buttonH = viewBoxH * viewScale
         val scaleFactor = viewScale
