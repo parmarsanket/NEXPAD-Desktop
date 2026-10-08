@@ -154,7 +154,7 @@ class DualShock4InputMapper {
         // Ax = lateral (left/right along phone horizontal: rolling right gives positive Ax)
         // Ay = longitudinal (front/back along phone vertical: pitching up gives positive Ay)
         // Az = normal (into screen: flat resting phone shows gravity on Z)
-        report.wAccelX = toSafeShort(if (accelXOn) -ax else 0f)
+        report.wAccelX = toSafeShort(if (accelXOn) ax else 0f)
         report.wAccelY = toSafeShort(if (accelYOn) -ay else 0f)
         report.wAccelZ = toSafeShort(if (accelZOn) -az else 0f)
 
