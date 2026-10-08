@@ -103,8 +103,8 @@ fun Sidebar(
 
             SidebarItem(Icons.Default.Home, "Home", currentScreen == Screen.HOME) { onNavigate(Screen.HOME) }
             SidebarItem(Icons.Default.SportsEsports, "Controller", currentScreen == Screen.CONTROLLER) { onNavigate(Screen.CONTROLLER) }
-            SidebarItem(Icons.Default.Extension, "Plugins", currentScreen == Screen.PLUGINS) { onNavigate(Screen.PLUGINS) }
             SidebarItem(Icons.Default.DeviceHub, "Node", currentScreen == Screen.NODE) { onNavigate(Screen.NODE) }
+            SidebarItem(Icons.Default.Extension, "Plugins", currentScreen == Screen.PLUGINS) { onNavigate(Screen.PLUGINS) }
             SidebarItem(Icons.Default.SettingsEthernet, "Converter", currentScreen == Screen.CONVERTER) { onNavigate(Screen.CONVERTER) }
             SidebarItem(Icons.Default.Output, "Output", currentScreen == Screen.OUTPUT) { onNavigate(Screen.OUTPUT) }
             SidebarItem(Icons.Default.Keyboard, "KBM", currentScreen == Screen.KBM) { onNavigate(Screen.KBM) }
