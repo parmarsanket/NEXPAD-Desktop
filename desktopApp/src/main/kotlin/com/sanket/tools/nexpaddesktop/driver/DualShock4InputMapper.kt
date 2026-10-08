@@ -158,7 +158,38 @@ class DualShock4InputMapper {
         report.wAccelY = toSafeShort(if (accelYOn) ay else 0f)
         report.wAccelZ = toSafeShort(if (accelZOn) -az else 0f)
 
+        logTelemetry(input, report)
+
         return report
+    }
+
+    private var lastTelemetryLogTime = 0L
+
+    private fun logTelemetry(input: GamepadInput, report: ViGEmClientLibrary.DS4_REPORT_EX) {
+        val now = System.currentTimeMillis()
+        if (now - lastTelemetryLogTime >= 250) {
+            val hasMotion = kotlin.math.abs(input.gyroX) > 0.05f || 
+                            kotlin.math.abs(input.gyroY) > 0.05f || 
+                            kotlin.math.abs(input.gyroZ) > 0.05f ||
+                            kotlin.math.abs(input.accelX) > 0.3f || 
+                            kotlin.math.abs(input.accelY) > 0.3f
+            if (hasMotion) {
+                lastTelemetryLogTime = now
+                val gx = report.wGyroX / 16.0f
+                val gy = report.wGyroY / 16.0f
+                val gz = report.wGyroZ / 16.0f
+                val ax = report.wAccelX / 8192.0f
+                val ay = report.wAccelY / 8192.0f
+                val az = report.wAccelZ / 8192.0f
+                println(
+                    String.format(
+                        java.util.Locale.US,
+                        "[IMU TELEMETRY] GYRO(°/s): Pitch(X)=%+6.1f Yaw(Y)=%+6.1f Roll(Z)=%+6.1f | ACC(g): X=%+5.2f Y=%+5.2f Z=%+5.2f",
+                        gx, gy, gz, ax, ay, az
+                    )
+                )
+            }
+        }
     }
 
     // =========================================================================
