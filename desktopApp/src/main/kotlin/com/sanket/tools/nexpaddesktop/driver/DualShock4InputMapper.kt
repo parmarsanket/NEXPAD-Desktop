@@ -140,7 +140,7 @@ class DualShock4InputMapper {
         
         report.wGyroX = toSafeShort(if (pitchOn) (pitchSign * calX * GYRO_SCALAR) else 0f)   
         report.wGyroY = toSafeShort(if (yawOn)   (yawSign * calZ * GYRO_SCALAR) else 0f)   
-        report.wGyroZ = toSafeShort(if (rollOn)  (-calY * GYRO_SCALAR) else 0f)   
+        report.wGyroZ = toSafeShort(if (rollOn)  (calY * GYRO_SCALAR) else 0f)   
 
         var ax = input.accelX * ACCEL_SCALAR
         var ay = input.accelY * ACCEL_SCALAR
@@ -151,10 +151,10 @@ class DualShock4InputMapper {
         }
 
         // Fixed DS4 axis coordinate mapping:
-        // Ax = lateral (left/right along phone horizontal)
-        // Ay = longitudinal (front/back along phone vertical)
+        // Ax = lateral (left/right along phone horizontal: rolling right gives positive Ax)
+        // Ay = longitudinal (front/back along phone vertical: pitching up gives positive Ay)
         // Az = normal (into screen: flat resting phone shows gravity on Z)
-        report.wAccelX = toSafeShort(if (accelXOn) ax else 0f)
+        report.wAccelX = toSafeShort(if (accelXOn) -ax else 0f)
         report.wAccelY = toSafeShort(if (accelYOn) ay else 0f)
         report.wAccelZ = toSafeShort(if (accelZOn) -az else 0f)
 
