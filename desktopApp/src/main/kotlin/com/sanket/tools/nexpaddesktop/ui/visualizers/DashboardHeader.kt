@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.ui.visualizers
+package com.sanket.tools.nexpaddesktop.ui.visualizers
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpaddesktop.model.GyroSettings
+import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 import kotlin.math.abs
 
 @Composable
@@ -107,6 +108,25 @@ fun DashboardHeader(
                 ImpactBar("Responsiveness", responsiveness, Color(0xFFFF5722))
                 ImpactBar("Precision", precision, Color(0xFF03A9F4))
                 ImpactBar("Stability", stability, Color(0xFF4CAF50))
+
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("Pitch: ${String.format("%.1f", pitchDeg)}°/s", fontSize = 11.sp, color = NeonPalette.Green)
+                    Text("Yaw: ${String.format("%.1f", yawDeg)}°/s", fontSize = 11.sp, color = NeonPalette.Cyan)
+                    Text("Roll: ${String.format("%.1f", rollDeg)}°/s", fontSize = 11.sp, color = NeonPalette.Purple)
+                }
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("Ax: ${String.format("%.2f", rawAccelX)}", fontSize = 11.sp, color = Color.Gray)
+                    Text("Ay: ${String.format("%.2f", rawAccelY)}", fontSize = 11.sp, color = Color.Gray)
+                    Text("Az: ${String.format("%.2f", rawAccelZ)}", fontSize = 11.sp, color = Color.Gray)
+                }
             }
 
             // Right Side: 3D Phone Visualization

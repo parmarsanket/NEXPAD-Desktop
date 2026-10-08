@@ -1,4 +1,6 @@
-﻿package com.sanket.tools.nexpaddesktop.model
+package com.sanket.tools.nexpaddesktop.model
+
+import com.sanket.tools.nexpad.protocol.NexpadProtocol
 
 /**
  * Complete configuration for NEXPAD's motion control system.
@@ -38,6 +40,9 @@ data class GyroSettings(
 
     /** Master on/off switch for all motion processing. When false, no gyro data is processed. */
     val enabled: Boolean = true,
+
+    /** Diagnostic test mode for isolating individual gyro/accel axes. */
+    val imuTestMode: ImuTestMode = ImuTestMode.ALL_AXES,
 
     /** If true, horizontal (left/right) camera movement is reversed. Applies to both gyro and accel modes. */
     val invertX: Boolean = false,
@@ -251,6 +256,18 @@ data class GyroSettings(
 // ══════════════════════════════════════════════════════════════
 //  SUPPORTING ENUMS
 // ══════════════════════════════════════════════════════════════
+
+/** Diagnostic test mode for isolating individual gyro and accel axes. */
+enum class ImuTestMode(val displayName: String, val flags: Byte) {
+    ALL_AXES("All Axes (Normal)", NexpadProtocol.SENSOR_FLAG_GRAVITY),
+    RAW_PASSTHROUGH("Pure Raw Mode", NexpadProtocol.SENSOR_FLAG_RAW_MODE),
+    PITCH_ONLY("Pitch Only (X)", NexpadProtocol.SENSOR_FLAG_AXIS_PITCH),
+    YAW_ONLY("Yaw Only (Y)", NexpadProtocol.SENSOR_FLAG_AXIS_YAW),
+    ROLL_ONLY("Roll Only (Z)", NexpadProtocol.SENSOR_FLAG_AXIS_ROLL),
+    ACCEL_X_ONLY("Accel X Only", NexpadProtocol.SENSOR_FLAG_AXIS_ACCEL_X),
+    ACCEL_Y_ONLY("Accel Y Only", NexpadProtocol.SENSOR_FLAG_AXIS_ACCEL_Y),
+    ACCEL_Z_ONLY("Accel Z Only", NexpadProtocol.SENSOR_FLAG_AXIS_ACCEL_Z)
+}
 
 /** Which physical rotation axis maps to horizontal camera movement. */
 enum class HorizontalAxis(val displayName: String) {

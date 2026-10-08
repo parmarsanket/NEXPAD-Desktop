@@ -543,6 +543,32 @@ fun GyroSettingsSection(
             }
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // ════════════════════════════════════════════════════
+        //  6-AXIS IMU TEST MODE & DIAGNOSTICS (Shared)
+        // ════════════════════════════════════════════════════
+        SectionCard("🧪 6-Axis IMU Testing & Diagnostics (Online Tester Mode)") {
+            Text(
+                "Isolate individual axes to test telemetry on mygamepadtester.com/gyro-test without interference.",
+                fontSize = 12.sp, color = Color.Gray
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            @OptIn(ExperimentalLayoutApi::class)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ImuTestMode.entries.forEach { mode ->
+                    FilterChip(
+                        selected = settings.imuTestMode == mode,
+                        onClick = { onSettingsChange(settings.copy(imuTestMode = mode)) },
+                        label = { Text(mode.displayName, fontSize = 12.sp) }
+                    )
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(32.dp))
     }
 }

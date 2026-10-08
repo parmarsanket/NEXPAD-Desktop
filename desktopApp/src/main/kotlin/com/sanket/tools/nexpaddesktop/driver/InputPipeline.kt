@@ -21,6 +21,12 @@ object InputPipeline {
         rsSensitivityY: Float,
         onProcessedAngles: (yawDps: Float, pitchDps: Float) -> Unit
     ): GamepadInput {
+        // Apply IMU diagnostic test mode override if requested in settings
+        val effectiveInput = if (gyroSettings.imuTestMode != com.sanket.tools.nexpaddesktop.model.ImuTestMode.ALL_AXES) {
+            input.copy(sensorFlags = gyroSettings.imuTestMode.flags)
+        } else {
+            input
+        }
         
         // 1. Check gyro activation buttons (Xbox only — PS4 games handle this)
         val isActivationButtonPressed = if (gyroSettings.activationButtons.isEmpty()) {
@@ -89,7 +95,7 @@ object InputPipeline {
             }
         }
         
-        return input.copy(
+        return effectiveInput.copy(
             leftStickX = (finalLeftX * lsSensitivityX).coerceIn(-1.0f, 1.0f),
             leftStickY = (finalLeftY * lsSensitivityY).coerceIn(-1.0f, 1.0f),
             rightStickX = (finalRightX * rsSensitivityX).coerceIn(-1.0f, 1.0f),

@@ -1,6 +1,8 @@
-﻿package com.sanket.tools.nexpaddesktop.driver
+package com.sanket.tools.nexpaddesktop.driver
 
 import com.sanket.tools.nexpad.model.GamepadInput
+import com.sanket.tools.nexpad.protocol.NexpadProtocol
+import com.sanket.tools.nexpaddesktop.model.GyroSettings
 import com.sanket.tools.nexpaddesktop.driver.jna.ViGEmClientLibrary
 import kotlin.math.roundToInt
 import kotlin.math.abs
@@ -55,7 +57,7 @@ class DualShock4InputMapper {
     /**
      * Translates a generic network payload into a native C memory block.
      */
-    fun map(input: GamepadInput): ViGEmClientLibrary.DS4_REPORT_EX.ByValue {
+    fun map(input: GamepadInput, settings: GyroSettings? = null): ViGEmClientLibrary.DS4_REPORT_EX.ByValue {
         val report = ViGEmClientLibrary.DS4_REPORT_EX.ByValue()
 
         // 1. Analog Sticks
@@ -107,23 +109,54 @@ class DualShock4InputMapper {
         report.padding[22] = TOUCH_POINT_UP
 
         // 7. IMU Data (Gyroscope & Accelerometer)
-        val (calX, calY, calZ) = calibrateGyro(input.gyroX, input.gyroY, input.gyroZ)
+        if (settings != null && !settings.enabled) {
+            report.wGyroX = 0
+            report.wGyroY = 0
+            report.wGyroZ = 0
+            report.wAccelX = 0
+            report.wAccelY = 0
+            report.wAccelZ = 0
+            return report
+        }
+
+        val flags = input.sensorFlags
+        val isRawMode = NexpadProtocol.isRawMode(flags)
+        val pitchOn = NexpadProtocol.isPitchEnabled(flags)
+        val yawOn = NexpadProtocol.isYawEnabled(flags)
+        val rollOn = NexpadProtocol.isRollEnabled(flags)
+        val accelXOn = NexpadProtocol.isAccelXEnabled(flags)
+        val accelYOn = NexpadProtocol.isAccelYEnabled(flags)
+        val accelZOn = NexpadProtocol.isAccelZEnabled(flags)
+
+        // In RAW MODE: Skip auto-calibration bias subtraction to preserve pure originality of sensor signal!
+        val (calX, calY, calZ) = if (isRawMode) {
+            Triple(input.gyroX, input.gyroY, input.gyroZ)
+        } else {
+            calibrateGyro(input.gyroX, input.gyroY, input.gyroZ)
+        }
+
+        val pitchSign = if (settings?.invertY == true) -1f else 1f
+        val yawSign = if (settings?.invertX == true) 1f else -1f
         
-        report.wGyroX = toSafeShort( calX * GYRO_SCALAR)   
-        report.wGyroY = toSafeShort(-calZ * GYRO_SCALAR)   
-        report.wGyroZ = toSafeShort(-calY * GYRO_SCALAR)   
+        report.wGyroX = toSafeShort(if (pitchOn) (pitchSign * calX * GYRO_SCALAR) else 0f)   
+        report.wGyroY = toSafeShort(if (yawOn)   (yawSign * calZ * GYRO_SCALAR) else 0f)   
+        report.wGyroZ = toSafeShort(if (rollOn)  (-calY * GYRO_SCALAR) else 0f)   
 
         var ax = input.accelX * ACCEL_SCALAR
         var ay = input.accelY * ACCEL_SCALAR
         var az = input.accelZ * ACCEL_SCALAR
 
-        if (ax == 0f && ay == 0f && az == 0f) {
-            az = -8192f 
+        if (ax == 0f && ay == 0f && az == 0f && !isRawMode) {
+            az = 8192f 
         }
 
-        report.wAccelX = toSafeShort(ax)
-        report.wAccelY = toSafeShort(-az)
-        report.wAccelZ = toSafeShort(-ay)
+        // Fixed DS4 axis coordinate mapping:
+        // Ax = lateral (left/right along phone horizontal)
+        // Ay = longitudinal (front/back along phone vertical)
+        // Az = normal (into screen: flat resting phone shows gravity on Z)
+        report.wAccelX = toSafeShort(if (accelXOn) ax else 0f)
+        report.wAccelY = toSafeShort(if (accelYOn) ay else 0f)
+        report.wAccelZ = toSafeShort(if (accelZOn) -az else 0f)
 
         return report
     }

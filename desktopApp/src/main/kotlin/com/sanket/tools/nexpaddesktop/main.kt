@@ -211,8 +211,11 @@ fun main(args: Array<String>) {
                 }
             )
 
+            if (activeDriver is VirtualDualShock4Driver) {
+                (activeDriver as VirtualDualShock4Driver).gyroSettings = viewModel.gyroSettings
+            }
             activeDriver?.updateInput(processedInput)
-            dsuServer.updateInput(input)
+            dsuServer.updateInput(processedInput)
         }
 
         server = UdpServer(
@@ -307,9 +310,8 @@ fun main(args: Array<String>) {
     }
 
     viewModel.onRecalibrate = {
-        // Reset the DS4 driver's internal calibration
-        activeDriver?.disconnect()
-        activeDriver?.connect()
+        // Reset the driver's internal gyro calibration in-memory without disconnecting the virtual USB controller
+        activeDriver?.recalibrate()
         gyroProcessor.reset()
     }
     viewModel.onControllerChange = {

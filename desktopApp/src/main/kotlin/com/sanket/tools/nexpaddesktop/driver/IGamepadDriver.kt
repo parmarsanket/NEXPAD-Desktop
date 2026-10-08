@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.driver
+package com.sanket.tools.nexpaddesktop.driver
 
 import com.sanket.tools.nexpad.model.GamepadInput
 
@@ -43,9 +43,18 @@ interface IGamepadDriver {
     fun simulateCrash()
 
     /**
+     * Recalibrates the internal state of the driver (e.g., zeroing gyroscope biases)
+     * without detaching or disconnecting the physical/virtual USB controller from Windows.
+     * This ensures active WebHID sessions (such as online gamepad testers) and running
+     * games stay connected without interruption.
+     */
+    fun recalibrate() {}
+
+    /**
      * Queries the active state of the driver.
      * 
      * @return `true` if the device is currently attached to the OS and pointers are valid.
      */
     fun isDriverConnected(): Boolean
 }
+

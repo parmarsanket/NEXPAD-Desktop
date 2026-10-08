@@ -1,6 +1,7 @@
 package com.sanket.tools.nexpaddesktop.connection.wifi
 
 import com.sanket.tools.nexpad.model.GamepadInput
+import com.sanket.tools.nexpad.protocol.NexpadProtocol
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
@@ -254,17 +255,25 @@ class DsuServer {
         // Timestamp (Microseconds since start)
         buffer.putLong(System.nanoTime() / 1000L)
         
+        val flags = input.sensorFlags
+        val pitchOn = NexpadProtocol.isPitchEnabled(flags)
+        val yawOn = NexpadProtocol.isYawEnabled(flags)
+        val rollOn = NexpadProtocol.isRollEnabled(flags)
+        val accelXOn = NexpadProtocol.isAccelXEnabled(flags)
+        val accelYOn = NexpadProtocol.isAccelYEnabled(flags)
+        val accelZOn = NexpadProtocol.isAccelZEnabled(flags)
+
         // Accelerometer data (G's)
         // Android returns m/s^2, so divide by 9.80665f
-        buffer.putFloat(input.accelX / 9.80665f)
-        buffer.putFloat(input.accelY / 9.80665f)
-        buffer.putFloat(input.accelZ / 9.80665f)
+        buffer.putFloat(if (accelXOn) (input.accelX / 9.80665f) else 0f)
+        buffer.putFloat(if (accelYOn) (input.accelY / 9.80665f) else 0f)
+        buffer.putFloat(if (accelZOn) (input.accelZ / 9.80665f) else 0f)
         
         // Gyroscope data (deg/s)
         // Android returns rad/s, so multiply by (180 / PI)
-        buffer.putFloat(input.gyroX * (180f / PI.toFloat()))
-        buffer.putFloat(input.gyroY * (180f / PI.toFloat()))
-        buffer.putFloat(input.gyroZ * (180f / PI.toFloat()))
+        buffer.putFloat(if (pitchOn) (input.gyroX * (180f / PI.toFloat())) else 0f)
+        buffer.putFloat(if (rollOn) (input.gyroY * (180f / PI.toFloat())) else 0f)
+        buffer.putFloat(if (yawOn) (input.gyroZ * (180f / PI.toFloat())) else 0f)
         
         return buffer.array()
     }

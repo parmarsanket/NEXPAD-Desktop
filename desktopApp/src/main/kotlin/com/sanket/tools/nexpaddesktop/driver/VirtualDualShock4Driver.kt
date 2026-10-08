@@ -1,7 +1,8 @@
-﻿package com.sanket.tools.nexpaddesktop.driver
+package com.sanket.tools.nexpaddesktop.driver
 
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpad.model.GamepadFeedback
+import com.sanket.tools.nexpaddesktop.model.GyroSettings
 import com.sun.jna.Pointer
 import com.sanket.tools.nexpaddesktop.driver.jna.ViGEmClientLibrary
 
@@ -117,11 +118,18 @@ class VirtualDualShock4Driver(
         println("Disconnected Virtual DS4 Controller.")
     }
 
+    var gyroSettings: GyroSettings? = null
+
+    override fun recalibrate() {
+        mapper.reset()
+        println("🔄 Recalibrated Virtual DS4 Gyroscope in-memory (controller remains connected to OS).")
+    }
+
     override fun updateInput(input: GamepadInput) {
         if (!isConnected || client == null || target == null) return
 
-        // Translate the input via the stateful mapper
-        val report = mapper.map(input)
+        // Translate the input via the stateful mapper respecting active settings
+        val report = mapper.map(input, gyroSettings)
 
         // Submit to Windows Kernel
         try {
