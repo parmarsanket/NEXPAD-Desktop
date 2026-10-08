@@ -136,7 +136,7 @@ class DualShock4InputMapper {
         }
 
         val pitchSign = if (settings?.invertY == true) -1f else 1f
-        val yawSign = if (settings?.invertX == true) -1f else 1f
+        val yawSign = if (settings?.invertX == true) 1f else -1f
         
         report.wGyroX = toSafeShort(if (pitchOn) (pitchSign * calX * GYRO_SCALAR) else 0f)   
         report.wGyroY = toSafeShort(if (yawOn)   (yawSign * calZ * GYRO_SCALAR) else 0f)   
