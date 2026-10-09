@@ -88,6 +88,25 @@ fun GyroSettingsSection(
                     fontSize = 13.sp,
                     color = Color.Gray,
                 )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                        Text("Emulate Right Stick Aiming in DS4 Mode", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(
+                            "Recommended for PC games like Genshin Impact that lack native PS4 motion sensor support. Gyro moves the camera via the Right Stick while still sending DS4 reports.",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
+                    Switch(
+                        checked = settings.emulateStickInDs4Mode,
+                        onCheckedChange = { onSettingsChange(settings.copy(emulateStickInDs4Mode = it)) }
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(16.dp))
         }
@@ -340,7 +359,7 @@ fun GyroSettingsSection(
                     deadzone = settings.deadzoneThreshold,
                     tighteningEnabled = settings.tighteningEnabled,
                     tighteningThreshold = settings.tighteningThreshold,
-                    rawYawDps = rawGyroZ * 57.296f,
+                    rawYawDps = rawGyroY * 57.296f,
                     rawPitchDps = rawGyroX * 57.296f,
                     processedYawDps = processedYaw,
                     processedPitchDps = processedPitch

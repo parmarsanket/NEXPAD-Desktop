@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.driver
+package com.sanket.tools.nexpaddesktop.driver
 
 import com.sanket.tools.nexpaddesktop.model.*
 import kotlin.math.*
@@ -12,9 +12,9 @@ import kotlin.math.*
  *
  * ## Coordinate Systems
  * - **Android Phone (Landscape):**
- *   - Gyro X (Pitch): Tilting phone forward
- *   - Gyro Y (Roll): Tilting phone sideways
- *   - Gyro Z (Yaw): Turning phone flat on a table
+ *   - Gyro X (Pitch): Tilting phone forward / backward (nodding)
+ *   - Gyro Y (Yaw): Turning phone left / right (wrist panning)
+ *   - Gyro Z (Roll): Tilting phone sideways (steering wheel)
  */
 class GyroProcessor {
 
@@ -95,13 +95,13 @@ class GyroProcessor {
         // Gyroscope Mode (Standard View Controller)
         // ---------------------------------------------------------------------
         val pitchDps = rawGyroX * RAD_TO_DEG   
-        val yawDps   = rawGyroZ * RAD_TO_DEG   
-        val rollDps  = rawGyroY * RAD_TO_DEG   
+        val yawDps   = rawGyroY * RAD_TO_DEG   
+        val rollDps  = rawGyroZ * RAD_TO_DEG   
 
         val horizontalDps = when (settings.horizontalAxis) {
-            HorizontalAxis.YAW  -> -yawDps
+            HorizontalAxis.YAW  -> yawDps
             HorizontalAxis.ROLL -> rollDps
-            HorizontalAxis.MIX  -> -yawDps + rollDps 
+            HorizontalAxis.MIX  -> yawDps + rollDps 
         }
         val verticalDps = -pitchDps   
 

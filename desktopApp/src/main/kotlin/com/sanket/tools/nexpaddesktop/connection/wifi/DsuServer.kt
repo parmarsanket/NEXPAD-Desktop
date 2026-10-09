@@ -272,8 +272,8 @@ class DsuServer {
         // Gyroscope data (deg/s)
         // Android returns rad/s, so multiply by (180 / PI)
         buffer.putFloat(if (pitchOn) (input.gyroX * (180f / PI.toFloat())) else 0f)
-        buffer.putFloat(if (rollOn) (input.gyroY * (180f / PI.toFloat())) else 0f)
-        buffer.putFloat(if (yawOn) (input.gyroZ * (180f / PI.toFloat())) else 0f)
+        buffer.putFloat(if (yawOn) (input.gyroY * (180f / PI.toFloat())) else 0f)
+        buffer.putFloat(if (rollOn) (input.gyroZ * (180f / PI.toFloat())) else 0f)
         
         return buffer.array()
     }

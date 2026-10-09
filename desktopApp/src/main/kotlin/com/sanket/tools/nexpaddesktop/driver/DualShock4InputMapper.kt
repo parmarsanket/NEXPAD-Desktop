@@ -25,6 +25,12 @@ class DualShock4InputMapper {
     private var gyroBiasZ = 0f
     private var calibrationSamples = 0
     private var stillnessFrames = 0
+    private var prevRawX = 0f
+    private var prevRawY = 0f
+    private var prevRawZ = 0f
+    private var prevAx = 0f
+    private var prevAy = 0f
+    private var prevAz = 0f
     private var startTimeNanos = System.nanoTime()
     private var lastDs4DebugSignature = ""
 
@@ -51,6 +57,12 @@ class DualShock4InputMapper {
         gyroBiasZ = 0f
         calibrationSamples = 0
         stillnessFrames = 0
+        prevRawX = 0f
+        prevRawY = 0f
+        prevRawZ = 0f
+        prevAx = 0f
+        prevAy = 0f
+        prevAz = 0f
         startTimeNanos = System.nanoTime()
     }
 
@@ -132,15 +144,16 @@ class DualShock4InputMapper {
         val (calX, calY, calZ) = if (isRawMode) {
             Triple(input.gyroX, input.gyroY, input.gyroZ)
         } else {
-            calibrateGyro(input.gyroX, input.gyroY, input.gyroZ)
+            calibrateGyro(input.gyroX, input.gyroY, input.gyroZ, input.accelX, input.accelY, input.accelZ)
         }
 
         val pitchSign = if (settings?.invertY == true) -1f else 1f
-        val yawSign = if (settings?.invertX == true) 1f else -1f
+        val yawSign = if (settings?.invertX == true) -1f else 1f
         
+        // Clean 1:1 DS4 mapping: Slot X = Pitch, Slot Y = Yaw, Slot Z = Roll
         report.wGyroX = toSafeShort(if (pitchOn) (pitchSign * calX * GYRO_SCALAR) else 0f)   
-        report.wGyroY = toSafeShort(if (yawOn)   (yawSign * calZ * GYRO_SCALAR) else 0f)   
-        report.wGyroZ = toSafeShort(if (rollOn)  (-calY * GYRO_SCALAR) else 0f)   
+        report.wGyroY = toSafeShort(if (yawOn)   (yawSign   * calY * GYRO_SCALAR) else 0f)   
+        report.wGyroZ = toSafeShort(if (rollOn)  (            calZ * GYRO_SCALAR) else 0f)   
 
         var ax = input.accelX * ACCEL_SCALAR
         var ay = input.accelY * ACCEL_SCALAR
@@ -151,12 +164,12 @@ class DualShock4InputMapper {
         }
 
         // Fixed DS4 axis coordinate mapping:
-        // Ax = lateral (left/right along phone horizontal)
-        // Ay = longitudinal (front/back along phone vertical: pitching up gives positive Ay)
-        // Az = normal (into screen: flat resting phone shows gravity on Z)
-        report.wAccelX = toSafeShort(if (accelXOn) -ax else 0f)
-        report.wAccelY = toSafeShort(if (accelYOn) -ay else 0f)
-        report.wAccelZ = toSafeShort(if (accelZOn) -az else 0f)
+        // Ax = lateral (left/right along phone horizontal: tilting right produces positive Ax)
+        // Ay = longitudinal (front/back along phone vertical: pitching up produces positive Ay)
+        // Az = normal (into screen: flat resting phone shows +1.0G / +8192 on Az)
+        report.wAccelX = toSafeShort(if (accelXOn) ax else 0f)
+        report.wAccelY = toSafeShort(if (accelYOn) ay else 0f)
+        report.wAccelZ = toSafeShort(if (accelZOn) az else 0f)
 
         logTelemetry(input, report)
 
@@ -220,33 +233,47 @@ class DualShock4InputMapper {
         else                              -> 8   
     }
 
-    private fun calibrateGyro(rawX: Float, rawY: Float, rawZ: Float): Triple<Float, Float, Float> {
-        if (calibrationSamples < CALIBRATION_COUNT) {
-            if (rawX != 0f || rawY != 0f || rawZ != 0f) {
-                gyroBiasX += rawX; gyroBiasY += rawY; gyroBiasZ += rawZ
-                calibrationSamples++
-                if (calibrationSamples == CALIBRATION_COUNT) {
-                    gyroBiasX /= CALIBRATION_COUNT
-                    gyroBiasY /= CALIBRATION_COUNT
-                    gyroBiasZ /= CALIBRATION_COUNT
-                }
-            }
-            return Triple(0f, 0f, 0f)
-        }
-        val calX = rawX - gyroBiasX
-        val calY = rawY - gyroBiasY
-        val calZ = rawZ - gyroBiasZ
+    private fun calibrateGyro(
+        rawX: Float, rawY: Float, rawZ: Float,
+        ax: Float = 0f, ay: Float = 0f, az: Float = 0f
+    ): Triple<Float, Float, Float> {
+        val gyroDelta = abs(rawX - prevRawX) + abs(rawY - prevRawY) + abs(rawZ - prevRawZ)
+        val accelDelta = abs(ax - prevAx) + abs(ay - prevAy) + abs(az - prevAz)
+        prevRawX = rawX
+        prevRawY = rawY
+        prevRawZ = rawZ
+        prevAx = ax
+        prevAy = ay
+        prevAz = az
 
-        if (abs(calX) < STILLNESS_THRESHOLD && abs(calY) < STILLNESS_THRESHOLD && abs(calZ) < STILLNESS_THRESHOLD) {
+        // True physical stillness: frame-to-frame delta is tiny (independent of DC bias)
+        val isStill = gyroDelta < 0.035f && (accelDelta < 0.6f || (ax == 0f && ay == 0f && az == 0f))
+
+        if (isStill) {
             stillnessFrames++
-            if (stillnessFrames > 120) {
-                gyroBiasX += calX * CALIBRATION_ADJUST_RATE
-                gyroBiasY += calY * CALIBRATION_ADJUST_RATE
-                gyroBiasZ += calZ * CALIBRATION_ADJUST_RATE
+            // After ~15 frames (~75-100ms) of resting on a desk, rapidly converge on resting DC bias
+            if (stillnessFrames > 15) {
+                val adaptRate = if (calibrationSamples < CALIBRATION_COUNT) 0.15f else 0.03f
+                gyroBiasX += (rawX - gyroBiasX) * adaptRate
+                gyroBiasY += (rawY - gyroBiasY) * adaptRate
+                gyroBiasZ += (rawZ - gyroBiasZ) * adaptRate
+                if (calibrationSamples < CALIBRATION_COUNT) calibrationSamples++
             }
         } else {
             stillnessFrames = 0
         }
+
+        var calX = rawX - gyroBiasX
+        var calY = rawY - gyroBiasY
+        var calZ = rawZ - gyroBiasZ
+
+        // Resting deadband: when confirmed resting on a surface, clamp remaining micro-noise (< 0.8°/s) to exact 0
+        if (stillnessFrames > 25) {
+            if (abs(calX) < 0.015f) calX = 0f
+            if (abs(calY) < 0.015f) calY = 0f
+            if (abs(calZ) < 0.015f) calZ = 0f
+        }
+
         return Triple(calX, calY, calZ)
     }
 

@@ -110,6 +110,12 @@ data class GyroSettings(
     /** °/s threshold below which tightening smoothly reduces inputs toward zero using a quadratic curve. */
     val tighteningThreshold: Float = 10.0f,
 
+    /**
+     * If true, also emulates Right Stick camera motion from Gyro in DualShock 4 mode.
+     * Essential for PC games (such as Genshin Impact) that lack native DS4 gyro support.
+     */
+    val emulateStickInDs4Mode: Boolean = false,
+
 
     // ══════════════════════════════════════════════════════════
     //  XBOX GYRO AIMING — Only used when Xbox 360 controller is active

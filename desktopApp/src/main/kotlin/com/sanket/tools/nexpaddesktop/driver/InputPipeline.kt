@@ -67,7 +67,11 @@ object InputPipeline {
         var finalRightX = input.rightStickX
         var finalRightY = input.rightStickY
 
-        if (activeController == ControllerType.XBOX_360 && gyroSettings.enabled) {
+        val shouldEmulateStick = gyroSettings.enabled && (
+            activeController == ControllerType.XBOX_360 || gyroSettings.emulateStickInDs4Mode
+        )
+
+        if (shouldEmulateStick) {
             val gyroToStickScale = 1.0f / 200.0f
             val gyroStickX = (processed.yawDps * gyroToStickScale).coerceIn(-1f, 1f)
             val gyroStickY = (processed.pitchDps * gyroToStickScale).coerceIn(-1f, 1f)

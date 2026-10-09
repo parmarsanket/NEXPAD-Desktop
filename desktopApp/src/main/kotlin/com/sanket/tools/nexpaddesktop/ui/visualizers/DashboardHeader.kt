@@ -36,8 +36,8 @@ fun DashboardHeader(
 ) {
     val RAD_TO_DEG = 57.2957795f
     var pitchDeg = rawGyroX * RAD_TO_DEG
-    var rollDeg = rawGyroY * RAD_TO_DEG
-    var yawDeg = rawGyroZ * RAD_TO_DEG
+    var yawDeg = rawGyroY * RAD_TO_DEG
+    var rollDeg = rawGyroZ * RAD_TO_DEG
 
     if (settings.inputMode == com.sanket.tools.nexpaddesktop.model.InputMode.ABSOLUTE_TILT) {
         pitchDeg = 0f 
