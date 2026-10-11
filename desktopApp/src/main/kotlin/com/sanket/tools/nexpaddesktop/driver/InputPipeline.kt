@@ -49,6 +49,10 @@ object InputPipeline {
             rawAccelX = input.accelX,
             rawAccelY = input.accelY,
             rawAccelZ = input.accelZ,
+            rawGravityX = input.gravityX,
+            rawGravityY = input.gravityY,
+            rawGravityZ = input.gravityZ,
+            sensorFlags = input.sensorFlags,
             settings = gyroSettings,
             isActivationButtonPressed = isActivationButtonPressed,
         )

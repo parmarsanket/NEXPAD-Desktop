@@ -142,11 +142,19 @@ fun main(args: Array<String>) {
         val sendRumbleFeedback: (GamepadFeedback) -> Unit = { feedback ->
             scope.launch {
                 try {
+                    val currentMode = if (viewModel.activeController == ControllerType.XBOX_360 &&
+                        viewModel.gyroSettings.enabled &&
+                        viewModel.gyroSettings.inputMode == com.sanket.tools.nexpaddesktop.model.InputMode.ABSOLUTE_TILT) {
+                        com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_GRAVITY
+                    } else {
+                        com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_IMU_6AXIS
+                    }
+                    val feedbackWithMode = feedback.copy(requestedSensorMode = currentMode)
                     when (viewModel.activeTransport) {
-                        ActiveTransport.WIFI, ActiveTransport.USB_TETHERING -> server?.sendFeedback(feedback)
-                        ActiveTransport.USB_AOA -> aoaManager.sendFeedback(feedback)
-                        ActiveTransport.USB_ADB -> adbBridgeManager.sendFeedback(feedback)
-                        ActiveTransport.BLUETOOTH -> btServer.sendFeedback(feedback)
+                        ActiveTransport.WIFI, ActiveTransport.USB_TETHERING -> server?.sendFeedback(feedbackWithMode)
+                        ActiveTransport.USB_AOA -> aoaManager.sendFeedback(feedbackWithMode)
+                        ActiveTransport.USB_ADB -> adbBridgeManager.sendFeedback(feedbackWithMode)
+                        ActiveTransport.BLUETOOTH -> btServer.sendFeedback(feedbackWithMode)
                         ActiveTransport.NONE -> {}
                     }
                 } catch (e: Throwable) {
@@ -184,6 +192,33 @@ fun main(args: Array<String>) {
             connectionJob.cancel()
             newDriver.disconnect()
         }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  SENSOR MODE SYNC — Dynamic sensor multiplexing (IMU vs Gravity)
+    // ══════════════════════════════════════════════════════════
+    LaunchedEffect(viewModel.activeController, viewModel.gyroSettings.enabled, viewModel.gyroSettings.inputMode, viewModel.activeTransport) {
+        val targetSensorMode = if (viewModel.activeController == ControllerType.XBOX_360 &&
+            viewModel.gyroSettings.enabled &&
+            viewModel.gyroSettings.inputMode == com.sanket.tools.nexpaddesktop.model.InputMode.ABSOLUTE_TILT) {
+            com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_GRAVITY
+        } else {
+            com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_IMU_6AXIS
+        }
+        val feedback = GamepadFeedback(
+            leftMotorSpeed = 0,
+            rightMotorSpeed = 0,
+            requestedSensorMode = targetSensorMode
+        )
+        try {
+            when (viewModel.activeTransport) {
+                ActiveTransport.WIFI, ActiveTransport.USB_TETHERING -> server?.sendFeedback(feedback)
+                ActiveTransport.USB_AOA -> aoaManager.sendFeedback(feedback)
+                ActiveTransport.USB_ADB -> adbBridgeManager.sendFeedback(feedback)
+                ActiveTransport.BLUETOOTH -> btServer.sendFeedback(feedback)
+                ActiveTransport.NONE -> {}
+            }
+        } catch (_: Throwable) {}
     }
 
     DisposableEffect(Unit) {

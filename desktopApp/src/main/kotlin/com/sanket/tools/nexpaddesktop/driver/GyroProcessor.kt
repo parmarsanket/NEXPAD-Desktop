@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.driver
+package com.sanket.tools.nexpaddesktop.driver
 
 import com.sanket.tools.nexpaddesktop.model.*
 import kotlin.math.*
@@ -53,6 +53,10 @@ class GyroProcessor {
         rawAccelX: Float = 0f,
         rawAccelY: Float = 0f,
         rawAccelZ: Float = 0f,
+        rawGravityX: Float = 0f,
+        rawGravityY: Float = 0f,
+        rawGravityZ: Float = 0f,
+        sensorFlags: Byte = 0,
         settings: GyroSettings,
         isActivationButtonPressed: Boolean = true,
     ): ProcessedGyro {
@@ -70,8 +74,14 @@ class GyroProcessor {
             val maxAccel = 9.8f
             val targetStickRange = 200.0f
 
-            val horizontalAngleDeg = asin((rawAccelX / maxAccel).coerceIn(-1.0f, 1.0f)) * RAD_TO_DEG
-            val verticalAngleDeg = asin((rawAccelY / maxAccel).coerceIn(-1.0f, 1.0f)) * RAD_TO_DEG
+            // In Gravity mode (0x01), phone streams filtered gravity in rawGravityX..Z (zero-noise tilt).
+            // Fall back to raw accelerometer if gravity data is not present.
+            val isGravity = (sensorFlags.toInt() and 0x01) != 0 || (rawGravityX != 0f || rawGravityY != 0f)
+            val tiltX = if (isGravity) rawGravityX else rawAccelX
+            val tiltY = if (isGravity) rawGravityY else rawAccelY
+
+            val horizontalAngleDeg = asin((tiltX / maxAccel).coerceIn(-1.0f, 1.0f)) * RAD_TO_DEG
+            val verticalAngleDeg = asin((tiltY / maxAccel).coerceIn(-1.0f, 1.0f)) * RAD_TO_DEG
 
             var mappedH = (horizontalAngleDeg / settings.absoluteMaxTilt)
             var mappedV = (verticalAngleDeg / settings.absoluteMaxTilt)

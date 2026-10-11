@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.driver
+package com.sanket.tools.nexpaddesktop.driver
 
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpaddesktop.driver.jna.ViGEmClientLibrary
@@ -32,7 +32,7 @@ class DualShock4InputMapper {
         const val ACCEL_SCALAR = 835.3f
         const val STILLNESS_THRESHOLD = 0.015f
         const val CALIBRATION_ADJUST_RATE = 0.02f
-        const val TIMESTAMP_DIVISOR = 188.0
+        const val TIMESTAMP_TICK_NANOS = 5333L // 5.333µs per DS4 clock tick (~187.5 ticks/ms)
 
         const val BATTERY_FULL: Byte = 0xFF.toByte()
         const val BATTERY_FULL_SPECIAL: Byte = 0x1A
@@ -92,10 +92,9 @@ class DualShock4InputMapper {
 
         debugDs4Mapping(input, report)
 
-        // 5. Hardware Timestamp
-        val elapsedUs = (System.nanoTime() - startTimeNanos) / 1000L
-        val tick = (elapsedUs / TIMESTAMP_DIVISOR).toLong()
-        report.wTimestamp = tick.toShort()
+        // 5. Hardware Timestamp (DS4 hardware clock ticks once every 5.333µs = 5333ns)
+        val elapsedNs = System.nanoTime() - startTimeNanos
+        report.wTimestamp = (elapsedNs / TIMESTAMP_TICK_NANOS).toShort()
 
         // 6. Extended Battery & Touchpad Padding
         report.bBatteryLvl = BATTERY_FULL
@@ -109,21 +108,21 @@ class DualShock4InputMapper {
         // 7. IMU Data (Gyroscope & Accelerometer)
         val (calX, calY, calZ) = calibrateGyro(input.gyroX, input.gyroY, input.gyroZ)
         
-        report.wGyroX = toSafeShort( calX * GYRO_SCALAR)   
-        report.wGyroY = toSafeShort(-calZ * GYRO_SCALAR)   
-        report.wGyroZ = toSafeShort(-calY * GYRO_SCALAR)   
+        report.wGyroX = toSafeShort( calX * GYRO_SCALAR)
+        report.wGyroY = toSafeShort(-calZ * GYRO_SCALAR)
+        report.wGyroZ = toSafeShort(-calY * GYRO_SCALAR)
 
-        var ax = input.accelX * ACCEL_SCALAR
-        var ay = input.accelY * ACCEL_SCALAR
-        var az = input.accelZ * ACCEL_SCALAR
+        val ax = input.accelX * ACCEL_SCALAR
+        val ay = input.accelY * ACCEL_SCALAR
+        val az = input.accelZ * ACCEL_SCALAR
 
-        if (ax == 0f && ay == 0f && az == 0f) {
-            az = -8192f 
-        }
-
-        report.wAccelX = toSafeShort(ax)
-        report.wAccelY = toSafeShort(-az)
-        report.wAccelZ = toSafeShort(-ay)
+        // DS4 body frame:
+        // wAccelX: Lateral (left/right)
+        // wAccelY: Screen normal / Vertical through controller face (+1.0G when resting flat on desk)
+        // wAccelZ: Controller top/bottom (-1.0G when held upright like a gamepad)
+        report.wAccelX = toSafeShort(-ax)
+        report.wAccelY = toSafeShort( az)
+        report.wAccelZ = toSafeShort( ay)
 
         return report
     }
@@ -159,12 +158,22 @@ class DualShock4InputMapper {
     private fun calibrateGyro(rawX: Float, rawY: Float, rawZ: Float): Triple<Float, Float, Float> {
         if (calibrationSamples < CALIBRATION_COUNT) {
             if (rawX != 0f || rawY != 0f || rawZ != 0f) {
-                gyroBiasX += rawX; gyroBiasY += rawY; gyroBiasZ += rawZ
-                calibrationSamples++
-                if (calibrationSamples == CALIBRATION_COUNT) {
-                    gyroBiasX /= CALIBRATION_COUNT
-                    gyroBiasY /= CALIBRATION_COUNT
-                    gyroBiasZ /= CALIBRATION_COUNT
+                // If moving too fast, user is not holding the phone still: reset calibration progress
+                if (abs(rawX) > 0.05f || abs(rawY) > 0.05f || abs(rawZ) > 0.05f) {
+                    calibrationSamples = 0
+                    gyroBiasX = 0f
+                    gyroBiasY = 0f
+                    gyroBiasZ = 0f
+                } else {
+                    gyroBiasX += rawX
+                    gyroBiasY += rawY
+                    gyroBiasZ += rawZ
+                    calibrationSamples++
+                    if (calibrationSamples == CALIBRATION_COUNT) {
+                        gyroBiasX /= CALIBRATION_COUNT
+                        gyroBiasY /= CALIBRATION_COUNT
+                        gyroBiasZ /= CALIBRATION_COUNT
+                    }
                 }
             }
             return Triple(0f, 0f, 0f)
