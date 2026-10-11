@@ -9,8 +9,8 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -35,6 +35,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 
+private data class SidebarDestination(
+    val screen: Screen,
+    val icon: ImageVector,
+    val label: String
+)
+
+private val sidebarDestinations = listOf(
+    SidebarDestination(Screen.HOME, Icons.Default.Home, "Home"),
+    SidebarDestination(Screen.CONTROLLER, Icons.Default.SportsEsports, "Controller"),
+    SidebarDestination(Screen.NODE, Icons.Default.DeviceHub, "Node"),
+    SidebarDestination(Screen.PLUGINS, Icons.Default.Extension, "Plugins"),
+    SidebarDestination(Screen.CONVERTER, Icons.Default.SettingsEthernet, "Converter"),
+    SidebarDestination(Screen.OUTPUT, Icons.Default.Output, "Output"),
+    SidebarDestination(Screen.KBM, Icons.Default.Keyboard, "KBM"),
+    SidebarDestination(Screen.DEBUG, Icons.Default.BugReport, "Debug")
+)
+
 @Composable
 fun Sidebar(
     currentScreen: Screen,
@@ -58,60 +75,66 @@ fun Sidebar(
                 )
             }
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
+            item {
+                Spacer(modifier = Modifier.height(24.dp))
 
-            // Logo Area — gradient-filled circle (#4)
-            Box(
-                modifier = Modifier
-                    .size(54.dp)
-                    .drawBehind {
-                        // Outer glow
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    NeonPalette.Cyan.copy(alpha = 0.15f),
-                                    Color.Transparent
-                                )
-                            ),
-                            radius = 26.dp.toPx()
-                        )
-                        // Gradient ring
-                        drawCircle(
-                            brush = Brush.linearGradient(
-                                colors = NeonPalette.GradientBorder
-                            ),
-                            style = Stroke(width = 1.5.dp.toPx())
-                        )
-                    },
-                contentAlignment = Alignment.Center
-            ) {
+                // Logo Area — gradient-filled circle (#4)
                 Box(
                     modifier = Modifier
-                        .size(18.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(NeonPalette.Cyan, NeonPalette.Purple)
+                        .size(60.dp)
+                        .drawBehind {
+                            // Outer glow
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        NeonPalette.Cyan.copy(alpha = 0.15f),
+                                        Color.Transparent
+                                    )
+                                ),
+                                radius = 28.dp.toPx()
                             )
-                        )
-                )
+                            // Gradient ring
+                            drawCircle(
+                                brush = Brush.linearGradient(
+                                    colors = NeonPalette.GradientBorder
+                                ),
+                                style = Stroke(width = 1.5.dp.toPx())
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(NeonPalette.Cyan, NeonPalette.Purple)
+                                )
+                            )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            items(sidebarDestinations, key = { it.screen.name }) { destination ->
+                SidebarItem(
+                    icon = destination.icon,
+                    label = destination.label,
+                    isSelected = currentScreen == destination.screen
+                ) {
+                    onNavigate(destination.screen)
+                }
+            }
 
-            SidebarItem(Icons.Default.Home, "Home", currentScreen == Screen.HOME) { onNavigate(Screen.HOME) }
-            SidebarItem(Icons.Default.SportsEsports, "Controller", currentScreen == Screen.CONTROLLER) { onNavigate(Screen.CONTROLLER) }
-            SidebarItem(Icons.Default.DeviceHub, "Node", currentScreen == Screen.NODE) { onNavigate(Screen.NODE) }
-            SidebarItem(Icons.Default.Extension, "Plugins", currentScreen == Screen.PLUGINS) { onNavigate(Screen.PLUGINS) }
-            SidebarItem(Icons.Default.SettingsEthernet, "Converter", currentScreen == Screen.CONVERTER) { onNavigate(Screen.CONVERTER) }
-            SidebarItem(Icons.Default.Output, "Output", currentScreen == Screen.OUTPUT) { onNavigate(Screen.OUTPUT) }
-            SidebarItem(Icons.Default.Keyboard, "KBM", currentScreen == Screen.KBM) { onNavigate(Screen.KBM) }
-            SidebarItem(Icons.Default.BugReport, "Debug", currentScreen == Screen.DEBUG) { onNavigate(Screen.DEBUG) }
-            Spacer(modifier = Modifier.height(16.dp))
+            item {
+                Spacer(modifier = Modifier.height(24.dp))
+            }
         }
     }
 }
