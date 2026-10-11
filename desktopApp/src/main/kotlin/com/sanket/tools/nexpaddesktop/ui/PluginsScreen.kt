@@ -23,8 +23,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.text.BasicTextField
@@ -1037,6 +1041,80 @@ fun SplitButtonLayout(
 }
 
 /**
+ * Material 3 Expressive Connected Button Group specification and shape defaults.
+ * Follows SingleSelectConnectedButtonGroupSample specification.
+ */
+object ButtonGroupDefaults {
+    val ConnectedSpaceBetween: androidx.compose.ui.unit.Dp = 2.dp
+
+    fun connectedLeadingButtonShapes(
+        outerRadius: androidx.compose.ui.unit.Dp = 8.dp,
+        innerRadius: androidx.compose.ui.unit.Dp = 2.dp
+    ): Shape =
+        RoundedCornerShape(
+            topStart = outerRadius,
+            bottomStart = outerRadius,
+            topEnd = innerRadius,
+            bottomEnd = innerRadius
+        )
+
+    fun connectedMiddleButtonShapes(
+        innerRadius: androidx.compose.ui.unit.Dp = 2.dp
+    ): Shape =
+        RoundedCornerShape(innerRadius)
+
+    fun connectedTrailingButtonShapes(
+        outerRadius: androidx.compose.ui.unit.Dp = 8.dp,
+        innerRadius: androidx.compose.ui.unit.Dp = 2.dp
+    ): Shape =
+        RoundedCornerShape(
+            topStart = innerRadius,
+            bottomStart = innerRadius,
+            topEnd = outerRadius,
+            bottomEnd = outerRadius
+        )
+
+    fun connectedSingleButtonShapes(
+        outerRadius: androidx.compose.ui.unit.Dp = 8.dp
+    ): Shape =
+        RoundedCornerShape(outerRadius)
+}
+
+/**
+ * Material 3 Expressive ToggleButton item for connected button groups.
+ */
+@Composable
+fun ToggleButton(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    shapes: Shape,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    accentColor: Color = NeonPalette.Cyan,
+    containerColor: Color = Color(0xFF090E18),
+    unselectedBorderColor: Color = Color(0xFF1E293B),
+    contentPadding: PaddingValues = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+    content: @Composable RowScope.() -> Unit
+) {
+    OutlinedButton(
+        onClick = { onCheckedChange(!checked) },
+        shape = shapes,
+        border = BorderStroke(
+            width = if (checked) 1.5.dp else 1.dp,
+            color = if (checked) accentColor else unselectedBorderColor
+        ),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = if (checked) accentColor.copy(alpha = 0.18f) else containerColor,
+            contentColor = if (checked) accentColor else Color.White.copy(alpha = 0.7f)
+        ),
+        contentPadding = contentPadding,
+        modifier = modifier.height(28.dp),
+        enabled = enabled,
+        content = content
+    )
+}
+
+/**
  * SplitButton action for AI prompt copying with tier dropdown selector.
  */
 @Composable
@@ -1332,26 +1410,28 @@ private fun ComponentEditorPane(
             }
         }
 
-        // 3. Category Selector Carousel (Cyber HUD Glass Outlined)
+        // 3. Category Selector (Material 3 SingleSelectConnectedButtonGroup)
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            categories.forEach { (catKey, catLabel) ->
+            categories.forEachIndexed { index, (catKey, catLabel) ->
                 val isSelected = selectedCategory == catKey
-                OutlinedButton(
-                    onClick = { onSelectCategory(catKey) },
-                    shape = RoundedCornerShape(6.dp),
-                    border = BorderStroke(
-                        width = if (isSelected) 1.5.dp else 1.dp,
-                        color = if (isSelected) NeonPalette.Cyan else Color(0xFF1E293B)
-                    ),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = if (isSelected) NeonPalette.Cyan.copy(alpha = 0.18f) else Color(0xFF090E18)
-                    ),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                    modifier = Modifier.height(28.dp)
+                val shapes = when {
+                    categories.size <= 1 -> ButtonGroupDefaults.connectedSingleButtonShapes()
+                    index == 0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                    index == categories.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                }
+                ToggleButton(
+                    checked = isSelected,
+                    onCheckedChange = { onSelectCategory(catKey) },
+                    shapes = shapes,
+                    accentColor = NeonPalette.Cyan,
+                    containerColor = Color(0xFF090E18),
+                    unselectedBorderColor = Color(0xFF1E293B),
+                    modifier = Modifier.semantics { role = Role.RadioButton }
                 ) {
                     Text(
                         text = catLabel,
@@ -1365,27 +1445,29 @@ private fun ComponentEditorPane(
             }
         }
 
-        // 4. Button Key Selector Carousel
+        // 4. Sub-Category Button Key Selector (Material 3 SingleSelectConnectedButtonGroup)
         val currentButtons = buttonsByCategory[selectedCategory] ?: emptyList()
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            currentButtons.forEach { btn ->
+            currentButtons.forEachIndexed { index, btn ->
                 val isSelected = selectedButtonKey == btn.key
-                OutlinedButton(
-                    onClick = { onSelectButton(btn) },
-                    shape = RoundedCornerShape(6.dp),
-                    border = BorderStroke(
-                        width = if (isSelected) 1.5.dp else 1.dp,
-                        color = if (isSelected) btn.accentColor else Color(0xFF222F46)
-                    ),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = if (isSelected) btn.accentColor.copy(alpha = 0.15f) else Color(0xFF0E1320)
-                    ),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                    modifier = Modifier.height(28.dp)
+                val shapes = when {
+                    currentButtons.size <= 1 -> ButtonGroupDefaults.connectedSingleButtonShapes()
+                    index == 0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                    index == currentButtons.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                }
+                ToggleButton(
+                    checked = isSelected,
+                    onCheckedChange = { onSelectButton(btn) },
+                    shapes = shapes,
+                    accentColor = btn.accentColor,
+                    containerColor = Color(0xFF0E1320),
+                    unselectedBorderColor = Color(0xFF222F46),
+                    modifier = Modifier.semantics { role = Role.RadioButton }
                 ) {
                     Text(
                         text = btn.label,
