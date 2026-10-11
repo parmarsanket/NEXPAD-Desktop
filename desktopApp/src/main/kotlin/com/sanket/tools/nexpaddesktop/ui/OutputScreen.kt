@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -29,10 +28,10 @@ import com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel
 import kotlin.math.PI
 
 /**
- * OutputScreen is the dedicated Emulator & Motion Output Control Hub.
+ * OutputScreen is the dedicated UDP Motion & Sensor Output Control Hub.
  *
- * Provides complete control, status indicators, live telemetry, and setup guides
- * for the Cemuhook DSU (DualShock UDP) protocol on port 26760 across all major emulators.
+ * Provides complete control, status indicators, live telemetry, and client setup guides
+ * for the standard UDP motion server protocol on port 26760 for motion-aware games and applications.
  */
 @Composable
 fun OutputScreen(
@@ -41,7 +40,7 @@ fun OutputScreen(
     val scrollState = rememberScrollState()
     val clipboardManager = LocalClipboardManager.current
     var isCopied by remember { mutableStateOf(false) }
-    var selectedEmulatorTab by remember { mutableStateOf(0) }
+    var selectedGuideTab by remember { mutableStateOf(0) }
 
     LaunchedEffect(isCopied) {
         if (isCopied) {
@@ -86,14 +85,14 @@ fun OutputScreen(
 
                 Column {
                     Text(
-                        text = "EMULATOR & MOTION OUTPUT HUB",
+                        text = "UDP MOTION & SENSOR OUTPUT HUB",
                         color = Color.White,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
                     )
                     Text(
-                        text = "Cemuhook DSU UDP Protocol Server (Port 26760) for RPCS3, Cemu, Dolphin, Yuzu & Ryujinx",
+                        text = "Standard UDP Motion Provider Server (Port 26760) for Motion-Aware Applications & Games",
                         color = NeonPalette.CardIdleText,
                         fontSize = 12.sp
                     )
@@ -140,7 +139,7 @@ fun OutputScreen(
                         text = when {
                             isDsuRunning -> "SERVER BROADCASTING"
                             !viewModel.isDsuServerEnabled -> "SERVER DISABLED"
-                            else -> "DS4 MODE REQUIRED"
+                            else -> "MOTION MODE REQUIRED"
                         },
                         color = when {
                             isDsuRunning -> NeonPalette.Green
@@ -156,7 +155,7 @@ fun OutputScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // ── Main DSU Server Switch & Configuration Card ──
+        // ── Main UDP Motion Server Switch & Configuration Card ──
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -178,7 +177,7 @@ fun OutputScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "DSU Motion Server (Cemuhook)",
+                                text = "UDP Motion & Sensor Server",
                                 color = Color.White,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold
@@ -201,7 +200,7 @@ fun OutputScreen(
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Streams 6-axis gyroscope, accelerometer, analog triggers, and full button packets to emulators over low-latency UDP.",
+                            text = "Streams real-time 6-axis gyroscope, accelerometer, analog triggers, and gamepad inputs over low-latency UDP.",
                             color = NeonPalette.CardIdleText,
                             fontSize = 12.sp
                         )
@@ -209,7 +208,7 @@ fun OutputScreen(
 
                     Spacer(modifier = Modifier.width(16.dp))
 
-                    // DSU Server ON / OFF Master Switch
+                    // Motion Server ON / OFF Master Switch
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -286,7 +285,7 @@ fun OutputScreen(
                             .padding(14.dp)
                     ) {
                         Column {
-                            Text(text = "CONNECTED EMULATORS", color = NeonPalette.CardIdleText, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text(text = "CONNECTED CLIENTS", color = NeonPalette.CardIdleText, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = "${viewModel.dsuClientCount} Client${if (viewModel.dsuClientCount != 1) "s" else ""}",
@@ -296,7 +295,7 @@ fun OutputScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = if (viewModel.dsuClientCount > 0) "Streaming 100-byte motion packets" else "Waiting for emulator handshake...",
+                                text = if (viewModel.dsuClientCount > 0) "Streaming 100-byte motion packets" else "Waiting for client connection...",
                                 color = NeonPalette.CardIdleText,
                                 fontSize = 11.sp
                             )
@@ -313,7 +312,7 @@ fun OutputScreen(
                             .padding(14.dp)
                     ) {
                         Column {
-                            Text(text = "ACTIVE CONTROLLER", color = NeonPalette.CardIdleText, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text(text = "ACTIVE PROFILE", color = NeonPalette.CardIdleText, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = viewModel.activeController.displayName.substringBefore(" ("),
@@ -323,7 +322,7 @@ fun OutputScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = if (viewModel.activeController == ControllerType.DUALSHOCK_4) "Full 6-Axis Motion Supported" else "DSU Gated (Switch to DS4)",
+                                text = if (viewModel.activeController == ControllerType.DUALSHOCK_4) "Full 6-Axis Motion Stream Active" else "Motion Gated (Switch to Motion Mode)",
                                 color = NeonPalette.CardIdleText,
                                 fontSize = 11.sp
                             )
@@ -331,7 +330,7 @@ fun OutputScreen(
                     }
                 }
 
-                // Gating Warning Banner if in Xbox 360 mode
+                // Gating Warning Banner if not in DualShock 4 mode
                 if (viewModel.activeController != ControllerType.DUALSHOCK_4 && viewModel.isDsuServerEnabled) {
                     Spacer(modifier = Modifier.height(14.dp))
                     Box(
@@ -352,13 +351,13 @@ fun OutputScreen(
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Column {
                                     Text(
-                                        text = "DSU Server is gated to DualShock 4 only",
+                                        text = "Motion Server requires 6-Axis Motion Controller mode",
                                         color = Color(0xFFFFB300),
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold
                                     )
                                     Text(
-                                        text = "Emulators require DualShock 4 mode to receive motion sensor telemetry. Switch active controller to DualShock 4 to begin streaming.",
+                                        text = "Connected applications require 6-axis motion telemetry. Switch active controller mode to Motion Gamepad to begin streaming.",
                                         color = Color(0xFFE0E0E0),
                                         fontSize = 11.sp
                                     )
@@ -371,7 +370,7 @@ fun OutputScreen(
                                 shape = RoundedCornerShape(8.dp),
                                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                             ) {
-                                Text("Switch to DS4", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text("Enable Motion Mode", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -408,7 +407,7 @@ fun OutputScreen(
                     }
 
                     Text(
-                        text = "100-Byte Cemuhook Wire Standard",
+                        text = "100-Byte Standard Wire Protocol",
                         color = NeonPalette.Green,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -470,7 +469,7 @@ fun OutputScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // ── Emulator Quick Setup Guide ──
+        // ── Client Configuration & Integration Guide ──
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -481,10 +480,10 @@ fun OutputScreen(
         ) {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.SportsEsports, contentDescription = "Guide", tint = NeonPalette.Purple, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.Info, contentDescription = "Guide", tint = NeonPalette.Purple, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Emulator Configuration Guide",
+                        text = "Client Configuration & Integration Guide",
                         color = Color.White,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold
@@ -493,26 +492,31 @@ fun OutputScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Emulator Selector Tabs
-                val emulators = listOf("RPCS3 (PS3)", "Cemu (Wii U)", "Dolphin (Wii/GC)", "Yuzu / Ryujinx (Switch)", "Citra (3DS)", "PCSX2 (PS2)")
+                // Guide Selector Tabs
+                val guideTabs = listOf(
+                    "Connection Setup",
+                    "6-Axis Motion Sensors",
+                    "Analog & Digital Controls",
+                    "Network & Diagnostics"
+                )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    emulators.forEachIndexed { index, name ->
-                        val isSelected = selectedEmulatorTab == index
+                    guideTabs.forEachIndexed { index, name ->
+                        val isSelected = selectedGuideTab == index
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(if (isSelected) NeonPalette.Cyan.copy(alpha = 0.15f) else Color(0xFF161E30))
                                 .border(1.dp, if (isSelected) NeonPalette.Cyan else Color(0xFF222E4A), RoundedCornerShape(8.dp))
-                                .clickable { selectedEmulatorTab = index }
+                                .clickable { selectedGuideTab = index }
                                 .padding(vertical = 8.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = name.substringBefore(" "),
+                                text = name,
                                 color = if (isSelected) NeonPalette.Cyan else Color.LightGray,
                                 fontSize = 11.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
@@ -532,59 +536,42 @@ fun OutputScreen(
                         .border(1.dp, Color(0xFF182035), RoundedCornerShape(10.dp))
                         .padding(16.dp)
                 ) {
-                    when (selectedEmulatorTab) {
-                        0 -> EmulatorInstruction(
-                            emulator = "RPCS3 (PlayStation 3)",
+                    when (selectedGuideTab) {
+                        0 -> GuideSection(
+                            title = "Client Application Configuration",
                             steps = listOf(
-                                "Open RPCS3 and navigate to Manage > Gamepad Settings (Controllers).",
-                                "Select Player 1 and set Controller Handler to 'DualShock 4' or 'Sixaxis (Cemuhook UDP)'.",
-                                "Under DSU / Cemuhook settings, enter Server IP: 127.0.0.1 and Port: 26760.",
-                                "Click 'Test Motion' — you will immediately see the controller pitch and roll in RPCS3!"
+                                "Set the client's Motion Server IP address to 127.0.0.1 (local loopback) or your PC's local LAN IP for networked devices.",
+                                "Set the Server Port to 26760 (the standard open UDP motion server port).",
+                                "Select Controller Slot 0 (or Pad 1 / Device 1 in your client application).",
+                                "Ensure NEXPAD's active controller profile is set to Motion Gamepad mode with the server switch turned ON above.",
+                                "Once your target game or tool initiates motion polling, the active connected clients counter will increment in real time."
                             )
                         )
-                        1 -> EmulatorInstruction(
-                            emulator = "Cemu (Nintendo Wii U)",
+                        1 -> GuideSection(
+                            title = "Rotational & Gravitational Telemetry",
                             steps = listOf(
-                                "Open Cemu and go to Options > GamePad motion source > DSU1.",
-                                "Select By slot: 0 or enter IP: 127.0.0.1 with Port: 26760.",
-                                "Go to Options > Input Settings and ensure your Wii U GamePad profile is selected.",
-                                "Breath of the Wild shrines and motion aiming will now work with your phone!"
+                                "Gyroscope streams real-time angular velocity across Pitch (X), Yaw (Z), and Roll (Y) in degrees per second (°/s).",
+                                "Accelerometer streams 3D linear and gravitational acceleration normalized to standard Earth gravity (1.0 G at rest).",
+                                "Packets include microsecond-precision hardware timestamps to allow connected applications to calculate jitter-free orientation.",
+                                "Use the Recalibrate Sensors function on the Controller screen whenever you need to zero out drift while playing."
                             )
                         )
-                        2 -> EmulatorInstruction(
-                            emulator = "Dolphin (Nintendo GameCube & Wii)",
+                        2 -> GuideSection(
+                            title = "Input Channels & Sensitivity",
                             steps = listOf(
-                                "Open Dolphin and go to Options > Controller Settings > Alternate Input Sources.",
-                                "Check 'Enable DSU Client'.",
-                                "Add Server Address: 127.0.0.1 and Port: 26760.",
-                                "In Emulated Wiimote configuration, map Motion Input to DSU/0/DualShock 4."
+                                "Dual analog thumbsticks stream full 8-bit precision (0 to 255), with rest deadzone centered at 127 / 128.",
+                                "Analog triggers (L2 / R2) output continuous pressure curves from 0 (released) to 255 (fully depressed).",
+                                "Digital actions include directional D-Pad, primary action buttons, shoulder bumpers, stick clicks, and system buttons.",
+                                "Digital button states map directly to standard controller conventions for immediate drop-in compatibility."
                             )
                         )
-                        3 -> EmulatorInstruction(
-                            emulator = "Yuzu & Ryujinx (Nintendo Switch)",
+                        3 -> GuideSection(
+                            title = "Socket Communication & Troubleshooting",
                             steps = listOf(
-                                "Open Yuzu or Ryujinx and navigate to Emulation > Configure > Controls.",
-                                "Under Motion tab, check 'Enable Cemuhook UDP'.",
-                                "Set Server IP: 127.0.0.1 and Port: 26760.",
-                                "Save and launch your favorite Switch game (Mario Kart, Splatoon, Zelda)."
-                            )
-                        )
-                        4 -> EmulatorInstruction(
-                            emulator = "Citra (Nintendo 3DS)",
-                            steps = listOf(
-                                "Open Citra and navigate to Emulation > Configure > Controls > Motion.",
-                                "Select 'Cemuhook UDP' as the motion provider.",
-                                "Enter Server IP: 127.0.0.1 and Port: 26760.",
-                                "Test gyro rotation in 3DS tilt minigames (Ocarina of Time 3D, WarioWare Gold)."
-                            )
-                        )
-                        5 -> EmulatorInstruction(
-                            emulator = "PCSX2 (PlayStation 2)",
-                            steps = listOf(
-                                "Open PCSX2 and navigate to Settings > Controllers > Controller Settings.",
-                                "Enable the DSU / Cemuhook motion input provider.",
-                                "Set Server: 127.0.0.1 and Port: 26760.",
-                                "Compatible Sixaxis PS2 motion titles will now receive high-frequency gyro data."
+                                "Local communication between NEXPAD and client software on the same PC has < 1ms near-zero network latency.",
+                                "If connecting from another device on the local network, ensure incoming UDP port 26760 is allowed in Windows Firewall.",
+                                "Connected clients send periodic heartbeat handshakes; inactive clients are automatically pruned after 5 seconds.",
+                                "The live telemetry readout above monitors raw packet data directly before it is transmitted across the UDP socket."
                             )
                         )
                     }
@@ -625,17 +612,17 @@ private fun TelemetryItem(
 }
 
 @Composable
-private fun EmulatorInstruction(
-    emulator: String,
+private fun GuideSection(
+    title: String,
     steps: List<String>
 ) {
     Column {
-        Text(text = "Setup for $emulator", color = NeonPalette.Cyan, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = title, color = NeonPalette.Cyan, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(10.dp))
         steps.forEachIndexed { index, step ->
-            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                 Text(text = "${index + 1}. ", color = NeonPalette.Purple, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                Text(text = step, color = Color(0xFFD0D7E5), fontSize = 12.sp, lineHeight = 16.sp)
+                Text(text = step, color = Color(0xFFD0D7E5), fontSize = 12.sp, lineHeight = 17.sp)
             }
         }
     }

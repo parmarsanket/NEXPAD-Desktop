@@ -27,8 +27,8 @@ import kotlinx.serialization.Serializable
 enum class Screen { HOME, CONTROLLER, PLUGINS, NODE, CONVERTER, OUTPUT, KBM, DEBUG }
 @Serializable
 enum class ControllerType(val displayName: String) { 
-    XBOX_360("Microsoft Xbox 360"), 
-    DUALSHOCK_4("Sony PlayStation 4 (DualShock 4)") 
+    XBOX_360("Standard Gamepad (XInput)"), 
+    DUALSHOCK_4("Motion Gamepad (DS4)") 
 }
 
 @Composable

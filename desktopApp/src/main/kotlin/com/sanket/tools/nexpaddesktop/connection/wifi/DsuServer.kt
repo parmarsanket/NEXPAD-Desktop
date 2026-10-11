@@ -14,8 +14,8 @@ import java.util.zip.CRC32
 import kotlin.math.PI
 
 /**
- * DsuServer implements the Cemuhook UDP Protocol (also known as DSU - DualShock UDP).
- * This allows emulators like RPCS3, Cemu, Dolphin, Citra, Yuzu, Ryujinx, and PCSX2 to receive
+ * DsuServer implements the standard UDP Motion Protocol (also known as DSU - UDP Motion Provider).
+ * This allows third-party games, tools, and motion-compatible applications to receive
  * high-frequency controller input (especially 6-axis motion data and analog buttons)
  * directly over UDP.
  *
@@ -71,7 +71,7 @@ class DsuServer {
             }
         }
 
-    // Track emulator clients who have requested data
+    // Track connected clients who have requested data
     private val clients = ConcurrentHashMap<String, ClientInfo>()
 
     internal data class ClientInfo(val ip: InetAddress, val port: Int, var lastSeen: Long)
@@ -202,7 +202,7 @@ class DsuServer {
                 if (shouldRegister) {
                     val clientInfo = ClientInfo(packet.address, packet.port, System.currentTimeMillis())
                     clients[clientId] = clientInfo
-                    // Immediately send a response packet so emulator calibration handshakes complete instantly
+                    // Immediately send a response packet so client calibration handshakes complete instantly
                     sendImmediateDataResponse(clientInfo)
                 }
             }
@@ -308,7 +308,7 @@ class DsuServer {
     }
 
     internal fun buildDataPayload(input: GamepadInput, pCount: Int): ByteArray {
-        // Cemuhook data payload is exactly 80 bytes (total packet is 100 bytes)
+        // Standard DSU motion data payload is exactly 80 bytes (total packet is 100 bytes)
         val buffer = ByteBuffer.allocate(80).order(ByteOrder.LITTLE_ENDIAN)
         
         // 0..11: Controller Info
@@ -335,8 +335,7 @@ class DsuServer {
         if (input.btnSelect || input.btnShare) buttons1 = buttons1 or 0x01
         buffer.put(buttons1.toByte())
         
-        // 17: Button bitmask 2 (Square, Cross, Circle, Triangle, R1, L1, R2, L2)
-        // Cemuhook standard: Nintendo Y, B, A, X -> DS4 Square, Cross, Circle, Triangle
+        // Button mapping: West, South, East, North -> Square, Cross, Circle, Triangle
         var buttons2 = 0
         if (input.btnX) buttons2 = buttons2 or 0x80 // Square (West)
         if (input.btnA) buttons2 = buttons2 or 0x40 // Cross (South)
@@ -360,7 +359,7 @@ class DsuServer {
         buffer.put(((input.rightStickX.coerceIn(-1f, 1f) + 1.0f) * 127.5f).toInt().coerceIn(0, 255).toByte())
         buffer.put(((input.rightStickY.coerceIn(-1f, 1f) + 1.0f) * 127.5f).toInt().coerceIn(0, 255).toByte())
         
-        // 24..35: Analog Buttons (12 bytes, 0..255; emulators like Dolphin require face/dpad analog values)
+        // 24..35: Analog Buttons (12 bytes, 0..255; analog face/dpad pressure values)
         buffer.put(if (input.dpadLeft) 0xFF.toByte() else 0.toByte())  // 24: Analog D-Pad Left
         buffer.put(if (input.dpadDown) 0xFF.toByte() else 0.toByte())  // 25: Analog D-Pad Down
         buffer.put(if (input.dpadRight) 0xFF.toByte() else 0.toByte()) // 26: Analog D-Pad Right

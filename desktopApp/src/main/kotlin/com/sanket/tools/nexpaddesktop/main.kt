@@ -70,7 +70,7 @@ fun main(args: Array<String>) {
     // The active ViGEm driver (Xbox 360 or DualShock 4). Updated when controller type changes.
     var activeDriver by remember { mutableStateOf<IGamepadDriver?>(null) }
 
-    // DSU (CemuHook) motion server — active exclusively for DualShock 4 when enabled
+    // DSU UDP motion server — active exclusively for DualShock 4 when enabled
     val dsuServer = remember { 
         DsuServer().apply { 
             isDs4Active = (viewModel.activeController == ControllerType.DUALSHOCK_4 && viewModel.isDsuServerEnabled) 
@@ -349,7 +349,7 @@ fun main(args: Array<String>) {
     }
     viewModel.dsuClientCount = dsuServer.getClientCount()
 
-    // Dynamically update DSU server gating and poll active emulator clients
+    // Dynamically update DSU server gating and poll active clients
     LaunchedEffect(dsuServer, viewModel.activeController, viewModel.isDsuServerEnabled) {
         dsuServer.isDs4Active = (viewModel.activeController == ControllerType.DUALSHOCK_4 && viewModel.isDsuServerEnabled)
         while (true) {

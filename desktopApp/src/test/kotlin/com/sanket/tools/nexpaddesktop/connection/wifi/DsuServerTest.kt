@@ -158,7 +158,7 @@ class DsuServerTest {
     }
 
     @Test
-    fun testAnalogButtonsParityWithDolphin() {
+    fun testAnalogButtonsParityWithStandard() {
         val server = DsuServer()
         val input = GamepadInput(
             dpadLeft = true,
@@ -306,7 +306,7 @@ class DsuServerTest {
     }
 
     @Test
-    fun testLiveUdpSocketEndToEndWithEmulator() {
+    fun testLiveUdpSocketEndToEndWithClient() {
         val testPort = 26777
         val server = DsuServer()
         server.isDs4Active = true

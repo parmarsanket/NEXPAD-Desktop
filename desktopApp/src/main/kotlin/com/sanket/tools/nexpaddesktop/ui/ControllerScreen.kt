@@ -133,7 +133,7 @@ fun ControllerScreen(
                     badge = "Native Passthrough",
                     accentColor = NeonPalette.Purple,
                     isSelected = activeController == ControllerType.DUALSHOCK_4,
-                    description = "100% raw 6-axis motion stream directly to games, Steam Input, and emulators. In-game settings control sensitivity.",
+                    description = "100% raw 6-axis motion stream directly to games, Steam Input, and motion applications. In-game settings control sensitivity.",
                     onClick = { onSaveController(ControllerType.DUALSHOCK_4) }
                 )
             }
@@ -342,7 +342,7 @@ private fun ControllerProfileCard(
 /**
  * Dedicated DualShock 4 Native Mode Dashboard.
  *
- * Informs the user that raw motion is passed directly to games/emulators,
+ * Informs the user that raw motion is passed directly to games/applications,
  * avoiding unnecessary conversion settings that don't apply to native gyro.
  */
 @Composable
@@ -389,7 +389,7 @@ private fun DualShock4Dashboard(
                             color = Color.White
                         )
                         Text(
-                            text = "Zero-manipulation raw 6-axis IMU stream to games and emulators",
+                            text = "Zero-manipulation raw 6-axis IMU stream to games and applications",
                             fontSize = 12.sp,
                             color = NeonPalette.CardIdleText
                         )
@@ -400,8 +400,8 @@ private fun DualShock4Dashboard(
                 Text(
                     text = "DualShock 4 features native gyro & accelerometer support across modern PC gaming. " +
                             "NEXPAD delivers high-frequency uncompressed sensor packets directly into the virtual DS4 driver and DSU Server.\n\n" +
-                            "• All aiming sensitivity, steering deadzones, and inverted axes are configured directly inside your PC game's settings, Steam Input, or emulator settings.\n" +
-                            "• Emulation knobs (smoothing, curve acceleration) are bypassed to maintain bit-perfect hardware compliance.",
+                            "• All aiming sensitivity, steering deadzones, and inverted axes are configured directly inside your PC game's settings, Steam Input, or game settings.\n" +
+                            "• Software conversion knobs (smoothing, curve acceleration) are bypassed to maintain bit-perfect hardware compliance.",
                     fontSize = 13.sp,
                     color = Color.White.copy(alpha = 0.85f),
                     lineHeight = 18.sp

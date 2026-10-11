@@ -400,14 +400,14 @@ class DesktopSharedPreferences private constructor(
     }
 
     /**
-     * Saves whether the DSU (Cemuhook UDP) motion server is enabled.
+     * Saves whether the DSU UDP motion server is enabled.
      */
     fun saveDsuEnabled(enabled: Boolean) {
         putBoolean(KEY_DSU_ENABLED, enabled)
     }
 
     /**
-     * Loads whether the DSU (Cemuhook UDP) motion server is enabled (defaults to true).
+     * Loads whether the DSU UDP motion server is enabled (defaults to true).
      */
     fun loadDsuEnabled(): Boolean {
         return getBoolean(KEY_DSU_ENABLED, true)
