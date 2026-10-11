@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.utils
+package com.sanket.tools.nexpaddesktop.utils
 
 import androidx.compose.runtime.mutableStateOf
 import java.io.PrintStream
@@ -45,6 +45,13 @@ object AppLogger {
             }
         }
         // Increment trigger to notify UI to re-read getLogsCopy()
+        updateTrigger.value++
+    }
+
+    fun clearLogs() {
+        synchronized(rawLogs) {
+            rawLogs.clear()
+        }
         updateTrigger.value++
     }
 }

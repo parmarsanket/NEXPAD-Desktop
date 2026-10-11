@@ -70,8 +70,12 @@ fun main(args: Array<String>) {
     // The active ViGEm driver (Xbox 360 or DualShock 4). Updated when controller type changes.
     var activeDriver by remember { mutableStateOf<IGamepadDriver?>(null) }
 
-    // DSU (CemuHook) motion server — always active for emulator compatibility
-    val dsuServer = remember { DsuServer() }
+    // DSU (CemuHook) motion server — active exclusively for DualShock 4 when enabled
+    val dsuServer = remember { 
+        DsuServer().apply { 
+            isDs4Active = (viewModel.activeController == ControllerType.DUALSHOCK_4 && viewModel.isDsuServerEnabled) 
+        } 
+    }
     val discoveryServer = remember { com.sanket.tools.nexpaddesktop.connection.wifi.DiscoveryServer() }
     
     // Motion Smoothing State
@@ -183,6 +187,9 @@ fun main(args: Array<String>) {
         // Reset gyro processor smoothing state when switching controllers
         gyroProcessor.reset()
         
+        // Update DSU server gating: DSU server only operates when DualShock 4 is active and enabled
+        dsuServer.isDs4Active = (viewModel.activeController == ControllerType.DUALSHOCK_4 && viewModel.isDsuServerEnabled)
+        
         onDispose {
             connectionJob.cancel()
             newDriver.disconnect()
@@ -211,7 +218,7 @@ fun main(args: Array<String>) {
     }
 
     DisposableEffect(Unit) {
-
+        dsuServer.isDs4Active = (viewModel.activeController == ControllerType.DUALSHOCK_4)
         dsuServer.start()
         
         val inputHandler: (GamepadInput) -> Unit = { input ->
@@ -236,7 +243,7 @@ fun main(args: Array<String>) {
             )
 
             activeDriver?.updateInput(processedInput)
-            dsuServer.updateInput(input)
+            dsuServer.updateInput(processedInput)
         }
 
         server = UdpServer(
@@ -338,8 +345,18 @@ fun main(args: Array<String>) {
     }
     viewModel.onControllerChange = {
         viewModel.updateActiveController(it)
+        dsuServer.isDs4Active = (it == ControllerType.DUALSHOCK_4 && viewModel.isDsuServerEnabled)
     }
     viewModel.dsuClientCount = dsuServer.getClientCount()
+
+    // Dynamically update DSU server gating and poll active emulator clients
+    LaunchedEffect(dsuServer, viewModel.activeController, viewModel.isDsuServerEnabled) {
+        dsuServer.isDs4Active = (viewModel.activeController == ControllerType.DUALSHOCK_4 && viewModel.isDsuServerEnabled)
+        while (true) {
+            viewModel.dsuClientCount = dsuServer.getClientCount()
+            kotlinx.coroutines.delay(1000)
+        }
+    }
 
     Window(
         onCloseRequest = ::exitApplication,

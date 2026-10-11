@@ -82,7 +82,9 @@ class DesktopNavigation3Test {
 
     @Test
     fun testDesktopViewModelInitialState() {
-        val vm = com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel()
+        val tempFile = java.io.File.createTempFile("test_nav_prefs", ".json").apply { deleteOnExit() }
+        val testPrefs = com.sanket.tools.nexpaddesktop.storage.DesktopSharedPreferences.getCustomInstance(tempFile)
+        val vm = com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel(testPrefs)
         assertFalse(vm.isDriverConnected)
         assertNull(vm.connectedDeviceName)
         assertEquals(com.sanket.tools.nexpaddesktop.connection.ActiveTransport.NONE, vm.activeTransport)

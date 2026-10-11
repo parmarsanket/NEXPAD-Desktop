@@ -9,6 +9,8 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -57,15 +59,15 @@ fun Sidebar(
             }
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Logo Area — gradient-filled circle (#4)
             Box(
                 modifier = Modifier
-                    .size(60.dp)
+                    .size(54.dp)
                     .drawBehind {
                         // Outer glow
                         drawCircle(
@@ -75,7 +77,7 @@ fun Sidebar(
                                     Color.Transparent
                                 )
                             ),
-                            radius = 28.dp.toPx()
+                            radius = 26.dp.toPx()
                         )
                         // Gradient ring
                         drawCircle(
@@ -89,7 +91,7 @@ fun Sidebar(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(20.dp)
+                        .size(18.dp)
                         .clip(CircleShape)
                         .background(
                             Brush.linearGradient(
@@ -99,7 +101,7 @@ fun Sidebar(
                 )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             SidebarItem(Icons.Default.Home, "Home", currentScreen == Screen.HOME) { onNavigate(Screen.HOME) }
             SidebarItem(Icons.Default.SportsEsports, "Controller", currentScreen == Screen.CONTROLLER) { onNavigate(Screen.CONTROLLER) }
@@ -108,6 +110,8 @@ fun Sidebar(
             SidebarItem(Icons.Default.SettingsEthernet, "Converter", currentScreen == Screen.CONVERTER) { onNavigate(Screen.CONVERTER) }
             SidebarItem(Icons.Default.Output, "Output", currentScreen == Screen.OUTPUT) { onNavigate(Screen.OUTPUT) }
             SidebarItem(Icons.Default.Keyboard, "KBM", currentScreen == Screen.KBM) { onNavigate(Screen.KBM) }
+            SidebarItem(Icons.Default.BugReport, "Debug", currentScreen == Screen.DEBUG) { onNavigate(Screen.DEBUG) }
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }

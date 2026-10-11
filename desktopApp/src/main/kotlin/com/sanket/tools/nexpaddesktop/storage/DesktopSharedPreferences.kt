@@ -291,6 +291,7 @@ class DesktopSharedPreferences private constructor(
         const val KEY_LS_SENS_Y = "nexpad_ls_sensitivity_y"
         const val KEY_RS_SENS_X = "nexpad_rs_sensitivity_x"
         const val KEY_RS_SENS_Y = "nexpad_rs_sensitivity_y"
+        const val KEY_DSU_ENABLED = "nexpad_dsu_server_enabled"
 
         @Volatile
         private var instance: DesktopSharedPreferences? = null
@@ -396,5 +397,19 @@ class DesktopSharedPreferences private constructor(
             rsX = getFloat(KEY_RS_SENS_X, 1.0f),
             rsY = getFloat(KEY_RS_SENS_Y, 1.0f)
         )
+    }
+
+    /**
+     * Saves whether the DSU (Cemuhook UDP) motion server is enabled.
+     */
+    fun saveDsuEnabled(enabled: Boolean) {
+        putBoolean(KEY_DSU_ENABLED, enabled)
+    }
+
+    /**
+     * Loads whether the DSU (Cemuhook UDP) motion server is enabled (defaults to true).
+     */
+    fun loadDsuEnabled(): Boolean {
+        return getBoolean(KEY_DSU_ENABLED, true)
     }
 }

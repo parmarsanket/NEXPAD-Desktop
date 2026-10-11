@@ -23,9 +23,9 @@ import com.sanket.tools.nexpaddesktop.ui.ControllerType
  * This guarantees instant recomposition inside Navigation 3 (NavDisplay)
  * when phones connect/disconnect across all transports (USB ADB, USB AOA, Wi-Fi, Bluetooth).
  */
-class DesktopViewModel {
-
-    private val prefs = DesktopSharedPreferences.getInstance()
+class DesktopViewModel(
+    private val prefs: DesktopSharedPreferences = DesktopSharedPreferences.getInstance()
+) {
 
     // ── Connection & Transport State ──
     var isDriverConnected by mutableStateOf(false)
@@ -39,6 +39,7 @@ class DesktopViewModel {
     var activeController by mutableStateOf(prefs.loadControllerType())
     var latestInput by mutableStateOf(GamepadInput())
     var dsuClientCount by mutableStateOf(0)
+    var isDsuServerEnabled by mutableStateOf(prefs.loadDsuEnabled())
 
     // ── Sensitivity & Motion State ──
     var lsSensitivityX by mutableStateOf(prefs.getFloat(DesktopSharedPreferences.KEY_LS_SENS_X, 1.0f))
@@ -82,6 +83,11 @@ class DesktopViewModel {
     fun updateActiveController(controller: ControllerType) {
         activeController = controller
         prefs.saveControllerType(controller)
+    }
+
+    fun updateDsuServerEnabled(enabled: Boolean) {
+        isDsuServerEnabled = enabled
+        prefs.saveDsuEnabled(enabled)
     }
 
     /**

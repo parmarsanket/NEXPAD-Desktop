@@ -24,7 +24,7 @@ import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 import com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel
 import kotlinx.serialization.Serializable
 
-enum class Screen { HOME, CONTROLLER, PLUGINS, NODE, CONVERTER, OUTPUT, KBM }
+enum class Screen { HOME, CONTROLLER, PLUGINS, NODE, CONVERTER, OUTPUT, KBM, DEBUG }
 @Serializable
 enum class ControllerType(val displayName: String) { 
     XBOX_360("Microsoft Xbox 360"), 
@@ -71,7 +71,8 @@ fun MainApplicationWindow(
                         is DesktopScreenKey.Home -> HomeScreen(viewModel = viewModel)
                         is DesktopScreenKey.Controller -> ControllerScreen(viewModel = viewModel)
                         is DesktopScreenKey.Plugins -> PluginsScreen(viewModel = viewModel)
-                        is DesktopScreenKey.Output -> OutputScreen()
+                        is DesktopScreenKey.Output -> OutputScreen(viewModel = viewModel)
+                        is DesktopScreenKey.Debug -> DebugScreen()
                         else -> {
                             val screenName = (key as? DesktopScreenKey)?.toScreen()?.name ?: "UNKNOWN"
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
