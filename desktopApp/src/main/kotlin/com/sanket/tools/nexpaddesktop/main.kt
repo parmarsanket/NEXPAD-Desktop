@@ -145,6 +145,7 @@ fun main(args: Array<String>) {
     // ══════════════════════════════════════════════════════════
     DisposableEffect(viewModel.activeController) {
         val sendRumbleFeedback: (GamepadFeedback) -> Unit = { feedback ->
+            viewModel.latestFeedback = feedback
             scope.launch {
                 try {
                     val currentMode = viewModel.gyroSettings.computeSensorMode(viewModel.activeController)

@@ -19,16 +19,27 @@ enum class LogCategory(val displayName: String, val badge: String) {
     SYSTEM("System", "SYS")
 }
 
+enum class LogLevel(val displayName: String, val badge: String) {
+    ALL("All", "ALL"),
+    VERBOSE("Verbose", "VRB"),
+    INFO("Info", "INF"),
+    WARN("Warning", "WRN"),
+    ERROR("Error", "ERR")
+}
+
 data class LogEntry(
     val id: Long = 0L,
     val timestamp: String = "",
     val message: String,
     val category: LogCategory = LogCategory.SYSTEM,
+    val level: LogLevel = LogLevel.INFO,
     var count: Int = 1
 ) {
     fun displayString(): String {
         val timePrefix = if (timestamp.isNotBlank()) "[$timestamp] " else ""
-        return if (count > 1) "$timePrefix$message (x$count)" else "$timePrefix$message"
+        val levelPrefix = "[${level.badge}] "
+        val catPrefix = "[${category.badge}] "
+        return if (count > 1) "$timePrefix$levelPrefix$catPrefix$message (x$count)" else "$timePrefix$levelPrefix$catPrefix$message"
     }
 }
 
@@ -55,16 +66,28 @@ object AppLogger {
         System.setOut(object : PrintStream(originalOut) {
             override fun println(x: String?) {
                 super.println(x)
-                if (x != null) addLog(x)
+                if (x != null) addLog(x, isErrStream = false)
             }
             override fun print(x: String?) {
                 super.print(x)
-                if (x != null) addLog(x)
+                if (x != null) addLog(x, isErrStream = false)
+            }
+        })
+
+        val originalErr = System.err
+        System.setErr(object : PrintStream(originalErr) {
+            override fun println(x: String?) {
+                super.println(x)
+                if (x != null) addLog(x, isErrStream = true)
+            }
+            override fun print(x: String?) {
+                super.print(x)
+                if (x != null) addLog(x, isErrStream = true)
             }
         })
     }
 
-    private fun classify(message: String): LogCategory {
+    private fun classifyCategory(message: String): LogCategory {
         val upper = message.uppercase()
         return when {
             upper.contains("ERROR") || upper.contains("❌") || upper.contains("EXCEPTION") || upper.contains("FAILED") -> LogCategory.ERROR
@@ -79,12 +102,24 @@ object AppLogger {
         }
     }
 
-    private fun addLog(message: String) {
+    private fun classifyLevel(message: String, isErrStream: Boolean): LogLevel {
+        if (isErrStream) return LogLevel.ERROR
+        val upper = message.uppercase()
+        return when {
+            upper.contains("ERROR") || upper.contains("❌") || upper.contains("EXCEPTION") || upper.contains("FAILED") -> LogLevel.ERROR
+            upper.contains("WARN") || upper.contains("⚠️") || upper.contains("DROPPED") || upper.contains("TIMEOUT") -> LogLevel.WARN
+            upper.contains("DEBUG") || upper.contains("VRB") || upper.contains("VERBOSE") -> LogLevel.VERBOSE
+            else -> LogLevel.INFO
+        }
+    }
+
+    private fun addLog(message: String, isErrStream: Boolean = false) {
         val trimmed = message.trimEnd()
         if (trimmed.isEmpty()) return
 
         val now = LocalTime.now().format(timeFormatter)
-        val category = classify(trimmed)
+        val category = if (isErrStream) LogCategory.ERROR else classifyCategory(trimmed)
+        val level = classifyLevel(trimmed, isErrStream)
 
         synchronized(rawLogs) {
             val lastLog = rawLogs.lastOrNull()
@@ -99,7 +134,8 @@ object AppLogger {
                         id = nextId++,
                         timestamp = now,
                         message = trimmed,
-                        category = category
+                        category = category,
+                        level = level
                     )
                 )
             }
@@ -113,5 +149,41 @@ object AppLogger {
             rawLogs.clear()
         }
         updateTrigger.value++
+    }
+
+    fun exportLogsToFile(): java.io.File {
+        val timestamp = java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))
+        val homeDir = java.io.File(System.getProperty("user.home"))
+        val downloadsDir = java.io.File(homeDir, "Downloads")
+        val targetDir = if (downloadsDir.exists() && downloadsDir.isDirectory) downloadsDir else java.io.File(".")
+        val file = java.io.File(targetDir, "nexpad_debug_session_$timestamp.log")
+        
+        val sb = StringBuilder()
+        sb.appendLine("================================================================================")
+        sb.appendLine("           NEXPAD DESKTOP ENGINE — DIAGNOSTIC TELEMETRY LOG                     ")
+        sb.appendLine("================================================================================")
+        sb.appendLine("Session Generated: ${java.time.LocalDateTime.now()}")
+        sb.appendLine("Host Platform:     ${System.getProperty("os.name")} (${System.getProperty("os.arch")})")
+        sb.appendLine("Java Runtime:      ${System.getProperty("java.version")} by ${System.getProperty("java.vendor")}")
+        sb.appendLine("Total Entries:     ${rawLogs.size}")
+        sb.appendLine("================================================================================")
+        sb.appendLine("")
+        
+        synchronized(rawLogs) {
+            rawLogs.forEach { entry ->
+                val countStr = if (entry.count > 1) " [x${entry.count}]" else ""
+                sb.appendLine(String.format("%04d [%s] [%-5s] [%-7s] %s%s", 
+                    entry.id % 10000, 
+                    entry.timestamp, 
+                    entry.level.badge, 
+                    entry.category.badge, 
+                    entry.message, 
+                    countStr
+                ))
+            }
+        }
+        
+        file.writeText(sb.toString(), Charsets.UTF_8)
+        return file
     }
 }

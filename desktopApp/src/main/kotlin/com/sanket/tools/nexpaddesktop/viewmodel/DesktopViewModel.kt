@@ -3,6 +3,7 @@ package com.sanket.tools.nexpaddesktop.viewmodel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.sanket.tools.nexpad.model.GamepadFeedback
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpaddesktop.connection.ActiveTransport
 import com.sanket.tools.nexpaddesktop.connection.DriverInstallState
@@ -38,6 +39,7 @@ class DesktopViewModel(
     // ── Virtual Gamepad & Controller State ──
     var activeController by mutableStateOf(prefs.loadControllerType())
     var latestInput by mutableStateOf(GamepadInput())
+    var latestFeedback by mutableStateOf(GamepadFeedback(leftMotorSpeed = 0, rightMotorSpeed = 0))
     var dsuClientCount by mutableStateOf(0)
     var isDsuServerEnabled by mutableStateOf(prefs.loadDsuEnabled())
 
