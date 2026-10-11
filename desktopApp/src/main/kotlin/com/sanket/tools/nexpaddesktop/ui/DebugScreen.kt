@@ -6,7 +6,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,9 +25,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.PointerIcon
-import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -47,7 +43,6 @@ import com.sanket.tools.nexpaddesktop.utils.LogCategory
 import com.sanket.tools.nexpaddesktop.utils.LogEntry
 import com.sanket.tools.nexpaddesktop.utils.LogLevel
 import com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel
-import java.awt.Cursor
 import kotlin.math.PI
 import kotlin.math.sqrt
 
@@ -89,8 +84,8 @@ private enum class DebugLayoutMode(val label: String, val icon: String) {
  *
  * Provides complete 360-degree visibility into the background engine loops:
  * - 100% Responsive and vertically scrollable (resilient to small laptop windows)
- * - Interactive Draggable Resize Splitter with two-way arrow cursor (↕ / ⇄) to expand terminal size
- * - Side-by-Side and Stacked Layouts with quick size presets (350px, 500px, 700px, Max)
+ * - Clean Log Size Presets (Compact, Standard, Expanded, Max) with intuitive expand/shrink controls
+ * - Side-by-Side and Stacked Layouts with smooth collapsible Hardware Inspector
  * - Live System Telemetry HUD Bar (session socket, RX/TX packet counters, packet loss %, ViGEm bus, DSU port)
  * - Real-Time Hardware Stream Inspector (dual thumbstick crosshairs, trigger gauges, button matrix, 6-axis IMU, rumble bars)
  * - Rich Monospace Terminal with keyword search highlighting, auto-scroll toggle, pause/freeze stream
@@ -122,10 +117,7 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
     var isInspectorCollapsed by remember { mutableStateOf(false) }
 
     // Adjustable log section sizing
-    var terminalHeight by remember { mutableStateOf(440.dp) }
-    var sideSplitRatio by remember { mutableStateOf(0.55f) } // 55% for terminal in side layout
-    var isDraggingVertical by remember { mutableStateOf(false) }
-    var isDraggingHorizontal by remember { mutableStateOf(false) }
+    var terminalHeight by remember { mutableStateOf(480.dp) }
 
     // Filter logs according to active category, level, and search query
     val filteredLogs = remember(allLogs, selectedFilter, selectedLevelFilter, searchQuery) {
@@ -179,7 +171,6 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
             .background(NeonPalette.PanelBgBottom)
     ) {
         val screenWidth = maxWidth
-        val screenHeight = maxHeight
         val isNarrow = screenWidth < 980.dp
         val isUltraNarrow = screenWidth < 680.dp
 
@@ -190,7 +181,7 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
                 .padding(horizontal = if (isUltraNarrow) 10.dp else 16.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // ── 1. Top Header & Primary Action Controls (Fully Responsive Wrapping) ──
+            // ── 1. Top Header & Primary Action Controls (Fully Responsive) ──
             if (isNarrow) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -376,61 +367,26 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
             // ── 4. Main Body: Stacked vs Side-by-Side vs Logs-Only ──
             when (layoutMode) {
                 DebugLayoutMode.SIDE_BY_SIDE -> {
-                    // Side-by-Side (Split): Inspector on left, Terminal on right with draggable horizontal splitter
+                    // Side-by-Side: Hardware Inspector on left, Terminal on right
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(terminalHeight),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         // Left Column: Hardware Stream Inspector
                         Box(
                             modifier = Modifier
-                                .weight(1f - sideSplitRatio)
+                                .weight(0.46f)
                                 .fillMaxHeight()
                         ) {
                             HardwareStreamInspector(viewModel = viewModel)
                         }
 
-                        // Draggable Horizontal Splitter Bar (with two-way horizontal resize cursor ⇄)
-                        Box(
-                            modifier = Modifier
-                                .width(12.dp)
-                                .fillMaxHeight()
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(if (isDraggingHorizontal) NeonPalette.Cyan.copy(alpha = 0.35f) else Color(0xFF0D1526))
-                                .border(1.dp, if (isDraggingHorizontal) NeonPalette.Cyan else Color(0xFF1B273F), RoundedCornerShape(6.dp))
-                                .pointerHoverIcon(PointerIcon(Cursor.getPredefinedCursor(Cursor.E_RESIZE_CURSOR)))
-                                .pointerInput(Unit) {
-                                    detectDragGestures(
-                                        onDragStart = { isDraggingHorizontal = true },
-                                        onDragEnd = { isDraggingHorizontal = false },
-                                        onDragCancel = { isDraggingHorizontal = false }
-                                    ) { change, dragAmount ->
-                                        change.consume()
-                                        val totalWidthPx = screenWidth.toPx()
-                                        if (totalWidthPx > 100f) {
-                                            val deltaRatio = dragAmount.x / totalWidthPx
-                                            sideSplitRatio = (sideSplitRatio - deltaRatio).coerceIn(0.25f, 0.75f)
-                                        }
-                                    }
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                verticalArrangement = Arrangement.spacedBy(3.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                repeat(3) {
-                                    Box(modifier = Modifier.size(2.dp, 8.dp).background(NeonPalette.Cyan.copy(alpha = 0.7f)))
-                                }
-                            }
-                        }
-
                         // Right Column: Terminal Console
                         Box(
                             modifier = Modifier
-                                .weight(sideSplitRatio)
+                                .weight(0.54f)
                                 .fillMaxHeight()
                         ) {
                             TerminalConsolePanel(
@@ -480,27 +436,28 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
                                 )
                             }
 
-                            // Quick Terminal Height Presets
+                            // Clean Log Height Sizing Presets
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text("Log Height:", color = Color.Gray, fontSize = 10.sp)
-                                listOf(350, 500, 700).forEach { px ->
+                                listOf(350, 480, 650, 850).forEach { px ->
                                     val isSelected = terminalHeight == px.dp
                                     Box(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(4.dp))
-                                            .background(if (isSelected) NeonPalette.Cyan.copy(alpha = 0.2f) else Color(0xFF0F172A))
+                                            .background(if (isSelected) NeonPalette.Cyan.copy(alpha = 0.22f) else Color(0xFF0F172A))
                                             .border(1.dp, if (isSelected) NeonPalette.Cyan else Color(0xFF1E293B), RoundedCornerShape(4.dp))
                                             .clickable { terminalHeight = px.dp }
-                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            .padding(horizontal = 7.dp, vertical = 2.5.dp)
                                     ) {
                                         Text(
                                             text = "${px}px",
-                                            color = if (isSelected) NeonPalette.Cyan else Color.White.copy(alpha = 0.6f),
+                                            color = if (isSelected) NeonPalette.Cyan else Color.White.copy(alpha = 0.65f),
                                             fontSize = 9.5.sp,
-                                            fontFamily = FontFamily.Monospace
+                                            fontFamily = FontFamily.Monospace,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                         )
                                     }
                                 }
@@ -516,47 +473,7 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
                         }
                     }
 
-                    // 2. Interactive Draggable Resize Splitter Bar (↕ Two-Way Arrow Cursor)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(16.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(if (isDraggingVertical) NeonPalette.Cyan.copy(alpha = 0.25f) else Color(0xFF0B111E))
-                            .border(1.dp, if (isDraggingVertical) NeonPalette.Cyan else Color(0xFF182236), RoundedCornerShape(6.dp))
-                            .pointerHoverIcon(PointerIcon(Cursor.getPredefinedCursor(Cursor.N_RESIZE_CURSOR)))
-                            .pointerInput(Unit) {
-                                detectDragGestures(
-                                    onDragStart = { isDraggingVertical = true },
-                                    onDragEnd = { isDraggingVertical = false },
-                                    onDragCancel = { isDraggingVertical = false }
-                                ) { change, dragAmount ->
-                                    change.consume()
-                                    // Dragging up increases terminal height, dragging down decreases
-                                    val newHeight = terminalHeight - dragAmount.y.dp
-                                    terminalHeight = newHeight.coerceIn(240.dp, 1200.dp)
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(modifier = Modifier.width(36.dp).height(2.dp).background(NeonPalette.Cyan.copy(alpha = 0.5f)))
-                            Text(
-                                text = "↕ DRAG TO RESIZE LOG SECTION (${terminalHeight.value.toInt()}px)",
-                                color = if (isDraggingVertical) NeonPalette.Cyan else Color.White.copy(alpha = 0.55f),
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace,
-                                letterSpacing = 0.5.sp
-                            )
-                            Box(modifier = Modifier.width(36.dp).height(2.dp).background(NeonPalette.Cyan.copy(alpha = 0.5f)))
-                        }
-                    }
-
-                    // 3. Resizable Terminal Console Panel
+                    // 2. Resizable Terminal Console Panel
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -574,26 +491,6 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
                             onSearchQueryChange = { searchQuery = it },
                             onRowClick = { selectedLogEntry = it }
                         )
-
-                        // Corner Angle Resize Handle (Bottom-Right)
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .size(20.dp)
-                                .clip(RoundedCornerShape(bottomEnd = 10.dp))
-                                .background(Color(0xFF131D33))
-                                .pointerHoverIcon(PointerIcon(Cursor.getPredefinedCursor(Cursor.NW_RESIZE_CURSOR)))
-                                .pointerInput(Unit) {
-                                    detectDragGestures { change, dragAmount ->
-                                        change.consume()
-                                        val newHeight = terminalHeight + dragAmount.y.dp
-                                        terminalHeight = newHeight.coerceIn(240.dp, 1200.dp)
-                                    }
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("⌟", color = NeonPalette.Cyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
                     }
                 }
 
