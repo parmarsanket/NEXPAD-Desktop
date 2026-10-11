@@ -362,6 +362,20 @@ class AdbBridgeManager(
                             out.write(echoBytes)
                             out.flush()
                         }
+                    } else if (delta < -100) {
+                        println("🔄 [ADB/Bridge] Large negative sequence delta ($delta)! Client stream resynced to seq ${gamepadInput.sequenceNumber}.")
+                        lastSequenceNumber = gamepadInput.sequenceNumber
+                        synchronized(outLock) {
+                            NexpadProtocol.encodeFeedback(
+                                feedback = currentFeedback,
+                                echoSequenceNumber = gamepadInput.sequenceNumber,
+                                packetLossByte = latestLossPctByte.get().toByte(),
+                                out = echoBytes,
+                                offset = 0
+                            )
+                            out.write(echoBytes)
+                            out.flush()
+                        }
                     }
 
                     onInputReceived?.invoke(gamepadInput)

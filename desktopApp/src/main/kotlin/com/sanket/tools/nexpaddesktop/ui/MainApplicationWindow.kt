@@ -22,8 +22,10 @@ import com.sanket.tools.nexpaddesktop.model.GyroSettings
 import com.sanket.tools.nexpaddesktop.ui.components.drawCyberGrid
 import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 import com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel
+import kotlinx.serialization.Serializable
 
 enum class Screen { HOME, CONTROLLER, PLUGINS, NODE, CONVERTER, OUTPUT, KBM }
+@Serializable
 enum class ControllerType(val displayName: String) { 
     XBOX_360("Microsoft Xbox 360"), 
     DUALSHOCK_4("Sony PlayStation 4 (DualShock 4)") 

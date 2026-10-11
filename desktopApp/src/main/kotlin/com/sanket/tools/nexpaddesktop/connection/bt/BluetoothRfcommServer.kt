@@ -472,6 +472,19 @@ class BluetoothRfcommServer {
                                 WinsockBluetooth.INSTANCE.send(socket, echoBytes, echoBytes.size, 0)
                             }
                         }
+                    } else if (delta < -100) {
+                        println("🔄 [Bluetooth] Large negative sequence delta ($delta)! Client stream resynced to seq ${gamepadInput.sequenceNumber}.")
+                        lastSequenceNumber = gamepadInput.sequenceNumber
+                        synchronized(sendLock) {
+                            NexpadProtocol.encodeFeedback(
+                                feedback = currentFeedback,
+                                echoSequenceNumber = gamepadInput.sequenceNumber,
+                                packetLossByte = latestLossPctByte.get().toByte(),
+                                out = echoBytes,
+                                offset = 0
+                            )
+                            WinsockBluetooth.INSTANCE.send(socket, echoBytes, echoBytes.size, 0)
+                        }
                     }
 
                     // Always capture latest packet in this read batch

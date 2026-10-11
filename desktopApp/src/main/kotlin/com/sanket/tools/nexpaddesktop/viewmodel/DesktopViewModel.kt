@@ -7,6 +7,7 @@ import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpaddesktop.connection.ActiveTransport
 import com.sanket.tools.nexpaddesktop.connection.DriverInstallState
 import com.sanket.tools.nexpaddesktop.model.GyroSettings
+import com.sanket.tools.nexpaddesktop.storage.DesktopSharedPreferences
 import com.sanket.tools.nexpaddesktop.ui.ControllerType
 
 /**
@@ -17,11 +18,14 @@ import com.sanket.tools.nexpaddesktop.ui.ControllerType
  * - ViGEmBus driver connection and installation state
  * - Virtual gamepad controller selection and real-time input telemetry
  * - Motion/gyro smoothing and sensitivity configuration
+ * - Persistent preferences via DesktopSharedPreferences
  *
  * This guarantees instant recomposition inside Navigation 3 (NavDisplay)
  * when phones connect/disconnect across all transports (USB ADB, USB AOA, Wi-Fi, Bluetooth).
  */
 class DesktopViewModel {
+
+    private val prefs = DesktopSharedPreferences.getInstance()
 
     // ── Connection & Transport State ──
     var isDriverConnected by mutableStateOf(false)
@@ -32,23 +36,53 @@ class DesktopViewModel {
     var onInstallAoaDriver: () -> Unit = {}
 
     // ── Virtual Gamepad & Controller State ──
-    var activeController by mutableStateOf(ControllerType.XBOX_360)
+    var activeController by mutableStateOf(prefs.loadControllerType())
     var latestInput by mutableStateOf(GamepadInput())
     var dsuClientCount by mutableStateOf(0)
 
     // ── Sensitivity & Motion State ──
-    var lsSensitivityX by mutableStateOf(1.0f)
-    var lsSensitivityY by mutableStateOf(1.0f)
-    var rsSensitivityX by mutableStateOf(1.0f)
-    var rsSensitivityY by mutableStateOf(1.0f)
-    var gyroSettings by mutableStateOf(GyroSettings())
+    var lsSensitivityX by mutableStateOf(prefs.getFloat(DesktopSharedPreferences.KEY_LS_SENS_X, 1.0f))
+    var lsSensitivityY by mutableStateOf(prefs.getFloat(DesktopSharedPreferences.KEY_LS_SENS_Y, 1.0f))
+    var rsSensitivityX by mutableStateOf(prefs.getFloat(DesktopSharedPreferences.KEY_RS_SENS_X, 1.0f))
+    var rsSensitivityY by mutableStateOf(prefs.getFloat(DesktopSharedPreferences.KEY_RS_SENS_Y, 1.0f))
+    var gyroSettings by mutableStateOf(prefs.loadGyroSettings())
     var processedYaw by mutableStateOf(0f)
     var processedPitch by mutableStateOf(0f)
 
     // ── Diagnostics & Actions ──
     var appError by mutableStateOf("")
     var onRecalibrate: () -> Unit = {}
-    var onControllerChange: (ControllerType) -> Unit = {}
+    var onControllerChange: (ControllerType) -> Unit = { updateActiveController(it) }
+
+    fun updateGyroSettings(newSettings: GyroSettings) {
+        gyroSettings = newSettings
+        prefs.saveGyroSettings(newSettings)
+    }
+
+    fun updateLsSensitivityX(value: Float) {
+        lsSensitivityX = value
+        prefs.putFloat(DesktopSharedPreferences.KEY_LS_SENS_X, value)
+    }
+
+    fun updateLsSensitivityY(value: Float) {
+        lsSensitivityY = value
+        prefs.putFloat(DesktopSharedPreferences.KEY_LS_SENS_Y, value)
+    }
+
+    fun updateRsSensitivityX(value: Float) {
+        rsSensitivityX = value
+        prefs.putFloat(DesktopSharedPreferences.KEY_RS_SENS_X, value)
+    }
+
+    fun updateRsSensitivityY(value: Float) {
+        rsSensitivityY = value
+        prefs.putFloat(DesktopSharedPreferences.KEY_RS_SENS_Y, value)
+    }
+
+    fun updateActiveController(controller: ControllerType) {
+        activeController = controller
+        prefs.saveControllerType(controller)
+    }
 
     /**
      * Updates the connected device metadata and active transport.

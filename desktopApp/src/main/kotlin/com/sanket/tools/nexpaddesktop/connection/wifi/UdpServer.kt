@@ -81,6 +81,10 @@ class UdpServer(
         return javaSock?.address?.hostAddress ?: javaSock?.hostString
     }
 
+    private var heartbeatJob: kotlinx.coroutines.Job? = null
+    private var totalFeedbacksSent = 0L
+    private var lastNullTargetLogTime = 0L
+
     @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     private val dedicatedDispatcher = kotlinx.coroutines.newSingleThreadContext("UdpServerThread")
 
@@ -103,19 +107,31 @@ class UdpServer(
         serverSocket = aSocket(selectorManager!!).udp().bind(InetSocketAddress("0.0.0.0", port))
         
         println("UDP Server listening on port $port")
+
+        // 1 Hz Autonomous Keepalive Heartbeat: guarantees the mobile client watchdog never starves
+        heartbeatJob?.cancel()
+        heartbeatJob = kotlinx.coroutines.CoroutineScope(dedicatedDispatcher).launch {
+            while (isActive) {
+                kotlinx.coroutines.delay(1000)
+                val target = clientAddress
+                if (target != null) {
+                    sendFeedback(lastFeedback, echoSequenceNumber = lastSequenceNumber.coerceAtLeast(0), packetLossByte = cachedLossPctByte)
+                }
+            }
+        }
         
         while (isActive) {
             try {
                 val socket = serverSocket ?: break
                 
-                // Wait for a packet, timeout after 2 seconds to detect sudden disconnects
-                val datagram = kotlinx.coroutines.withTimeoutOrNull(2000L.milliseconds) {
+                // Wait for a packet, timeout after 5 seconds to detect true disconnects (resilient to Wi-Fi jitter)
+                val datagram = kotlinx.coroutines.withTimeoutOrNull(5000L.milliseconds) {
                     socket.receive()
                 }
 
                 if (datagram == null) {
                     if (clientAddress != null) {
-                        println("⚠️ [UDP DEBUG] Connection timed out (no packets for 2 seconds). Disconnecting...")
+                        println("⚠️ [UDP SERVER] Connection timed out (no packets for 5 seconds from ${formatAddress(clientAddress)}). Disconnecting...")
                         clientAddress = null
                         onClientDisconnected?.invoke()
                     }
@@ -133,9 +149,12 @@ class UdpServer(
                 // Security & Robustness: Only adopt a new address if it sends a formal CONNECT handshake.
                 if (clientAddress != datagram.address) {
                     if (firstByte != NexpadProtocol.PACKET_TYPE_CONNECT) {
+                        if (totalPackets % 60 == 0L) {
+                            println("⚠️ [UDP SERVER] Ignoring packet (type 0x${firstByte.toString(16)}) from ${formatAddress(datagram.address)}: active client is ${formatAddress(clientAddress)}")
+                        }
                         continue // Ignore unsolicited packets from anyone who hasn't handshaked
                     }
-                    println("📡 [UDP DEBUG] New client session detected! Resetting sequence tracker.")
+                    println("📡 [UDP SERVER] New client session detected from ${formatAddress(datagram.address)}! Resetting sequence tracker.")
                     clientAddress = datagram.address
                     lastSequenceNumber = Int.MIN_VALUE
                 }
@@ -234,8 +253,14 @@ class UdpServer(
                             sendFeedback(lastFeedback, echoSequenceNumber = input.sequenceNumber, packetLossByte = cachedLossPctByte)
                         }
                     } else {
-                        if (packetCount % 10 == 0) {
-                            println("⚠️ [UDP DEBUG] Dropped STALE/REORDERED packet! Seq: ${input.sequenceNumber}, Expected > $lastSequenceNumber")
+                        // If sequence number jumped backwards significantly (e.g. client app restarted stream), resync!
+                        if (delta < -100) {
+                            println("🔄 [UDP SERVER] Large negative sequence delta ($delta)! Client stream resynced to seq ${input.sequenceNumber}.")
+                            lastSequenceNumber = input.sequenceNumber
+                            onInputReceived(input)
+                            sendFeedback(lastFeedback, echoSequenceNumber = input.sequenceNumber, packetLossByte = cachedLossPctByte)
+                        } else if (packetCount % 10 == 0) {
+                            println("⚠️ [UDP SERVER] Dropped STALE/REORDERED packet! Seq: ${input.sequenceNumber}, Expected > $lastSequenceNumber (delta: $delta)")
                         }
                     }
                 }
@@ -251,8 +276,20 @@ class UdpServer(
     }
 
     suspend fun sendFeedback(feedback: GamepadFeedback, echoSequenceNumber: Int = 0, packetLossByte: Byte = 0) {
-        val target = clientAddress ?: return
-        val socket = serverSocket ?: return
+        val target = clientAddress
+        if (target == null) {
+            val now = System.currentTimeMillis()
+            if (now - lastNullTargetLogTime > 2000) {
+                lastNullTargetLogTime = now
+                println("⚠️ [UDP SERVER] sendFeedback skipped: clientAddress is null")
+            }
+            return
+        }
+        val socket = serverSocket
+        if (socket == null) {
+            println("⚠️ [UDP SERVER] sendFeedback skipped: serverSocket is null")
+            return
+        }
         lastFeedback = feedback
         try {
             val bytes = NexpadProtocol.encodeFeedback(feedback, echoSequenceNumber, packetLossByte)
@@ -260,13 +297,20 @@ class UdpServer(
             sendMutex.withLock {
                 socket.send(packet)
             }
+            totalFeedbacksSent++
+            if (totalFeedbacksSent % 120 == 0L) {
+                println("📡 [UDP SERVER] Transmitted feedback heartbeat: $totalFeedbacksSent packets to ${formatAddress(target)}")
+            }
         } catch (e: Exception) {
+            println("❌ [UDP ERROR] Failed to send feedback to ${formatAddress(target)}: ${e.message}")
             e.printStackTrace()
         }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun stop() {
+        heartbeatJob?.cancel()
+        heartbeatJob = null
         if (System.getProperty("os.name").lowercase().contains("win")) {
             try {
                 WinMM.INSTANCE?.timeEndPeriod(1)

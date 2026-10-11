@@ -235,14 +235,19 @@ object AoaTransport {
 
                             // Trigger immediate feedback echo for EVERY packet (Conflated channel avoids queueing)
                             triggerOutChannel.trySend(Unit)
+                        } else if (delta < -100) {
+                            println("🔄 [AOA/Transport] Large negative sequence delta ($delta)! Resyncing sequence tracker to ${input.sequenceNumber}.")
+                            lastSequenceNumber = input.sequenceNumber
+                            latestEchoSequence.set(input.sequenceNumber)
+                            triggerOutChannel.trySend(Unit)
                         }
 
                         onInputReceived(input)
                     }
                 } else if (result == LibUsb.ERROR_TIMEOUT) {
-                    // Normal timeout during read; check if active session timed out
-                    if (isSessionActive && (System.currentTimeMillis() - lastPacketReceivedTime > 2500L)) {
-                        println("[AOA/Transport] AOA stream idle (no packets for 2.5s). Ending active session.")
+                    // Normal timeout during read; check if active session timed out (5s resilient threshold)
+                    if (isSessionActive && (System.currentTimeMillis() - lastPacketReceivedTime > 5000L)) {
+                        println("[AOA/Transport] AOA stream idle (no packets for 5.0s). Ending active session.")
                         isSessionActive = false
                         onSessionEnded()
                     }

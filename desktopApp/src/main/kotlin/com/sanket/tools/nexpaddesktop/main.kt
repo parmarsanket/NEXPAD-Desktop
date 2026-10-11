@@ -9,6 +9,7 @@ import com.sanket.tools.nexpaddesktop.driver.IGamepadDriver
 import com.sanket.tools.nexpaddesktop.driver.VirtualGamepadDriver
 import com.sanket.tools.nexpaddesktop.driver.VirtualDualShock4Driver
 import com.sanket.tools.nexpaddesktop.model.GyroSettings
+import com.sanket.tools.nexpaddesktop.model.computeSensorMode
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpaddesktop.ui.MainApplicationWindow
 import com.sanket.tools.nexpaddesktop.ui.theme.NexpadDesktopTheme
@@ -142,13 +143,7 @@ fun main(args: Array<String>) {
         val sendRumbleFeedback: (GamepadFeedback) -> Unit = { feedback ->
             scope.launch {
                 try {
-                    val currentMode = if (viewModel.activeController == ControllerType.XBOX_360 &&
-                        viewModel.gyroSettings.enabled &&
-                        viewModel.gyroSettings.inputMode == com.sanket.tools.nexpaddesktop.model.InputMode.ABSOLUTE_TILT) {
-                        com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_GRAVITY
-                    } else {
-                        com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_IMU_6AXIS
-                    }
+                    val currentMode = viewModel.gyroSettings.computeSensorMode(viewModel.activeController)
                     val feedbackWithMode = feedback.copy(requestedSensorMode = currentMode)
                     when (viewModel.activeTransport) {
                         ActiveTransport.WIFI, ActiveTransport.USB_TETHERING -> server?.sendFeedback(feedbackWithMode)
@@ -198,13 +193,7 @@ fun main(args: Array<String>) {
     //  SENSOR MODE SYNC — Dynamic sensor multiplexing (IMU vs Gravity)
     // ══════════════════════════════════════════════════════════
     LaunchedEffect(viewModel.activeController, viewModel.gyroSettings.enabled, viewModel.gyroSettings.inputMode, viewModel.activeTransport) {
-        val targetSensorMode = if (viewModel.activeController == ControllerType.XBOX_360 &&
-            viewModel.gyroSettings.enabled &&
-            viewModel.gyroSettings.inputMode == com.sanket.tools.nexpaddesktop.model.InputMode.ABSOLUTE_TILT) {
-            com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_GRAVITY
-        } else {
-            com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_IMU_6AXIS
-        }
+        val targetSensorMode = viewModel.gyroSettings.computeSensorMode(viewModel.activeController)
         val feedback = GamepadFeedback(
             leftMotorSpeed = 0,
             rightMotorSpeed = 0,
@@ -348,7 +337,7 @@ fun main(args: Array<String>) {
         gyroProcessor.reset()
     }
     viewModel.onControllerChange = {
-        viewModel.activeController = it
+        viewModel.updateActiveController(it)
     }
     viewModel.dsuClientCount = dsuServer.getClientCount()
 
