@@ -1,5 +1,6 @@
 package com.sanket.tools.nexpaddesktop.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -565,7 +566,7 @@ fun PluginsScreen(
                     .padding(layout.horizontalPadding),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Sleek Segmented Switcher Strip
+                // Sleek Segmented Switcher Strip (Cyber HUD Glass)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -575,37 +576,50 @@ fun PluginsScreen(
                         .padding(3.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(32.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(if (singlePaneTab == 0) NeonPalette.Cyan else Color.Transparent)
-                            .clickable { singlePaneTab = 0 },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "💻 Code Editor & Mapping",
-                            color = if (singlePaneTab == 0) Color.Black else Color.White.copy(alpha = 0.7f),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.5.sp
+                    val activeTabBrush = remember {
+                        Brush.horizontalGradient(
+                            listOf(
+                                NeonPalette.Cyan.copy(alpha = 0.22f),
+                                Color(0xFF7C3AED).copy(alpha = 0.15f)
+                            )
                         )
                     }
 
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .height(32.dp)
+                            .height(34.dp)
                             .clip(RoundedCornerShape(6.dp))
-                            .background(if (singlePaneTab == 1) NeonPalette.Cyan else Color.Transparent)
+                            .then(if (singlePaneTab == 0) Modifier.background(activeTabBrush).border(1.dp, NeonPalette.Cyan, RoundedCornerShape(6.dp)) else Modifier)
+                            .clickable { singlePaneTab = 0 },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (availableWidth < 460.dp) "💻 Editor" else "💻 Code Editor & Mapping",
+                            color = if (singlePaneTab == 0) NeonPalette.Cyan else Color.White.copy(alpha = 0.65f),
+                            fontWeight = if (singlePaneTab == 0) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = 11.5.sp,
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(34.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .then(if (singlePaneTab == 1) Modifier.background(activeTabBrush).border(1.dp, NeonPalette.Cyan, RoundedCornerShape(6.dp)) else Modifier)
                             .clickable { singlePaneTab = 1 },
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "🎮 Live Sandbox & Export",
-                            color = if (singlePaneTab == 1) Color.Black else Color.White.copy(alpha = 0.7f),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.5.sp
+                            text = if (availableWidth < 460.dp) "🎮 Sandbox" else "🎮 Live Sandbox & Export",
+                            color = if (singlePaneTab == 1) NeonPalette.Cyan else Color.White.copy(alpha = 0.65f),
+                            fontWeight = if (singlePaneTab == 1) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = 11.5.sp,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
                 }
@@ -931,6 +945,79 @@ fun PluginsScreen(
 }
 
 /**
+ * SplitButton action for AI prompt copying with tier dropdown selector.
+ */
+@Composable
+private fun PromptSplitButton(
+    selectedPromptTier: PromptTier,
+    onSelectPromptTier: (PromptTier) -> Unit,
+    onCopyAiPrompt: () -> Unit,
+    height: androidx.compose.ui.unit.Dp = 28.dp
+) {
+    Box {
+        var showTierMenu by remember { mutableStateOf(false) }
+        Row(
+            modifier = Modifier
+                .height(height)
+                .clip(RoundedCornerShape(6.dp))
+        ) {
+            Button(
+                onClick = onCopyAiPrompt,
+                shape = RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp, topEnd = 0.dp, bottomEnd = 0.dp),
+                contentPadding = PaddingValues(horizontal = 9.dp, vertical = 3.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
+                modifier = Modifier.height(height)
+            ) {
+                Text(
+                    "${selectedPromptTier.icon} Copy AI Prompt",
+                    fontSize = if (height < 30.dp) 10.5.sp else 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 1,
+                    softWrap = false
+                )
+            }
+            Button(
+                onClick = { showTierMenu = true },
+                shape = RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = 6.dp, bottomEnd = 6.dp),
+                contentPadding = PaddingValues(horizontal = 5.dp, vertical = 3.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6D28D9)),
+                modifier = Modifier.height(height)
+            ) {
+                Text("▼", fontSize = 9.sp, color = Color.White, maxLines = 1, softWrap = false)
+            }
+        }
+        DropdownMenu(
+            expanded = showTierMenu,
+            onDismissRequest = { showTierMenu = false }
+        ) {
+            PromptTier.entries.forEach { tier ->
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(
+                                "${tier.icon} ${tier.displayName}${if (tier == selectedPromptTier) " ✓" else ""}",
+                                fontWeight = if (tier == selectedPromptTier) FontWeight.Bold else FontWeight.Normal,
+                                fontSize = 13.sp
+                            )
+                            Text(
+                                tier.description,
+                                fontSize = 10.5.sp,
+                                color = Color.Gray
+                            )
+                        }
+                    },
+                    onClick = {
+                        onSelectPromptTier(tier)
+                        showTierMenu = false
+                    }
+                )
+            }
+        }
+    }
+}
+
+/**
  * Left Component Editor Pane with adaptive header, category carousels, and monospace code editor.
  */
 @Composable
@@ -963,210 +1050,160 @@ private fun ComponentEditorPane(
             .padding(if (isShort) 8.dp else 12.dp),
         verticalArrangement = Arrangement.spacedBy(if (isShort) 6.dp else 8.dp)
     ) {
-        // 1. Header & AI Instructor Actions (Responsive to column width)
-        if (isNarrow) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Column {
-                    Text(
-                        "🎮 Controller Component Studio",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
-                    Text(
-                        "Target: $defaultControl ($category • ${targetWidthDp}x${targetHeightDp}dp)",
-                        color = NeonPalette.Cyan.copy(alpha = 0.85f),
-                        fontSize = 10.5.sp
-                    )
-                }
+        // 1. Header & AI Instructor Actions (Responsive BoxWithConstraints)
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val isHeaderStacked = maxWidth < 820.dp
+            if (isHeaderStacked) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Column {
+                        Text(
+                            "🎮 Controller Component Studio",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Target: $defaultControl",
+                                color = NeonPalette.Cyan,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 10.5.sp,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                            Text(
+                                "• $category • ${targetWidthDp}x${targetHeightDp}dp",
+                                color = Color.White.copy(alpha = 0.65f),
+                                fontSize = 10.5.sp,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    }
 
-                // Dedicated Sub-row for Action Buttons — NEVER squished into vertical letters!
+                    // Dedicated Sub-row for Action Buttons — NEVER squished into vertical letters!
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        PromptSplitButton(
+                            selectedPromptTier = selectedPromptTier,
+                            onSelectPromptTier = onSelectPromptTier,
+                            onCopyAiPrompt = onCopyAiPrompt,
+                            height = 28.dp
+                        )
+
+                        OutlinedButton(
+                            onClick = onOpenPromptModal,
+                            shape = RoundedCornerShape(6.dp),
+                            border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f)),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = NeonPalette.Cyan.copy(alpha = 0.08f)
+                            ),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp),
+                            modifier = Modifier.height(28.dp)
+                        ) {
+                            Text("👁️ View Prompt", fontSize = 10.5.sp, color = NeonPalette.Cyan, maxLines = 1, softWrap = false)
+                        }
+
+                        OutlinedButton(
+                            onClick = onLoadStarter,
+                            shape = RoundedCornerShape(6.dp),
+                            border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f)),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = NeonPalette.Cyan.copy(alpha = 0.08f)
+                            ),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp),
+                            modifier = Modifier.height(28.dp)
+                        ) {
+                            Text("⚡ Load Starter Code", fontSize = 10.5.sp, color = NeonPalette.Cyan, maxLines = 1, softWrap = false)
+                        }
+                    }
+                }
+            } else {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // SplitButton: Copy AI Prompt with tier dropdown
-                    Box {
-                        var showTierMenu by remember { mutableStateOf(false) }
+                    Column(modifier = Modifier.weight(1f, fill = false)) {
+                        Text(
+                            "🎮 Controller Component Studio",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            maxLines = 1,
+                            softWrap = false
+                        )
                         Row(
-                            modifier = Modifier
-                                .height(28.dp)
-                                .clip(RoundedCornerShape(6.dp))
+                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Main copy action
-                            Button(
-                                onClick = onCopyAiPrompt,
-                                shape = RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp, topEnd = 0.dp, bottomEnd = 0.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
-                                modifier = Modifier.height(28.dp)
-                            ) {
-                                Text("${selectedPromptTier.icon} Copy AI Prompt", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                            }
-                            // Dropdown chevron
-                            Button(
-                                onClick = { showTierMenu = true },
-                                shape = RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = 6.dp, bottomEnd = 6.dp),
-                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 3.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6D28D9)),
-                                modifier = Modifier.height(28.dp)
-                            ) {
-                                Text("▼", fontSize = 9.sp, color = Color.White)
-                            }
+                            Text(
+                                "Target: $defaultControl ($category • ${targetWidthDp}x${targetHeightDp}dp)",
+                                color = NeonPalette.Cyan.copy(alpha = 0.85f),
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                softWrap = false
+                            )
                         }
-                        DropdownMenu(
-                            expanded = showTierMenu,
-                            onDismissRequest = { showTierMenu = false }
+                        Text(
+                            "Category is mapping metadata; your HTML/CSS owns the shape.",
+                            color = Color.White.copy(alpha = 0.58f),
+                            fontSize = 10.sp,
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        PromptSplitButton(
+                            selectedPromptTier = selectedPromptTier,
+                            onSelectPromptTier = onSelectPromptTier,
+                            onCopyAiPrompt = onCopyAiPrompt,
+                            height = 30.dp
+                        )
+
+                        OutlinedButton(
+                            onClick = onOpenPromptModal,
+                            shape = RoundedCornerShape(6.dp),
+                            border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f)),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = NeonPalette.Cyan.copy(alpha = 0.08f)
+                            ),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                            modifier = Modifier.height(30.dp)
                         ) {
-                            PromptTier.entries.forEach { tier ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Column {
-                                            Text(
-                                                "${tier.icon} ${tier.displayName}${if (tier == selectedPromptTier) " ✓" else ""}",
-                                                fontWeight = if (tier == selectedPromptTier) FontWeight.Bold else FontWeight.Normal,
-                                                fontSize = 13.sp
-                                            )
-                                            Text(
-                                                tier.description,
-                                                fontSize = 10.5.sp,
-                                                color = Color.Gray
-                                            )
-                                        }
-                                    },
-                                    onClick = {
-                                        onSelectPromptTier(tier)
-                                        showTierMenu = false
-                                    }
-                                )
-                            }
+                            Text("👁️ View Prompt", fontSize = 11.sp, color = NeonPalette.Cyan, maxLines = 1, softWrap = false)
                         }
-                    }
 
-                    OutlinedButton(
-                        onClick = onOpenPromptModal,
-                        shape = RoundedCornerShape(6.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp),
-                        modifier = Modifier.height(28.dp)
-                    ) {
-                        Text("👁️ View", fontSize = 10.5.sp, color = NeonPalette.Cyan)
-                    }
-
-                    OutlinedButton(
-                        onClick = onLoadStarter,
-                        shape = RoundedCornerShape(6.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f)),
-                        modifier = Modifier.height(28.dp)
-                    ) {
-                        Text("⚡ Starter", fontSize = 10.5.sp, color = NeonPalette.Cyan)
-                    }
-                }
-            }
-        } else {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        "🎮 Controller Component Studio",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
-                    )
-                    Text(
-                        "Target: $defaultControl ($category • ${targetWidthDp}x${targetHeightDp}dp)",
-                        color = NeonPalette.Cyan.copy(alpha = 0.85f),
-                        fontSize = 11.sp
-                    )
-                    Text(
-                        "Category is mapping metadata; your HTML/CSS owns the shape.",
-                        color = Color.White.copy(alpha = 0.58f),
-                        fontSize = 10.sp
-                    )
-                }
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // SplitButton: Copy AI Prompt with tier dropdown
-                    Box {
-                        var showTierMenu by remember { mutableStateOf(false) }
-                        Row(
-                            modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                        OutlinedButton(
+                            onClick = onLoadStarter,
+                            shape = RoundedCornerShape(6.dp),
+                            border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f)),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = NeonPalette.Cyan.copy(alpha = 0.08f)
+                            ),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                            modifier = Modifier.height(30.dp)
                         ) {
-                            // Main copy action
-                            Button(
-                                onClick = onCopyAiPrompt,
-                                shape = RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp, topEnd = 0.dp, bottomEnd = 0.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
-                            ) {
-                                Text("${selectedPromptTier.icon} Copy AI Prompt", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                            }
-                            // Dropdown chevron
-                            Button(
-                                onClick = { showTierMenu = true },
-                                shape = RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = 6.dp, bottomEnd = 6.dp),
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6D28D9))
-                            ) {
-                                Text("▼", fontSize = 9.5.sp, color = Color.White)
-                            }
+                            Text("⚡ Load Starter Code", fontSize = 11.sp, color = NeonPalette.Cyan, maxLines = 1, softWrap = false)
                         }
-                        DropdownMenu(
-                            expanded = showTierMenu,
-                            onDismissRequest = { showTierMenu = false }
-                        ) {
-                            PromptTier.entries.forEach { tier ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Column {
-                                            Text(
-                                                "${tier.icon} ${tier.displayName}${if (tier == selectedPromptTier) " ✓" else ""}",
-                                                fontWeight = if (tier == selectedPromptTier) FontWeight.Bold else FontWeight.Normal,
-                                                fontSize = 13.sp
-                                            )
-                                            Text(
-                                                tier.description,
-                                                fontSize = 10.5.sp,
-                                                color = Color.Gray
-                                            )
-                                        }
-                                    },
-                                    onClick = {
-                                        onSelectPromptTier(tier)
-                                        showTierMenu = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    OutlinedButton(
-                        onClick = onOpenPromptModal,
-                        shape = RoundedCornerShape(6.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text("👁️ View Prompt", fontSize = 11.sp, color = NeonPalette.Cyan)
-                    }
-
-                    OutlinedButton(
-                        onClick = onLoadStarter,
-                        shape = RoundedCornerShape(6.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f))
-                    ) {
-                        Text("⚡ Load Starter Code", fontSize = 11.sp, color = NeonPalette.Cyan)
                     }
                 }
             }
@@ -1193,7 +1230,7 @@ private fun ComponentEditorPane(
             }
         }
 
-        // 3. Category Selector Carousel
+        // 3. Category Selector Carousel (Cyber HUD Glass Outlined)
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -1201,20 +1238,26 @@ private fun ComponentEditorPane(
         ) {
             categories.forEach { (catKey, catLabel) ->
                 val isSelected = selectedCategory == catKey
-                Button(
+                OutlinedButton(
                     onClick = { onSelectCategory(catKey) },
                     shape = RoundedCornerShape(6.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isSelected) NeonPalette.Cyan else Color(0xFF131A2A)
+                    border = BorderStroke(
+                        width = if (isSelected) 1.5.dp else 1.dp,
+                        color = if (isSelected) NeonPalette.Cyan else Color(0xFF1E293B)
+                    ),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = if (isSelected) NeonPalette.Cyan.copy(alpha = 0.18f) else Color(0xFF090E18)
                     ),
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                     modifier = Modifier.height(28.dp)
                 ) {
                     Text(
                         text = catLabel,
-                        color = if (isSelected) Color.Black else Color.White.copy(alpha = 0.8f),
+                        color = if (isSelected) NeonPalette.Cyan else Color.White.copy(alpha = 0.7f),
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        fontSize = 11.sp
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
@@ -1232,7 +1275,7 @@ private fun ComponentEditorPane(
                 OutlinedButton(
                     onClick = { onSelectButton(btn) },
                     shape = RoundedCornerShape(6.dp),
-                    border = androidx.compose.foundation.BorderStroke(
+                    border = BorderStroke(
                         width = if (isSelected) 1.5.dp else 1.dp,
                         color = if (isSelected) btn.accentColor else Color(0xFF222F46)
                     ),
@@ -1246,7 +1289,9 @@ private fun ComponentEditorPane(
                         text = if (btn.emoji.isNotBlank()) "${btn.emoji} ${btn.label}" else btn.label,
                         color = if (isSelected) btn.accentColor else Color.White.copy(alpha = 0.7f),
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        fontSize = 11.sp
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
@@ -1267,7 +1312,7 @@ private fun ComponentEditorPane(
             Text("Native GPU Skia Compiler", color = Color.White.copy(alpha = 0.5f), fontSize = 10.sp)
         }
 
-        // 7. Monospace Code Editor
+        // 6. Monospace Code Editor (Cyber IDE Styling)
         OutlinedTextField(
             value = htmlSource,
             onValueChange = onHtmlSourceChange,
@@ -1276,7 +1321,17 @@ private fun ComponentEditorPane(
                 .weight(1f)
                 .defaultMinSize(minHeight = 160.dp),
             textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace, fontSize = 12.sp),
-            placeholder = { Text("Paste your AI-generated HTML / CSS code here...") }
+            placeholder = { Text("Paste your AI-generated HTML / CSS code here...", color = Color.White.copy(alpha = 0.35f)) },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = NeonPalette.Cyan.copy(alpha = 0.75f),
+                unfocusedBorderColor = Color(0xFF1E293B),
+                focusedContainerColor = Color(0xFF070B14),
+                unfocusedContainerColor = Color(0xFF070B14),
+                cursorColor = NeonPalette.Cyan,
+                focusedTextColor = Color(0xFFF1F5F9),
+                unfocusedTextColor = Color(0xFFCBD5E1)
+            ),
+            shape = RoundedCornerShape(8.dp)
         )
     }
 }
@@ -1336,9 +1391,9 @@ private fun LiveSandboxPane(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f, fill = false)) {
-                Text("Live Sandbox & Export", color = Color.White, fontWeight = FontWeight.Bold, fontSize = if (isNarrow) 13.5.sp else 15.sp, maxLines = 1)
+                Text("Live Sandbox & Export", color = Color.White, fontWeight = FontWeight.Bold, fontSize = if (isNarrow) 13.5.sp else 15.sp, maxLines = 1, softWrap = false)
                 if (!isShort) {
-                    Text("Tap to test tactile physics", color = NeonPalette.Cyan.copy(alpha = 0.7f), fontSize = 10.sp)
+                    Text("Tap to test tactile physics", color = NeonPalette.Cyan.copy(alpha = 0.7f), fontSize = 10.sp, maxLines = 1, softWrap = false)
                 }
             }
 
@@ -1350,7 +1405,7 @@ private fun LiveSandboxPane(
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
                     modifier = Modifier.height(28.dp)
                 ) {
-                    Text(if (isNarrow) "🎛️ Layers" else "🎛️ Layer Studio", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 10.5.sp)
+                    Text(if (isNarrow) "🎛️ Layers" else "🎛️ Layer Studio", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 10.5.sp, maxLines = 1, softWrap = false)
                 }
 
                 Button(
@@ -1358,10 +1413,10 @@ private fun LiveSandboxPane(
                     shape = RoundedCornerShape(6.dp),
                     contentPadding = PaddingValues(horizontal = if (isNarrow) 6.dp else 10.dp, vertical = 3.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F, 0x24, 0x36)),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, NeonPalette.Cyan),
+                    border = BorderStroke(1.dp, NeonPalette.Cyan),
                     modifier = Modifier.height(28.dp)
                 ) {
-                    Text(if (isNarrow) "🔍 Audit" else "🔍 Full Audit", color = NeonPalette.Cyan, fontWeight = FontWeight.Bold, fontSize = 10.5.sp)
+                    Text(if (isNarrow) "🔍 Audit" else "🔍 Full Audit", color = NeonPalette.Cyan, fontWeight = FontWeight.Bold, fontSize = 10.5.sp, maxLines = 1, softWrap = false)
                 }
             }
         }
@@ -1558,7 +1613,7 @@ private fun LiveSandboxPane(
                         OutlinedButton(
                             onClick = onRerollSeed,
                             shape = RoundedCornerShape(6.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B)),
+                            border = BorderStroke(1.dp, Color(0xFFF59E0B)),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 containerColor = Color(0xFFF59E0B).copy(alpha = 0.15f)
                             ),
@@ -1569,7 +1624,9 @@ private fun LiveSandboxPane(
                                 text = "🎲 Reroll",
                                 color = Color(0xFFFCD34D),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 10.5.sp
+                                fontSize = 10.5.sp,
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
 
@@ -1579,7 +1636,7 @@ private fun LiveSandboxPane(
                             onClick = onResetSeed,
                             enabled = isModifiedFromCode,
                             shape = RoundedCornerShape(6.dp),
-                            border = androidx.compose.foundation.BorderStroke(
+                            border = BorderStroke(
                                 1.dp,
                                 if (isModifiedFromCode) Color(0xFF64748B) else Color(0xFF334155).copy(alpha = 0.4f)
                             ),
@@ -1594,7 +1651,9 @@ private fun LiveSandboxPane(
                                 text = "↺ Reset",
                                 color = if (isModifiedFromCode) Color(0xFFE2E8F0) else Color(0xFF64748B),
                                 fontWeight = FontWeight.SemiBold,
-                                fontSize = 10.5.sp
+                                fontSize = 10.5.sp,
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
                     }
@@ -1768,7 +1827,9 @@ private fun LiveSandboxPane(
                     color = Color.Black,
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp,
-                    maxLines = 1
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
@@ -1798,7 +1859,9 @@ private fun LiveSandboxPane(
                     color = if (isConnected) Color.Black else Color.White.copy(alpha = 0.35f),
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp,
-                    maxLines = 1
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
