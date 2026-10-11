@@ -6,6 +6,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,6 +15,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -24,6 +26,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -42,6 +47,7 @@ import com.sanket.tools.nexpaddesktop.utils.LogCategory
 import com.sanket.tools.nexpaddesktop.utils.LogEntry
 import com.sanket.tools.nexpaddesktop.utils.LogLevel
 import com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel
+import java.awt.Cursor
 import kotlin.math.PI
 import kotlin.math.sqrt
 
@@ -70,27 +76,32 @@ private enum class LogLevelFilter(val label: String, val level: LogLevel?) {
 }
 
 /**
- * View presentation mode between terminal log focus and live hardware inspector.
+ * Layout arrangements for telemetry and terminal presentation.
  */
-private enum class DebugViewMode(val label: String, val icon: String) {
-    SPLIT("Inspector & Terminal", "🎮"),
-    TERMINAL_ONLY("Terminal Only", "📋")
+private enum class DebugLayoutMode(val label: String, val icon: String) {
+    STACKED("Stacked", "⬇"),
+    SIDE_BY_SIDE("Side Layout", "⇄"),
+    TERMINAL_ONLY("Logs Only", "📋")
 }
 
 /**
  * Ultra-Transparent Engine Debug Screen for NEXPAD Desktop.
  *
  * Provides complete 360-degree visibility into the background engine loops:
+ * - 100% Responsive and vertically scrollable (resilient to small laptop windows)
+ * - Interactive Draggable Resize Splitter with two-way arrow cursor (↕ / ⇄) to expand terminal size
+ * - Side-by-Side and Stacked Layouts with quick size presets (350px, 500px, 700px, Max)
  * - Live System Telemetry HUD Bar (session socket, RX/TX packet counters, packet loss %, ViGEm bus, DSU port)
  * - Real-Time Hardware Stream Inspector (dual thumbstick crosshairs, trigger gauges, button matrix, 6-axis IMU, rumble bars)
- * - Rich Monospace Terminal with keyword search highlighting, regex-free search, auto-scroll toggle, pause/freeze stream
- * - Multi-dimensional filtering by Subsystem Category (Network, Input, Driver, Motion, Haptics, System) and Severity Level (Info, Warn, Err, Verbose)
+ * - Rich Monospace Terminal with keyword search highlighting, auto-scroll toggle, pause/freeze stream
+ * - Multi-dimensional filtering by Subsystem Category (Network, Input, Driver, Motion, Haptics, System) and Severity Level
  * - File Export (`.log` file generation with complete session headers and host diagnostics)
  * - Interactive event inspection popover for deep stack analysis
  */
 @Composable
 fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
     val listState = rememberLazyListState()
+    val outerScrollState = rememberScrollState()
     val trigger = AppLogger.updateTrigger.value
     
     // Live reactive logs and paused snapshot buffer
@@ -103,11 +114,18 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
     var isCopied by remember { mutableStateOf(false) }
     var selectedFilter by remember { mutableStateOf(DebugFilter.ALL) }
     var selectedLevelFilter by remember { mutableStateOf(LogLevelFilter.ALL) }
-    var viewMode by remember { mutableStateOf(DebugViewMode.SPLIT) }
+    var layoutMode by remember { mutableStateOf(DebugLayoutMode.STACKED) }
     var searchQuery by remember { mutableStateOf("") }
     var autoScrollEnabled by remember { mutableStateOf(true) }
     var notificationMessage by remember { mutableStateOf<String?>(null) }
     var selectedLogEntry by remember { mutableStateOf<LogEntry?>(null) }
+    var isInspectorCollapsed by remember { mutableStateOf(false) }
+
+    // Adjustable log section sizing
+    var terminalHeight by remember { mutableStateOf(440.dp) }
+    var sideSplitRatio by remember { mutableStateOf(0.55f) } // 55% for terminal in side layout
+    var isDraggingVertical by remember { mutableStateOf(false) }
+    var isDraggingHorizontal by remember { mutableStateOf(false) }
 
     // Filter logs according to active category, level, and search query
     val filteredLogs = remember(allLogs, selectedFilter, selectedLevelFilter, searchQuery) {
@@ -155,472 +173,448 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
         }
     }
 
-    Column(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(NeonPalette.PanelBgBottom)
-            .padding(18.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // ── 1. Top Header & Primary Action Controls ──
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        val screenWidth = maxWidth
+        val screenHeight = maxHeight
+        val isNarrow = screenWidth < 980.dp
+        val isUltraNarrow = screenWidth < 680.dp
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(outerScrollState)
+                .padding(horizontal = if (isUltraNarrow) 10.dp else 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(NeonPalette.Cyan.copy(alpha = 0.12f))
-                        .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.45f), RoundedCornerShape(10.dp)),
-                    contentAlignment = Alignment.Center
+            // ── 1. Top Header & Primary Action Controls (Fully Responsive Wrapping) ──
+            if (isNarrow) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Terminal,
-                        contentDescription = "Debug",
-                        tint = NeonPalette.Cyan,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "ENGINE TELEMETRY & DIAGNOSTICS",
-                            color = Color.White,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.8.sp
-                        )
-                        if (isStreamPaused) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(Color(0xFF3B2910))
-                                    .border(1.dp, Color(0xFFF59E0B), RoundedCornerShape(4.dp))
-                                    .padding(horizontal = 6.dp, vertical = 1.dp)
-                            ) {
-                                Text(
-                                    text = "STREAM PAUSED",
-                                    color = Color(0xFFFCD34D),
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace
-                                )
+                    HeaderTitleRow(isStreamPaused = isStreamPaused)
+                    HeaderActionToolbar(
+                        layoutMode = layoutMode,
+                        onLayoutModeChange = { layoutMode = it },
+                        isStreamPaused = isStreamPaused,
+                        onTogglePause = {
+                            if (isStreamPaused) {
+                                isStreamPaused = false
+                            } else {
+                                pausedSnapshot = AppLogger.getLogEntriesCopy()
+                                isStreamPaused = true
                             }
-                        }
-                    }
-                    Text(
-                        text = "100% loop transparency • ViGEmBus • DSU UDP 26760 • IMU Sensor Fusion • Windows QoS",
-                        color = NeonPalette.CardIdleText,
-                        fontSize = 11.sp
+                        },
+                        autoScrollEnabled = autoScrollEnabled,
+                        onToggleAutoScroll = { autoScrollEnabled = !autoScrollEnabled },
+                        onExportLogs = {
+                            try {
+                                val file = AppLogger.exportLogsToFile()
+                                notificationMessage = "Exported ${allLogs.size} logs to: ${file.name}"
+                            } catch (e: Exception) {
+                                notificationMessage = "Export failed: ${e.message}"
+                            }
+                        },
+                        isCopied = isCopied,
+                        onCopyLogs = {
+                            val allLogsText = filteredLogs.joinToString("\n") { it.displayString() }
+                            clipboardManager.setText(buildAnnotatedString { append(allLogsText) })
+                            isCopied = true
+                            notificationMessage = "Copied ${filteredLogs.size} logs to clipboard!"
+                        },
+                        onClearLogs = { AppLogger.clearLogs() },
+                        filteredCount = filteredLogs.size,
+                        totalCount = allLogs.size
                     )
                 }
-            }
-
-            // Action Pills Bar
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                // View Mode Switcher (Inspector vs Terminal Only)
-                OutlinedButton(
-                    onClick = {
-                        viewMode = if (viewMode == DebugViewMode.SPLIT) DebugViewMode.TERMINAL_ONLY else DebugViewMode.SPLIT
-                    },
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = if (viewMode == DebugViewMode.SPLIT) NeonPalette.Cyan.copy(alpha = 0.15f) else Color.Transparent,
-                        contentColor = if (viewMode == DebugViewMode.SPLIT) NeonPalette.Cyan else Color.White.copy(alpha = 0.7f)
-                    ),
-                    border = BorderStroke(1.dp, if (viewMode == DebugViewMode.SPLIT) NeonPalette.Cyan.copy(alpha = 0.6f) else Color(0xFF26334D)),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 5.dp)
-                ) {
-                    Text(
-                        text = "${viewMode.icon} ${viewMode.label}",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                // Pause / Resume Stream Toggle
-                OutlinedButton(
-                    onClick = {
-                        if (isStreamPaused) {
-                            isStreamPaused = false
-                        } else {
-                            pausedSnapshot = AppLogger.getLogEntriesCopy()
-                            isStreamPaused = true
-                        }
-                    },
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = if (isStreamPaused) Color(0xFF382312) else Color.Transparent,
-                        contentColor = if (isStreamPaused) Color(0xFFFBBF24) else Color.White.copy(alpha = 0.7f)
-                    ),
-                    border = BorderStroke(1.dp, if (isStreamPaused) Color(0xFFF59E0B) else Color(0xFF26334D)),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 5.dp)
-                ) {
-                    Text(
-                        text = if (isStreamPaused) "▶ Resume" else "⏸ Pause",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                // Auto-Scroll Toggle
-                OutlinedButton(
-                    onClick = { autoScrollEnabled = !autoScrollEnabled },
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = if (autoScrollEnabled) NeonPalette.Cyan.copy(alpha = 0.12f) else Color.Transparent,
-                        contentColor = if (autoScrollEnabled) NeonPalette.Cyan else Color.White.copy(alpha = 0.5f)
-                    ),
-                    border = BorderStroke(1.dp, if (autoScrollEnabled) NeonPalette.Cyan.copy(alpha = 0.5f) else Color(0xFF26334D)),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 9.dp, vertical = 5.dp)
-                ) {
-                    Text(
-                        text = if (autoScrollEnabled) "⬇ Auto-Scroll" else "⏸ Manual",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                // Export to .log File
-                OutlinedButton(
-                    onClick = {
-                        try {
-                            val file = AppLogger.exportLogsToFile()
-                            notificationMessage = "Exported ${allLogs.size} logs to: ${file.name}"
-                        } catch (e: Exception) {
-                            notificationMessage = "Export failed: ${e.message}"
-                        }
-                    },
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color(0xFF142036),
-                        contentColor = NeonPalette.Cyan
-                    ),
-                    border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.4f)),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 5.dp)
-                ) {
-                    Icon(imageVector = Icons.Default.SaveAlt, contentDescription = "Export", modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = "Export", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                }
-
-                // Copy All Logs
-                Button(
-                    onClick = {
-                        val allLogsText = filteredLogs.joinToString("\n") { it.displayString() }
-                        clipboardManager.setText(buildAnnotatedString { append(allLogsText) })
-                        isCopied = true
-                        notificationMessage = "Copied ${filteredLogs.size} logs to clipboard!"
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isCopied) NeonPalette.Green.copy(alpha = 0.25f) else Color(0xFF1E283C),
-                        contentColor = if (isCopied) NeonPalette.Green else NeonPalette.Cyan
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 5.dp)
-                ) {
-                    Icon(imageVector = Icons.Default.ContentCopy, contentDescription = "Copy", modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = if (isCopied) "Copied!" else "Copy", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                }
-
-                // Clear Logs
-                OutlinedButton(
-                    onClick = { AppLogger.clearLogs() },
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFF5555)),
-                    border = BorderStroke(1.dp, Color(0xFFFF5555).copy(alpha = 0.45f)),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 9.dp, vertical = 5.dp)
-                ) {
-                    Icon(imageVector = Icons.Default.DeleteSweep, contentDescription = "Clear", modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = "Clear", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                }
-            }
-        }
-
-        // ── 2. Floating Notification / Export Toast Banner ──
-        AnimatedVisibility(
-            visible = notificationMessage != null,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFF0C243B))
-                    .border(1.dp, NeonPalette.Cyan, RoundedCornerShape(8.dp))
-                    .padding(horizontal = 14.dp, vertical = 7.dp)
-            ) {
+            } else {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("✨", fontSize = 12.sp)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = notificationMessage ?: "",
-                            color = Color.White,
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Close",
-                        tint = Color.Gray,
-                        modifier = Modifier
-                            .size(14.dp)
-                            .clickable { notificationMessage = null }
+                    HeaderTitleRow(isStreamPaused = isStreamPaused)
+                    HeaderActionToolbar(
+                        layoutMode = layoutMode,
+                        onLayoutModeChange = { layoutMode = it },
+                        isStreamPaused = isStreamPaused,
+                        onTogglePause = {
+                            if (isStreamPaused) {
+                                isStreamPaused = false
+                            } else {
+                                pausedSnapshot = AppLogger.getLogEntriesCopy()
+                                isStreamPaused = true
+                            }
+                        },
+                        autoScrollEnabled = autoScrollEnabled,
+                        onToggleAutoScroll = { autoScrollEnabled = !autoScrollEnabled },
+                        onExportLogs = {
+                            try {
+                                val file = AppLogger.exportLogsToFile()
+                                notificationMessage = "Exported ${allLogs.size} logs to: ${file.name}"
+                            } catch (e: Exception) {
+                                notificationMessage = "Export failed: ${e.message}"
+                            }
+                        },
+                        isCopied = isCopied,
+                        onCopyLogs = {
+                            val allLogsText = filteredLogs.joinToString("\n") { it.displayString() }
+                            clipboardManager.setText(buildAnnotatedString { append(allLogsText) })
+                            isCopied = true
+                            notificationMessage = "Copied ${filteredLogs.size} logs to clipboard!"
+                        },
+                        onClearLogs = { AppLogger.clearLogs() },
+                        filteredCount = filteredLogs.size,
+                        totalCount = allLogs.size
                     )
                 }
             }
-        }
 
-        // ── 3. Live Telemetry HUD Bar (Under-the-Hood Transparency) ──
-        val isSessionActive = UdpServer.isLiveSessionActive || (viewModel.activeTransport != com.sanket.tools.nexpaddesktop.connection.ActiveTransport.NONE)
-        val deviceName = UdpServer.liveDeviceName.ifBlank { viewModel.connectedDeviceName ?: "No Controller" }
-        val transport = UdpServer.liveTransportType.ifBlank { viewModel.activeTransport.displayName }
-        val socketStr = UdpServer.liveClientAddress.ifBlank { "Port 9999 Standby" }
-        val rxPackets = UdpServer.liveTotalRxPackets
-        val txFeedbacks = UdpServer.liveTotalTxFeedbacks
-        val lossPct = UdpServer.livePacketLossPct
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // HUD 1: Network Session & Handshake
-            HudGlassCard(
-                title = "NETWORK SESSION",
-                primaryText = if (isSessionActive) deviceName else "Awaiting Client",
-                secondaryText = if (isSessionActive) "$transport • $socketStr" else "Wi-Fi UDP: 0.0.0.0:9999",
-                statusColor = if (isSessionActive) NeonPalette.Green else Color(0xFF64748B),
-                icon = "📡"
-            )
-
-            // HUD 2: Traffic Counters & Loop Rate
-            HudGlassCard(
-                title = "TRAFFIC TELEMETRY",
-                primaryText = "RX: ${String.format("%,d", rxPackets)} pkts",
-                secondaryText = "TX: ${String.format("%,d", txFeedbacks)} feedbacks (60Hz)",
-                statusColor = if (rxPackets > 0) NeonPalette.Cyan else Color(0xFF64748B),
-                icon = "📥"
-            )
-
-            // HUD 3: Link Stability & Loss Rate
-            HudGlassCard(
-                title = "LINK QUALITY",
-                primaryText = if (lossPct == 0) "0.0% Loss (Pristine)" else "$lossPct% Packet Loss",
-                secondaryText = if (isSessionActive) "60 Hz Polling • RTT Echo" else "Watchdog Standby",
-                statusColor = if (lossPct == 0) Color(0xFF10B981) else Color(0xFFF59E0B),
-                icon = "📶"
-            )
-
-            // HUD 4: Virtual Gamepad Driver (ViGEmBus)
-            HudGlassCard(
-                title = "VIRTUAL GAMEPAD",
-                primaryText = viewModel.activeController.displayName,
-                secondaryText = if (viewModel.isDriverConnected) "ViGEmBus: Mounted & Active" else "ViGEmBus: Standby",
-                statusColor = if (viewModel.isDriverConnected) Color(0xFF34D399) else Color(0xFF64748B),
-                icon = "🎮"
-            )
-
-            // HUD 5: Motion DSU Server (UDP 26760)
-            HudGlassCard(
-                title = "DSU MOTION SERVER",
-                primaryText = if (viewModel.isDsuServerEnabled) "UDP Port 26760 (Active)" else "Server Disabled",
-                secondaryText = "${viewModel.dsuClientCount} Emulator Client(s)",
-                statusColor = if (viewModel.isDsuServerEnabled) Color(0xFF38BDF8) else Color(0xFF64748B),
-                icon = "🎯"
-            )
-        }
-
-        // ── 4. Live Hardware & Sensor Stream Inspector (The "Under the Hood" Bench) ──
-        if (viewMode == DebugViewMode.SPLIT) {
-            HardwareStreamInspector(viewModel = viewModel)
-        }
-
-        // ── 5. Subsystem Category Filters, Log Level Pills & Quick Search ──
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Category & Level Filter Row
-            Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                verticalAlignment = Alignment.CenterVertically
+            // ── 2. Floating Notification / Export Toast Banner ──
+            AnimatedVisibility(
+                visible = notificationMessage != null,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
             ) {
-                // Category Pills
-                DebugFilter.entries.forEach { filter ->
-                    val isSelected = selectedFilter == filter
-                    Box(
-                        modifier = Modifier
-                            .height(26.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(if (isSelected) NeonPalette.Cyan.copy(alpha = 0.20f) else Color(0xFF0F1523))
-                            .border(1.dp, if (isSelected) NeonPalette.Cyan else Color(0xFF222E46), RoundedCornerShape(6.dp))
-                            .clickable { selectedFilter = filter }
-                            .padding(horizontal = 8.dp),
-                        contentAlignment = Alignment.Center
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF0C243B))
+                        .border(1.dp, NeonPalette.Cyan, RoundedCornerShape(8.dp))
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "${filter.icon} ${filter.label}",
-                            color = if (isSelected) NeonPalette.Cyan else Color.White.copy(alpha = 0.7f),
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            fontSize = 10.5.sp
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(6.dp))
-                Box(modifier = Modifier.width(1.dp).height(16.dp).background(Color(0xFF26334D)))
-                Spacer(modifier = Modifier.width(6.dp))
-
-                // Severity Level Pills (ALL, INFO, WARN, ERR, VRB)
-                LogLevelFilter.entries.forEach { lvl ->
-                    val isSelected = selectedLevelFilter == lvl
-                    val lvlColor = when (lvl) {
-                        LogLevelFilter.ALL -> Color(0xFF94A3B8)
-                        LogLevelFilter.INFO -> Color(0xFF38BDF8)
-                        LogLevelFilter.WARN -> Color(0xFFFBBF24)
-                        LogLevelFilter.ERROR -> Color(0xFFF87171)
-                        LogLevelFilter.VERBOSE -> Color(0xFFA78BFA)
-                    }
-                    Box(
-                        modifier = Modifier
-                            .height(24.dp)
-                            .clip(RoundedCornerShape(5.dp))
-                            .background(if (isSelected) lvlColor.copy(alpha = 0.22f) else Color(0xFF0B101E))
-                            .border(1.dp, if (isSelected) lvlColor else Color(0xFF1E273A), RoundedCornerShape(5.dp))
-                            .clickable { selectedLevelFilter = lvl }
-                            .padding(horizontal = 7.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = lvl.label,
-                            color = if (isSelected) lvlColor else Color.White.copy(alpha = 0.5f),
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("✨", fontSize = 12.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = notificationMessage ?: "",
+                                color = Color.White,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = Color.Gray,
+                            modifier = Modifier
+                                .size(14.dp)
+                                .clickable { notificationMessage = null }
                         )
                     }
                 }
             }
 
-            // Quick Search Box with Match Counter
+            // ── 3. Live Telemetry HUD Bar (Under-the-Hood Transparency) ──
+            val isSessionActive = UdpServer.isLiveSessionActive || (viewModel.activeTransport != com.sanket.tools.nexpaddesktop.connection.ActiveTransport.NONE)
+            val deviceName = UdpServer.liveDeviceName.ifBlank { viewModel.connectedDeviceName ?: "No Controller" }
+            val transport = UdpServer.liveTransportType.ifBlank { viewModel.activeTransport.displayName }
+            val socketStr = UdpServer.liveClientAddress.ifBlank { "Port 9999 Standby" }
+            val rxPackets = UdpServer.liveTotalRxPackets
+            val txFeedbacks = UdpServer.liveTotalTxFeedbacks
+            val lossPct = UdpServer.livePacketLossPct
+
             Row(
                 modifier = Modifier
-                    .widthIn(min = 180.dp, max = 260.dp)
-                    .height(28.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0xFF0A0F1A))
-                    .border(1.dp, Color(0xFF1E293B), RoundedCornerShape(6.dp))
-                    .padding(horizontal = 8.dp),
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(13.dp))
-                Spacer(modifier = Modifier.width(5.dp))
-                androidx.compose.foundation.text.BasicTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    singleLine = true,
-                    textStyle = TextStyle(color = Color.White, fontSize = 11.sp, fontFamily = FontFamily.Monospace),
-                    modifier = Modifier.weight(1f),
-                    decorationBox = { innerTextField ->
-                        if (searchQuery.isEmpty()) {
-                            Text("Search telemetry...", color = Color.Gray.copy(alpha = 0.6f), fontSize = 11.sp)
-                        }
-                        innerTextField()
-                    }
+                HudGlassCard(
+                    title = "NETWORK SESSION",
+                    primaryText = if (isSessionActive) deviceName else "Awaiting Client",
+                    secondaryText = if (isSessionActive) "$transport • $socketStr" else "Wi-Fi UDP: 0.0.0.0:9999",
+                    statusColor = if (isSessionActive) NeonPalette.Green else Color(0xFF64748B),
+                    icon = "📡"
                 )
-                if (searchQuery.isNotEmpty()) {
-                    Text(
-                        text = "${filteredLogs.size}",
-                        color = NeonPalette.Cyan,
-                        fontSize = 9.5.sp,
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.padding(end = 4.dp)
-                    )
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Clear search",
-                        tint = Color.Gray,
-                        modifier = Modifier
-                            .size(13.dp)
-                            .clickable { searchQuery = "" }
-                    )
-                }
-            }
-        }
 
-        // ── 6. Monospace Terminal Box ──
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .clip(RoundedCornerShape(10.dp))
-                .background(Color(0xFF050810))
-                .border(1.dp, Color(0xFF162034), RoundedCornerShape(10.dp))
-                .padding(10.dp)
-        ) {
-            if (filteredLogs.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            text = if (allLogs.isEmpty()) "Waiting for engine events... UDP handshakes and input frames will appear here." else "No log entries match the current filter / query.",
-                            color = NeonPalette.CardIdleText,
-                            fontSize = 12.sp,
-                            fontFamily = FontFamily.Monospace
-                        )
-                        if (allLogs.isNotEmpty() && filteredLogs.isEmpty()) {
-                            OutlinedButton(
-                                onClick = {
-                                    selectedFilter = DebugFilter.ALL
-                                    selectedLevelFilter = LogLevelFilter.ALL
-                                    searchQuery = ""
+                HudGlassCard(
+                    title = "TRAFFIC TELEMETRY",
+                    primaryText = "RX: ${String.format("%,d", rxPackets)} pkts",
+                    secondaryText = "TX: ${String.format("%,d", txFeedbacks)} feedbacks (60Hz)",
+                    statusColor = if (rxPackets > 0) NeonPalette.Cyan else Color(0xFF64748B),
+                    icon = "📥"
+                )
+
+                HudGlassCard(
+                    title = "LINK QUALITY",
+                    primaryText = if (lossPct == 0) "0.0% Loss (Pristine)" else "$lossPct% Packet Loss",
+                    secondaryText = if (isSessionActive) "60 Hz Polling • RTT Echo" else "Watchdog Standby",
+                    statusColor = if (lossPct == 0) Color(0xFF10B981) else Color(0xFFF59E0B),
+                    icon = "📶"
+                )
+
+                HudGlassCard(
+                    title = "VIRTUAL GAMEPAD",
+                    primaryText = viewModel.activeController.displayName,
+                    secondaryText = if (viewModel.isDriverConnected) "ViGEmBus: Mounted & Active" else "ViGEmBus: Standby",
+                    statusColor = if (viewModel.isDriverConnected) Color(0xFF34D399) else Color(0xFF64748B),
+                    icon = "🎮"
+                )
+
+                HudGlassCard(
+                    title = "DSU MOTION SERVER",
+                    primaryText = if (viewModel.isDsuServerEnabled) "UDP Port 26760 (Active)" else "Server Disabled",
+                    secondaryText = "${viewModel.dsuClientCount} Emulator Client(s)",
+                    statusColor = if (viewModel.isDsuServerEnabled) Color(0xFF38BDF8) else Color(0xFF64748B),
+                    icon = "🎯"
+                )
+            }
+
+            // ── 4. Main Body: Stacked vs Side-by-Side vs Logs-Only ──
+            when (layoutMode) {
+                DebugLayoutMode.SIDE_BY_SIDE -> {
+                    // Side-by-Side (Split): Inspector on left, Terminal on right with draggable horizontal splitter
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(terminalHeight),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Left Column: Hardware Stream Inspector
+                        Box(
+                            modifier = Modifier
+                                .weight(1f - sideSplitRatio)
+                                .fillMaxHeight()
+                        ) {
+                            HardwareStreamInspector(viewModel = viewModel)
+                        }
+
+                        // Draggable Horizontal Splitter Bar (with two-way horizontal resize cursor ⇄)
+                        Box(
+                            modifier = Modifier
+                                .width(12.dp)
+                                .fillMaxHeight()
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (isDraggingHorizontal) NeonPalette.Cyan.copy(alpha = 0.35f) else Color(0xFF0D1526))
+                                .border(1.dp, if (isDraggingHorizontal) NeonPalette.Cyan else Color(0xFF1B273F), RoundedCornerShape(6.dp))
+                                .pointerHoverIcon(PointerIcon(Cursor.getPredefinedCursor(Cursor.E_RESIZE_CURSOR)))
+                                .pointerInput(Unit) {
+                                    detectDragGestures(
+                                        onDragStart = { isDraggingHorizontal = true },
+                                        onDragEnd = { isDraggingHorizontal = false },
+                                        onDragCancel = { isDraggingHorizontal = false }
+                                    ) { change, dragAmount ->
+                                        change.consume()
+                                        val totalWidthPx = screenWidth.toPx()
+                                        if (totalWidthPx > 100f) {
+                                            val deltaRatio = dragAmount.x / totalWidthPx
+                                            sideSplitRatio = (sideSplitRatio - deltaRatio).coerceIn(0.25f, 0.75f)
+                                        }
+                                    }
                                 },
-                                shape = RoundedCornerShape(6.dp),
-                                modifier = Modifier.height(26.dp)
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(3.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Text("Reset Filters", fontSize = 10.5.sp, color = NeonPalette.Cyan)
+                                repeat(3) {
+                                    Box(modifier = Modifier.size(2.dp, 8.dp).background(NeonPalette.Cyan.copy(alpha = 0.7f)))
+                                }
                             }
                         }
+
+                        // Right Column: Terminal Console
+                        Box(
+                            modifier = Modifier
+                                .weight(sideSplitRatio)
+                                .fillMaxHeight()
+                        ) {
+                            TerminalConsolePanel(
+                                filteredLogs = filteredLogs,
+                                allLogs = allLogs,
+                                listState = listState,
+                                selectedFilter = selectedFilter,
+                                onSelectFilter = { selectedFilter = it },
+                                selectedLevelFilter = selectedLevelFilter,
+                                onSelectLevelFilter = { selectedLevelFilter = it },
+                                searchQuery = searchQuery,
+                                onSearchQueryChange = { searchQuery = it },
+                                onRowClick = { selectedLogEntry = it }
+                            )
+                        }
                     }
                 }
-            } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    items(items = filteredLogs, key = { it.id }) { log ->
-                        LogTerminalRow(
-                            log = log,
+
+                DebugLayoutMode.STACKED -> {
+                    // 1. Hardware Stream Inspector (with Collapse Toggle)
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable { isInspectorCollapsed = !isInspectorCollapsed }
+                                    .padding(vertical = 2.dp, horizontal = 4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isInspectorCollapsed) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                                    contentDescription = "Toggle Inspector",
+                                    tint = NeonPalette.Cyan,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = if (isInspectorCollapsed) "Show Hardware Inspector" else "Live Hardware & Sensor Stream Inspector",
+                                    color = Color.White.copy(alpha = 0.8f),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+
+                            // Quick Terminal Height Presets
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Log Height:", color = Color.Gray, fontSize = 10.sp)
+                                listOf(350, 500, 700).forEach { px ->
+                                    val isSelected = terminalHeight == px.dp
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(if (isSelected) NeonPalette.Cyan.copy(alpha = 0.2f) else Color(0xFF0F172A))
+                                            .border(1.dp, if (isSelected) NeonPalette.Cyan else Color(0xFF1E293B), RoundedCornerShape(4.dp))
+                                            .clickable { terminalHeight = px.dp }
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "${px}px",
+                                            color = if (isSelected) NeonPalette.Cyan else Color.White.copy(alpha = 0.6f),
+                                            fontSize = 9.5.sp,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        AnimatedVisibility(
+                            visible = !isInspectorCollapsed,
+                            enter = fadeIn() + expandVertically(),
+                            exit = fadeOut() + shrinkVertically()
+                        ) {
+                            HardwareStreamInspector(viewModel = viewModel)
+                        }
+                    }
+
+                    // 2. Interactive Draggable Resize Splitter Bar (↕ Two-Way Arrow Cursor)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(16.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (isDraggingVertical) NeonPalette.Cyan.copy(alpha = 0.25f) else Color(0xFF0B111E))
+                            .border(1.dp, if (isDraggingVertical) NeonPalette.Cyan else Color(0xFF182236), RoundedCornerShape(6.dp))
+                            .pointerHoverIcon(PointerIcon(Cursor.getPredefinedCursor(Cursor.N_RESIZE_CURSOR)))
+                            .pointerInput(Unit) {
+                                detectDragGestures(
+                                    onDragStart = { isDraggingVertical = true },
+                                    onDragEnd = { isDraggingVertical = false },
+                                    onDragCancel = { isDraggingVertical = false }
+                                ) { change, dragAmount ->
+                                    change.consume()
+                                    // Dragging up increases terminal height, dragging down decreases
+                                    val newHeight = terminalHeight - dragAmount.y.dp
+                                    terminalHeight = newHeight.coerceIn(240.dp, 1200.dp)
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(modifier = Modifier.width(36.dp).height(2.dp).background(NeonPalette.Cyan.copy(alpha = 0.5f)))
+                            Text(
+                                text = "↕ DRAG TO RESIZE LOG SECTION (${terminalHeight.value.toInt()}px)",
+                                color = if (isDraggingVertical) NeonPalette.Cyan else Color.White.copy(alpha = 0.55f),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                letterSpacing = 0.5.sp
+                            )
+                            Box(modifier = Modifier.width(36.dp).height(2.dp).background(NeonPalette.Cyan.copy(alpha = 0.5f)))
+                        }
+                    }
+
+                    // 3. Resizable Terminal Console Panel
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(terminalHeight)
+                    ) {
+                        TerminalConsolePanel(
+                            filteredLogs = filteredLogs,
+                            allLogs = allLogs,
+                            listState = listState,
+                            selectedFilter = selectedFilter,
+                            onSelectFilter = { selectedFilter = it },
+                            selectedLevelFilter = selectedLevelFilter,
+                            onSelectLevelFilter = { selectedLevelFilter = it },
                             searchQuery = searchQuery,
-                            onClick = { selectedLogEntry = log }
+                            onSearchQueryChange = { searchQuery = it },
+                            onRowClick = { selectedLogEntry = it }
+                        )
+
+                        // Corner Angle Resize Handle (Bottom-Right)
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .size(20.dp)
+                                .clip(RoundedCornerShape(bottomEnd = 10.dp))
+                                .background(Color(0xFF131D33))
+                                .pointerHoverIcon(PointerIcon(Cursor.getPredefinedCursor(Cursor.NW_RESIZE_CURSOR)))
+                                .pointerInput(Unit) {
+                                    detectDragGestures { change, dragAmount ->
+                                        change.consume()
+                                        val newHeight = terminalHeight + dragAmount.y.dp
+                                        terminalHeight = newHeight.coerceIn(240.dp, 1200.dp)
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("⌟", color = NeonPalette.Cyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                DebugLayoutMode.TERMINAL_ONLY -> {
+                    // Terminal Only: Full Height Maximized
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(if (terminalHeight < 550.dp) 650.dp else terminalHeight)
+                    ) {
+                        TerminalConsolePanel(
+                            filteredLogs = filteredLogs,
+                            allLogs = allLogs,
+                            listState = listState,
+                            selectedFilter = selectedFilter,
+                            onSelectFilter = { selectedFilter = it },
+                            selectedLevelFilter = selectedLevelFilter,
+                            onSelectLevelFilter = { selectedLevelFilter = it },
+                            searchQuery = searchQuery,
+                            onSearchQueryChange = { searchQuery = it },
+                            onRowClick = { selectedLogEntry = it }
                         )
                     }
                 }
@@ -628,7 +622,7 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
         }
     }
 
-    // ── 7. Detailed Log Entry Inspection Dialog ──
+    // ── 5. Detailed Log Entry Inspection Modal Dialog ──
     if (selectedLogEntry != null) {
         val entry = selectedLogEntry!!
         Dialog(onDismissRequest = { selectedLogEntry = null }) {
@@ -738,6 +732,402 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
 }
 
 /**
+ * Top title row for the Debug Screen.
+ */
+@Composable
+private fun HeaderTitleRow(isStreamPaused: Boolean) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(NeonPalette.Cyan.copy(alpha = 0.12f))
+                .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.45f), RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Terminal,
+                contentDescription = "Debug",
+                tint = NeonPalette.Cyan,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "ENGINE TELEMETRY & DIAGNOSTICS",
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.6.sp
+                )
+                if (isStreamPaused) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xFF3B2910))
+                            .border(1.dp, Color(0xFFF59E0B), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 1.dp)
+                    ) {
+                        Text(
+                            text = "STREAM PAUSED",
+                            color = Color(0xFFFCD34D),
+                            fontSize = 8.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+            }
+            Text(
+                text = "100% loop transparency • ViGEmBus • DSU UDP 26760 • IMU Sensors",
+                color = NeonPalette.CardIdleText,
+                fontSize = 10.5.sp
+            )
+        }
+    }
+}
+
+/**
+ * Responsive Action Toolbar supporting horizontal scrolling when width is constrained.
+ */
+@Composable
+private fun HeaderActionToolbar(
+    layoutMode: DebugLayoutMode,
+    onLayoutModeChange: (DebugLayoutMode) -> Unit,
+    isStreamPaused: Boolean,
+    onTogglePause: () -> Unit,
+    autoScrollEnabled: Boolean,
+    onToggleAutoScroll: () -> Unit,
+    onExportLogs: () -> Unit,
+    isCopied: Boolean,
+    onCopyLogs: () -> Unit,
+    onClearLogs: () -> Unit,
+    filteredCount: Int,
+    totalCount: Int
+) {
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        // Layout Mode Switcher (Stacked vs Side-by-Side vs Logs Only)
+        DebugLayoutMode.entries.forEach { mode ->
+            val isSelected = layoutMode == mode
+            OutlinedButton(
+                onClick = { onLayoutModeChange(mode) },
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = if (isSelected) NeonPalette.Cyan.copy(alpha = 0.16f) else Color.Transparent,
+                    contentColor = if (isSelected) NeonPalette.Cyan else Color.White.copy(alpha = 0.65f)
+                ),
+                border = BorderStroke(1.dp, if (isSelected) NeonPalette.Cyan.copy(alpha = 0.6f) else Color(0xFF26334D)),
+                shape = RoundedCornerShape(7.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.height(28.dp)
+            ) {
+                Text(
+                    text = "${mode.icon} ${mode.label}",
+                    fontSize = 10.5.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(4.dp))
+        Box(modifier = Modifier.width(1.dp).height(16.dp).background(Color(0xFF26334D)))
+        Spacer(modifier = Modifier.width(4.dp))
+
+        // Pause / Resume Stream Toggle
+        OutlinedButton(
+            onClick = onTogglePause,
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = if (isStreamPaused) Color(0xFF382312) else Color.Transparent,
+                contentColor = if (isStreamPaused) Color(0xFFFBBF24) else Color.White.copy(alpha = 0.7f)
+            ),
+            border = BorderStroke(1.dp, if (isStreamPaused) Color(0xFFF59E0B) else Color(0xFF26334D)),
+            shape = RoundedCornerShape(7.dp),
+            contentPadding = PaddingValues(horizontal = 9.dp, vertical = 4.dp),
+            modifier = Modifier.height(28.dp)
+        ) {
+            Text(
+                text = if (isStreamPaused) "▶ Resume" else "⏸ Pause",
+                fontSize = 10.5.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        // Auto-Scroll Toggle
+        OutlinedButton(
+            onClick = onToggleAutoScroll,
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = if (autoScrollEnabled) NeonPalette.Cyan.copy(alpha = 0.12f) else Color.Transparent,
+                contentColor = if (autoScrollEnabled) NeonPalette.Cyan else Color.White.copy(alpha = 0.5f)
+            ),
+            border = BorderStroke(1.dp, if (autoScrollEnabled) NeonPalette.Cyan.copy(alpha = 0.5f) else Color(0xFF26334D)),
+            shape = RoundedCornerShape(7.dp),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.height(28.dp)
+        ) {
+            Text(
+                text = if (autoScrollEnabled) "⬇ Auto-Scroll" else "⏸ Manual",
+                fontSize = 10.5.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        // Export to .log File
+        OutlinedButton(
+            onClick = onExportLogs,
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = Color(0xFF142036),
+                contentColor = NeonPalette.Cyan
+            ),
+            border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.4f)),
+            shape = RoundedCornerShape(7.dp),
+            contentPadding = PaddingValues(horizontal = 9.dp, vertical = 4.dp),
+            modifier = Modifier.height(28.dp)
+        ) {
+            Icon(imageVector = Icons.Default.SaveAlt, contentDescription = "Export", modifier = Modifier.size(13.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(text = "Export", fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold)
+        }
+
+        // Copy All Logs
+        Button(
+            onClick = onCopyLogs,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (isCopied) NeonPalette.Green.copy(alpha = 0.25f) else Color(0xFF1E283C),
+                contentColor = if (isCopied) NeonPalette.Green else NeonPalette.Cyan
+            ),
+            shape = RoundedCornerShape(7.dp),
+            contentPadding = PaddingValues(horizontal = 9.dp, vertical = 4.dp),
+            modifier = Modifier.height(28.dp)
+        ) {
+            Icon(imageVector = Icons.Default.ContentCopy, contentDescription = "Copy", modifier = Modifier.size(13.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(text = if (isCopied) "Copied!" else "Copy", fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold)
+        }
+
+        // Clear Logs
+        OutlinedButton(
+            onClick = onClearLogs,
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFF5555)),
+            border = BorderStroke(1.dp, Color(0xFFFF5555).copy(alpha = 0.45f)),
+            shape = RoundedCornerShape(7.dp),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.height(28.dp)
+        ) {
+            Icon(imageVector = Icons.Default.DeleteSweep, contentDescription = "Clear", modifier = Modifier.size(13.dp))
+            Spacer(modifier = Modifier.width(3.dp))
+            Text(text = "Clear", fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold)
+        }
+
+        // Log Counter Pill
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color(0xFF0F172A))
+                .border(1.dp, Color(0xFF1E293B), RoundedCornerShape(6.dp))
+                .padding(horizontal = 7.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = "$filteredCount/$totalCount",
+                color = NeonPalette.Cyan,
+                fontSize = 10.sp,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+/**
+ * Terminal Console Panel with category pills, severity filter, search input, and monospace list.
+ */
+@Composable
+private fun TerminalConsolePanel(
+    filteredLogs: List<LogEntry>,
+    allLogs: List<LogEntry>,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    selectedFilter: DebugFilter,
+    onSelectFilter: (DebugFilter) -> Unit,
+    selectedLevelFilter: LogLevelFilter,
+    onSelectLevelFilter: (LogLevelFilter) -> Unit,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    onRowClick: (LogEntry) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color(0xFF060911))
+            .border(1.dp, Color(0xFF162034), RoundedCornerShape(10.dp))
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // Filter bar & Search box
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Category & Level Filter Row
+            Row(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Category Pills
+                DebugFilter.entries.forEach { filter ->
+                    val isSelected = selectedFilter == filter
+                    Box(
+                        modifier = Modifier
+                            .height(24.dp)
+                            .clip(RoundedCornerShape(5.dp))
+                            .background(if (isSelected) NeonPalette.Cyan.copy(alpha = 0.20f) else Color(0xFF0D1322))
+                            .border(1.dp, if (isSelected) NeonPalette.Cyan else Color(0xFF1F2A40), RoundedCornerShape(5.dp))
+                            .clickable { onSelectFilter(filter) }
+                            .padding(horizontal = 7.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "${filter.icon} ${filter.label}",
+                            color = if (isSelected) NeonPalette.Cyan else Color.White.copy(alpha = 0.7f),
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = 10.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(4.dp))
+                Box(modifier = Modifier.width(1.dp).height(14.dp).background(Color(0xFF26334D)))
+                Spacer(modifier = Modifier.width(4.dp))
+
+                // Severity Level Pills (ALL, INFO, WARN, ERR, VRB)
+                LogLevelFilter.entries.forEach { lvl ->
+                    val isSelected = selectedLevelFilter == lvl
+                    val lvlColor = when (lvl) {
+                        LogLevelFilter.ALL -> Color(0xFF94A3B8)
+                        LogLevelFilter.INFO -> Color(0xFF38BDF8)
+                        LogLevelFilter.WARN -> Color(0xFFFBBF24)
+                        LogLevelFilter.ERROR -> Color(0xFFF87171)
+                        LogLevelFilter.VERBOSE -> Color(0xFFA78BFA)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .height(22.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(if (isSelected) lvlColor.copy(alpha = 0.22f) else Color(0xFF0B101E))
+                            .border(1.dp, if (isSelected) lvlColor else Color(0xFF1E273A), RoundedCornerShape(4.dp))
+                            .clickable { onSelectLevelFilter(lvl) }
+                            .padding(horizontal = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = lvl.label,
+                            color = if (isSelected) lvlColor else Color.White.copy(alpha = 0.5f),
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 9.5.sp
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Quick Search Box
+            Row(
+                modifier = Modifier
+                    .widthIn(min = 160.dp, max = 230.dp)
+                    .height(26.dp)
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(Color(0xFF0A0F1A))
+                    .border(1.dp, Color(0xFF1E293B), RoundedCornerShape(5.dp))
+                    .padding(horizontal = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(12.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                androidx.compose.foundation.text.BasicTextField(
+                    value = searchQuery,
+                    onValueChange = onSearchQueryChange,
+                    singleLine = true,
+                    textStyle = TextStyle(color = Color.White, fontSize = 10.5.sp, fontFamily = FontFamily.Monospace),
+                    modifier = Modifier.weight(1f),
+                    decorationBox = { innerTextField ->
+                        if (searchQuery.isEmpty()) {
+                            Text("Search...", color = Color.Gray.copy(alpha = 0.6f), fontSize = 10.5.sp)
+                        }
+                        innerTextField()
+                    }
+                )
+                if (searchQuery.isNotEmpty()) {
+                    Text(
+                        text = "${filteredLogs.size}",
+                        color = NeonPalette.Cyan,
+                        fontSize = 9.sp,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(end = 3.dp)
+                    )
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Clear search",
+                        tint = Color.Gray,
+                        modifier = Modifier
+                            .size(12.dp)
+                            .clickable { onSearchQueryChange("") }
+                    )
+                }
+            }
+        }
+
+        // Terminal List View
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color(0xFF04060C))
+                .border(0.8.dp, Color(0xFF121B2C), RoundedCornerShape(6.dp))
+                .padding(8.dp)
+        ) {
+            if (filteredLogs.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = if (allLogs.isEmpty()) "Waiting for engine events... UDP handshakes and input frames will appear here." else "No log entries match the current filter / query.",
+                        color = NeonPalette.CardIdleText,
+                        fontSize = 11.5.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    items(items = filteredLogs, key = { it.id }) { log ->
+                        LogTerminalRow(
+                            log = log,
+                            searchQuery = searchQuery,
+                            onClick = { onRowClick(log) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
  * Compact HUD Glass Card for real-time engine telemetry.
  */
 @Composable
@@ -811,9 +1201,9 @@ private fun HardwareStreamInspector(viewModel: DesktopViewModel) {
             .clip(RoundedCornerShape(10.dp))
             .background(Color(0xFF090E1B))
             .border(1.dp, Color(0xFF1C2740), RoundedCornerShape(10.dp))
-            .padding(12.dp)
+            .padding(11.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
             // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
