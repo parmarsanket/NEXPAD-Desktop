@@ -107,7 +107,7 @@ fun PluginsScreen(
     val scope = rememberCoroutineScope()
 
     val categories = remember {
-        CategoryManager.getAllCategories().map { it.id to "${it.emoji} ${it.title}" }
+        CategoryManager.getAllCategories().map { it.id to it.title }
     }
 
     val buttonsByCategory = remember {
@@ -975,35 +975,52 @@ private fun PromptSplitButton(
 ) {
     Box {
         var showTierMenu by remember { mutableStateOf(false) }
-        Row(
-            modifier = Modifier
-                .height(height)
-                .clip(RoundedCornerShape(6.dp))
+        Surface(
+            modifier = Modifier.height(height),
+            shape = RoundedCornerShape(6.dp),
+            color = Color(0xFF7C3AED)
         ) {
-            Button(
-                onClick = onCopyAiPrompt,
-                shape = RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp, topEnd = 0.dp, bottomEnd = 0.dp),
-                contentPadding = PaddingValues(horizontal = 9.dp, vertical = 3.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.height(height)
             ) {
-                Text(
-                    "${selectedPromptTier.icon} Copy AI Prompt",
-                    fontSize = if (height < 30.dp) 10.5.sp else 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    maxLines = 1,
-                    softWrap = false
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .clickable(onClick = onCopyAiPrompt)
+                        .padding(horizontal = 10.dp, vertical = 3.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Copy AI Prompt",
+                        fontSize = if (height < 30.dp) 10.5.sp else 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .fillMaxHeight(0.65f)
+                        .background(Color.White.copy(alpha = 0.35f))
                 )
-            }
-            Button(
-                onClick = { showTierMenu = true },
-                shape = RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = 6.dp, bottomEnd = 6.dp),
-                contentPadding = PaddingValues(horizontal = 5.dp, vertical = 3.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6D28D9)),
-                modifier = Modifier.height(height)
-            ) {
-                Text("▼", fontSize = 9.sp, color = Color.White, maxLines = 1, softWrap = false)
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .clickable { showTierMenu = true }
+                        .padding(horizontal = 7.dp, vertical = 3.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "▼",
+                        fontSize = 8.5.sp,
+                        color = Color.White,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
             }
         }
         DropdownMenu(
@@ -1133,7 +1150,7 @@ private fun ComponentEditorPane(
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp),
                             modifier = Modifier.height(28.dp)
                         ) {
-                            Text("👁️ View Prompt", fontSize = 10.5.sp, color = NeonPalette.Cyan, maxLines = 1, softWrap = false)
+                            Text("View Prompt", fontSize = 10.5.sp, color = NeonPalette.Cyan, maxLines = 1, softWrap = false)
                         }
 
                         OutlinedButton(
@@ -1146,7 +1163,7 @@ private fun ComponentEditorPane(
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp),
                             modifier = Modifier.height(28.dp)
                         ) {
-                            Text("⚡ Load Starter Code", fontSize = 10.5.sp, color = NeonPalette.Cyan, maxLines = 1, softWrap = false)
+                            Text("Load Starter Code", fontSize = 10.5.sp, color = NeonPalette.Cyan, maxLines = 1, softWrap = false)
                         }
                     }
                 }
@@ -1208,7 +1225,7 @@ private fun ComponentEditorPane(
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                             modifier = Modifier.height(30.dp)
                         ) {
-                            Text("👁️ View Prompt", fontSize = 11.sp, color = NeonPalette.Cyan, maxLines = 1, softWrap = false)
+                            Text("View Prompt", fontSize = 11.sp, color = NeonPalette.Cyan, maxLines = 1, softWrap = false)
                         }
 
                         OutlinedButton(
@@ -1221,7 +1238,7 @@ private fun ComponentEditorPane(
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                             modifier = Modifier.height(30.dp)
                         ) {
-                            Text("⚡ Load Starter Code", fontSize = 11.sp, color = NeonPalette.Cyan, maxLines = 1, softWrap = false)
+                            Text("Load Starter Code", fontSize = 11.sp, color = NeonPalette.Cyan, maxLines = 1, softWrap = false)
                         }
                     }
                 }
@@ -1305,7 +1322,7 @@ private fun ComponentEditorPane(
                     modifier = Modifier.height(28.dp)
                 ) {
                     Text(
-                        text = if (btn.emoji.isNotBlank()) "${btn.emoji} ${btn.label}" else btn.label,
+                        text = btn.label,
                         color = if (isSelected) btn.accentColor else Color.White.copy(alpha = 0.7f),
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                         fontSize = 11.sp,
