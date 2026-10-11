@@ -30,6 +30,8 @@ import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.nxprc.CanvasLayer
 import com.sanket.tools.nexpad.nxprc.NxprcDocument
 import com.sanket.tools.nexpaddesktop.plugins.NxprcAuditService
+import androidx.compose.ui.text.style.TextOverflow
+import com.sanket.tools.nexpaddesktop.ui.components.DesktopVerticalScrollbar
 import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -127,23 +129,28 @@ fun FullAuditPreviewScreen(
                     .background(Color(0xFF4A, 0xDE, 0x80))
             )
 
-            // 2. Main Header Bar
+            // 2. Main Header Bar (Responsive & Non-overflowing)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color(0xFF0A0F1D))
                     .border(BorderStroke(1.dp, Color(0xFF1B2438)))
-                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.weight(1f, fill = false).padding(end = 8.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         Text(
                             text = "NEXPAD ${document.manifest.name.uppercase()} — PARITY AUDIT",
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Box(
                             modifier = Modifier
@@ -152,24 +159,29 @@ fun FullAuditPreviewScreen(
                                 .border(1.dp, Color(0xFF10B981), RoundedCornerShape(4.dp))
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
-                            Text("ZERO-TOLERANCE", color = Color(0xFF34D399), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text("ZERO-TOLERANCE", color = Color(0xFF34D399), fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                     Text(
                         text = "Headless Chrome HTML/CSS Reference vs Native Compose / Skia GPU Pipeline",
                         color = Color.White.copy(alpha = 0.55f),
-                        fontSize = 10.5.sp
+                        fontSize = 10.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     OutlinedButton(
                         onClick = { runAudit() },
                         enabled = !isAuditing,
                         shape = RoundedCornerShape(6.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonPalette.Cyan),
                         border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.6f)),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                         modifier = Modifier.height(30.dp)
                     ) {
                         Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(13.dp))
@@ -181,7 +193,7 @@ fun FullAuditPreviewScreen(
                         onClick = onOpenLayerStudio,
                         shape = RoundedCornerShape(6.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                         modifier = Modifier.height(30.dp)
                     ) {
                         Text("🎛️ Layer Studio", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
@@ -191,12 +203,12 @@ fun FullAuditPreviewScreen(
                         onClick = onClose,
                         shape = RoundedCornerShape(6.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                         modifier = Modifier.height(30.dp)
                     ) {
                         Icon(Icons.Default.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(13.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Return to Studio", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("Close", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -306,7 +318,7 @@ fun FullAuditPreviewScreen(
                                             .border(1.5.dp, Color(0xFF3FE38A).copy(alpha = 0.4f), RoundedCornerShape(10.dp)),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        val previewSize = (minOf(stageW.value * 0.42f, stageH.value * 0.82f)).toInt().coerceIn(120, 420)
+                                        val previewSize = (minOf(stageW.value * 0.42f, stageH.value * 0.70f)).toInt().coerceIn(100, 360)
                                         if (chromeBitmap != null) {
                                             Image(
                                                 bitmap = chromeBitmap!!,
@@ -375,7 +387,7 @@ fun FullAuditPreviewScreen(
                                             document.canvas.layers.take(selectedCumulativeStep!! + 1)
                                         } else null
 
-                                        val previewSize = (minOf(stageW.value * 0.42f, stageH.value * 0.82f)).toInt().coerceIn(120, 420)
+                                        val previewSize = (minOf(stageW.value * 0.42f, stageH.value * 0.70f)).toInt().coerceIn(100, 360)
                                         NxprcCanvasPreview(
                                             document = document,
                                             activeLayersOnly = activeLayers,
@@ -482,15 +494,15 @@ fun FullAuditPreviewScreen(
                         }
                     }
 
-                    // Parity Score Banner (Compact 36dp)
+                    // Parity Score Banner (Compact 34dp & Non-clipping)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(36.dp)
+                            .height(34.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(Color(0xFF10, 0x16, 0x22))
                             .border(1.dp, Color(0xFF4A, 0xDE, 0x80), RoundedCornerShape(8.dp))
-                            .padding(horizontal = 12.dp),
+                            .padding(horizontal = 10.dp),
                         contentAlignment = Alignment.CenterStart
                     ) {
                         Row(
@@ -500,30 +512,34 @@ fun FullAuditPreviewScreen(
                         ) {
                             val scoreStr = if (parityScore != null) String.format("%.2f", parityScore) else "93.53"
                             Text(
-                                text = "VISUAL PARITY: $scoreStr%  |  ZERO-TOLERANCE: PASS  |  100% NATIVE GPU DRAW",
+                                text = "VISUAL PARITY: $scoreStr% • ZERO-TOLERANCE: PASS",
                                 color = Color(0xFF4A, 0xDE, 0x80),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 11.5.sp
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
                             )
+                            Spacer(Modifier.width(6.dp))
                             Text(
-                                text = "${document.canvas.layers.size} Compiled Layers",
+                                text = "${document.canvas.layers.size} Layers",
                                 color = Color.White.copy(alpha = 0.8f),
-                                fontSize = 10.5.sp,
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
                     }
 
-                    // Cumulative Stack Progression (Locked to compact 110dp height)
+                    // Cumulative Stack Progression (Height 96dp)
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(110.dp)
+                            .height(96.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(Color(0xFF0A, 0x0D, 0x14))
                             .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
-                            .padding(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -534,12 +550,12 @@ fun FullAuditPreviewScreen(
                                 text = "CUMULATIVE STACK PROGRESSION (0 -> N):",
                                 color = Color(0xFF94A3B8),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 10.5.sp
+                                fontSize = 10.sp
                             )
                             Text(
                                 text = "Click step to isolate build-up",
                                 color = Color.White.copy(alpha = 0.5f),
-                                fontSize = 9.5.sp
+                                fontSize = 9.sp
                             )
                         }
 
@@ -548,7 +564,7 @@ fun FullAuditPreviewScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             val totalLayers = document.canvas.layers.size
@@ -563,7 +579,7 @@ fun FullAuditPreviewScreen(
                                 ) {
                                     Box(
                                         modifier = Modifier
-                                            .size(52.dp)
+                                            .size(46.dp)
                                             .clip(RoundedCornerShape(6.dp))
                                             .background(Color(0xFF07, 0x0A, 0x10))
                                             .border(
@@ -576,13 +592,13 @@ fun FullAuditPreviewScreen(
                                         NxprcCanvasPreview(
                                             document = document,
                                             activeLayersOnly = document.canvas.layers.take(step + 1),
-                                            sizeDp = 46
+                                            sizeDp = 40
                                         )
                                     }
                                     Text(
                                         text = "#$step",
                                         color = if (isSelected) NeonPalette.Cyan else Color(0xFF94A3B8),
-                                        fontSize = 10.sp,
+                                        fontSize = 9.5.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                     )
                                 }
@@ -610,89 +626,121 @@ fun FullAuditPreviewScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "DECOMPOSED INDIVIDUAL LAYERS (ISOLATED):",
+                            text = "DECOMPOSED LAYERS",
                             color = Color(0xFF38, 0xBD, 0xF8),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 11.5.sp
+                            fontSize = 11.5.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
-                        Text(
-                            text = "${document.canvas.layers.size} Total",
-                            color = Color.White.copy(alpha = 0.6f),
-                            fontSize = 10.5.sp
-                        )
+                        Spacer(Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color(0xFF1E293B))
+                                .border(1.dp, Color(0xFF334155), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 7.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "${document.canvas.layers.size} Total",
+                                color = Color.White.copy(alpha = 0.85f),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
 
                     // Adaptive 3-Column Scrollable Grid with proportional thumbnail sizing
                     val layers = document.canvas.layers
                     val rows = (layers.size + 2) / 3
 
-                    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                        val cellW = (maxWidth - 20.dp) / 3
-                        val previewSize = (cellW.value * 0.72f).toInt().coerceIn(60, 160)
+                    val layersScrollState = rememberScrollState()
 
-                        Column(
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        BoxWithConstraints(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .verticalScroll(rememberScrollState()),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                                .padding(end = 12.dp)
                         ) {
-                            for (r in 0 until rows) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    for (c in 0 until 3) {
-                                        val idx = r * 3 + c
-                                        if (idx < layers.size) {
-                                            val layer = layers[idx]
-                                            val isInspecting = inspectingLayer?.first == idx
-                                            val title = NxprcAuditService.describeLayer(idx, layer, document)
+                            val cellW = (maxWidth - 20.dp) / 3
+                            val previewSize = (cellW.value * 0.72f).toInt().coerceIn(55, 150)
 
-                                            Column(
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .clickable {
-                                                        inspectingLayer = if (isInspecting) null else Pair(idx, layer)
-                                                    },
-                                                horizontalAlignment = Alignment.CenterHorizontally,
-                                                verticalArrangement = Arrangement.spacedBy(4.dp)
-                                            ) {
-                                                Box(
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(layersScrollState),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                for (r in 0 until rows) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        for (c in 0 until 3) {
+                                            val idx = r * 3 + c
+                                            if (idx < layers.size) {
+                                                val layer = layers[idx]
+                                                val isInspecting = inspectingLayer?.first == idx
+                                                val title = NxprcAuditService.describeLayer(idx, layer, document)
+
+                                                Column(
                                                     modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .aspectRatio(1.0f)
-                                                        .clip(RoundedCornerShape(8.dp))
-                                                        .background(Color(0xFF04, 0x06, 0x0A))
-                                                        .border(
-                                                            width = if (isInspecting) 2.dp else 1.dp,
-                                                            color = if (isInspecting) NeonPalette.Cyan else Color.White.copy(alpha = 0.2f),
-                                                            shape = RoundedCornerShape(8.dp)
-                                                        ),
-                                                    contentAlignment = Alignment.Center
+                                                        .weight(1f)
+                                                        .clickable {
+                                                            inspectingLayer = if (isInspecting) null else Pair(idx, layer)
+                                                        },
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    verticalArrangement = Arrangement.spacedBy(4.dp)
                                                 ) {
-                                                    NxprcCanvasPreview(
-                                                        document = document,
-                                                        activeLayersOnly = listOf(layer),
-                                                        sizeDp = previewSize
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .aspectRatio(1.0f)
+                                                            .clip(RoundedCornerShape(8.dp))
+                                                            .background(Color(0xFF04, 0x06, 0x0A))
+                                                            .border(
+                                                                width = if (isInspecting) 2.dp else 1.dp,
+                                                                color = if (isInspecting) NeonPalette.Cyan else Color.White.copy(alpha = 0.2f),
+                                                                shape = RoundedCornerShape(8.dp)
+                                                            ),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        NxprcCanvasPreview(
+                                                            document = document,
+                                                            activeLayersOnly = listOf(layer),
+                                                            sizeDp = previewSize
+                                                        )
+                                                    }
+
+                                                    Text(
+                                                        text = title,
+                                                        color = if (isInspecting) NeonPalette.Cyan else Color.White,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 9.5.sp,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
                                                     )
                                                 }
-
-                                                Text(
-                                                    text = title,
-                                                    color = if (isInspecting) NeonPalette.Cyan else Color.White,
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontSize = 9.5.sp,
-                                                    maxLines = 1,
-                                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                                )
+                                            } else {
+                                                Spacer(modifier = Modifier.weight(1f))
                                             }
-                                        } else {
-                                            Spacer(modifier = Modifier.weight(1f))
                                         }
                                     }
                                 }
                             }
                         }
+
+                        DesktopVerticalScrollbar(
+                            adapter = rememberScrollbarAdapter(layersScrollState),
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .fillMaxHeight(),
+                            thickness = 8.dp,
+                            trackWidth = 11.dp,
+                            showTrackGutter = true
+                        )
                     }
                 }
             }

@@ -34,6 +34,8 @@ import com.sanket.tools.nexpaddesktop.plugins.LayerDetails
 import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
 import com.sanket.tools.nexpaddesktop.plugins.NxprcLayerCodeGenerator
 import com.sanket.tools.nexpaddesktop.plugins.NxprcSurgicalReplacer
+import androidx.compose.ui.text.style.TextOverflow
+import com.sanket.tools.nexpaddesktop.ui.components.DesktopVerticalScrollbar
 import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 import java.awt.Toolkit
 import java.awt.datatransfer.DataFlavor
@@ -108,6 +110,7 @@ fun LayerStudioFullScreen(
     // Surgical AI Copilot State
     var userAiPrompt by remember(safeSelectedIndex) { mutableStateOf("") }
     var replacementCode by remember(safeSelectedIndex) { mutableStateOf("") }
+    var activeCompactTab by remember { mutableStateOf(1) } // 0 = Layers, 1 = Canvas, 2 = Inspector
 
     // Pre-computed filtered export doc (non-destructive exclusion from staged document)
     val exportDoc = remember(currentDoc, activeLayerIndices) {
@@ -166,6 +169,7 @@ fun LayerStudioFullScreen(
             ) {
                 // Left: Button Identity & Subtitle
                 Row(
+                    modifier = Modifier.weight(1f, fill = false).padding(end = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -184,17 +188,21 @@ fun LayerStudioFullScreen(
                         )
                     }
 
-                    Column {
+                    Column(modifier = Modifier.weight(1f, fill = false)) {
                         Text(
                             text = "${currentDoc.manifest.name.uppercase()} — LAYER STUDIO",
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = "Category: ${currentDoc.manifest.category} • Canvas: ${currentDoc.manifest.widthDp}x${currentDoc.manifest.heightDp}dp • Skia GPU Vector Engine",
                             color = Color.White.copy(alpha = 0.55f),
-                            fontSize = 10.5.sp
+                            fontSize = 10.5.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -323,12 +331,12 @@ fun LayerStudioFullScreen(
                         },
                         shape = RoundedCornerShape(6.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                         modifier = Modifier.height(30.dp)
                     ) {
                         Icon(Icons.Default.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(13.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Return to Studio", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("Close", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -336,27 +344,93 @@ fun LayerStudioFullScreen(
             // =========================================================================
             // 2. MAIN 3-ZONE WORKSPACE
             // =========================================================================
-            Row(
+            BoxWithConstraints(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(12.dp)
             ) {
+                val availableW = maxWidth
+                val isCompact = availableW < 960.dp
+                val isMedium = availableW in 960.dp..1180.dp
 
-                // =====================================================================
-                // ZONE 1 (LEFT): LAYER STACK ORGANIZER (Dedicated Sidebar)
-                // =====================================================================
-                Column(
-                    modifier = Modifier
-                        .width(325.dp)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFF090D18))
-                        .border(1.dp, Color(0xFF1B2438), RoundedCornerShape(10.dp))
-                        .padding(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    if (isCompact) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            val tabs = listOf(
+                                Triple(0, "🗂️ Layers Stack", "${totalLayers}L"),
+                                Triple(1, "🎨 Canvas & Physics", ""),
+                                Triple(2, "🔍 Inspector & AI", if (selectedDetails != null) "#$safeSelectedIndex" else "")
+                            )
+                            tabs.forEach { (tabIdx, tabTitle, badge) ->
+                                val isSelected = activeCompactTab == tabIdx
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(if (isSelected) NeonPalette.Cyan else Color(0xFF141C2E))
+                                        .border(1.dp, if (isSelected) NeonPalette.Cyan else Color(0xFF28354E), RoundedCornerShape(6.dp))
+                                        .clickable { activeCompactTab = tabIdx }
+                                        .padding(vertical = 6.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text(
+                                            text = tabTitle,
+                                            color = if (isSelected) Color.Black else Color.White,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.sp
+                                        )
+                                        if (badge.isNotBlank()) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(3.dp))
+                                                    .background(if (isSelected) Color.Black.copy(alpha = 0.2f) else Color(0xFF222F46))
+                                                    .padding(horizontal = 4.dp, vertical = 1.dp)
+                                            ) {
+                                                Text(
+                                                    text = badge,
+                                                    fontSize = 9.sp,
+                                                    color = if (isSelected) Color.Black else Color.White.copy(alpha = 0.8f),
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+
+                        // =====================================================================
+                        // ZONE 1 (LEFT): LAYER STACK ORGANIZER (Dedicated Sidebar)
+                        // =====================================================================
+                        if (!isCompact || activeCompactTab == 0) {
+                            Column(
+                                modifier = Modifier
+                                    .then(if (isCompact) Modifier.weight(1f) else Modifier.width(if (isMedium) 270.dp else 320.dp))
+                                    .fillMaxHeight()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Color(0xFF090D18))
+                                    .border(1.dp, Color(0xFF1B2438), RoundedCornerShape(10.dp))
+                                    .padding(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
                     // Header & Order Toggle
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -510,7 +584,9 @@ fun LayerStudioFullScreen(
                     ) {
                         LazyColumn(
                             state = layerLazyListState,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(end = 12.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             items(
@@ -713,12 +789,24 @@ fun LayerStudioFullScreen(
                                 }
                             }
                         }
+
+                        DesktopVerticalScrollbar(
+                            adapter = rememberScrollbarAdapter(layerLazyListState),
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .fillMaxHeight(),
+                            thickness = 8.dp,
+                            trackWidth = 11.dp,
+                            showTrackGutter = true
+                        )
                     }
                 }
+            }
 
-                // =====================================================================
-                // ZONE 2 (CENTER ~40% width): VISUAL WORKSPACE (THE FOCUS)
-                // =====================================================================
+            // =====================================================================
+            // ZONE 2 (CENTER ~40% width): VISUAL WORKSPACE (THE FOCUS)
+            // =====================================================================
+            if (!isCompact || activeCompactTab == 1) {
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -938,21 +1026,28 @@ fun LayerStudioFullScreen(
                         }
                     }
                 }
+            }
 
-                // =====================================================================
-                // ZONE 3 (RIGHT): LAYER INSPECTOR & SURGICAL AI COPILOT (Dedicated Sidebar)
-                // =====================================================================
-                Column(
+            // =====================================================================
+            // ZONE 3 (RIGHT): LAYER INSPECTOR & SURGICAL AI COPILOT (Dedicated Sidebar)
+            // =====================================================================
+            if (!isCompact || activeCompactTab == 2) {
+                val inspectorScrollState = rememberScrollState()
+                Box(
                     modifier = Modifier
-                        .width(360.dp)
+                        .then(if (isCompact) Modifier.weight(1f) else Modifier.width(if (isMedium) 300.dp else 360.dp))
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(10.dp))
                         .background(Color(0xFF090D18))
                         .border(1.dp, Color(0xFF1B2438), RoundedCornerShape(10.dp))
-                        .padding(10.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(inspectorScrollState)
+                            .padding(start = 10.dp, top = 10.dp, bottom = 10.dp, end = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                     if (selectedDetails != null && selectedLayer != null) {
                         // Inspector Title & Copy Code
                         Row(
@@ -993,6 +1088,7 @@ fun LayerStudioFullScreen(
                         }
 
                         // Decomposed Monospace Code Box
+                        val snippetScrollState = rememberScrollState()
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1000,7 +1096,7 @@ fun LayerStudioFullScreen(
                                 .clip(RoundedCornerShape(6.dp))
                                 .background(Color(0xFF030509))
                                 .border(1.dp, Color(0xFF151E2E), RoundedCornerShape(6.dp))
-                                .padding(8.dp)
+                                .padding(start = 8.dp, top = 8.dp, bottom = 8.dp, end = 4.dp)
                         ) {
                             Text(
                                 text = selectedDetails.codeSnippet,
@@ -1008,7 +1104,19 @@ fun LayerStudioFullScreen(
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 10.5.sp,
                                 lineHeight = 14.sp,
-                                modifier = Modifier.verticalScroll(rememberScrollState())
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(end = 12.dp)
+                                    .verticalScroll(snippetScrollState)
+                            )
+                            DesktopVerticalScrollbar(
+                                adapter = rememberScrollbarAdapter(snippetScrollState),
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .fillMaxHeight(),
+                                thickness = 6.dp,
+                                trackWidth = 8.dp,
+                                showTrackGutter = false
                             )
                         }
 
@@ -1212,7 +1320,22 @@ fun LayerStudioFullScreen(
                         }
                     }
                 }
+
+                DesktopVerticalScrollbar(
+                    adapter = rememberScrollbarAdapter(inspectorScrollState),
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                        .padding(vertical = 4.dp),
+                    thickness = 8.dp,
+                    trackWidth = 11.dp,
+                    showTrackGutter = true
+                )
             }
+        }
+    }
+}
+}
 
             // =========================================================================
             // 3. BOTTOM CONTEXT & ACTION BAR
@@ -1227,6 +1350,7 @@ fun LayerStudioFullScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
+                    modifier = Modifier.weight(1f, fill = false).padding(end = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -1234,15 +1358,18 @@ fun LayerStudioFullScreen(
                         text = if (hasUnsavedChanges) "⚠️ Unsaved Staged Changes:" else "ℹ️ Sandboxed Studio Editing:",
                         color = if (hasUnsavedChanges) Color(0xFFFBBF24) else Color(0xFF34D399),
                         fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp
+                        fontSize = 11.sp,
+                        maxLines = 1
                     )
                     Text(
                         text = if (hasUnsavedChanges)
-                            "Live preview & exports reflect staged edits. Click '💾 Save Changes' to commit to HTML editor, or 'Return to Studio' to discard."
+                            "Live preview & exports reflect staged edits. Click '💾 Save Changes' to commit to HTML editor."
                         else
                             "Surgical edits preview live. Export or push anytime; code remains unchanged in HTML until saved.",
                         color = Color.White.copy(alpha = 0.65f),
-                        fontSize = 10.5.sp
+                        fontSize = 10.5.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 

@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package com.sanket.tools.nexpaddesktop.ui
 
 import androidx.compose.foundation.BorderStroke
@@ -20,7 +22,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.rememberTextFieldVerticalScrollState
+import com.sanket.tools.nexpaddesktop.ui.components.DesktopVerticalScrollbar
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -842,6 +848,7 @@ fun PluginsScreen(
                         }
 
                         // Scrollable Prompt Text Display
+                        val promptScrollState = rememberScrollState()
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -856,7 +863,19 @@ fun PluginsScreen(
                                 color = Color(0xFFE2E8F0),
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 11.5.sp,
-                                modifier = Modifier.verticalScroll(rememberScrollState())
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(end = 14.dp)
+                                    .verticalScroll(promptScrollState)
+                            )
+                            DesktopVerticalScrollbar(
+                                adapter = rememberScrollbarAdapter(promptScrollState),
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .fillMaxHeight(),
+                                thickness = 8.dp,
+                                trackWidth = 11.dp,
+                                showTrackGutter = true
                             )
                         }
                     }
@@ -1312,27 +1331,56 @@ private fun ComponentEditorPane(
             Text("Native GPU Skia Compiler", color = Color.White.copy(alpha = 0.5f), fontSize = 10.sp)
         }
 
-        // 6. Monospace Code Editor (Cyber IDE Styling)
-        OutlinedTextField(
-            value = htmlSource,
-            onValueChange = onHtmlSourceChange,
+        // 6. Monospace Code Editor (Cyber IDE Styling with High-Visibility Desktop Scrollbar)
+        val codeScrollState = rememberTextFieldVerticalScrollState()
+
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .defaultMinSize(minHeight = 160.dp),
-            textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace, fontSize = 12.sp),
-            placeholder = { Text("Paste your AI-generated HTML / CSS code here...", color = Color.White.copy(alpha = 0.35f)) },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = NeonPalette.Cyan.copy(alpha = 0.75f),
-                unfocusedBorderColor = Color(0xFF1E293B),
-                focusedContainerColor = Color(0xFF070B14),
-                unfocusedContainerColor = Color(0xFF070B14),
-                cursorColor = NeonPalette.Cyan,
-                focusedTextColor = Color(0xFFF1F5F9),
-                unfocusedTextColor = Color(0xFFCBD5E1)
-            ),
-            shape = RoundedCornerShape(8.dp)
-        )
+                .defaultMinSize(minHeight = 160.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF070B14))
+                .border(1.dp, Color(0xFF1E293B), RoundedCornerShape(8.dp))
+        ) {
+            BasicTextField(
+                value = htmlSource,
+                onValueChange = onHtmlSourceChange,
+                scrollState = codeScrollState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = 12.dp, top = 12.dp, bottom = 12.dp, end = 22.dp),
+                textStyle = TextStyle(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 12.sp,
+                    color = Color(0xFFF1F5F9),
+                    lineHeight = 18.sp
+                ),
+                cursorBrush = SolidColor(NeonPalette.Cyan),
+                decorationBox = { innerTextField ->
+                    if (htmlSource.isEmpty()) {
+                        Text(
+                            "Paste your AI-generated HTML / CSS code here...",
+                            color = Color.White.copy(alpha = 0.35f),
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 12.sp
+                        )
+                    }
+                    innerTextField()
+                }
+            )
+
+            DesktopVerticalScrollbar(
+                adapter = rememberScrollbarAdapter(codeScrollState),
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
+                    .padding(vertical = 4.dp, horizontal = 2.dp),
+                thickness = 8.dp,
+                trackWidth = 11.dp,
+                showTrackGutter = true
+            )
+        }
     }
 }
 
