@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.text.BasicTextField
@@ -964,6 +967,76 @@ fun PluginsScreen(
 }
 
 /**
+ * Material 3 Expressive SplitButton layout specification and defaults.
+ */
+object SplitButtonDefaults {
+    val TrailingIconSize = 16.dp
+    val Spacing = 2.dp
+    val LeadingShape = RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp, topEnd = 2.dp, bottomEnd = 2.dp)
+    val TrailingShape = RoundedCornerShape(topStart = 2.dp, bottomStart = 2.dp, topEnd = 6.dp, bottomEnd = 6.dp)
+
+    @Composable
+    fun LeadingButton(
+        onClick: () -> Unit,
+        modifier: Modifier = Modifier,
+        enabled: Boolean = true,
+        colors: ButtonColors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
+        contentPadding: PaddingValues = PaddingValues(horizontal = 10.dp, vertical = 3.dp),
+        content: @Composable RowScope.() -> Unit
+    ) {
+        Button(
+            onClick = onClick,
+            modifier = modifier,
+            enabled = enabled,
+            shape = LeadingShape,
+            colors = colors,
+            contentPadding = contentPadding,
+            content = content
+        )
+    }
+
+    @Composable
+    fun TrailingButton(
+        checked: Boolean,
+        onCheckedChange: (Boolean) -> Unit,
+        modifier: Modifier = Modifier,
+        enabled: Boolean = true,
+        colors: ButtonColors = ButtonDefaults.buttonColors(
+            containerColor = if (checked) Color(0xFF6D28D9) else Color(0xFF7C3AED)
+        ),
+        contentPadding: PaddingValues = PaddingValues(horizontal = 6.dp, vertical = 3.dp),
+        content: @Composable RowScope.() -> Unit
+    ) {
+        Button(
+            onClick = { onCheckedChange(!checked) },
+            modifier = modifier,
+            enabled = enabled,
+            shape = TrailingShape,
+            colors = colors,
+            contentPadding = contentPadding,
+            content = content
+        )
+    }
+}
+
+@Composable
+fun SplitButtonLayout(
+    leadingButton: @Composable () -> Unit,
+    trailingButton: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    spacing: androidx.compose.ui.unit.Dp = SplitButtonDefaults.Spacing
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(spacing),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        leadingButton()
+        trailingButton()
+    }
+}
+
+/**
  * SplitButton action for AI prompt copying with tier dropdown selector.
  */
 @Composable
@@ -973,23 +1046,14 @@ private fun PromptSplitButton(
     onCopyAiPrompt: () -> Unit,
     height: androidx.compose.ui.unit.Dp = 28.dp
 ) {
+    var checked by remember { mutableStateOf(false) }
+
     Box {
-        var showTierMenu by remember { mutableStateOf(false) }
-        Surface(
-            modifier = Modifier.height(height),
-            shape = RoundedCornerShape(6.dp),
-            color = Color(0xFF7C3AED)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.height(height)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .clickable(onClick = onCopyAiPrompt)
-                        .padding(horizontal = 10.dp, vertical = 3.dp),
-                    contentAlignment = Alignment.Center
+        SplitButtonLayout(
+            leadingButton = {
+                SplitButtonDefaults.LeadingButton(
+                    onClick = onCopyAiPrompt,
+                    modifier = Modifier.height(height)
                 ) {
                     Text(
                         text = "Copy AI Prompt",
@@ -1000,32 +1064,34 @@ private fun PromptSplitButton(
                         softWrap = false
                     )
                 }
-                Box(
-                    modifier = Modifier
-                        .width(1.dp)
-                        .fillMaxHeight(0.65f)
-                        .background(Color.White.copy(alpha = 0.35f))
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .clickable { showTierMenu = true }
-                        .padding(horizontal = 7.dp, vertical = 3.dp),
-                    contentAlignment = Alignment.Center
+            },
+            trailingButton = {
+                SplitButtonDefaults.TrailingButton(
+                    checked = checked,
+                    onCheckedChange = { checked = it },
+                    modifier = Modifier.height(height)
                 ) {
-                    Text(
-                        text = "▼",
-                        fontSize = 8.5.sp,
-                        color = Color.White,
-                        maxLines = 1,
-                        softWrap = false
+                    val rotation: Float by animateFloatAsState(
+                        targetValue = if (checked) 180f else 0f,
+                        label = "Trailing Icon Rotation"
+                    )
+                    Icon(
+                        Icons.Filled.KeyboardArrowDown,
+                        modifier = Modifier
+                            .size(SplitButtonDefaults.TrailingIconSize)
+                            .graphicsLayer {
+                                this.rotationZ = rotation
+                            },
+                        tint = Color.White,
+                        contentDescription = "Toggle AI Prompt Tier"
                     )
                 }
             }
-        }
+        )
+
         DropdownMenu(
-            expanded = showTierMenu,
-            onDismissRequest = { showTierMenu = false }
+            expanded = checked,
+            onDismissRequest = { checked = false }
         ) {
             PromptTier.entries.forEach { tier ->
                 DropdownMenuItem(
@@ -1045,7 +1111,7 @@ private fun PromptSplitButton(
                     },
                     onClick = {
                         onSelectPromptTier(tier)
-                        showTierMenu = false
+                        checked = false
                     }
                 )
             }
