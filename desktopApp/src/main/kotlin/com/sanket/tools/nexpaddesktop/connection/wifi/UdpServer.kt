@@ -16,6 +16,9 @@ import io.ktor.network.sockets.Datagram
 import io.ktor.network.sockets.SocketAddress
 import io.ktor.utils.io.core.ByteReadPacket
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.encodeToString
@@ -59,6 +62,23 @@ class UdpServer(
     private val onClientDisconnected: (() -> Unit)? = null,
     private val onInputReceived: (GamepadInput) -> Unit
 ) {
+    companion object {
+        var liveTotalRxPackets: Long by mutableStateOf(0L)
+            internal set
+        var liveTotalTxFeedbacks: Long by mutableStateOf(0L)
+            internal set
+        var livePacketLossPct: Int by mutableStateOf(0)
+            internal set
+        var liveClientAddress: String by mutableStateOf("")
+            internal set
+        var liveDeviceName: String by mutableStateOf("")
+            internal set
+        var liveTransportType: String by mutableStateOf("")
+            internal set
+        var isLiveSessionActive: Boolean by mutableStateOf(false)
+            internal set
+    }
+
     @Volatile private var clientAddress: SocketAddress? = null
     private var selectorManager: SelectorManager? = null
     private var lastSequenceNumber = Int.MIN_VALUE
@@ -67,6 +87,7 @@ class UdpServer(
     private var hasLoggedFirstPacket = false
     private var totalPackets = 0L
     @Volatile private var lastFeedback = GamepadFeedback(0, 0)
+    @Volatile private var lastLoggedRumbleFeedback: GamepadFeedback? = null
     @Volatile private var cachedLossPctByte: Byte = 0 // Cache last rumble state for Ping Echoes
     private var lostInWindow = 0
     private var receivedInWindow = 0
@@ -106,7 +127,7 @@ class UdpServer(
         selectorManager = SelectorManager(Dispatchers.IO)
         serverSocket = aSocket(selectorManager!!).udp().bind(InetSocketAddress("0.0.0.0", port))
         
-        println("UDP Server listening on port $port")
+        println("🌐 [UDP SERVER] Listening on 0.0.0.0:$port (Waiting for controller handshake...)")
 
         // 1 Hz Autonomous Keepalive Heartbeat: guarantees the mobile client watchdog never starves
         heartbeatJob?.cancel()
@@ -131,8 +152,11 @@ class UdpServer(
 
                 if (datagram == null) {
                     if (clientAddress != null) {
-                        println("⚠️ [UDP SERVER] Connection timed out (no packets for 5 seconds from ${formatAddress(clientAddress)}). Disconnecting...")
+                        println("⚠️ [NETWORK TIMEOUT] Stream inactive for 5s from ${formatAddress(clientAddress)}. Resetting session...")
                         clientAddress = null
+                        hasLoggedFirstPacket = false
+                        isLiveSessionActive = false
+                        liveClientAddress = ""
                         onClientDisconnected?.invoke()
                     }
                     continue
@@ -149,30 +173,28 @@ class UdpServer(
                 // Security & Robustness: Only adopt a new address if it sends a formal CONNECT handshake.
                 if (clientAddress != datagram.address) {
                     if (firstByte != NexpadProtocol.PACKET_TYPE_CONNECT) {
-                        if (totalPackets % 60 == 0L) {
-                            println("⚠️ [UDP SERVER] Ignoring packet (type 0x${firstByte.toString(16)}) from ${formatAddress(datagram.address)}: active client is ${formatAddress(clientAddress)}")
+                        if (totalPackets % 300 == 0L) {
+                            println("⚠️ [UDP SERVER] Ignoring unsolicited packet (type 0x${firstByte.toString(16)}) from ${formatAddress(datagram.address)}: active client is ${formatAddress(clientAddress)}")
                         }
                         continue // Ignore unsolicited packets from anyone who hasn't handshaked
                     }
-                    println("📡 [UDP SERVER] New client session detected from ${formatAddress(datagram.address)}! Resetting sequence tracker.")
                     clientAddress = datagram.address
                     lastSequenceNumber = Int.MIN_VALUE
                 }
                 
                 totalPackets++
+                liveTotalRxPackets = totalPackets
                 packetCount = (packetCount % 60) + 1  // Wraps 1→60, never grows unbounded
                 if (!hasLoggedFirstPacket) {
                     hasLoggedFirstPacket = true
-                    val debugFirstByte = if (data.isNotEmpty()) data[0] else -1
-                    println("📡 [UDP DEBUG] Received first packet. Size: ${data.size} bytes | First byte: $debugFirstByte | From: ${formatAddress(clientAddress)}")
-                } else if (packetCount == 60) {
-                    println("📡 [UDP DEBUG] Packets received: $totalPackets | From: ${formatAddress(clientAddress)}")
+                    println("🎮 [INPUT STREAM] Active binary telemetry stream established with ${formatAddress(clientAddress)}: 16 Buttons, 2 Sticks, 2 Triggers, 6-Axis Gyro/Accel")
+                } else if (totalPackets > 0 && totalPackets % 10000L == 0L) {
+                    val lossPct = cachedLossPctByte.toInt() and 0xFF
+                    println("📡 [NETWORK HEALTH] Checkpoint: $totalPackets packets processed with ${formatAddress(clientAddress)} | Loss: $lossPct%")
                 }
-                
                 
                 // Formal Handshake Protocol
                 if (firstByte == NexpadProtocol.PACKET_TYPE_CONNECT) {
-                    println("🤝 [UDP DEBUG] Received CONNECT handshake from ${formatAddress(clientAddress)}")
                     lastSequenceNumber = Int.MIN_VALUE
                     
                     var deviceName = "Unknown Device"
@@ -192,15 +214,25 @@ class UdpServer(
                             val javaSock = (datagram.address as? io.ktor.network.sockets.InetSocketAddress)?.toJavaAddress() as? java.net.InetSocketAddress
                             val inet = javaSock?.address
                             if (inet != null && NetworkUtils.isUsbTetheringAddress(inet)) {
-                                println("⚡ [UDP Server] Auto-detected USB Tethering from client address: ${javaSock.hostString}")
                                 connType = 2
                             }
                         } catch (_: Exception) {}
                     }
+
+                    val transportName = if (connType == 2) "USB Tethering" else "Wi-Fi (UDP)"
+                    val clientAddrStr = formatAddress(clientAddress)
+                    val pcName = System.getenv("COMPUTERNAME") ?: "Windows PC"
+
+                    liveDeviceName = deviceName
+                    liveTransportType = transportName
+                    liveClientAddress = clientAddrStr
+                    isLiveSessionActive = true
+
+                    println("🤝 [HANDSHAKE] Connected to '$deviceName' via $transportName [$clientAddrStr]")
+                    println("   ↳ Session: 60Hz Binary Input Stream + 6-Axis IMU Forwarding | Host ACK sent ($pcName)")
                     
                     onClientConnected?.invoke(deviceName, connType)
 
-                    val pcName = System.getenv("COMPUTERNAME") ?: "Windows PC"
                     val pcBytes = pcName.toByteArray(Charsets.UTF_8)
                     val safeLen = pcBytes.size.coerceAtMost(255)
                     val buffer = ByteBuffer.allocate(2 + safeLen)
@@ -213,8 +245,11 @@ class UdpServer(
                     }
                     continue
                 } else if (firstByte == NexpadProtocol.PACKET_TYPE_DISCONNECT) {
-                    println("👋 [UDP DEBUG] Received DISCONNECT from ${formatAddress(clientAddress)}")
+                    println("👋 [DISCONNECT] Session gracefully closed by client ${formatAddress(clientAddress)}")
                     clientAddress = null
+                    hasLoggedFirstPacket = false
+                    isLiveSessionActive = false
+                    liveClientAddress = ""
                     onClientDisconnected?.invoke()
                     continue
                 }
@@ -244,6 +279,10 @@ class UdpServer(
                             val total = lostInWindow + receivedInWindow
                             val currentLossPct = if (total > 0) (255 * lostInWindow / total).coerceIn(0, 255) else 0
                             cachedLossPctByte = currentLossPct.toByte()
+                            livePacketLossPct = currentLossPct
+                            if (lostInWindow > 0) {
+                                println("⚠️ [PACKET LOSS] Dropped $lostInWindow packets in 1s window ($currentLossPct% loss) from ${formatAddress(clientAddress)}")
+                            }
                             lostInWindow = 0
                             receivedInWindow = 0
                         }
@@ -255,12 +294,12 @@ class UdpServer(
                     } else {
                         // If sequence number jumped backwards significantly (e.g. client app restarted stream), resync!
                         if (delta < -100) {
-                            println("🔄 [UDP SERVER] Large negative sequence delta ($delta)! Client stream resynced to seq ${input.sequenceNumber}.")
+                            println("🔄 [UDP STREAM RESYNC] Client jump delta ($delta)! Stream resynced to seq ${input.sequenceNumber}.")
                             lastSequenceNumber = input.sequenceNumber
                             onInputReceived(input)
                             sendFeedback(lastFeedback, echoSequenceNumber = input.sequenceNumber, packetLossByte = cachedLossPctByte)
                         } else if (packetCount % 10 == 0) {
-                            println("⚠️ [UDP SERVER] Dropped STALE/REORDERED packet! Seq: ${input.sequenceNumber}, Expected > $lastSequenceNumber (delta: $delta)")
+                            println("⚠️ [UDP REORDER] Dropped stale/reordered packet! Seq: ${input.sequenceNumber}, Expected > $lastSequenceNumber (delta: $delta)")
                         }
                     }
                 }
@@ -290,6 +329,16 @@ class UdpServer(
             println("⚠️ [UDP SERVER] sendFeedback skipped: serverSocket is null")
             return
         }
+
+        // Log active haptic rumble events transparently when triggered
+        if ((feedback.leftMotorSpeed > 0 || feedback.rightMotorSpeed > 0) && feedback != lastLoggedRumbleFeedback) {
+            lastLoggedRumbleFeedback = feedback
+            println("💥 [HAPTICS] Game rumble sent to ${formatAddress(target)}: HeavyMotor=${feedback.leftMotorSpeed}, LightMotor=${feedback.rightMotorSpeed}")
+        } else if (feedback.leftMotorSpeed == 0 && feedback.rightMotorSpeed == 0 && lastLoggedRumbleFeedback != null && (lastLoggedRumbleFeedback!!.leftMotorSpeed > 0 || lastLoggedRumbleFeedback!!.rightMotorSpeed > 0)) {
+            lastLoggedRumbleFeedback = feedback
+            println("💥 [HAPTICS] Rumble stopped (Motors idle)")
+        }
+
         lastFeedback = feedback
         try {
             val bytes = NexpadProtocol.encodeFeedback(feedback, echoSequenceNumber, packetLossByte)
@@ -298,8 +347,9 @@ class UdpServer(
                 socket.send(packet)
             }
             totalFeedbacksSent++
-            if (totalFeedbacksSent % 120 == 0L) {
-                println("📡 [UDP SERVER] Transmitted feedback heartbeat: $totalFeedbacksSent packets to ${formatAddress(target)}")
+            liveTotalTxFeedbacks = totalFeedbacksSent
+            if (totalFeedbacksSent > 0 && totalFeedbacksSent % 10000L == 0L) {
+                println("📡 [FEEDBACK HEARTBEAT] Checkpoint: $totalFeedbacksSent feedback frames sent to ${formatAddress(target)}")
             }
         } catch (e: Exception) {
             println("❌ [UDP ERROR] Failed to send feedback to ${formatAddress(target)}: ${e.message}")
@@ -318,9 +368,11 @@ class UdpServer(
                 // Ignore
             }
         }
+        isLiveSessionActive = false
+        liveClientAddress = ""
         serverSocket?.close()
         selectorManager?.close()
         dedicatedDispatcher.close()
-        println("UDP Server stopped.")
+        println("🛑 [UDP SERVER] Server stopped on port $port.")
     }
 }

@@ -200,8 +200,13 @@ class DsuServer {
                 }
 
                 if (shouldRegister) {
+                    val isNewClient = !clients.containsKey(clientId)
                     val clientInfo = ClientInfo(packet.address, packet.port, System.currentTimeMillis())
                     clients[clientId] = clientInfo
+                    if (isNewClient) {
+                        val localPort = socket?.localPort ?: DEFAULT_PORT
+                        println("🎯 [DSU MOTION SERVER] Client subscribed from $clientId (Streaming 6-Axis Gyro/Accel on UDP $localPort)")
+                    }
                     // Immediately send a response packet so client calibration handshakes complete instantly
                     sendImmediateDataResponse(clientInfo)
                 }

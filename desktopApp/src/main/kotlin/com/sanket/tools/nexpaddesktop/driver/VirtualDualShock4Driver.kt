@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.driver
+package com.sanket.tools.nexpaddesktop.driver
 
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpad.model.GamepadFeedback
@@ -87,8 +87,8 @@ class VirtualDualShock4Driver(
             mapper.reset()
 
             isConnected = true
-            println("✅ Virtual Sony DualShock 4 Controller Connected successfully!")
-            println("⏳ Auto-calibrating Gyroscope... Keep the phone still for ~2 seconds.")
+            println("✅ [DRIVER] Virtual DualShock 4 Controller mounted successfully into ViGEm Bus")
+            println("⏳ [IMU CALIBRATION] Auto-calibrating Gyroscope... Keep device steady for ~2s")
 
         } catch (e: Exception) {
             System.err.println("⚠️ ViGEm DS4 init failed: ${e.message}")

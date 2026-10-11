@@ -72,7 +72,7 @@ fun MainApplicationWindow(
                         is DesktopScreenKey.Controller -> ControllerScreen(viewModel = viewModel)
                         is DesktopScreenKey.Plugins -> PluginsScreen(viewModel = viewModel)
                         is DesktopScreenKey.Output -> OutputScreen(viewModel = viewModel)
-                        is DesktopScreenKey.Debug -> DebugScreen()
+                        is DesktopScreenKey.Debug -> DebugScreen(viewModel = viewModel)
                         else -> {
                             val screenName = (key as? DesktopScreenKey)?.toScreen()?.name ?: "UNKNOWN"
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

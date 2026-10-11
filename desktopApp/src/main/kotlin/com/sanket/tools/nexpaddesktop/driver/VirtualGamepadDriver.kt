@@ -81,7 +81,7 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
             lib.vigem_target_x360_register_notification(client, target, notificationCallback!!, null)
             
             isConnected = true
-            println("✅ Virtual Xbox 360 Controller Connected successfully!")
+            println("✅ [DRIVER] Virtual Xbox 360 Controller mounted successfully into ViGEm Bus")
         } catch (e: Exception) {
             System.err.println("⚠️ ViGEm init failed: ${e.message}")
             println("⚠️ Falling back to MOCK driver mode (buttons will print to console but not work in games).")
