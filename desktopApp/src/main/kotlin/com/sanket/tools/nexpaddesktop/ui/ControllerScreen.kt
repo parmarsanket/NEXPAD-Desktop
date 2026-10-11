@@ -234,6 +234,14 @@ fun ControllerScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
         }
+
+        VerticalScrollbar(
+            adapter = rememberScrollbarAdapter(scrollState),
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight()
+                .padding(vertical = 4.dp, horizontal = 2.dp)
+        )
     }
 }
 

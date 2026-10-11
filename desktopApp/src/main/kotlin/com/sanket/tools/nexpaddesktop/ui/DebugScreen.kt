@@ -12,9 +12,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -116,8 +118,8 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
     var selectedLogEntry by remember { mutableStateOf<LogEntry?>(null) }
     var isInspectorCollapsed by remember { mutableStateOf(false) }
 
-    // Adjustable log section sizing
-    var terminalHeight by remember { mutableStateOf(480.dp) }
+    // Fixed comfortable log section height
+    val terminalHeight = 440.dp
 
     // Filter logs according to active category, level, and search query
     val filteredLogs = remember(allLogs, selectedFilter, selectedLevelFilter, searchQuery) {
@@ -174,96 +176,82 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
         val isNarrow = screenWidth < 980.dp
         val isUltraNarrow = screenWidth < 680.dp
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(outerScrollState)
-                .padding(horizontal = if (isUltraNarrow) 10.dp else 16.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            // ── 1. Top Header & Primary Action Controls (Fully Responsive) ──
-            if (isNarrow) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    HeaderTitleRow(isStreamPaused = isStreamPaused)
-                    HeaderActionToolbar(
-                        layoutMode = layoutMode,
-                        onLayoutModeChange = { layoutMode = it },
-                        isStreamPaused = isStreamPaused,
-                        onTogglePause = {
-                            if (isStreamPaused) {
-                                isStreamPaused = false
-                            } else {
-                                pausedSnapshot = AppLogger.getLogEntriesCopy()
-                                isStreamPaused = true
-                            }
-                        },
-                        autoScrollEnabled = autoScrollEnabled,
-                        onToggleAutoScroll = { autoScrollEnabled = !autoScrollEnabled },
-                        onExportLogs = {
-                            try {
-                                val file = AppLogger.exportLogsToFile()
-                                notificationMessage = "Exported ${allLogs.size} logs to: ${file.name}"
-                            } catch (e: Exception) {
-                                notificationMessage = "Export failed: ${e.message}"
-                            }
-                        },
-                        isCopied = isCopied,
-                        onCopyLogs = {
-                            val allLogsText = filteredLogs.joinToString("\n") { it.displayString() }
-                            clipboardManager.setText(buildAnnotatedString { append(allLogsText) })
-                            isCopied = true
-                            notificationMessage = "Copied ${filteredLogs.size} logs to clipboard!"
-                        },
-                        onClearLogs = { AppLogger.clearLogs() },
-                        filteredCount = filteredLogs.size,
-                        totalCount = allLogs.size
-                    )
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(outerScrollState)
+                    .padding(horizontal = if (isUltraNarrow) 10.dp else 16.dp, vertical = 14.dp)
+                    .padding(end = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // ── 1. Top Header & Primary Action Controls (Fully Responsive) ──
+                if (isNarrow) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        HeaderTitleRow(isStreamPaused = isStreamPaused)
+                        HeaderActionToolbar(
+                            layoutMode = layoutMode,
+                            onLayoutModeChange = { layoutMode = it },
+                            isStreamPaused = isStreamPaused,
+                            onTogglePause = {
+                                if (isStreamPaused) {
+                                    isStreamPaused = false
+                                } else {
+                                    pausedSnapshot = AppLogger.getLogEntriesCopy()
+                                    isStreamPaused = true
+                                }
+                            },
+                            autoScrollEnabled = autoScrollEnabled,
+                            onToggleAutoScroll = { autoScrollEnabled = !autoScrollEnabled },
+                            isCopied = isCopied,
+                            onCopyLogs = {
+                                val allLogsText = filteredLogs.joinToString("\n") { it.displayString() }
+                                clipboardManager.setText(buildAnnotatedString { append(allLogsText) })
+                                isCopied = true
+                                notificationMessage = "Copied ${filteredLogs.size} logs to clipboard!"
+                            },
+                            onClearLogs = { AppLogger.clearLogs() },
+                            filteredCount = filteredLogs.size,
+                            totalCount = allLogs.size
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        HeaderTitleRow(isStreamPaused = isStreamPaused)
+                        HeaderActionToolbar(
+                            layoutMode = layoutMode,
+                            onLayoutModeChange = { layoutMode = it },
+                            isStreamPaused = isStreamPaused,
+                            onTogglePause = {
+                                if (isStreamPaused) {
+                                    isStreamPaused = false
+                                } else {
+                                    pausedSnapshot = AppLogger.getLogEntriesCopy()
+                                    isStreamPaused = true
+                                }
+                            },
+                            autoScrollEnabled = autoScrollEnabled,
+                            onToggleAutoScroll = { autoScrollEnabled = !autoScrollEnabled },
+                            isCopied = isCopied,
+                            onCopyLogs = {
+                                val allLogsText = filteredLogs.joinToString("\n") { it.displayString() }
+                                clipboardManager.setText(buildAnnotatedString { append(allLogsText) })
+                                isCopied = true
+                                notificationMessage = "Copied ${filteredLogs.size} logs to clipboard!"
+                            },
+                            onClearLogs = { AppLogger.clearLogs() },
+                            filteredCount = filteredLogs.size,
+                            totalCount = allLogs.size
+                        )
+                    }
                 }
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    HeaderTitleRow(isStreamPaused = isStreamPaused)
-                    HeaderActionToolbar(
-                        layoutMode = layoutMode,
-                        onLayoutModeChange = { layoutMode = it },
-                        isStreamPaused = isStreamPaused,
-                        onTogglePause = {
-                            if (isStreamPaused) {
-                                isStreamPaused = false
-                            } else {
-                                pausedSnapshot = AppLogger.getLogEntriesCopy()
-                                isStreamPaused = true
-                            }
-                        },
-                        autoScrollEnabled = autoScrollEnabled,
-                        onToggleAutoScroll = { autoScrollEnabled = !autoScrollEnabled },
-                        onExportLogs = {
-                            try {
-                                val file = AppLogger.exportLogsToFile()
-                                notificationMessage = "Exported ${allLogs.size} logs to: ${file.name}"
-                            } catch (e: Exception) {
-                                notificationMessage = "Export failed: ${e.message}"
-                            }
-                        },
-                        isCopied = isCopied,
-                        onCopyLogs = {
-                            val allLogsText = filteredLogs.joinToString("\n") { it.displayString() }
-                            clipboardManager.setText(buildAnnotatedString { append(allLogsText) })
-                            isCopied = true
-                            notificationMessage = "Copied ${filteredLogs.size} logs to clipboard!"
-                        },
-                        onClearLogs = { AppLogger.clearLogs() },
-                        filteredCount = filteredLogs.size,
-                        totalCount = allLogs.size
-                    )
-                }
-            }
 
             // ── 2. Floating Notification / Export Toast Banner ──
             AnimatedVisibility(
@@ -410,7 +398,6 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Row(
@@ -435,33 +422,6 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
                                     fontFamily = FontFamily.Monospace
                                 )
                             }
-
-                            // Clean Log Height Sizing Presets
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("Log Height:", color = Color.Gray, fontSize = 10.sp)
-                                listOf(350, 480, 650, 850).forEach { px ->
-                                    val isSelected = terminalHeight == px.dp
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(4.dp))
-                                            .background(if (isSelected) NeonPalette.Cyan.copy(alpha = 0.22f) else Color(0xFF0F172A))
-                                            .border(1.dp, if (isSelected) NeonPalette.Cyan else Color(0xFF1E293B), RoundedCornerShape(4.dp))
-                                            .clickable { terminalHeight = px.dp }
-                                            .padding(horizontal = 7.dp, vertical = 2.5.dp)
-                                    ) {
-                                        Text(
-                                            text = "${px}px",
-                                            color = if (isSelected) NeonPalette.Cyan else Color.White.copy(alpha = 0.65f),
-                                            fontSize = 9.5.sp,
-                                            fontFamily = FontFamily.Monospace,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                        )
-                                    }
-                                }
-                            }
                         }
 
                         AnimatedVisibility(
@@ -473,7 +433,7 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
                         }
                     }
 
-                    // 2. Resizable Terminal Console Panel
+                    // 2. Terminal Console Panel
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -499,7 +459,7 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(if (terminalHeight < 550.dp) 650.dp else terminalHeight)
+                            .height(600.dp)
                     ) {
                         TerminalConsolePanel(
                             filteredLogs = filteredLogs,
@@ -517,7 +477,16 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
                 }
             }
         }
+
+        VerticalScrollbar(
+            adapter = rememberScrollbarAdapter(outerScrollState),
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight()
+                .padding(vertical = 4.dp, horizontal = 2.dp)
+        )
     }
+}
 
     // ── 5. Detailed Log Entry Inspection Modal Dialog ──
     if (selectedLogEntry != null) {
@@ -700,7 +669,6 @@ private fun HeaderActionToolbar(
     onTogglePause: () -> Unit,
     autoScrollEnabled: Boolean,
     onToggleAutoScroll: () -> Unit,
-    onExportLogs: () -> Unit,
     isCopied: Boolean,
     onCopyLogs: () -> Unit,
     onClearLogs: () -> Unit,
@@ -774,23 +742,6 @@ private fun HeaderActionToolbar(
                 fontSize = 10.5.sp,
                 fontWeight = FontWeight.SemiBold
             )
-        }
-
-        // Export to .log File
-        OutlinedButton(
-            onClick = onExportLogs,
-            colors = ButtonDefaults.outlinedButtonColors(
-                containerColor = Color(0xFF142036),
-                contentColor = NeonPalette.Cyan
-            ),
-            border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.4f)),
-            shape = RoundedCornerShape(7.dp),
-            contentPadding = PaddingValues(horizontal = 9.dp, vertical = 4.dp),
-            modifier = Modifier.height(28.dp)
-        ) {
-            Icon(imageVector = Icons.Default.SaveAlt, contentDescription = "Export", modifier = Modifier.size(13.dp))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(text = "Export", fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold)
         }
 
         // Copy All Logs
@@ -1008,7 +959,7 @@ private fun TerminalConsolePanel(
             } else {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().padding(end = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     items(items = filteredLogs, key = { it.id }) { log ->
@@ -1019,6 +970,13 @@ private fun TerminalConsolePanel(
                         )
                     }
                 }
+                VerticalScrollbar(
+                    adapter = rememberScrollbarAdapter(listState),
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                        .padding(vertical = 2.dp)
+                )
             }
         }
     }

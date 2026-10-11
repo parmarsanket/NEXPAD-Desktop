@@ -5,9 +5,11 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -57,13 +59,15 @@ fun OutputScreen(
         val isNarrow = maxWidth < 700.dp
         val horizontalPadding = if (isNarrow) 16.dp else 24.dp
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(NeonPalette.PanelBgBottom)
-                .padding(horizontal = horizontalPadding, vertical = 20.dp)
-                .verticalScroll(scrollState)
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(NeonPalette.PanelBgBottom)
+                    .padding(horizontal = horizontalPadding, vertical = 20.dp)
+                    .padding(end = 6.dp)
+                    .verticalScroll(scrollState)
+            ) {
             // ── Top Screen Header ──
             if (isNarrow) {
                 Column(
@@ -585,7 +589,16 @@ fun OutputScreen(
                 }
             }
         }
+
+        VerticalScrollbar(
+            adapter = rememberScrollbarAdapter(scrollState),
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight()
+                .padding(vertical = 4.dp, horizontal = 2.dp)
+        )
     }
+}
 }
 
 @Composable

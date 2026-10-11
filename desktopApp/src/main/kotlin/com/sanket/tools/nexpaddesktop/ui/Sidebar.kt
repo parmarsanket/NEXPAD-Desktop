@@ -11,8 +11,11 @@ import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
@@ -57,6 +60,8 @@ fun Sidebar(
     currentScreen: Screen,
     onNavigate: (Screen) -> Unit
 ) {
+    val sidebarListState = rememberLazyListState()
+
     Box(
         modifier = Modifier
             .width(100.dp)
@@ -76,6 +81,7 @@ fun Sidebar(
             }
     ) {
         LazyColumn(
+            state = sidebarListState,
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -136,6 +142,14 @@ fun Sidebar(
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
+
+        VerticalScrollbar(
+            adapter = rememberScrollbarAdapter(sidebarListState),
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight()
+                .padding(vertical = 4.dp, horizontal = 1.dp)
+        )
     }
 }
 
