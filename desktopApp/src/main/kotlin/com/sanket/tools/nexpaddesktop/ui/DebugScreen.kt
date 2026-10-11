@@ -16,7 +16,6 @@ import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -39,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.sanket.tools.nexpaddesktop.connection.wifi.UdpServer
+import com.sanket.tools.nexpaddesktop.ui.components.DesktopVerticalScrollbar
 import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 import com.sanket.tools.nexpaddesktop.utils.AppLogger
 import com.sanket.tools.nexpaddesktop.utils.LogCategory
@@ -182,7 +182,7 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
                     .fillMaxSize()
                     .verticalScroll(outerScrollState)
                     .padding(horizontal = if (isUltraNarrow) 10.dp else 16.dp, vertical = 14.dp)
-                    .padding(end = 8.dp),
+                    .padding(end = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 // ── 1. Top Header & Primary Action Controls (Fully Responsive) ──
@@ -478,12 +478,15 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
             }
         }
 
-        VerticalScrollbar(
+        DesktopVerticalScrollbar(
             adapter = rememberScrollbarAdapter(outerScrollState),
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .fillMaxHeight()
-                .padding(vertical = 4.dp, horizontal = 2.dp)
+                .padding(vertical = 6.dp, horizontal = 4.dp),
+            thickness = 10.dp,
+            trackWidth = 14.dp,
+            showTrackGutter = true
         )
     }
 }
@@ -959,7 +962,7 @@ private fun TerminalConsolePanel(
             } else {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize().padding(end = 8.dp),
+                    modifier = Modifier.fillMaxSize().padding(end = 13.dp),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     items(items = filteredLogs, key = { it.id }) { log ->
@@ -970,12 +973,15 @@ private fun TerminalConsolePanel(
                         )
                     }
                 }
-                VerticalScrollbar(
+                DesktopVerticalScrollbar(
                     adapter = rememberScrollbarAdapter(listState),
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .fillMaxHeight()
-                        .padding(vertical = 2.dp)
+                        .padding(vertical = 2.dp, horizontal = 2.dp),
+                    thickness = 8.dp,
+                    trackWidth = 11.dp,
+                    showTrackGutter = true
                 )
             }
         }

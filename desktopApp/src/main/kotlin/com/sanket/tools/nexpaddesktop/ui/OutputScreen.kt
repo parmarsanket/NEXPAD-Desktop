@@ -9,7 +9,6 @@ import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -25,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpaddesktop.ui.components.DesktopVerticalScrollbar
 import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 import com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel
 import kotlin.math.PI
@@ -65,7 +65,7 @@ fun OutputScreen(
                     .fillMaxSize()
                     .background(NeonPalette.PanelBgBottom)
                     .padding(horizontal = horizontalPadding, vertical = 20.dp)
-                    .padding(end = 6.dp)
+                    .padding(end = 16.dp)
                     .verticalScroll(scrollState)
             ) {
             // ── Top Screen Header ──
@@ -590,12 +590,15 @@ fun OutputScreen(
             }
         }
 
-        VerticalScrollbar(
+        DesktopVerticalScrollbar(
             adapter = rememberScrollbarAdapter(scrollState),
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .fillMaxHeight()
-                .padding(vertical = 4.dp, horizontal = 2.dp)
+                .padding(vertical = 6.dp, horizontal = 4.dp),
+            thickness = 10.dp,
+            trackWidth = 14.dp,
+            showTrackGutter = true
         )
     }
 }

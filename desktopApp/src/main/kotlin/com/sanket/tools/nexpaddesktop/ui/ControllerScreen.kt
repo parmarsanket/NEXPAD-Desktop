@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpaddesktop.model.GyroSettings
+import com.sanket.tools.nexpaddesktop.ui.components.DesktopVerticalScrollbar
 import com.sanket.tools.nexpaddesktop.ui.components.glassCard
 import com.sanket.tools.nexpaddesktop.ui.components.selectedGlow
 import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
@@ -85,7 +86,7 @@ fun ControllerScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(32.dp)
+                .padding(start = 32.dp, top = 32.dp, bottom = 32.dp, end = 24.dp)
                 .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
@@ -235,12 +236,15 @@ fun ControllerScreen(
             Spacer(modifier = Modifier.height(32.dp))
         }
 
-        VerticalScrollbar(
+        DesktopVerticalScrollbar(
             adapter = rememberScrollbarAdapter(scrollState),
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .fillMaxHeight()
-                .padding(vertical = 4.dp, horizontal = 2.dp)
+                .padding(vertical = 6.dp, horizontal = 4.dp),
+            thickness = 10.dp,
+            trackWidth = 14.dp,
+            showTrackGutter = true
         )
     }
 }

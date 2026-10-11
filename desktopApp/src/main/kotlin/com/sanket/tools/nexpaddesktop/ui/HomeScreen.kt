@@ -16,7 +16,6 @@ import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Usb
@@ -40,6 +39,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpaddesktop.ui.components.DesktopVerticalScrollbar
 import com.sanket.tools.nexpaddesktop.ui.components.GradientDivider
 import com.sanket.tools.nexpaddesktop.ui.components.drawCyberGrid
 import com.sanket.tools.nexpaddesktop.ui.components.glassCard
@@ -98,8 +98,7 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
-                .padding(32.dp)
-                .padding(end = 6.dp)
+                .padding(start = 32.dp, top = 32.dp, bottom = 32.dp, end = 24.dp)
         ) {
             // ── Header ──
             Row(
@@ -389,12 +388,15 @@ fun HomeScreen(
             }
         }
 
-        VerticalScrollbar(
+        DesktopVerticalScrollbar(
             adapter = rememberScrollbarAdapter(scrollState),
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .fillMaxHeight()
-                .padding(vertical = 4.dp, horizontal = 2.dp)
+                .padding(vertical = 6.dp, horizontal = 4.dp),
+            thickness = 10.dp,
+            trackWidth = 14.dp,
+            showTrackGutter = true
         )
     }
 }
