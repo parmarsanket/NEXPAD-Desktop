@@ -12,9 +12,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.CircleShape
-import com.sanket.tools.nexpaddesktop.ui.components.DesktopVerticalScrollbar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
@@ -141,17 +139,6 @@ fun Sidebar(
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
-
-        DesktopVerticalScrollbar(
-            adapter = rememberScrollbarAdapter(sidebarListState),
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxHeight()
-                .padding(vertical = 4.dp, horizontal = 1.dp),
-            thickness = 6.dp,
-            trackWidth = 8.dp,
-            showTrackGutter = false
-        )
     }
 }
 
