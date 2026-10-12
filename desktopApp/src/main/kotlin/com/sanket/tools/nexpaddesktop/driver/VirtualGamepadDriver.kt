@@ -2,7 +2,6 @@ package com.sanket.tools.nexpaddesktop.driver
 
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpad.model.GamepadFeedback
-import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sun.jna.Pointer
 import com.sanket.tools.nexpaddesktop.driver.jna.ViGEmClientLibrary
 import com.sanket.tools.nexpaddesktop.driver.jna.XUSBReport
@@ -84,7 +83,7 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
             println("✅ [DRIVER] Virtual Xbox 360 Controller mounted successfully into ViGEm Bus")
         } catch (e: Exception) {
             System.err.println("⚠️ ViGEm init failed: ${e.message}")
-            println("⚠️ Falling back to MOCK driver mode (buttons will print to console but not work in games).")
+            println("⚠️ Falling back to MOCK driver mode (virtual controller inputs will not work in games).")
             isConnected = false
         }
     }
@@ -118,15 +117,7 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
     }
 
     override fun updateInput(input: GamepadInput) {
-        if (!isConnected || client == null || target == null) {
-            // Fallback mock logic for testing without driver installation
-            val active = mutableListOf<String>()
-            if (input.btnA) active.add(NexpadKeys.A)
-            if (input.btnB) active.add(NexpadKeys.B)
-            if (input.dpadUp) active.add(NexpadKeys.UP)
-            if (active.isNotEmpty()) println("MOCK -> $active")
-            return
-        }
+        if (!isConnected || client == null || target == null) return
 
         // 1. Pack data into native 12-byte struct
         val report = ViGEmInputMapper.map(input)

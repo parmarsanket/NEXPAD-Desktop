@@ -24,7 +24,6 @@ class DualShock4InputMapper {
     private var calibrationSamples = 0
     private var stillnessFrames = 0
     private var startTimeNanos = System.nanoTime()
-    private var lastDs4DebugSignature = ""
 
     companion object {
         private const val CALIBRATION_COUNT = 100
@@ -89,8 +88,6 @@ class DualShock4InputMapper {
         // 4. Analog Triggers
         report.bTriggerL = triggerToByte(input.triggerL2)
         report.bTriggerR = triggerToByte(input.triggerR2)
-
-        debugDs4Mapping(input, report)
 
         // 5. Hardware Timestamp (DS4 hardware clock ticks once every 5.333µs = 5333ns)
         val elapsedNs = System.nanoTime() - startTimeNanos
@@ -193,33 +190,5 @@ class DualShock4InputMapper {
             stillnessFrames = 0
         }
         return Triple(calX, calY, calZ)
-    }
-
-    private fun debugDs4Mapping(input: GamepadInput, report: ViGEmClientLibrary.DS4_REPORT_EX) {
-        val lx = report.bThumbLX.toInt() and 0xFF
-        val ly = report.bThumbLY.toInt() and 0xFF
-        val rx = report.bThumbRX.toInt() and 0xFF
-        val ry = report.bThumbRY.toInt() and 0xFF
-        val buttons = report.wButtons.toInt() and 0xFFFF
-        val special = report.bSpecial.toInt() and 0xFF
-
-        val signature = listOf(
-            (input.leftStickX * 10f).roundToInt(),
-            (input.leftStickY * 10f).roundToInt(),
-            (input.rightStickX * 10f).roundToInt(),
-            (input.rightStickY * 10f).roundToInt(),
-            buttons,
-            special
-        ).joinToString("|")
-
-        if (signature == lastDs4DebugSignature) return
-        lastDs4DebugSignature = signature
-
-        println(
-            "NEXPAD_DS4_DEBUG " +
-                "DS4 LX=$lx LY=$ly RX=$rx RY=$ry | " +
-                "buttons=0x${buttons.toString(16).padStart(4, '0')} " +
-                "special=0x${special.toString(16).padStart(2, '0')}"
-        )
     }
 }
