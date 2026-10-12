@@ -1136,15 +1136,15 @@ private fun HardwareStreamInspector(viewModel: DesktopViewModel) {
                     }
                 }
 
-                // 4. 6-Axis Motion / IMU Telemetry
+                // 4. 6-Axis Motion / IMU Telemetry (Audit: X = Pitch, Y = Roll, Z = Yaw)
                 val radToDeg = (180.0 / PI).toFloat()
                 val gyroPitchDeg = input.gyroX * radToDeg
-                val gyroYawDeg = input.gyroY * radToDeg
-                val gyroRollDeg = input.gyroZ * radToDeg
+                val gyroRollDeg = input.gyroY * radToDeg
+                val gyroYawDeg = input.gyroZ * radToDeg
                 val totalG = sqrt(input.accelX * input.accelX + input.accelY * input.accelY + input.accelZ * input.accelZ) / 9.80665f
 
                 Column(
-                    modifier = Modifier.width(170.dp),
+                    modifier = Modifier.widthIn(min = 220.dp),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text("6-AXIS IMU SENSORS", color = Color.White.copy(alpha = 0.6f), fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
@@ -1152,20 +1152,26 @@ private fun HardwareStreamInspector(viewModel: DesktopViewModel) {
                         text = "Gyro: P:${String.format("%+.1f", gyroPitchDeg)}° Y:${String.format("%+.1f", gyroYawDeg)}° R:${String.format("%+.1f", gyroRollDeg)}°/s",
                         color = NeonPalette.Cyan,
                         fontSize = 9.5.sp,
-                        fontFamily = FontFamily.Monospace
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = 1,
+                        softWrap = false
                     )
                     Text(
                         text = "Accel: ${String.format("%.2f", totalG)}G (X:${String.format("%+.1f", input.accelX)} Y:${String.format("%+.1f", input.accelY)} Z:${String.format("%+.1f", input.accelZ)})",
                         color = Color(0xFFA5F3FC),
                         fontSize = 9.5.sp,
-                        fontFamily = FontFamily.Monospace
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = 1,
+                        softWrap = false
                     )
                     Text(
                         text = "Fused Aim: Yaw ${String.format("%+.1f°", viewModel.processedYaw)} | Pitch ${String.format("%+.1f°", viewModel.processedPitch)}",
                         color = NeonPalette.Green,
                         fontSize = 9.5.sp,
                         fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
 
@@ -1242,7 +1248,7 @@ private fun StickVisualizer(
                 val clampedY = y.coerceIn(-1f, 1f)
                 val puckOffset = Offset(
                     center.x + clampedX * (radius - 5f),
-                    center.y + clampedY * (radius - 5f)
+                    center.y - clampedY * (radius - 5f)
                 )
                 drawCircle(
                     color = NeonPalette.Cyan.copy(alpha = 0.4f),
