@@ -33,6 +33,11 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.rememberTextFieldVerticalScrollState
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.stateDescription
 import com.sanket.tools.nexpaddesktop.ui.components.DesktopVerticalScrollbar
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -1144,44 +1149,84 @@ private fun PromptSplitButton(
                 }
             },
             trailingButton = {
-                SplitButtonDefaults.TrailingButton(
-                    checked = checked,
-                    onCheckedChange = { checked = it },
-                    modifier = Modifier.height(height)
+                val description = "Toggle AI Prompt Tier"
+
+                // Provides an accessible tooltip for the icon-only button.
+                TooltipBox(
+                    positionProvider =
+                        TooltipDefaults.rememberTooltipPositionProvider(
+                            TooltipAnchorPosition.Above
+                        ),
+                    tooltip = {
+                        PlainTooltip(
+                            modifier = Modifier.semantics {
+                                liveRegion = LiveRegionMode.Assertive
+                                paneTitle = description
+                            }
+                        ) {
+                            Text(description)
+                        }
+                    },
+                    state = rememberTooltipState()
                 ) {
-                    val rotation: Float by animateFloatAsState(
-                        targetValue = if (checked) 180f else 0f,
-                        label = "Trailing Icon Rotation"
-                    )
-                    Icon(
-                        Icons.Filled.KeyboardArrowDown,
+                    SplitButtonDefaults.TrailingButton(
+                        checked = checked,
+                        onCheckedChange = { checked = it },
                         modifier = Modifier
-                            .size(SplitButtonDefaults.TrailingIconSize)
-                            .graphicsLayer {
-                                this.rotationZ = rotation
-                            },
-                        tint = Color.White,
-                        contentDescription = "Toggle AI Prompt Tier"
-                    )
+                            .size(height)
+                            .semantics {
+                                stateDescription =
+                                    if (checked) "Expanded" else "Collapsed"
+                                contentDescription = description
+                            }
+                    ) {
+                        val rotation by animateFloatAsState(
+                            targetValue = if (checked) 180f else 0f,
+                            label = "Trailing Icon Rotation"
+                        )
+
+                        Icon(
+                            imageVector = Icons.Filled.KeyboardArrowDown,
+                            modifier = Modifier
+                                .size(SplitButtonDefaults.TrailingIconSize)
+                                .graphicsLayer {
+                                    rotationZ = rotation
+                                },
+                            tint = Color.White,
+                            contentDescription = null
+                        )
+                    }
                 }
             }
         )
 
         DropdownMenu(
             expanded = checked,
-            onDismissRequest = { checked = false }
+            onDismissRequest = {
+                checked = false
+            }
         ) {
             PromptTier.entries.forEach { tier ->
                 DropdownMenuItem(
                     text = {
                         Column {
                             Text(
-                                "${tier.icon} ${tier.displayName}${if (tier == selectedPromptTier) " ✓" else ""}",
-                                fontWeight = if (tier == selectedPromptTier) FontWeight.Bold else FontWeight.Normal,
+                                text = buildString {
+                                    append("${tier.icon} ${tier.displayName}")
+                                    if (tier == selectedPromptTier) {
+                                        append(" ✓")
+                                    }
+                                },
+                                fontWeight = if (tier == selectedPromptTier) {
+                                    FontWeight.Bold
+                                } else {
+                                    FontWeight.Normal
+                                },
                                 fontSize = 13.sp
                             )
+
                             Text(
-                                tier.description,
+                                text = tier.description,
                                 fontSize = 10.5.sp,
                                 color = Color.Gray
                             )
