@@ -407,9 +407,9 @@ class DesktopSharedPreferences private constructor(
     }
 
     /**
-     * Loads whether the DSU UDP motion server is enabled (defaults to true).
+     * Loads whether the DSU UDP motion server is enabled (defaults to false).
      */
     fun loadDsuEnabled(): Boolean {
-        return getBoolean(KEY_DSU_ENABLED, true)
+        return getBoolean(KEY_DSU_ENABLED, false)
     }
 }

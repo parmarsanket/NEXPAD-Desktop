@@ -219,7 +219,7 @@ fun main(args: Array<String>) {
     }
 
     DisposableEffect(Unit) {
-        dsuServer.isDs4Active = (viewModel.activeController == ControllerType.DUALSHOCK_4)
+        dsuServer.isDs4Active = (viewModel.activeController == ControllerType.DUALSHOCK_4 && viewModel.isDsuServerEnabled)
         dsuServer.start()
         
         val inputHandler: (GamepadInput) -> Unit = { input ->
