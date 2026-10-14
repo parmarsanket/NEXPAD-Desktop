@@ -522,6 +522,10 @@ object NxprcHtmlCssConverter {
     val PRESET_NEO_TACTILE_B get() = NxprcPresets.PRESET_NEO_TACTILE_B
     val PRESET_NEO_TACTILE_X get() = NxprcPresets.PRESET_NEO_TACTILE_X
     val PRESET_NEO_TACTILE_Y get() = NxprcPresets.PRESET_NEO_TACTILE_Y
+    val PRESET_NEO_TACTILE_PS_CROSS get() = NxprcPresets.PRESET_NEO_TACTILE_PS_CROSS
+    val PRESET_NEO_TACTILE_PS_CIRCLE get() = NxprcPresets.PRESET_NEO_TACTILE_PS_CIRCLE
+    val PRESET_NEO_TACTILE_PS_SQUARE get() = NxprcPresets.PRESET_NEO_TACTILE_PS_SQUARE
+    val PRESET_NEO_TACTILE_PS_TRIANGLE get() = NxprcPresets.PRESET_NEO_TACTILE_PS_TRIANGLE
     val PRESET_DPAD_UP get() = NxprcPresets.PRESET_DPAD_UP
     val PRESET_DPAD_DOWN get() = NxprcPresets.PRESET_DPAD_DOWN
     val PRESET_DPAD_LEFT get() = NxprcPresets.PRESET_DPAD_LEFT
@@ -549,6 +553,8 @@ object NxprcHtmlCssConverter {
     /** Reference templates (structure guide only) delegated to [NxprcPresets]. */
     fun getReferenceTemplate(control: String): String = NxprcPresets.getReferenceTemplate(control)
     fun getReferenceTemplate(control: String, category: String): String = NxprcPresets.getReferenceTemplate(control, category)
+    fun getReferenceTemplate(control: String, category: String, consoleMode: ConsoleMode): String =
+        NxprcPresets.getReferenceTemplate(control, category, consoleMode)
 
     /** Compiler syntax skeletons delegated to [NxprcPresets]. */
     fun getSyntaxSkeleton(control: String, category: String, widthDp: Int, heightDp: Int): String =

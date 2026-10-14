@@ -8,6 +8,7 @@ import com.sanket.tools.nexpaddesktop.plugins.ColorProfile
 import com.sanket.tools.nexpaddesktop.plugins.Complexity
 import com.sanket.tools.nexpaddesktop.plugins.ComplexityBudget
 import com.sanket.tools.nexpaddesktop.plugins.ComponentPromptRegistry
+import com.sanket.tools.nexpaddesktop.plugins.ConsoleMode
 import com.sanket.tools.nexpaddesktop.plugins.Creativity
 import com.sanket.tools.nexpaddesktop.plugins.DesignFreedom
 import com.sanket.tools.nexpaddesktop.plugins.DetailPriority
@@ -2893,6 +2894,188 @@ class NxprcPromptTest {
                 "User request (index $userReqIndex) must appear BEFORE category semantics (index $categorySemanticsIndex) in $control ($category)"
             )
         }
+    }
+
+    @Test
+    fun testPlayStationNeoTactilePresetsHaveAuthenticColorsAndLabels() {
+        val cross = NxprcPresets.PRESET_NEO_TACTILE_PS_CROSS
+        assertTrue(cross.contains("--accent-core: #3F8FE0"), "PS Cross must use PlayStation Blue #3F8FE0")
+        assertTrue(cross.contains("<span class=\"btn-label\">✕</span>"), "PS Cross must use ✕ label")
+        assertTrue(cross.contains("data-control=\"A\""), "PS Cross maps to A button position")
+
+        val circle = NxprcPresets.PRESET_NEO_TACTILE_PS_CIRCLE
+        assertTrue(circle.contains("--accent-core: #E6474E"), "PS Circle must use PlayStation Red #E6474E")
+        assertTrue(circle.contains("<span class=\"btn-label\">○</span>"), "PS Circle must use ○ label")
+        assertTrue(circle.contains("data-control=\"B\""), "PS Circle maps to B button position")
+
+        val square = NxprcPresets.PRESET_NEO_TACTILE_PS_SQUARE
+        assertTrue(square.contains("--accent-core: #E055B8"), "PS Square must use PlayStation Pink #E055B8")
+        assertTrue(square.contains("<span class=\"btn-label\">□</span>"), "PS Square must use □ label")
+        assertTrue(square.contains("data-control=\"X\""), "PS Square maps to X button position")
+
+        val triangle = NxprcPresets.PRESET_NEO_TACTILE_PS_TRIANGLE
+        assertTrue(triangle.contains("--accent-core: #3FD25A"), "PS Triangle must use PlayStation Green #3FD25A")
+        assertTrue(triangle.contains("<span class=\"btn-label\">△</span>"), "PS Triangle must use △ label")
+        assertTrue(triangle.contains("data-control=\"Y\""), "PS Triangle maps to Y button position")
+    }
+
+    @Test
+    fun testXboxNeoTactilePresetsHaveAuthenticColorsAndLabels() {
+        val a = NxprcPresets.PRESET_NEO_TACTILE_A
+        assertTrue(a.contains("--accent-core: #00FFA3"), "Xbox A must use emerald green")
+        assertTrue(a.contains("<span class=\"btn-label\">A</span>"), "Xbox A must use A label")
+
+        val b = NxprcPresets.PRESET_NEO_TACTILE_B
+        assertTrue(b.contains("--accent-core: #FF2A6D"), "Xbox B must use red/pink")
+        assertTrue(b.contains("<span class=\"btn-label\">B</span>"), "Xbox B must use B label")
+
+        val x = NxprcPresets.PRESET_NEO_TACTILE_X
+        assertTrue(x.contains("--accent-core: #00E5FF"), "Xbox X must use cyan-blue")
+        assertTrue(x.contains("<span class=\"btn-label\">X</span>"), "Xbox X must use X label")
+
+        val y = NxprcPresets.PRESET_NEO_TACTILE_Y
+        assertTrue(y.contains("--accent-core: #FFD600"), "Xbox Y must use yellow")
+        assertTrue(y.contains("<span class=\"btn-label\">Y</span>"), "Xbox Y must use Y label")
+    }
+
+    @Test
+    fun testGetReferenceTemplateConsoleModeSwitchingOnlyForAbxy() {
+        // In PlayStation mode, ABXY returns PS presets
+        assertEquals(NxprcPresets.PRESET_NEO_TACTILE_PS_CROSS, NxprcPresets.getReferenceTemplate("A", "BUTTON", ConsoleMode.PLAYSTATION))
+        assertEquals(NxprcPresets.PRESET_NEO_TACTILE_PS_CIRCLE, NxprcPresets.getReferenceTemplate("B", "BUTTON", ConsoleMode.PLAYSTATION))
+        assertEquals(NxprcPresets.PRESET_NEO_TACTILE_PS_SQUARE, NxprcPresets.getReferenceTemplate("X", "BUTTON", ConsoleMode.PLAYSTATION))
+        assertEquals(NxprcPresets.PRESET_NEO_TACTILE_PS_TRIANGLE, NxprcPresets.getReferenceTemplate("Y", "BUTTON", ConsoleMode.PLAYSTATION))
+
+        // In Xbox mode (default), ABXY returns Xbox presets
+        assertEquals(NxprcPresets.PRESET_NEO_TACTILE_A, NxprcPresets.getReferenceTemplate("A", "BUTTON", ConsoleMode.XBOX))
+        assertEquals(NxprcPresets.PRESET_NEO_TACTILE_B, NxprcPresets.getReferenceTemplate("B", "BUTTON", ConsoleMode.XBOX))
+        assertEquals(NxprcPresets.PRESET_NEO_TACTILE_X, NxprcPresets.getReferenceTemplate("X", "BUTTON", ConsoleMode.XBOX))
+        assertEquals(NxprcPresets.PRESET_NEO_TACTILE_Y, NxprcPresets.getReferenceTemplate("Y", "BUTTON", ConsoleMode.XBOX))
+
+        // Non-ABXY controls (Triggers, D-Pad, etc.) are UNTOUCHED by ConsoleMode
+        val dpadUpXbox = NxprcPresets.getReferenceTemplate("UP", "DPAD", ConsoleMode.XBOX)
+        val dpadUpPS = NxprcPresets.getReferenceTemplate("UP", "DPAD", ConsoleMode.PLAYSTATION)
+        assertEquals(dpadUpXbox, dpadUpPS, "D-Pad must be identical across console modes")
+
+        val ltXbox = NxprcPresets.getReferenceTemplate("LT", "TRIGGER", ConsoleMode.XBOX)
+        val ltPS = NxprcPresets.getReferenceTemplate("LT", "TRIGGER", ConsoleMode.PLAYSTATION)
+        assertEquals(ltXbox, ltPS, "Triggers must be identical across console modes")
+    }
+
+    @Test
+    fun testAiPromptBuilderConsoleAwareColorsAndLabels() {
+        val psPromptA = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(consoleMode = ConsoleMode.PLAYSTATION)
+        )
+        assertTrue(psPromptA.contains("#3F8FE0"), "PS A/Cross prompt must reference PS blue #3F8FE0")
+        assertTrue(psPromptA.contains("PlayStation Blue"), "PS A/Cross prompt must describe PlayStation Blue")
+        assertTrue(psPromptA.contains("✕ (Cross)"), "PS A/Cross prompt must include ✕ (Cross) symbol guidance")
+
+        val psPromptB = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "B",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(consoleMode = ConsoleMode.PLAYSTATION)
+        )
+        assertTrue(psPromptB.contains("#E6474E"), "PS B/Circle prompt must reference PS red #E6474E")
+        assertTrue(psPromptB.contains("PlayStation Red"), "PS B/Circle prompt must describe PlayStation Red")
+        assertTrue(psPromptB.contains("○ (Circle)"), "PS B/Circle prompt must include ○ (Circle) symbol guidance")
+
+        val xboxPromptA = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(consoleMode = ConsoleMode.XBOX)
+        )
+        assertTrue(xboxPromptA.contains("#4ADE80"), "Xbox A prompt must reference emerald green")
+        assertFalse(xboxPromptA.contains("PlayStation Blue"), "Xbox prompt must not describe PlayStation Blue")
+    }
+
+    @Test
+    fun auditAllThreeCapabilityTiersCompactStandardFrontier() {
+        val tiers = listOf(
+            ModelCapability.COMPACT,
+            ModelCapability.STANDARD,
+            ModelCapability.FRONTIER
+        )
+
+        tiers.forEach { tier ->
+            val prompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = "A",
+                category = "BUTTON",
+                widthDp = 96,
+                heightDp = 96,
+                options = AiDesignOptions(modelCapability = tier)
+            )
+
+            // General invariant for all tiers
+            assertTrue(prompt.isNotBlank(), "Prompt must not be empty for $tier")
+            assertTrue(prompt.contains("class=\"nexpad-btn\""), "Must contain root button class for $tier")
+            assertTrue(prompt.contains("Output Contract", ignoreCase = true), "Must contain output contract for $tier")
+
+            val approxTokens = prompt.length / 4
+            println("TIER AUDIT: $tier -> charLength: ${prompt.length}, approxTokens: $approxTokens")
+
+            when (tier) {
+                ModelCapability.COMPACT -> {
+                    // COMPACT tier must use lean engine boundaries
+                    assertTrue(prompt.contains("SECTION 1 — STRICT COMPILER & ENGINE CONTRACT (LEAN COMPACT MODE)"), "Compact mode must use lean contract")
+                    assertFalse(prompt.contains("SECTION F0 — UNLIMITED ARCHITECTURAL EXPRESSION"), "Compact mode must NOT contain Frontier sections")
+                    assertFalse(prompt.contains("SECTION F1 — COMPILATION PIPELINE TRANSPARENCY"), "Compact mode must NOT contain Frontier sections")
+                    assertTrue(approxTokens < 5000, "Compact prompt approx tokens ($approxTokens) exceeds budget")
+                }
+                ModelCapability.STANDARD -> {
+                    // STANDARD tier must include 5 layers of authority & Golden Rule
+                    assertTrue(prompt.contains("5 LAYERS OF AUTHORITY"), "Standard mode must include 5 layers of authority")
+                    assertTrue(prompt.contains("Universal Law of User Supremacy"), "Standard mode must include Universal Law of User Supremacy")
+                    assertFalse(prompt.contains("SECTION F0 — UNLIMITED ARCHITECTURAL EXPRESSION"), "Standard mode must NOT contain Frontier sections")
+                    assertTrue(approxTokens < 8000, "Standard prompt approx tokens ($approxTokens) exceeds budget")
+                }
+                ModelCapability.FRONTIER -> {
+                    // FRONTIER tier must include deep architectural transparency
+                    assertTrue(prompt.contains("SECTION F0 — UNLIMITED ARCHITECTURAL EXPRESSION"), "Frontier mode must contain Section F0")
+                    assertTrue(prompt.contains("SECTION F1 — COMPILATION PIPELINE TRANSPARENCY"), "Frontier mode must contain Section F1")
+                    assertTrue(prompt.contains("SECTION F2 — LAYER TYPE MAPPING"), "Frontier mode must contain Section F2")
+                    assertTrue(prompt.contains("SECTION F3 — SVG PATH PRE-BAKING PIPELINE"), "Frontier mode must contain Section F3")
+                    assertTrue(prompt.contains("SECTION F5 — SPRING PHYSICS KINEMATICS"), "Frontier mode must contain Section F5")
+                }
+            }
+        }
+    }
+
+    @Test
+    fun auditCustomColorVsConsoleDefaultColorInPrompts() {
+        // Case 1: User explicitly specifies a custom color (e.g. Hot Pink)
+        val customColorPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(
+                color = "Hot Pink #FF1493",
+                userRequest = "Make a neon hot pink cyberpunk button",
+                consoleMode = ConsoleMode.PLAYSTATION
+            )
+        )
+        // User custom color must be recorded with USER source in specification
+        assertTrue(customColorPrompt.contains("Hot Pink #FF1493 [USER]"), "User's explicit custom color must be marked [USER]")
+        assertTrue(customColorPrompt.contains("Make a neon hot pink cyberpunk button"), "User's prompt request must be included")
+
+        // Case 2: User does not specify color (Default Console mode)
+        val defaultXboxPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(consoleMode = ConsoleMode.XBOX)
+        )
+        assertTrue(defaultXboxPrompt.contains("[CATEGORY_DEFAULT]"), "Default color must be marked [CATEGORY_DEFAULT]")
     }
 }
 

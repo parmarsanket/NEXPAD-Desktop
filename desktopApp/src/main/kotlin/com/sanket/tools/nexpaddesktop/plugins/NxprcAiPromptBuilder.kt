@@ -243,6 +243,18 @@ enum class ModelCapability(
 }
 
 /**
+ * Console platform style for ABXY face button color matrix.
+ * Governs which authentic button color palette is applied to ABXY presets and AI prompts.
+ * Only affects ABXY category — all other categories (DPad, Triggers, Bumpers, Sticks, System, Macros) are unaffected.
+ */
+enum class ConsoleMode {
+    /** Xbox color matrix: A=Green, B=Red, X=Blue, Y=Yellow */
+    XBOX,
+    /** PlayStation color matrix: Cross/A=Blue, Circle/B=Red, Square/X=Pink, Triangle/Y=Green */
+    PLAYSTATION
+}
+
+/**
  * Parameterized design options for NEXPAD generative AI component creation.
  * Empowers calling editors and automated generators with fine-grained aesthetic control.
  */
@@ -256,6 +268,9 @@ data class AiDesignOptions(
     val animationIntensity: AnimationIntensity = modelCapability.defaultAnimationIntensity,
     val detailPriority: DetailPriority = modelCapability.defaultDetailPriority,
     val originality: Originality = modelCapability.defaultOriginality,
+
+    /** Console platform style for ABXY button color matrix. Defaults to Xbox. */
+    val consoleMode: ConsoleMode = ConsoleMode.XBOX,
 
     val style: String? = null,
     val color: String? = null,
@@ -442,7 +457,7 @@ data class ComponentDefaults(
  * Provides explicit fallback shapes, materials, and textures when unstated by the user.
  */
 object CategoryDefaultsRegistry {
-    fun getDefaultsFor(control: String, category: String): ComponentDefaults {
+    fun getDefaultsFor(control: String, category: String, consoleMode: ConsoleMode = ConsoleMode.XBOX): ComponentDefaults {
         val ctrl = ControlKey.fromIdentifier(control)
         val catType = CategoryType.fromIdentifier(category)
             ?: CategoryManager.findCategoryForControl(control)?.type
@@ -513,12 +528,23 @@ object CategoryDefaultsRegistry {
                 visualDensity = VisualDensity.CLEAN
             )
             else -> {
-                // ABXY / Standard Button
-                val profile = when (control.uppercase()) {
-                    NexpadKeys.X -> ColorProfile("Vibrant Sapphire Blue", "#00B0FF", "rgba(0, 176, 255, 0.6)", "linear-gradient(145deg, #0284c7 0%, #0369a1 50%, #0c4a6e 100%)")
-                    NexpadKeys.Y -> ColorProfile("Radiant Solar Yellow", "#FFCC00", "rgba(255, 204, 0, 0.6)", "linear-gradient(145deg, #eab308 0%, #ca8a04 50%, #713f12 100%)")
-                    NexpadKeys.B -> ColorProfile("Vibrant Crimson Red", "#FF3366", "rgba(255, 51, 102, 0.6)", "linear-gradient(145deg, #f43f5e 0%, #e11d48 50%, #881337 100%)")
-                    else -> ColorProfile("Vibrant Emerald Green", "#4ADE80", "rgba(74, 222, 128, 0.6)", "linear-gradient(145deg, #10b981 0%, #059669 50%, #047857 100%)")
+                // ABXY / Standard Button — console-aware color matrix
+                val profile = if (consoleMode == ConsoleMode.PLAYSTATION) {
+                    when (control.uppercase()) {
+                        NexpadKeys.A  -> ColorProfile("PlayStation Blue",  "#3F8FE0", "rgba(63, 143, 224, 0.65)", "linear-gradient(145deg, #1a5fa8 0%, #0e3d70 50%, #071e38 100%)")
+                        NexpadKeys.B  -> ColorProfile("PlayStation Red",   "#E6474E", "rgba(230, 71, 78, 0.65)",  "linear-gradient(145deg, #b52830 0%, #7a1117 50%, #3d0508 100%)")
+                        NexpadKeys.X  -> ColorProfile("PlayStation Pink",  "#E055B8", "rgba(224, 85, 184, 0.65)", "linear-gradient(145deg, #a8207c 0%, #70105a 50%, #380630 100%)")
+                        NexpadKeys.Y  -> ColorProfile("PlayStation Green", "#3FD25A", "rgba(63, 210, 90, 0.65)",  "linear-gradient(145deg, #19a83a 0%, #0e6f22 50%, #073812 100%)")
+                        else          -> ColorProfile("PlayStation Blue",  "#3F8FE0", "rgba(63, 143, 224, 0.65)", "linear-gradient(145deg, #1a5fa8 0%, #0e3d70 50%, #071e38 100%)")
+                    }
+                } else {
+                    // Xbox (default)
+                    when (control.uppercase()) {
+                        NexpadKeys.X -> ColorProfile("Vibrant Sapphire Blue",  "#00B0FF", "rgba(0, 176, 255, 0.6)",    "linear-gradient(145deg, #0284c7 0%, #0369a1 50%, #0c4a6e 100%)")
+                        NexpadKeys.Y -> ColorProfile("Radiant Solar Yellow",   "#FFCC00", "rgba(255, 204, 0, 0.6)",    "linear-gradient(145deg, #eab308 0%, #ca8a04 50%, #713f12 100%)")
+                        NexpadKeys.B -> ColorProfile("Vibrant Crimson Red",    "#FF3366", "rgba(255, 51, 102, 0.6)",   "linear-gradient(145deg, #f43f5e 0%, #e11d48 50%, #881337 100%)")
+                        else         -> ColorProfile("Vibrant Emerald Green",  "#4ADE80", "rgba(74, 222, 128, 0.6)",   "linear-gradient(145deg, #10b981 0%, #059669 50%, #047857 100%)")
+                    }
                 }
                 ComponentDefaults(
                     shape = "Circular Dome (border-radius: 50%)",
@@ -589,7 +615,7 @@ data class ResolvedDesign(
  */
 object DesignResolver {
     fun resolve(control: String, category: String, options: AiDesignOptions = AiDesignOptions()): ResolvedDesign {
-        val defaults = CategoryDefaultsRegistry.getDefaultsFor(control, category)
+        val defaults = CategoryDefaultsRegistry.getDefaultsFor(control, category, options.consoleMode)
 
         val style = if (!options.style.isNullOrBlank()) {
             ResolvedValue(options.style, DesignSource.USER)
@@ -1354,13 +1380,46 @@ ${NxprcPresets.getSyntaxSkeleton(control, category, widthDp, heightDp)}
 
     internal fun generateAbxyPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         val resolved = DesignResolver.resolve(control, category, options)
-        val seedProfile = NxprcSeedEngine.resolve(control, category, options.seed, options.componentName)
-        val profile = when (control.uppercase()) {
-            NexpadKeys.X -> ColorProfile("Vibrant Sapphire Blue", "#00B0FF", "rgba(0, 176, 255, 0.6)", "linear-gradient(145deg, #0284c7 0%, #0369a1 50%, #0c4a6e 100%)")
-            NexpadKeys.Y -> ColorProfile("Radiant Solar Yellow", "#FFCC00", "rgba(255, 204, 0, 0.6)", "linear-gradient(145deg, #eab308 0%, #ca8a04 50%, #713f12 100%)")
-            NexpadKeys.B -> ColorProfile("Vibrant Crimson Red", "#FF3366", "rgba(255, 51, 102, 0.6)", "linear-gradient(145deg, #f43f5e 0%, #e11d48 50%, #881337 100%)")
-            else -> ColorProfile("Vibrant Emerald Green", "#4ADE80", "rgba(74, 222, 128, 0.6)", "linear-gradient(145deg, #10b981 0%, #059669 50%, #047857 100%)")
+
+        // Console-aware color profile for ABXY buttons only (with User Custom Color precedence)
+        val profile = if (!options.color.isNullOrBlank()) {
+            ColorProfile("User Custom Color (${options.color})", options.color, "rgba(255, 255, 255, 0.65)", "linear-gradient(145deg, ${options.color} 0%, #1a1a1a 100%)")
+        } else if (options.consoleMode == ConsoleMode.PLAYSTATION) {
+            when (control.uppercase()) {
+                NexpadKeys.A  -> ColorProfile("PlayStation Blue",  "#3F8FE0", "rgba(63, 143, 224, 0.65)", "linear-gradient(145deg, #1a5fa8 0%, #0e3d70 50%, #071e38 100%)")
+                NexpadKeys.B  -> ColorProfile("PlayStation Red",   "#E6474E", "rgba(230, 71, 78, 0.65)",  "linear-gradient(145deg, #b52830 0%, #7a1117 50%, #3d0508 100%)")
+                NexpadKeys.X  -> ColorProfile("PlayStation Pink",  "#E055B8", "rgba(224, 85, 184, 0.65)", "linear-gradient(145deg, #a8207c 0%, #70105a 50%, #380630 100%)")
+                NexpadKeys.Y  -> ColorProfile("PlayStation Green", "#3FD25A", "rgba(63, 210, 90, 0.65)",  "linear-gradient(145deg, #19a83a 0%, #0e6f22 50%, #073812 100%)")
+                else          -> ColorProfile("PlayStation Blue",  "#3F8FE0", "rgba(63, 143, 224, 0.65)", "linear-gradient(145deg, #1a5fa8 0%, #0e3d70 50%, #071e38 100%)")
+            }
+        } else {
+            // Xbox (default)
+            when (control.uppercase()) {
+                NexpadKeys.X -> ColorProfile("Vibrant Sapphire Blue",  "#00B0FF", "rgba(0, 176, 255, 0.6)",    "linear-gradient(145deg, #0284c7 0%, #0369a1 50%, #0c4a6e 100%)")
+                NexpadKeys.Y -> ColorProfile("Radiant Solar Yellow",   "#FFCC00", "rgba(255, 204, 0, 0.6)",    "linear-gradient(145deg, #eab308 0%, #ca8a04 50%, #713f12 100%)")
+                NexpadKeys.B -> ColorProfile("Vibrant Crimson Red",    "#FF3366", "rgba(255, 51, 102, 0.6)",   "linear-gradient(145deg, #f43f5e 0%, #e11d48 50%, #881337 100%)")
+                else         -> ColorProfile("Vibrant Emerald Green",  "#4ADE80", "rgba(74, 222, 128, 0.6)",   "linear-gradient(145deg, #10b981 0%, #059669 50%, #047857 100%)")
+            }
         }
+
+        val rawSeedProfile = NxprcSeedEngine.resolve(control, category, options.seed, options.componentName)
+        val seedProfile = if (options.seed == null || !options.color.isNullOrBlank()) {
+            rawSeedProfile.copy(palette = profile)
+        } else {
+            rawSeedProfile
+        }
+
+        // PS label hint for the visual realism directive (only used when PS mode active)
+        val psLabelHint = if (options.consoleMode == ConsoleMode.PLAYSTATION) {
+            val psSymbol = when (control.uppercase()) {
+                NexpadKeys.A -> "✕ (Cross)"
+                NexpadKeys.B -> "○ (Circle)"
+                NexpadKeys.X -> "□ (Square)"
+                NexpadKeys.Y -> "△ (Triangle)"
+                else         -> control
+            }
+            "\n    5. **PlayStation Label**: The center label is the PlayStation symbol $psSymbol — render it as a geometric vector SVG or unicode glyph with the authentic DualSense/DualShock style."
+        } else ""
 
         return """
 ${genAiHeader()}
@@ -1380,12 +1439,12 @@ ${renderDesignParameters(options)}
 - **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. The silhouette is completely yours: circle, hexagon, rounded rect, diamond, shield, or organic silhouette. Preserve the user's requested shape.
 
 ${renderVisualProfileOrCustomDirective(
-    "CONSOLE/XBOX INDUSTRIAL REALISM",
+    if (options.consoleMode == ConsoleMode.PLAYSTATION) "CONSOLE/PLAYSTATION INDUSTRIAL REALISM" else "CONSOLE/XBOX INDUSTRIAL REALISM",
     """
     1. **Matte Polycarbonate Body & Optical Depth**: Rich dual-cast molding — deep chassis base tones (`#14171e`, `#1c202a`, `#08090c`) with perimeter chamfer highlights, NOT flat monochrome or pure `#000`.
     2. **Physical Contact Shadows & Recessed Socket**: Elevated dome seated inside subtle socket well (`box-shadow: 0 8px 24px rgba(0,0,0,0.65), inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -6px 12px rgba(0,0,0,0.7)`).
     3. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested.
-    4. **Legible High-Contrast Letterform**: Prominent center glyph ($control) with multi-stop 3D text shadow.
+    4. **Legible High-Contrast Letterform**: Prominent center glyph ($control) with multi-stop 3D text shadow.$psLabelHint
     """.trimIndent(),
     options
 )}

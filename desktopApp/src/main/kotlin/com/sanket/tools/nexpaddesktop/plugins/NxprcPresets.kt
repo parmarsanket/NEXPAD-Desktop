@@ -672,6 +672,432 @@ object NxprcPresets {
 </html>
 """.trimIndent()
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // PlayStation Neo Tactile Presets (authentic DualShock/DualSense colors)
+    // Cross=Blue, Circle=Red, Square=Pink/Magenta, Triangle=Green
+    // data-control keeps the universal key (A/B/X/Y); label shows the PS symbol
+    // ─────────────────────────────────────────────────────────────────────────
+
+    val PRESET_NEO_TACTILE_PS_CROSS = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --btn-size: 96px;
+    --accent-glow: rgba(63, 143, 224, 0.65);
+    --accent-core: #3F8FE0;
+    --spring-damping: 0.68;
+    --spring-stiffness: 440;
+    --press-scale: 0.93;
+  }
+
+  .nexpad-btn {
+    position: relative;
+    width: var(--btn-size);
+    height: var(--btn-size);
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 45% 35%, rgba(63, 143, 224, 0.12) 0%, transparent 60%),
+      radial-gradient(circle at 50% 50%, #111827 0%, #070c14 65%, #010408 100%);
+    border: 2px solid #1e3a5f;
+    box-shadow: 
+      0 14px 30px rgba(0, 0, 0, 0.85),
+      0 0 0 3px rgba(12, 24, 48, 0.95),
+      0 0 24px var(--accent-glow),
+      inset 0 2px 4px rgba(255, 255, 255, 0.25),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nexpad-btn::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: 
+      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.15) 0%, transparent 45%),
+      conic-gradient(from 180deg at 50% 50%, #0f1f38, #1c3a6e, #0a1526, #254d96, #0f1f38, #1c3a6e, #0a1526);
+    box-shadow: 
+      inset 0 3px 6px rgba(255, 255, 255, 0.22),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.85);
+  }
+
+  .nexpad-btn::after {
+    content: "";
+    position: absolute;
+    top: 6%;
+    left: 14%;
+    width: 72%;
+    height: 40%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.08) 45%, transparent 75%);
+    transform: rotate(-10deg);
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  .nexpad-btn .btn-core {
+    position: relative;
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: 
+      radial-gradient(circle at 35% 25%, rgba(63, 143, 224, 0.25) 0%, transparent 40%),
+      radial-gradient(circle at 65% 75%, rgba(0, 0, 0, 0.7) 0%, transparent 55%),
+      linear-gradient(145deg, #0d1b30 0%, #060e1c 40%, #020509 100%);
+    border: 1.5px solid var(--accent-core);
+    box-shadow: 
+      inset 0 2px 5px rgba(255, 255, 255, 0.35),
+      inset 0 -5px 10px rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nexpad-btn .btn-label {
+    font-size: 34px;
+    font-weight: 900;
+    color: #FFFFFF;
+    text-shadow: 
+      0 1px 0 rgba(255, 255, 255, 0.95),
+      0 -1px 0 rgba(0, 0, 0, 0.95),
+      0 3px 8px rgba(0, 0, 0, 0.9),
+      0 0 14px var(--accent-core);
+  }
+
+  .nexpad-btn:active {
+    transform: scale(0.93);
+  }
+</style>
+</head>
+<body>
+  <button class="nexpad-btn" data-control="A" data-category="BUTTON" data-codename="Neo Tactile" data-name="Neo Tactile Cross" data-seed="16166">
+    <div class="btn-core">
+      <span class="btn-label">✕</span>
+    </div>
+  </button>
+</body>
+</html>
+""".trimIndent()
+
+    val PRESET_NEO_TACTILE_PS_CIRCLE = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --btn-size: 96px;
+    --accent-glow: rgba(230, 71, 78, 0.65);
+    --accent-core: #E6474E;
+    --spring-damping: 0.68;
+    --spring-stiffness: 440;
+    --press-scale: 0.93;
+  }
+
+  .nexpad-btn {
+    position: relative;
+    width: var(--btn-size);
+    height: var(--btn-size);
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 45% 35%, rgba(230, 71, 78, 0.12) 0%, transparent 60%),
+      radial-gradient(circle at 50% 50%, #1f1012 0%, #10080a 65%, #050203 100%);
+    border: 2px solid #5a1a1d;
+    box-shadow: 
+      0 14px 30px rgba(0, 0, 0, 0.85),
+      0 0 0 3px rgba(40, 10, 12, 0.95),
+      0 0 24px var(--accent-glow),
+      inset 0 2px 4px rgba(255, 255, 255, 0.25),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nexpad-btn::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: 
+      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.15) 0%, transparent 45%),
+      conic-gradient(from 180deg at 50% 50%, #2a1215, #6e1e22, #1a0b0c, #963038, #2a1215, #6e1e22, #1a0b0c);
+    box-shadow: 
+      inset 0 3px 6px rgba(255, 255, 255, 0.22),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.85);
+  }
+
+  .nexpad-btn::after {
+    content: "";
+    position: absolute;
+    top: 6%;
+    left: 14%;
+    width: 72%;
+    height: 40%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.08) 45%, transparent 75%);
+    transform: rotate(-10deg);
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  .nexpad-btn .btn-core {
+    position: relative;
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: 
+      radial-gradient(circle at 35% 25%, rgba(230, 71, 78, 0.25) 0%, transparent 40%),
+      radial-gradient(circle at 65% 75%, rgba(0, 0, 0, 0.7) 0%, transparent 55%),
+      linear-gradient(145deg, #2a0d0f 0%, #180608 40%, #070203 100%);
+    border: 1.5px solid var(--accent-core);
+    box-shadow: 
+      inset 0 2px 5px rgba(255, 255, 255, 0.35),
+      inset 0 -5px 10px rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nexpad-btn .btn-label {
+    font-size: 34px;
+    font-weight: 900;
+    color: #FFFFFF;
+    text-shadow: 
+      0 1px 0 rgba(255, 255, 255, 0.95),
+      0 -1px 0 rgba(0, 0, 0, 0.95),
+      0 3px 8px rgba(0, 0, 0, 0.9),
+      0 0 14px var(--accent-core);
+  }
+
+  .nexpad-btn:active {
+    transform: scale(0.93);
+  }
+</style>
+</head>
+<body>
+  <button class="nexpad-btn" data-control="B" data-category="BUTTON" data-codename="Neo Tactile" data-name="Neo Tactile Circle" data-seed="24892">
+    <div class="btn-core">
+      <span class="btn-label">○</span>
+    </div>
+  </button>
+</body>
+</html>
+""".trimIndent()
+
+    val PRESET_NEO_TACTILE_PS_SQUARE = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --btn-size: 96px;
+    --accent-glow: rgba(224, 85, 184, 0.65);
+    --accent-core: #E055B8;
+    --spring-damping: 0.68;
+    --spring-stiffness: 440;
+    --press-scale: 0.93;
+  }
+
+  .nexpad-btn {
+    position: relative;
+    width: var(--btn-size);
+    height: var(--btn-size);
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 45% 35%, rgba(224, 85, 184, 0.12) 0%, transparent 60%),
+      radial-gradient(circle at 50% 50%, #1c1018 0%, #0e0710 65%, #040205 100%);
+    border: 2px solid #561540;
+    box-shadow: 
+      0 14px 30px rgba(0, 0, 0, 0.85),
+      0 0 0 3px rgba(36, 8, 28, 0.95),
+      0 0 24px var(--accent-glow),
+      inset 0 2px 4px rgba(255, 255, 255, 0.25),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nexpad-btn::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: 
+      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.15) 0%, transparent 45%),
+      conic-gradient(from 180deg at 50% 50%, #281030, #6e1c5a, #180a1e, #962878, #281030, #6e1c5a, #180a1e);
+    box-shadow: 
+      inset 0 3px 6px rgba(255, 255, 255, 0.22),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.85);
+  }
+
+  .nexpad-btn::after {
+    content: "";
+    position: absolute;
+    top: 6%;
+    left: 14%;
+    width: 72%;
+    height: 40%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.08) 45%, transparent 75%);
+    transform: rotate(-10deg);
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  .nexpad-btn .btn-core {
+    position: relative;
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: 
+      radial-gradient(circle at 35% 25%, rgba(224, 85, 184, 0.25) 0%, transparent 40%),
+      radial-gradient(circle at 65% 75%, rgba(0, 0, 0, 0.7) 0%, transparent 55%),
+      linear-gradient(145deg, #280f22 0%, #150710 40%, #060204 100%);
+    border: 1.5px solid var(--accent-core);
+    box-shadow: 
+      inset 0 2px 5px rgba(255, 255, 255, 0.35),
+      inset 0 -5px 10px rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nexpad-btn .btn-label {
+    font-size: 34px;
+    font-weight: 900;
+    color: #FFFFFF;
+    text-shadow: 
+      0 1px 0 rgba(255, 255, 255, 0.95),
+      0 -1px 0 rgba(0, 0, 0, 0.95),
+      0 3px 8px rgba(0, 0, 0, 0.9),
+      0 0 14px var(--accent-core);
+  }
+
+  .nexpad-btn:active {
+    transform: scale(0.93);
+  }
+</style>
+</head>
+<body>
+  <button class="nexpad-btn" data-control="X" data-category="BUTTON" data-codename="Neo Tactile" data-name="Neo Tactile Square" data-seed="38120">
+    <div class="btn-core">
+      <span class="btn-label">□</span>
+    </div>
+  </button>
+</body>
+</html>
+""".trimIndent()
+
+    val PRESET_NEO_TACTILE_PS_TRIANGLE = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --btn-size: 96px;
+    --accent-glow: rgba(63, 210, 90, 0.65);
+    --accent-core: #3FD25A;
+    --spring-damping: 0.68;
+    --spring-stiffness: 440;
+    --press-scale: 0.93;
+  }
+
+  .nexpad-btn {
+    position: relative;
+    width: var(--btn-size);
+    height: var(--btn-size);
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 45% 35%, rgba(63, 210, 90, 0.12) 0%, transparent 60%),
+      radial-gradient(circle at 50% 50%, #0f1c12 0%, #070f09 65%, #020503 100%);
+    border: 2px solid #1a5228;
+    box-shadow: 
+      0 14px 30px rgba(0, 0, 0, 0.85),
+      0 0 0 3px rgba(8, 28, 14, 0.95),
+      0 0 24px var(--accent-glow),
+      inset 0 2px 4px rgba(255, 255, 255, 0.25),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nexpad-btn::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: 
+      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.15) 0%, transparent 45%),
+      conic-gradient(from 180deg at 50% 50%, #0e2614, #1c6e30, #091a0e, #289648, #0e2614, #1c6e30, #091a0e);
+    box-shadow: 
+      inset 0 3px 6px rgba(255, 255, 255, 0.22),
+      inset 0 -6px 14px rgba(0, 0, 0, 0.85);
+  }
+
+  .nexpad-btn::after {
+    content: "";
+    position: absolute;
+    top: 6%;
+    left: 14%;
+    width: 72%;
+    height: 40%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.08) 45%, transparent 75%);
+    transform: rotate(-10deg);
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  .nexpad-btn .btn-core {
+    position: relative;
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: 
+      radial-gradient(circle at 35% 25%, rgba(63, 210, 90, 0.25) 0%, transparent 40%),
+      radial-gradient(circle at 65% 75%, rgba(0, 0, 0, 0.7) 0%, transparent 55%),
+      linear-gradient(145deg, #0e2412 0%, #06140a 40%, #020503 100%);
+    border: 1.5px solid var(--accent-core);
+    box-shadow: 
+      inset 0 2px 5px rgba(255, 255, 255, 0.35),
+      inset 0 -5px 10px rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nexpad-btn .btn-label {
+    font-size: 34px;
+    font-weight: 900;
+    color: #FFFFFF;
+    text-shadow: 
+      0 1px 0 rgba(255, 255, 255, 0.95),
+      0 -1px 0 rgba(0, 0, 0, 0.95),
+      0 3px 8px rgba(0, 0, 0, 0.9),
+      0 0 14px var(--accent-core);
+  }
+
+  .nexpad-btn:active {
+    transform: scale(0.93);
+  }
+</style>
+</head>
+<body>
+  <button class="nexpad-btn" data-control="Y" data-category="BUTTON" data-codename="Neo Tactile" data-name="Neo Tactile Triangle" data-seed="49551">
+    <div class="btn-core">
+      <span class="btn-label">△</span>
+    </div>
+  </button>
+</body>
+</html>
+""".trimIndent()
+
     val PRESET_DPAD_UP = """
 <!DOCTYPE html>
 <html lang="en">
@@ -2362,7 +2788,18 @@ object NxprcPresets {
     /** Returns the category-specific reference template (structure guide only) used by the desktop studio AI prompt. */
     fun getReferenceTemplate(control: String, category: String): String = getReferenceTemplateInternal(control, category)
 
-    private fun getReferenceTemplateInternal(control: String, category: String): String {
+    /**
+     * Returns the category-specific reference template with console platform awareness for ABXY buttons.
+     * [consoleMode] only affects ABXY — all other categories always return their standard preset.
+     */
+    fun getReferenceTemplate(control: String, category: String, consoleMode: ConsoleMode): String =
+        getReferenceTemplateInternal(control, category, consoleMode)
+
+    private fun getReferenceTemplateInternal(
+        control: String,
+        category: String,
+        consoleMode: ConsoleMode = ConsoleMode.XBOX
+    ): String {
         val ctrl = ControlKey.fromIdentifier(control)
         val catType = ctrl?.categoryType
             ?: CategoryType.fromIdentifier(category)
@@ -2371,67 +2808,78 @@ object NxprcPresets {
         if (catType != null && catType != CategoryType.ABXY) {
             return when (catType) {
                 CategoryType.DPAD -> when (ctrl) {
-                    ControlKey.DOWN -> PRESET_DPAD_DOWN
-                    ControlKey.LEFT -> PRESET_DPAD_LEFT
+                    ControlKey.DOWN  -> PRESET_DPAD_DOWN
+                    ControlKey.LEFT  -> PRESET_DPAD_LEFT
                     ControlKey.RIGHT -> PRESET_DPAD_RIGHT
-                    ControlKey.DPAD -> PRESET_DPAD_CROSS
-                    else -> PRESET_DPAD_UP
+                    ControlKey.DPAD  -> PRESET_DPAD_CROSS
+                    else             -> PRESET_DPAD_UP
                 }
                 CategoryType.TRIGGERS -> if (ctrl == ControlKey.LT) PRESET_TRIGGER_LT else PRESET_TRIGGER_RT
-                CategoryType.BUMPERS -> if (ctrl == ControlKey.LB) PRESET_BUMPER_LB else PRESET_BUMPER_RB
-                CategoryType.STICKS -> when (ctrl) {
-                    ControlKey.RS -> PRESET_THUMBSTICK_RS
+                CategoryType.BUMPERS  -> if (ctrl == ControlKey.LB) PRESET_BUMPER_LB else PRESET_BUMPER_RB
+                CategoryType.STICKS   -> when (ctrl) {
+                    ControlKey.RS  -> PRESET_THUMBSTICK_RS
                     ControlKey.LSB -> PRESET_STICK_BUTTON_LSB
                     ControlKey.RSB -> PRESET_STICK_BUTTON_RSB
                     ControlKey.LTP -> PRESET_TOUCHPAD_LTP
                     ControlKey.RTP -> PRESET_TOUCHPAD_RTP
-                    else -> PRESET_THUMBSTICK_LS
+                    else           -> PRESET_THUMBSTICK_LS
                 }
                 CategoryType.SYSTEM -> when (ctrl) {
-                    ControlKey.BACK -> PRESET_SYSTEM_VIEW
+                    ControlKey.BACK  -> PRESET_SYSTEM_VIEW
                     ControlKey.GUIDE -> PRESET_SYSTEM_HOME
                     ControlKey.SHARE -> PRESET_SYSTEM_SHARE
-                    else -> PRESET_SYSTEM_MENU
+                    else             -> PRESET_SYSTEM_MENU
                 }
                 CategoryType.MACROS -> when (ctrl) {
                     ControlKey.M2 -> createPresetMacroPaddle("M2")
                     ControlKey.M3 -> createPresetMacroPaddle("M3")
                     ControlKey.M4 -> createPresetMacroPaddle("M4")
-                    else -> createPresetMacroPaddle(ctrl?.key ?: "M1")
+                    else          -> createPresetMacroPaddle(ctrl?.key ?: "M1")
                 }
-                CategoryType.ABXY -> getReferenceTemplateInternal(control, "BUTTON")
+                CategoryType.ABXY -> getReferenceTemplateInternal(control, "BUTTON", consoleMode)
+            }
+        }
+
+        // ABXY dispatch — PlayStation variants when consoleMode=PLAYSTATION
+        if (consoleMode == ConsoleMode.PLAYSTATION) {
+            return when (ctrl) {
+                ControlKey.A -> PRESET_NEO_TACTILE_PS_CROSS
+                ControlKey.B -> PRESET_NEO_TACTILE_PS_CIRCLE
+                ControlKey.X -> PRESET_NEO_TACTILE_PS_SQUARE
+                ControlKey.Y -> PRESET_NEO_TACTILE_PS_TRIANGLE
+                else         -> PRESET_NEO_TACTILE_PS_CROSS
             }
         }
 
         return when (ctrl) {
-            ControlKey.A -> PRESET_NEO_TACTILE_A
-            ControlKey.B -> PRESET_NEO_TACTILE_B
-            ControlKey.X -> PRESET_NEO_TACTILE_X
-            ControlKey.Y -> PRESET_NEO_TACTILE_Y
-            ControlKey.UP -> PRESET_DPAD_UP
-            ControlKey.DOWN -> PRESET_DPAD_DOWN
-            ControlKey.LEFT -> PRESET_DPAD_LEFT
+            ControlKey.A   -> PRESET_NEO_TACTILE_A
+            ControlKey.B   -> PRESET_NEO_TACTILE_B
+            ControlKey.X   -> PRESET_NEO_TACTILE_X
+            ControlKey.Y   -> PRESET_NEO_TACTILE_Y
+            ControlKey.UP    -> PRESET_DPAD_UP
+            ControlKey.DOWN  -> PRESET_DPAD_DOWN
+            ControlKey.LEFT  -> PRESET_DPAD_LEFT
             ControlKey.RIGHT -> PRESET_DPAD_RIGHT
-            ControlKey.DPAD -> PRESET_DPAD_CROSS
-            ControlKey.LT -> PRESET_TRIGGER_LT
-            ControlKey.RT -> PRESET_TRIGGER_RT
-            ControlKey.LB -> PRESET_BUMPER_LB
-            ControlKey.RB -> PRESET_BUMPER_RB
-            ControlKey.LS -> PRESET_THUMBSTICK_LS
-            ControlKey.RS -> PRESET_THUMBSTICK_RS
-            ControlKey.LSB -> PRESET_STICK_BUTTON_LSB
-            ControlKey.RSB -> PRESET_STICK_BUTTON_RSB
-            ControlKey.LTP -> PRESET_TOUCHPAD_LTP
-            ControlKey.RTP -> PRESET_TOUCHPAD_RTP
+            ControlKey.DPAD  -> PRESET_DPAD_CROSS
+            ControlKey.LT    -> PRESET_TRIGGER_LT
+            ControlKey.RT    -> PRESET_TRIGGER_RT
+            ControlKey.LB    -> PRESET_BUMPER_LB
+            ControlKey.RB    -> PRESET_BUMPER_RB
+            ControlKey.LS    -> PRESET_THUMBSTICK_LS
+            ControlKey.RS    -> PRESET_THUMBSTICK_RS
+            ControlKey.LSB   -> PRESET_STICK_BUTTON_LSB
+            ControlKey.RSB   -> PRESET_STICK_BUTTON_RSB
+            ControlKey.LTP   -> PRESET_TOUCHPAD_LTP
+            ControlKey.RTP   -> PRESET_TOUCHPAD_RTP
             ControlKey.START -> PRESET_SYSTEM_MENU
-            ControlKey.BACK -> PRESET_SYSTEM_VIEW
+            ControlKey.BACK  -> PRESET_SYSTEM_VIEW
             ControlKey.GUIDE -> PRESET_SYSTEM_HOME
             ControlKey.SHARE -> PRESET_SYSTEM_SHARE
-            ControlKey.M1 -> createPresetMacroPaddle("M1")
-            ControlKey.M2 -> createPresetMacroPaddle("M2")
-            ControlKey.M3 -> createPresetMacroPaddle("M3")
-            ControlKey.M4 -> createPresetMacroPaddle("M4")
-            else -> PRESET_NEO_TACTILE_A
+            ControlKey.M1    -> createPresetMacroPaddle("M1")
+            ControlKey.M2    -> createPresetMacroPaddle("M2")
+            ControlKey.M3    -> createPresetMacroPaddle("M3")
+            ControlKey.M4    -> createPresetMacroPaddle("M4")
+            else             -> PRESET_NEO_TACTILE_A
         }
     }
 
