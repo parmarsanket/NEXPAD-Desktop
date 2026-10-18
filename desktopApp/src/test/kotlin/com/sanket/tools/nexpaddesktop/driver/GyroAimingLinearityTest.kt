@@ -192,4 +192,269 @@ class GyroAimingLinearityTest {
         )
         assertEquals("Inverted roll cancels yaw when magnitudes are identical in MIX mode", 0f, mixInvertRollRes.yawDps, 0.01f)
     }
+
+    @Test
+    fun testSteeringWheelFullLockUnconstrainedByPitchTilt() {
+        val processor = GyroProcessor()
+        val settings = GyroSettings(
+            enabled = true,
+            inputMode = InputMode.ABSOLUTE_TILT,
+            xboxTargetStick = com.sanket.tools.nexpaddesktop.model.XboxTargetStick.LEFT_STICK,
+            absoluteMaxTilt = 35.0f,
+            absoluteSensitivityX = 1.0f,
+            absoluteCurve = 1.0f,
+            gameDeadzoneCompensation = 0.14f
+        )
+
+        // 35° steering lock on gravity: 9.8 * sin(35°) ≈ 5.62 m/s²
+        val maxTurnGravityX = 5.62f
+        // Player holds phone naturally tilted towards them (e.g. 35° viewing pitch angle):
+        val viewingTiltGravityY = 5.62f
+
+        // Case 1: Steer full right while phone has viewing pitch tilt (non-zero Y)
+        val inputTiltedPhone = GamepadInput(
+            gravityX = maxTurnGravityX,
+            gravityY = viewingTiltGravityY,
+            sensorFlags = NexpadProtocol.SENSOR_MODE_GRAVITY
+        )
+        val outputRight = InputPipeline.processInput(
+            input = inputTiltedPhone,
+            activeController = ControllerType.XBOX_360,
+            gyroProcessor = processor,
+            gyroSettings = settings,
+            lsSensitivityX = 1f, lsSensitivityY = 1f,
+            rsSensitivityX = 1f, rsSensitivityY = 1f,
+            onProcessedAngles = { _, _ -> }
+        )
+        assertEquals("Virtual steering wheel must reach 100% full lock (1.0) on X even when phone Y tilt is non-zero",
+            1.0f, outputRight.leftStickX, 0.01f)
+
+        // Case 2: Steer full left while phone has viewing pitch tilt (non-zero Y)
+        val inputTiltedPhoneLeft = GamepadInput(
+            gravityX = -maxTurnGravityX,
+            gravityY = viewingTiltGravityY,
+            sensorFlags = NexpadProtocol.SENSOR_MODE_GRAVITY
+        )
+        val outputLeft = InputPipeline.processInput(
+            input = inputTiltedPhoneLeft,
+            activeController = ControllerType.XBOX_360,
+            gyroProcessor = processor,
+            gyroSettings = settings,
+            lsSensitivityX = 1f, lsSensitivityY = 1f,
+            rsSensitivityX = 1f, rsSensitivityY = 1f,
+            onProcessedAngles = { _, _ -> }
+        )
+        assertEquals("Virtual steering wheel must reach 100% full lock (-1.0) on X when steered left",
+            -1.0f, outputLeft.leftStickX, 0.01f)
+
+        // Case 3: Phone held flat (Y == 0)
+        val inputFlatPhone = GamepadInput(
+            gravityX = maxTurnGravityX,
+            gravityY = 0f,
+            sensorFlags = NexpadProtocol.SENSOR_MODE_GRAVITY
+        )
+        val outputFlat = InputPipeline.processInput(
+            input = inputFlatPhone,
+            activeController = ControllerType.XBOX_360,
+            gyroProcessor = processor,
+            gyroSettings = settings,
+            lsSensitivityX = 1f, lsSensitivityY = 1f,
+            rsSensitivityX = 1f, rsSensitivityY = 1f,
+            onProcessedAngles = { _, _ -> }
+        )
+        assertEquals("Steering wheel must also reach 100% (1.0) when Y is 0",
+            1.0f, outputFlat.leftStickX, 0.01f)
+
+        // Case 4: Tiny micro-angle steering near zero (e.g. 1° tilt = 0.0286 deflection)
+        // Must NOT snap to 0.14 / -0.14; must smoothly output small numbers close to zero!
+        val tinyTurnGravityX = 9.8f * kotlin.math.sin(1.0f * (Math.PI.toFloat() / 180f)) // ~0.171 m/s²
+        val inputTinyTurn = GamepadInput(
+            gravityX = tinyTurnGravityX,
+            gravityY = viewingTiltGravityY,
+            sensorFlags = NexpadProtocol.SENSOR_MODE_GRAVITY
+        )
+        val outputTiny = InputPipeline.processInput(
+            input = inputTinyTurn,
+            activeController = ControllerType.XBOX_360,
+            gyroProcessor = processor,
+            gyroSettings = settings,
+            lsSensitivityX = 1f, lsSensitivityY = 1f,
+            rsSensitivityX = 1f, rsSensitivityY = 1f,
+            onProcessedAngles = { _, _ -> }
+        )
+        assertTrue("Steering stick must be able to output small values < 0.10 (actual: ${outputTiny.leftStickX})",
+            outputTiny.leftStickX in 0.01f..0.06f)
+
+        // Case 5: Tiny micro-angle left (-1° tilt)
+        val inputTinyTurnLeft = GamepadInput(
+            gravityX = -tinyTurnGravityX,
+            gravityY = viewingTiltGravityY,
+            sensorFlags = NexpadProtocol.SENSOR_MODE_GRAVITY
+        )
+        val outputTinyLeft = InputPipeline.processInput(
+            input = inputTinyTurnLeft,
+            activeController = ControllerType.XBOX_360,
+            gyroProcessor = processor,
+            gyroSettings = settings,
+            lsSensitivityX = 1f, lsSensitivityY = 1f,
+            rsSensitivityX = 1f, rsSensitivityY = 1f,
+            onProcessedAngles = { _, _ -> }
+        )
+        assertTrue("Steering stick must be able to output small negative values > -0.10 (actual: ${outputTinyLeft.leftStickX})",
+            outputTinyLeft.leftStickX in -0.06f..-0.01f)
+    }
+
+    @Test
+    fun testDiagonalTiltFullSaturationFreeAxes() {
+        val processor = GyroProcessor()
+        val settings = GyroSettings(
+            enabled = true,
+            inputMode = InputMode.VELOCITY,
+            horizontalAxis = HorizontalAxis.YAW,
+            maxDpsYaw = 200.0f,
+            maxDpsPitch = 200.0f,
+            accelerationEnabled = false,
+            smoothingEnabled = false,
+            deadzoneThreshold = 0f,
+            gameDeadzoneCompensation = 0.14f
+        )
+
+        // Full 200 dps rotation on both Yaw (X) and Pitch (Y) -> Top-Right diagonal tilt
+        val rad200 = 200.0f / GyroProcessor.RAD_TO_DEG
+        // rawGyroX is pitch (negated to vertical), rawGyroZ is yaw
+        val inputDiagonal = GamepadInput(
+            gyroZ = rad200,
+            gyroX = -rad200,
+            sensorFlags = NexpadProtocol.SENSOR_MODE_IMU_6AXIS
+        )
+
+        val output = InputPipeline.processInput(
+            input = inputDiagonal,
+            activeController = ControllerType.XBOX_360,
+            gyroProcessor = processor,
+            gyroSettings = settings,
+            lsSensitivityX = 1f, lsSensitivityY = 1f,
+            rsSensitivityX = 1f, rsSensitivityY = 1f,
+            onProcessedAngles = { _, _ -> }
+        )
+
+        assertEquals("Diagonal tilt must reach 1.0f full saturation on X without circular gating",
+            1.0f, output.rightStickX, 0.01f)
+        assertEquals("Diagonal tilt must reach 1.0f full saturation on Y without circular gating",
+            1.0f, output.rightStickY, 0.01f)
+    }
+
+    @Test
+    fun testDefaultZeroDeadzoneLinearPassThrough() {
+        assertEquals("Default gameDeadzoneCompensation must be 0.0f", 0.0f, GyroSettings().gameDeadzoneCompensation, 0.0001f)
+        assertEquals("GyroSettings.DEFAULT gameDeadzoneCompensation must be 0.0f", 0.0f, GyroSettings.DEFAULT.gameDeadzoneCompensation, 0.0001f)
+        assertEquals("FPS_PRESET gameDeadzoneCompensation must be 0.0f", 0.0f, GyroSettings.FPS_PRESET.gameDeadzoneCompensation, 0.0001f)
+
+        // Micro-aiming at 1.0°/s with default settings yields 1/200 = 0.005 without jumping to 0.14
+        val processor = GyroProcessor()
+        val defaultSettings = GyroSettings(
+            enabled = true,
+            inputMode = InputMode.VELOCITY,
+            horizontalAxis = HorizontalAxis.YAW,
+            maxDpsYaw = 200.0f,
+            accelerationEnabled = false,
+            smoothingEnabled = false,
+            deadzoneThreshold = 0f
+        )
+        val rad1 = 1.0f / GyroProcessor.RAD_TO_DEG
+        val inputSlow = GamepadInput(
+            gyroZ = rad1,
+            sensorFlags = NexpadProtocol.SENSOR_MODE_IMU_6AXIS
+        )
+        val outSlow = InputPipeline.processInput(
+            input = inputSlow,
+            activeController = ControllerType.XBOX_360,
+            gyroProcessor = processor,
+            gyroSettings = defaultSettings,
+            lsSensitivityX = 1f, lsSensitivityY = 1f,
+            rsSensitivityX = 1f, rsSensitivityY = 1f,
+            onProcessedAngles = { _, _ -> }
+        )
+        // With 0.00 deadzone, output must smoothly pass through ~0.005 without snapping to 0.14!
+        assertTrue("Output should be tiny micro-aiming (~0.005) without deadzone jump (actual: ${outSlow.rightStickX})",
+            outSlow.rightStickX in 0.004f..0.01f)
+    }
+
+    @Test
+    fun testCircularInnerDeadzoneDisc() {
+        val processor = GyroProcessor()
+        val settings = GyroSettings(
+            enabled = true,
+            inputMode = InputMode.VELOCITY,
+            horizontalAxis = HorizontalAxis.YAW,
+            maxDpsYaw = 200.0f,
+            maxDpsPitch = 200.0f,
+            accelerationEnabled = false,
+            smoothingEnabled = false,
+            deadzoneThreshold = 0f,
+            gameDeadzoneCompensation = 0.14f
+        )
+
+        // 1. Pure Horizontal motion (departure from center)
+        val radTiny = 0.5f / GyroProcessor.RAD_TO_DEG
+        val inputPureX = GamepadInput(
+            gyroZ = radTiny,
+            gyroX = 0f,
+            sensorFlags = NexpadProtocol.SENSOR_MODE_IMU_6AXIS
+        )
+        val outPureX = InputPipeline.processInput(
+            input = inputPureX,
+            activeController = ControllerType.XBOX_360,
+            gyroProcessor = processor,
+            gyroSettings = settings,
+            lsSensitivityX = 1f, lsSensitivityY = 1f,
+            rsSensitivityX = 1f, rsSensitivityY = 1f,
+            onProcessedAngles = { _, _ -> }
+        )
+        val magX = kotlin.math.sqrt(outPureX.rightStickX * outPureX.rightStickX + outPureX.rightStickY * outPureX.rightStickY)
+        assertEquals("Pure X departure magnitude must be ~0.14 (radius = 0.14)", 0.14f, magX, 0.01f)
+
+        // 2. Pure Vertical motion (departure from center)
+        val inputPureY = GamepadInput(
+            gyroZ = 0f,
+            gyroX = -radTiny,
+            sensorFlags = NexpadProtocol.SENSOR_MODE_IMU_6AXIS
+        )
+        val outPureY = InputPipeline.processInput(
+            input = inputPureY,
+            activeController = ControllerType.XBOX_360,
+            gyroProcessor = processor,
+            gyroSettings = settings,
+            lsSensitivityX = 1f, lsSensitivityY = 1f,
+            rsSensitivityX = 1f, rsSensitivityY = 1f,
+            onProcessedAngles = { _, _ -> }
+        )
+        val magY = kotlin.math.sqrt(outPureY.rightStickX * outPureY.rightStickX + outPureY.rightStickY * outPureY.rightStickY)
+        assertEquals("Pure Y departure magnitude must be ~0.14 (radius = 0.14)", 0.14f, magY, 0.01f)
+
+        // 3. 45° Diagonal motion (departure from center)
+        // In a circular deadzone of radius 0.14, the vector magnitude in diagonal direction must be 0.14,
+        // which means (x ≈ 0.099, y ≈ 0.099). A square box would produce (x=0.14, y=0.14) with magnitude 0.198.
+        val inputDiag = GamepadInput(
+            gyroZ = radTiny,
+            gyroX = -radTiny,
+            sensorFlags = NexpadProtocol.SENSOR_MODE_IMU_6AXIS
+        )
+        val outDiag = InputPipeline.processInput(
+            input = inputDiag,
+            activeController = ControllerType.XBOX_360,
+            gyroProcessor = processor,
+            gyroSettings = settings,
+            lsSensitivityX = 1f, lsSensitivityY = 1f,
+            rsSensitivityX = 1f, rsSensitivityY = 1f,
+            onProcessedAngles = { _, _ -> }
+        )
+        val magDiag = kotlin.math.sqrt(outDiag.rightStickX * outDiag.rightStickX + outDiag.rightStickY * outDiag.rightStickY)
+        assertEquals("Diagonal departure magnitude must be circular (~0.14 radius, NOT square 0.198)",
+            0.14f, magDiag, 0.015f)
+        assertTrue("Diagonal components must be < 0.12 (actual: ${outDiag.rightStickX})",
+            outDiag.rightStickX in 0.08f..0.12f)
+        assertTrue("Diagonal components must be < 0.12 (actual: ${outDiag.rightStickY})",
+            outDiag.rightStickY in 0.08f..0.12f)
+    }
 }

@@ -176,7 +176,7 @@ data class GyroSettings(
      * When motion is detected, output begins immediately above the in-game deadzone threshold,
      * delivering 1:1 mouse-like micro-aiming responsiveness that matches DualShock 4.
      */
-    val gameDeadzoneCompensation: Float = 0.14f,
+    val gameDeadzoneCompensation: Float = 0.0f,
 
     /**
      * How the gyro is activated during gameplay (Xbox mode only).
@@ -388,7 +388,7 @@ data class GyroSettings(
             smoothingThreshold = 30.0f,
             accelerationEnabled = false,
             stickResponseCurve = StickResponseCurve.LINEAR,
-            gameDeadzoneCompensation = 0.14f,
+            gameDeadzoneCompensation = 0.0f,
             xboxBlendMode = XboxBlendMode.JOYSTICK_SUPREME,
         )
 
@@ -403,7 +403,7 @@ data class GyroSettings(
             smoothingEnabled = true,
             smoothingAmount = 0.7f,
             adaptiveSmoothing = false,
-            gameDeadzoneCompensation = 0.05f,
+            gameDeadzoneCompensation = 0.0f,
             xboxTargetStick = XboxTargetStick.LEFT_STICK,
         )
 
@@ -424,7 +424,7 @@ data class GyroSettings(
             airMouseYawInvert = false,
             airMouseTargetStick = XboxTargetStick.LEFT_STICK,
             airMouseInvertPitch = true,
-            gameDeadzoneCompensation = 0.05f,
+            gameDeadzoneCompensation = 0.0f,
         )
 
         /** Best defaults for action / combat games (kinetic weapon swings, directional flicks & 180° snap turns). */

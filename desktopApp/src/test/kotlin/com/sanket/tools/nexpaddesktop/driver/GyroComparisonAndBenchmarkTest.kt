@@ -17,7 +17,7 @@ class GyroComparisonAndBenchmarkTest {
 
     @Test
     fun benchmarkDs4VsXboxSmallInputResponse() {
-        val defaultSettings = GyroSettings.DEFAULT // Refined defaults with Anti-Deadzone = 0.14 and deadzone = 0.8°/s
+        val defaultSettings = GyroSettings.DEFAULT.copy(gameDeadzoneCompensation = 0.14f) // Benchmark with Anti-Deadzone = 0.14 and deadzone = 0.8°/s
 
         println("==========================================================================================================")
         println("  BENCHMARK 1: DS4 vs REFINED XBOX GYRO AT SPEEDS FROM 0.0°/s (REST) TO 100°/s (FLICK)")
@@ -117,7 +117,7 @@ class GyroComparisonAndBenchmarkTest {
         println("==========================================================================================================")
 
         val gyroProcessor = GyroProcessor()
-        val settings = GyroSettings.DEFAULT // Default is JOYSTICK_SUPREME
+        val settings = GyroSettings.DEFAULT.copy(gameDeadzoneCompensation = 0.14f) // Default is JOYSTICK_SUPREME with Anti-Deadzone
         val gyroRad = 15f * degToRad // Phone has 15°/s gyro motion
 
         // Case 1: User pushes physical Right Stick to full right (+1.0) on phone screen
@@ -182,8 +182,8 @@ class GyroComparisonAndBenchmarkTest {
 
     @Test
     fun benchmarkRawSiliconGyroVsCalibratedGyro() {
-        val calibratedSettings = GyroSettings.DEFAULT.copy(inputMode = InputMode.VELOCITY)
-        val rawSiliconSettings = GyroSettings.DEFAULT.copy(inputMode = InputMode.RAW_UNCALIBRATED)
+        val calibratedSettings = GyroSettings.DEFAULT.copy(inputMode = InputMode.VELOCITY, gameDeadzoneCompensation = 0.14f)
+        val rawSiliconSettings = GyroSettings.DEFAULT.copy(inputMode = InputMode.RAW_UNCALIBRATED, gameDeadzoneCompensation = 0.14f)
 
         println("==========================================================================================================")
         println("  BENCHMARK 4: RAW SILICON GYRO (UNCALIBRATED + BIAS) VS CALIBRATED GYRO (0.0°/s TO 100°/s)")

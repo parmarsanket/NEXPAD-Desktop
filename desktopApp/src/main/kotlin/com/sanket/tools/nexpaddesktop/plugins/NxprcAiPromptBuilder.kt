@@ -592,7 +592,7 @@ data class ResolvedDesign(
         sb.append("- **MATERIAL**: ${material.value} [${material.source}]\n")
         sb.append("- **LIGHTING**: ${lighting.value} [${lighting.source}]\n")
         sb.append("- **TEXTURE**: ${texture.value} [${texture.source}]\n")
-        if (emblem != null && !emblem.value.isNullOrBlank()) {
+        if (emblem != null && emblem.value.isNotBlank()) {
             sb.append("- **EMBLEM**: ${emblem.value} [${emblem.source}]\n")
         }
         sb.append("- **LABEL**: ${label.value} [${label.source}]\n")

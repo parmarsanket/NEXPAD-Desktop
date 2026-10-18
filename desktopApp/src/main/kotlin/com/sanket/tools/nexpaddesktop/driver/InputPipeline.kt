@@ -98,7 +98,11 @@ object InputPipeline {
                 // 3D Flight Stick: Direct independent axis routing to Left Stick & Right Stick
                 fun blendFlight(physical: Float, flight: Float): Float {
                     val isPhysActive = abs(physical) > 0.05f
-                    val deadzone = gyroSettings.gameDeadzoneCompensation.coerceIn(0f, 0.35f)
+                    val deadzone = if (gyroSettings.inputMode == InputMode.AIR_MOUSE) {
+                        0f
+                    } else {
+                        gyroSettings.gameDeadzoneCompensation.coerceIn(0f, 0.35f)
+                    }
                     val activeFlight = if (abs(flight) > 0.0001f && deadzone > 0f) {
                         val clamped = abs(flight).coerceAtMost(1.0f)
                         kotlin.math.sign(flight) * (deadzone + (1.0f - deadzone) * clamped)
@@ -121,39 +125,52 @@ object InputPipeline {
                 val rawStickX = (processed.yawDps * gyroToStickScale).coerceIn(-1f, 1f)
                 val rawStickY = (processed.pitchDps * gyroToStickScale).coerceIn(-1f, 1f)
 
-                // 1. Stick Response Curve Shaping (Linear 1:1, Linearized, or Precision)
-                val rawMag = sqrt(rawStickX * rawStickX + rawStickY * rawStickY)
-                val curvedStickX: Float
-                val curvedStickY: Float
-
-                if (rawMag > 0.0001f && gyroSettings.stickResponseCurve.exponent != 1.0f) {
-                    val clampedRawMag = rawMag.coerceAtMost(1.0f)
-                    val curvedMag = clampedRawMag.pow(gyroSettings.stickResponseCurve.exponent)
-                    val curveRatio = curvedMag / rawMag
-                    curvedStickX = (rawStickX * curveRatio).coerceIn(-1f, 1f)
-                    curvedStickY = (rawStickY * curveRatio).coerceIn(-1f, 1f)
-                } else {
-                    curvedStickX = rawStickX
-                    curvedStickY = rawStickY
+                // 1. Stick Response Curve Shaping (Per-Axis Independent - Free Gyro Unconstrained)
+                // Gyroscope, gravity, and motion sensors operate with independent physical degrees of freedom.
+                // Applying the response curve per-axis rather than clamping a 2D circular vector
+                // ensures horizontal steering and vertical pitch never choke each other, and diagonal
+                // tilts (e.g. top-right) achieve full 100% saturation (x=1.0, y=1.0).
+                val exponent = gyroSettings.stickResponseCurve.exponent
+                fun applyStickCurve(valIn: Float): Float {
+                    val absVal = abs(valIn)
+                    if (absVal <= 0.0001f) return 0f
+                    val clamped = absVal.coerceAtMost(1.0f)
+                    val curved = if (exponent != 1.0f) clamped.pow(exponent) else clamped
+                    return (curved * kotlin.math.sign(valIn)).coerceIn(-1f, 1f)
                 }
 
-                // 2. In-Game Deadzone Bridge (Anti-Deadzone)
-                // Bypasses the 10-18% deadzone enforced by PC games on Xbox thumbsticks.
-                // When gyro rotation is detected beyond resting noise (0.001f), the output starts
-                // at the game deadzone threshold and scales smoothly up to 1.0f.
-                val deadzoneOffset = gyroSettings.gameDeadzoneCompensation.coerceIn(0f, 0.35f)
-                val gyroMag = sqrt(curvedStickX * curvedStickX + curvedStickY * curvedStickY)
+                val curvedStickX = applyStickCurve(rawStickX)
+                val curvedStickY = applyStickCurve(rawStickY)
+
+                // 2. In-Game Deadzone Bridge (Anti-Deadzone - Radial Inner Deadzone Disc)
+                // PC games enforce a circular center deadzone (typically 10-18%) on Xbox thumbsticks.
+                // The inner deadzone boundary is a true 360° circle of radius 'deadzoneOffset',
+                // scaling outward along radial rays to the unconstrained box boundary [-1, 1] x [-1, 1]
+                // (Chebyshev ray projection). This guarantees:
+                //   1. Tiny motions departing from center start at radius deadzoneOffset in all directions (circular disc).
+                //   2. High deflections reach full 100% saturation on all edges and corners (e.g. x=1.0, y=1.0).
+                //   3. In ABSOLUTE_TILT (Virtual Steering Wheel) or when compensation is 0.00, it is a pure
+                //      1:1 transparent pass-through with no jump, preserving micro-adjustments (0.01..0.10).
+                val deadzoneOffset = if (gyroSettings.inputMode == InputMode.ABSOLUTE_TILT) {
+                    0f
+                } else {
+                    gyroSettings.gameDeadzoneCompensation.coerceIn(0f, 0.35f)
+                }
 
                 val gyroStickX: Float
                 val gyroStickY: Float
 
-                if (gyroMag > 0.0001f && deadzoneOffset > 0f) {
-                    val clampedMag = gyroMag.coerceAtMost(1.0f)
-                    val boostedMag = deadzoneOffset + (1.0f - deadzoneOffset) * clampedMag
-                    val ratio = boostedMag / gyroMag
-                    gyroStickX = (curvedStickX * ratio).coerceIn(-1f, 1f)
-                    gyroStickY = (curvedStickY * ratio).coerceIn(-1f, 1f)
-                } else if (gyroMag > 0.0001f) {
+                val r = sqrt(curvedStickX * curvedStickX + curvedStickY * curvedStickY)
+                if (r > 0.0001f && deadzoneOffset > 0f) {
+                    val ux = curvedStickX / r
+                    val uy = curvedStickY / r
+                    val maxU = maxOf(abs(ux), abs(uy))
+                    val rMax = if (maxU > 0.0001f) 1.0f / maxU else 1.0f
+                    val t = (r / rMax).coerceIn(0f, 1f)
+                    val rBoosted = deadzoneOffset + (rMax - deadzoneOffset) * t
+                    gyroStickX = (ux * rBoosted).coerceIn(-1f, 1f)
+                    gyroStickY = (uy * rBoosted).coerceIn(-1f, 1f)
+                } else if (r > 0.0001f) {
                     gyroStickX = curvedStickX
                     gyroStickY = curvedStickY
                 } else {
@@ -167,8 +184,7 @@ object InputPipeline {
                 val isTargetRightStick = gyroSettings.xboxTargetStick == XboxTargetStick.RIGHT_STICK
                 val physicalStickX = if (isTargetRightStick) input.rightStickX else input.leftStickX
                 val physicalStickY = if (isTargetRightStick) input.rightStickY else input.leftStickY
-                val physicalDeflection = sqrt(physicalStickX * physicalStickX + physicalStickY * physicalStickY)
-                val isStickActive = physicalDeflection > 0.05f
+                val isStickActive = abs(physicalStickX) > 0.05f || abs(physicalStickY) > 0.05f
 
                 var blendedX: Float
                 var blendedY: Float

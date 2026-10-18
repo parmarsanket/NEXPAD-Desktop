@@ -1713,7 +1713,7 @@ fun GyroAimingDeepSettings(
         onReset = {
             onSettingsChange(
                 settings.copy(
-                    gameDeadzoneCompensation = 0.14f,
+                    gameDeadzoneCompensation = 0.0f,
                     deadzoneThreshold = 0.8f,
                     tighteningEnabled = false,
                     tighteningThreshold = 10.0f,
