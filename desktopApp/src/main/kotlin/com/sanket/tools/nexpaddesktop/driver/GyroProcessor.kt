@@ -134,6 +134,7 @@ class GyroProcessor {
         // 1. Absolute Tilt Mode (Steering Wheel emulation via Gravity Vector)
         // ---------------------------------------------------------------------
         if (settings.inputMode == InputMode.ABSOLUTE_TILT) {
+            val cfg = settings.steeringWheel
             val maxAccel = 9.8f
             val targetStickRange = 200.0f
 
@@ -146,28 +147,33 @@ class GyroProcessor {
             val horizontalAngleDeg = asin((tiltX / maxAccel).coerceIn(-1.0f, 1.0f)) * RAD_TO_DEG
             val verticalAngleDeg = asin((tiltY / maxAccel).coerceIn(-1.0f, 1.0f)) * RAD_TO_DEG
 
-            var mappedH = (horizontalAngleDeg / settings.absoluteMaxTilt)
-            var mappedV = (verticalAngleDeg / settings.absoluteMaxTilt)
+            val defH = mapAngleToStick(horizontalAngleDeg, cfg.maxTiltAngle, cfg.deadzoneThreshold, cfg.responseCurve)
+            val defV = mapAngleToStick(verticalAngleDeg, cfg.maxTiltAngle, cfg.deadzoneThreshold, cfg.responseCurve)
 
-            val curveH = abs(mappedH).pow(settings.absoluteCurve) * sign(mappedH)
-            val curveV = abs(mappedV).pow(settings.absoluteCurve) * sign(mappedV)
+            var mappedH = defH * targetStickRange
+            var mappedV = defV * targetStickRange
 
-            mappedH = curveH * targetStickRange
-            mappedV = curveV * targetStickRange
+            var hVal = if (cfg.invertSteering) -mappedH else mappedH
+            var vVal = if (cfg.invertPitch) -mappedV else mappedV
 
-            var hVal = if (settings.invertX) -mappedH else mappedH
-            var vVal = if (settings.invertY) -mappedV else mappedV
+            hVal *= cfg.sensitivityX
+            vVal *= cfg.sensitivityY
 
-            hVal *= settings.absoluteSensitivityX
-            vVal *= settings.absoluteSensitivityY
-
-            return ProcessedGyro(hVal, vVal, 0f, mappedH, mappedV)
+            return ProcessedGyro(
+                yawDps = hVal,
+                pitchDps = vVal,
+                rollDps = 0f,
+                rawYawDps = mappedH,
+                rawPitchDps = mappedV,
+                tiltAngleDeg = horizontalAngleDeg
+            )
         }
 
         // ---------------------------------------------------------------------
         // 2. Air Mouse Mode (3D Flight Yoke / Attitude Stick via 3D Quaternion)
         // ---------------------------------------------------------------------
         if (settings.inputMode == InputMode.AIR_MOUSE) {
+            val cfg = settings.flightStick
             val magSq = quatX * quatX + quatY * quatY + quatZ * quatZ + quatW * quatW
             if (magSq < 0.1f) {
                 return ProcessedGyro(0f, 0f, 0f, 0f, 0f)
@@ -208,20 +214,20 @@ class GyroProcessor {
             val yawDeg = yawRad * RAD_TO_DEG
 
             // 1. Pitch Deflection (tilt forward/backward)
-            var defPitch = mapAngleToStick(pitchDeg, settings.airMouseMaxPitch, settings.airMouseDeadzone, settings.airMouseCurve)
-            if (settings.airMousePitchInvert) {
+            var defPitch = mapAngleToStick(pitchDeg, cfg.maxPitchAngle, cfg.deadzone, cfg.curveExponent)
+            if (cfg.pitchInvert) {
                 defPitch = -defPitch
             }
 
             // 2. Roll Deflection (tilt sideways / wing banking)
-            var defRoll = mapAngleToStick(rollDeg, settings.airMouseMaxRoll, settings.airMouseDeadzone, settings.airMouseCurve)
-            if (settings.airMouseRollInvert) {
+            var defRoll = mapAngleToStick(rollDeg, cfg.maxRollAngle, cfg.deadzone, cfg.curveExponent)
+            if (cfg.rollInvert) {
                 defRoll = -defRoll
             }
 
             // 3. Yaw Deflection (flat wrist turn / rudder)
-            var defYaw = mapAngleToStick(yawDeg, settings.airMouseMaxYaw, settings.airMouseDeadzone, settings.airMouseCurve)
-            if (settings.airMouseYawInvert) {
+            var defYaw = mapAngleToStick(yawDeg, cfg.maxYawAngle, cfg.deadzone, cfg.curveExponent)
+            if (cfg.yawInvert) {
                 defYaw = -defYaw
             }
 
@@ -241,17 +247,9 @@ class GyroProcessor {
                 }
             }
 
-            val effectiveYawTarget = if (settings.airMouseYawTarget != FlightStickAxisTarget.NONE) {
-                settings.airMouseYawTarget
-            } else if (settings.airMouseHorizontalAxis == HorizontalAxis.YAW) {
-                FlightStickAxisTarget.RS_X
-            } else {
-                FlightStickAxisTarget.NONE
-            }
-
-            routeDeflection(settings.airMousePitchTarget, defPitch)
-            routeDeflection(settings.airMouseRollTarget, defRoll)
-            routeDeflection(effectiveYawTarget, defYaw)
+            routeDeflection(cfg.pitchTarget, defPitch)
+            routeDeflection(cfg.rollTarget, defRoll)
+            routeDeflection(cfg.yawTarget, defYaw)
 
             fLsX = fLsX.coerceIn(-1f, 1f)
             fLsY = fLsY.coerceIn(-1f, 1f)
@@ -277,340 +275,333 @@ class GyroProcessor {
                 flightLsY = fLsY,
                 flightRsX = fRsX,
                 flightRsY = fRsY,
+                tiltAngleDeg = rollDeg,
             )
         }
 
         // ---------------------------------------------------------------------
-        // 3. Gyroscope Velocity, Motion Gestures, & Uncalibrated Modes
+        // 3. Combat Gestures & Kinetic Actions Mode
         // ---------------------------------------------------------------------
-        val pitchDps: Float
-        val yawDps: Float
-        val rollDps: Float
-        var gestureMag = 0f
-        var gestureDet = false
-        var pulseRT = false
-        var pulseB = false
-        var pulseX = false
-        var pulseA = false
-        var snapStickX = 0f
+        if (settings.inputMode == InputMode.GESTURE) {
+            val cfg = settings.combatGestures
+            val now = System.currentTimeMillis()
 
-        val activeButtons = mutableSetOf<GestureButton>()
-        var isCurrentlyShaking = false
-        var currentPitchDeg = 0f
-        var currentRollDeg = 0f
-        var gestureFlightLsX = 0f
-        var gestureFlightLsY = 0f
-        var gestureFlightRsX = 0f
-        var gestureFlightRsY = 0f
+            var effLinX = linearAccelX
+            var effLinY = linearAccelY
+            var effLinZ = linearAccelZ
 
-        when (settings.inputMode) {
-            InputMode.GESTURE -> {
-                val now = System.currentTimeMillis()
+            if (effLinX == 0f && effLinY == 0f && effLinZ == 0f && (rawAccelX != 0f || rawAccelY != 0f || rawAccelZ != 0f)) {
+                filtGravityX = filtGravityX * 0.90f + rawAccelX * 0.10f
+                filtGravityY = filtGravityY * 0.90f + rawAccelY * 0.10f
+                filtGravityZ = filtGravityZ * 0.90f + rawAccelZ * 0.10f
+                effLinX = rawAccelX - filtGravityX
+                effLinY = rawAccelY - filtGravityY
+                effLinZ = rawAccelZ - filtGravityZ
+            }
 
-                // Fallback: If linearAccel is zero (e.g. Mode 0x00 IMU streaming), isolate it dynamically from rawAccel
-                var effLinX = linearAccelX
-                var effLinY = linearAccelY
-                var effLinZ = linearAccelZ
+            val gestureMag = sqrt(effLinX * effLinX + effLinY * effLinY + effLinZ * effLinZ)
+            var gestureDet = false
+            var snapStickX = 0f
+            val activeButtons = mutableSetOf<GestureButton>()
+            var isCurrentlyShaking = false
+            var currentPitchDeg = 0f
+            var currentRollDeg = 0f
 
-                if (effLinX == 0f && effLinY == 0f && effLinZ == 0f && (rawAccelX != 0f || rawAccelY != 0f || rawAccelZ != 0f)) {
-                    filtGravityX = filtGravityX * 0.90f + rawAccelX * 0.10f
-                    filtGravityY = filtGravityY * 0.90f + rawAccelY * 0.10f
-                    filtGravityZ = filtGravityZ * 0.90f + rawAccelZ * 0.10f
-                    effLinX = rawAccelX - filtGravityX
-                    effLinY = rawAccelY - filtGravityY
-                    effLinZ = rawAccelZ - filtGravityZ
-                }
+            // ── Card 1: Directional Kinetic Flicks ──
+            if (cfg.flicksEnabled && gestureMag >= cfg.flickThreshold && (now - lastFlickTriggerTime) >= cfg.flickCooldownMs) {
+                lastFlickTriggerTime = now
+                gestureDet = true
 
-                gestureMag = sqrt(effLinX * effLinX + effLinY * effLinY + effLinZ * effLinZ)
+                val absX = abs(effLinX)
+                val absY = abs(effLinY)
 
-                // ── Card 1: Directional Kinetic Flicks ──
-                val flickThreshold = if (settings.gestureThreshold != 8.5f && settings.gestureFlickThreshold == 8.5f) {
-                    settings.gestureThreshold
+                val triggeredAction: GestureButton = if (absY >= absX) {
+                    if (effLinY > 0f) cfg.flickUpAction else cfg.flickDownAction
                 } else {
-                    settings.gestureFlickThreshold
-                }
-                val flickCooldown = if (settings.gestureCooldownMs != 400L && settings.gestureFlickCooldownMs == 350L) {
-                    settings.gestureCooldownMs
-                } else {
-                    settings.gestureFlickCooldownMs
+                    if (effLinX > 0f) cfg.flickRightAction else cfg.flickLeftAction
                 }
 
-                if (settings.gestureFlicksEnabled && gestureMag >= flickThreshold && (now - lastFlickTriggerTime) >= flickCooldown) {
-                    lastFlickTriggerTime = now
-                    gestureDet = true
+                activeFlickAction = triggeredAction
 
-                    val absX = abs(effLinX)
-                    val absY = abs(effLinY)
-
-                    // Determine directional action
-                    val triggeredAction: GestureButton = if (settings.gestureAction != GestureAction.SNAP_TURN_180 &&
-                        settings.gestureFlickUpAction == GestureButton.BTN_X) {
-                        // Legacy single action support
-                        GestureButton.fromLegacy(settings.gestureAction)
-                    } else if (absY >= absX) {
-                        if (effLinY > 0f) settings.gestureFlickUpAction else settings.gestureFlickDownAction
-                    } else {
-                        if (effLinX > 0f) settings.gestureFlickRightAction else settings.gestureFlickLeftAction
-                    }
-
-                    activeFlickAction = triggeredAction
-
-                    if (triggeredAction == GestureButton.SNAP_TURN_180) {
-                        val flickDir = if (effLinX < -1.5f || rawGyroZ < -1.5f) -1.0f else 1.0f
-                        snapTurnDirection = if (settings.invertX) -flickDir else flickDir
-                        snapTurnEndTime = now + settings.gestureSnapTurnDurationMs
-                    } else if (triggeredAction != GestureButton.NONE) {
-                        flickPulseEndTime = now + 120L
-                    }
+                if (triggeredAction == GestureButton.SNAP_TURN_180) {
+                    val flickDir = if (effLinX < -1.5f || rawGyroZ < -1.5f) -1.0f else 1.0f
+                    snapTurnDirection = flickDir
+                    snapTurnEndTime = now + 120L
+                } else if (triggeredAction != GestureButton.NONE) {
+                    flickPulseEndTime = now + 120L
                 }
+            }
 
-                // Inject active flick pulse
-                if (now < snapTurnEndTime) {
-                    snapStickX = snapTurnDirection
-                    gestureDet = true
+            // Inject active flick pulse
+            if (now < snapTurnEndTime) {
+                snapStickX = snapTurnDirection
+                gestureDet = true
+            }
+            if (now < flickPulseEndTime && activeFlickAction != null && activeFlickAction != GestureButton.NONE && activeFlickAction != GestureButton.SNAP_TURN_180) {
+                activeButtons.add(activeFlickAction!!)
+                gestureDet = true
+            }
+
+            // ── Card 2: Gravity Tilt Posture (Angle Trigger - Up, Down, Left, Right) ──
+            val hasQuat = (quatX != 0f || quatY != 0f || quatZ != 0f || quatW != 1f)
+            if (hasQuat) {
+                val sinP = 2.0f * (quatW * quatX - quatY * quatZ)
+                val pitchRad = if (abs(sinP) >= 1.0f) sign(sinP) * (Math.PI.toFloat() / 2.0f) else asin(sinP)
+                currentPitchDeg = pitchRad * RAD_TO_DEG
+                val rollRad = atan2(2.0f * (quatW * quatY + quatZ * quatX), 1.0f - 2.0f * (quatY * quatY + quatX * quatX))
+                currentRollDeg = rollRad * RAD_TO_DEG
+            } else {
+                val gx = if (rawGravityX != 0f) rawGravityX else rawAccelX
+                val gy = if (rawGravityY != 0f) rawGravityY else rawAccelY
+                if (gx != 0f || gy != 0f) {
+                    currentRollDeg = asin((gx / 9.8f).coerceIn(-1f, 1f)) * RAD_TO_DEG
+                    currentPitchDeg = asin((gy / 9.8f).coerceIn(-1f, 1f)) * RAD_TO_DEG
                 }
-                if (now < flickPulseEndTime && activeFlickAction != null && activeFlickAction != GestureButton.NONE && activeFlickAction != GestureButton.SNAP_TURN_180) {
-                    activeButtons.add(activeFlickAction!!)
-                    gestureDet = true
-                }
+            }
 
-                // ── Card 2: Gravity Tilt Posture (Angle Trigger - Up, Down, Left, Right) ──
-                val hasQuat = (quatX != 0f || quatY != 0f || quatZ != 0f || quatW != 1f)
-                if (hasQuat) {
-                    val sinP = 2.0f * (quatW * quatX - quatY * quatZ)
-                    val pitchRad = if (abs(sinP) >= 1.0f) sign(sinP) * (Math.PI.toFloat() / 2.0f) else asin(sinP)
-                    currentPitchDeg = pitchRad * RAD_TO_DEG
-                    val rollRad = atan2(2.0f * (quatW * quatY + quatZ * quatX), 1.0f - 2.0f * (quatY * quatY + quatX * quatX))
-                    currentRollDeg = rollRad * RAD_TO_DEG
-                } else {
-                    val gx = if (rawGravityX != 0f) rawGravityX else rawAccelX
-                    val gy = if (rawGravityY != 0f) rawGravityY else rawAccelY
-                    if (gx != 0f || gy != 0f) {
-                        currentRollDeg = asin((gx / 9.8f).coerceIn(-1f, 1f)) * RAD_TO_DEG
-                        currentPitchDeg = asin((gy / 9.8f).coerceIn(-1f, 1f)) * RAD_TO_DEG
-                    }
-                }
+            if (cfg.tiltEnabled) {
+                val pitchThresh = cfg.tiltPitchThreshold
+                val rollThresh = cfg.tiltRollThreshold
+                val hysteresis = 8.0f
 
-                if (settings.gestureTiltEnabled) {
-                    val pitchThresh = if (settings.gestureTiltPitchThreshold != 30.0f) {
-                        settings.gestureTiltPitchThreshold
-                    } else if (settings.gestureTiltAngleThreshold != 30.0f) {
-                        settings.gestureTiltAngleThreshold
-                    } else {
-                        settings.gestureTiltPitchThreshold
-                    }
-                    val rollThresh = settings.gestureTiltRollThreshold
-                    val hysteresis = 8.0f
-
-                    fun evaluateTilt(
-                        isAboveThreshold: Boolean,
-                        isBelowHysteresis: Boolean,
-                        isActive: Boolean,
-                        pulseEndTime: Long,
-                        action: GestureButton,
-                        setActive: (Boolean) -> Unit,
-                        setPulseEndTime: (Long) -> Unit
-                    ) {
-                        if (action == GestureButton.NONE) return
-                        if (settings.gestureTiltHoldMode) {
-                            if (isAboveThreshold) {
-                                activeButtons.add(action)
-                                gestureDet = true
-                            }
-                        } else {
-                            var currentPulseEnd = pulseEndTime
-                            if (isAboveThreshold) {
-                                if (!isActive) {
-                                    setActive(true)
-                                    currentPulseEnd = now + 120L
-                                    setPulseEndTime(currentPulseEnd)
-                                }
-                            } else if (isBelowHysteresis) {
-                                setActive(false)
-                            }
-                            if (now < currentPulseEnd) {
-                                activeButtons.add(action)
-                                gestureDet = true
-                            }
+                fun evaluateTilt(
+                    isAboveThreshold: Boolean,
+                    isBelowHysteresis: Boolean,
+                    isActive: Boolean,
+                    pulseEndTime: Long,
+                    action: GestureButton,
+                    setActive: (Boolean) -> Unit,
+                    setPulseEndTime: (Long) -> Unit
+                ) {
+                    if (action == GestureButton.NONE) return
+                    if (cfg.tiltHoldMode) {
+                        if (isAboveThreshold) {
+                            activeButtons.add(action)
+                            gestureDet = true
                         }
-                    }
-
-                    // 1. Tilt UP (Raising phone top edge)
-                    val upAction = if (settings.gestureTiltUpAction != GestureButton.NONE) settings.gestureTiltUpAction else settings.gestureTiltAction
-                    evaluateTilt(
-                        isAboveThreshold = currentPitchDeg >= pitchThresh,
-                        isBelowHysteresis = currentPitchDeg < (pitchThresh - hysteresis),
-                        isActive = isTiltUpActive,
-                        pulseEndTime = tiltUpPulseEndTime,
-                        action = upAction,
-                        setActive = { isTiltUpActive = it },
-                        setPulseEndTime = { tiltUpPulseEndTime = it }
-                    )
-
-                    // 2. Tilt DOWN (Lowering phone top edge)
-                    evaluateTilt(
-                        isAboveThreshold = currentPitchDeg <= -pitchThresh,
-                        isBelowHysteresis = currentPitchDeg > -(pitchThresh - hysteresis),
-                        isActive = isTiltDownActive,
-                        pulseEndTime = tiltDownPulseEndTime,
-                        action = settings.gestureTiltDownAction,
-                        setActive = { isTiltDownActive = it },
-                        setPulseEndTime = { tiltDownPulseEndTime = it }
-                    )
-
-                    // 3. Tilt LEFT (Banking left)
-                    evaluateTilt(
-                        isAboveThreshold = currentRollDeg <= -rollThresh,
-                        isBelowHysteresis = currentRollDeg > -(rollThresh - hysteresis),
-                        isActive = isTiltLeftActive,
-                        pulseEndTime = tiltLeftPulseEndTime,
-                        action = settings.gestureTiltLeftAction,
-                        setActive = { isTiltLeftActive = it },
-                        setPulseEndTime = { tiltLeftPulseEndTime = it }
-                    )
-
-                    // 4. Tilt RIGHT (Banking right)
-                    evaluateTilt(
-                        isAboveThreshold = currentRollDeg >= rollThresh,
-                        isBelowHysteresis = currentRollDeg < (rollThresh - hysteresis),
-                        isActive = isTiltRightActive,
-                        pulseEndTime = tiltRightPulseEndTime,
-                        action = settings.gestureTiltRightAction,
-                        setActive = { isTiltRightActive = it },
-                        setPulseEndTime = { tiltRightPulseEndTime = it }
-                    )
-                }
-
-                // ── Card 3: Shake Motion Detection ──
-                if (settings.gestureShakeEnabled && settings.gestureShakeAction != GestureButton.NONE) {
-                    if (gestureMag >= settings.gestureShakeThreshold) {
-                        shakePeakTimestamps.removeAll { (now - it) > 400L }
-                        if (shakePeakTimestamps.isEmpty() || (now - shakePeakTimestamps.last()) >= 50L) {
-                            shakePeakTimestamps.add(now)
+                    } else {
+                        var currentPulseEnd = pulseEndTime
+                        if (isAboveThreshold) {
+                            if (!isActive) {
+                                setActive(true)
+                                currentPulseEnd = now + 120L
+                                setPulseEndTime(currentPulseEnd)
+                            }
+                        } else if (isBelowHysteresis) {
+                            setActive(false)
                         }
-                        if (shakePeakTimestamps.size >= 3 && (now - lastShakeTriggerTime) >= settings.gestureShakeCooldownMs) {
-                            lastShakeTriggerTime = now
-                            shakePulseEndTime = now + 120L
-                            activeShakeAction = settings.gestureShakeAction
-                            shakePeakTimestamps.clear()
-                            isCurrentlyShaking = true
+                        if (now < currentPulseEnd) {
+                            activeButtons.add(action)
                             gestureDet = true
                         }
                     }
+                }
 
-                    if (now < shakePulseEndTime && activeShakeAction != null && activeShakeAction != GestureButton.NONE) {
-                        activeButtons.add(activeShakeAction!!)
-                        gestureDet = true
+                // 1. Tilt UP
+                evaluateTilt(
+                    isAboveThreshold = currentPitchDeg >= pitchThresh,
+                    isBelowHysteresis = currentPitchDeg < (pitchThresh - hysteresis),
+                    isActive = isTiltUpActive,
+                    pulseEndTime = tiltUpPulseEndTime,
+                    action = cfg.tiltUpAction,
+                    setActive = { isTiltUpActive = it },
+                    setPulseEndTime = { tiltUpPulseEndTime = it }
+                )
+
+                // 2. Tilt DOWN
+                evaluateTilt(
+                    isAboveThreshold = currentPitchDeg <= -pitchThresh,
+                    isBelowHysteresis = currentPitchDeg > -(pitchThresh - hysteresis),
+                    isActive = isTiltDownActive,
+                    pulseEndTime = tiltDownPulseEndTime,
+                    action = cfg.tiltDownAction,
+                    setActive = { isTiltDownActive = it },
+                    setPulseEndTime = { tiltDownPulseEndTime = it }
+                )
+
+                // 3. Tilt LEFT
+                evaluateTilt(
+                    isAboveThreshold = currentRollDeg <= -rollThresh,
+                    isBelowHysteresis = currentRollDeg > -(rollThresh - hysteresis),
+                    isActive = isTiltLeftActive,
+                    pulseEndTime = tiltLeftPulseEndTime,
+                    action = cfg.tiltLeftAction,
+                    setActive = { isTiltLeftActive = it },
+                    setPulseEndTime = { tiltLeftPulseEndTime = it }
+                )
+
+                // 4. Tilt RIGHT
+                evaluateTilt(
+                    isAboveThreshold = currentRollDeg >= rollThresh,
+                    isBelowHysteresis = currentRollDeg < (rollThresh - hysteresis),
+                    isActive = isTiltRightActive,
+                    pulseEndTime = tiltRightPulseEndTime,
+                    action = cfg.tiltRightAction,
+                    setActive = { isTiltRightActive = it },
+                    setPulseEndTime = { tiltRightPulseEndTime = it }
+                )
+            }
+
+            // ── Card 3: Shake Motion Detection ──
+            if (cfg.shakeEnabled && cfg.shakeAction != GestureButton.NONE) {
+                if (gestureMag >= cfg.shakeThreshold) {
+                    shakePeakTimestamps.removeAll { (now - it) > 400L }
+                    if (shakePeakTimestamps.isEmpty() || (now - shakePeakTimestamps.last()) >= 50L) {
+                        shakePeakTimestamps.add(now)
+                    }
+                    if (shakePeakTimestamps.size >= 3 && (now - lastShakeTriggerTime) >= cfg.shakeCooldownMs) {
+                        lastShakeTriggerTime = now
+                        shakePulseEndTime = now + 120L
+                        activeShakeAction = cfg.shakeAction
+                        shakePeakTimestamps.clear()
                         isCurrentlyShaking = true
+                        gestureDet = true
                     }
                 }
 
-                // Legacy boolean flags for backward compatibility
-                pulseRT = activeButtons.contains(GestureButton.TRIGGER_RT)
-                pulseB = activeButtons.contains(GestureButton.BTN_B)
-                pulseX = activeButtons.contains(GestureButton.BTN_X)
-                pulseA = activeButtons.contains(GestureButton.BTN_A)
-
-                if (now - lastFlickTriggerTime < 250L || now - lastShakeTriggerTime < 250L) {
+                if (now < shakePulseEndTime && activeShakeAction != null && activeShakeAction != GestureButton.NONE) {
+                    activeButtons.add(activeShakeAction!!)
                     gestureDet = true
-                }
-
-                // Joystick motion routing based on effectiveGestureJoystickMode
-                when (settings.effectiveGestureJoystickMode) {
-                    GestureJoystickMode.OFF -> {
-                        pitchDps = 0f
-                        yawDps   = 0f
-                        rollDps  = 0f
-                    }
-                    GestureJoystickMode.GYRO_AIMING -> {
-                        if (settings.xboxTargetStick != XboxTargetStick.NONE) {
-                            pitchDps = rawGyroX * RAD_TO_DEG
-                            yawDps   = rawGyroZ * RAD_TO_DEG
-                            rollDps  = rawGyroY * RAD_TO_DEG
-                        } else {
-                            pitchDps = 0f
-                            yawDps   = 0f
-                            rollDps  = 0f
-                        }
-                    }
-                    GestureJoystickMode.RAW_SILICON -> {
-                        if (settings.xboxTargetStick != XboxTargetStick.NONE) {
-                            val cleanX = rawUncalGyroX - gyroBiasX
-                            val cleanY = rawUncalGyroY - gyroBiasY
-                            val cleanZ = rawUncalGyroZ - gyroBiasZ
-                            pitchDps = cleanX * RAD_TO_DEG
-                            yawDps   = cleanZ * RAD_TO_DEG
-                            rollDps  = cleanY * RAD_TO_DEG
-                        } else {
-                            pitchDps = 0f
-                            yawDps   = 0f
-                            rollDps  = 0f
-                        }
-                    }
-                    GestureJoystickMode.FLIGHT_STICK -> {
-                        var defPitch = mapAngleToStick(currentPitchDeg, settings.airMouseMaxPitch, settings.airMouseDeadzone, settings.airMouseCurve)
-                        if (settings.airMousePitchInvert) defPitch = -defPitch
-
-                        var defRoll = mapAngleToStick(currentRollDeg, settings.airMouseMaxRoll, settings.airMouseDeadzone, settings.airMouseCurve)
-                        if (settings.airMouseRollInvert) defRoll = -defRoll
-
-                        var defYaw = mapAngleToStick(rawGyroZ * RAD_TO_DEG, settings.airMouseMaxYaw, settings.airMouseDeadzone, settings.airMouseCurve)
-                        if (settings.airMouseYawInvert) defYaw = -defYaw
-
-                        fun routeFlightDeflection(target: FlightStickAxisTarget, value: Float) {
-                            when (target) {
-                                FlightStickAxisTarget.NONE -> {}
-                                FlightStickAxisTarget.LS_X -> gestureFlightLsX += value
-                                FlightStickAxisTarget.LS_Y -> gestureFlightLsY += value
-                                FlightStickAxisTarget.RS_X -> gestureFlightRsX += value
-                                FlightStickAxisTarget.RS_Y -> gestureFlightRsY += value
-                            }
-                        }
-
-                        val effectiveYawTarget = if (settings.airMouseYawTarget != FlightStickAxisTarget.NONE) {
-                            settings.airMouseYawTarget
-                        } else if (settings.airMouseHorizontalAxis == HorizontalAxis.YAW) {
-                            FlightStickAxisTarget.RS_X
-                        } else {
-                            FlightStickAxisTarget.NONE
-                        }
-
-                        routeFlightDeflection(settings.airMousePitchTarget, defPitch)
-                        routeFlightDeflection(settings.airMouseRollTarget, defRoll)
-                        routeFlightDeflection(effectiveYawTarget, defYaw)
-
-                        gestureFlightLsX = gestureFlightLsX.coerceIn(-1f, 1f)
-                        gestureFlightLsY = gestureFlightLsY.coerceIn(-1f, 1f)
-                        gestureFlightRsX = gestureFlightRsX.coerceIn(-1f, 1f)
-                        gestureFlightRsY = gestureFlightRsY.coerceIn(-1f, 1f)
-
-                        val activeStickX = if (abs(gestureFlightLsX) > abs(gestureFlightRsX)) gestureFlightLsX else gestureFlightRsX
-                        val activeStickY = if (abs(gestureFlightLsY) > abs(gestureFlightRsY)) gestureFlightLsY else gestureFlightRsY
-                        val targetStickRange = 200.0f
-                        yawDps = activeStickX * targetStickRange
-                        pitchDps = activeStickY * targetStickRange
-                        rollDps = currentRollDeg
-                    }
+                    isCurrentlyShaking = true
                 }
             }
-            InputMode.RAW_UNCALIBRATED -> {
-                val cleanX = rawUncalGyroX - gyroBiasX
-                val cleanY = rawUncalGyroY - gyroBiasY
-                val cleanZ = rawUncalGyroZ - gyroBiasZ
 
-                pitchDps = cleanX * RAD_TO_DEG
-                yawDps   = cleanZ * RAD_TO_DEG
-                rollDps  = cleanY * RAD_TO_DEG
+            val pulseRT = activeButtons.contains(GestureButton.TRIGGER_RT)
+            val pulseB = activeButtons.contains(GestureButton.BTN_B)
+            val pulseX = activeButtons.contains(GestureButton.BTN_X)
+            val pulseA = activeButtons.contains(GestureButton.BTN_A)
+
+            if (now - lastFlickTriggerTime < 250L || now - lastShakeTriggerTime < 250L) {
+                gestureDet = true
             }
-            else -> {
-                // VELOCITY: Standard calibrated gyroscope
-                pitchDps = rawGyroX * RAD_TO_DEG
-                yawDps   = rawGyroZ * RAD_TO_DEG
-                rollDps  = rawGyroY * RAD_TO_DEG
-            }
+
+            return ProcessedGyro(
+                yawDps = 0f,
+                pitchDps = 0f,
+                rollDps = 0f,
+                rawYawDps = 0f,
+                rawPitchDps = 0f,
+                gestureMagnitude = gestureMag,
+                gestureDetected = gestureDet,
+                gesturePulseRT = pulseRT,
+                gesturePulseB = pulseB,
+                gesturePulseX = pulseX,
+                gesturePulseA = pulseA,
+                snapTurnStickX = snapStickX,
+                flightLsX = 0f,
+                flightLsY = 0f,
+                flightRsX = 0f,
+                flightRsY = 0f,
+                activeGestureButtons = activeButtons,
+                tiltAngleDeg = currentPitchDeg,
+                isShaking = isCurrentlyShaking,
+            )
         }
 
-        val rawHorizontalDps = when (settings.horizontalAxis) {
+        // ---------------------------------------------------------------------
+        // 4. Gyro Aiming (Precision Aiming & Raw Silicon Modes)
+        // ---------------------------------------------------------------------
+        val isRawSilicon = settings.inputMode == InputMode.RAW_UNCALIBRATED
+        val pitchDps: Float
+        val yawDps: Float
+        val rollDps: Float
+
+        val horizontalAxis: HorizontalAxis
+        val invertX: Boolean
+        val invertY: Boolean
+        val invertRoll: Boolean
+        val deadzoneThreshold: Float
+        val tighteningEnabled: Boolean
+        val tighteningThreshold: Float
+        val lowSpeedAmpEnabled: Boolean
+        val lowSpeedAmpAmount: Float
+        val lowSpeedAmpThreshold: Float
+        val lowSpeedAmpHarshness: Float
+        val maxDpsYaw: Float
+        val maxDpsPitch: Float
+        val maxDpsRoll: Float
+
+        // Velocity-only features
+        val smoothingEnabled: Boolean
+        val smoothingAmount: Float
+        val adaptiveSmoothing: Boolean
+        val smoothingThreshold: Float
+        val accelerationEnabled: Boolean
+        val accelerationType: AccelerationType
+        val minSensitivity: Float
+        val maxSensitivity: Float
+        val minThreshold: Float
+        val maxThreshold: Float
+
+        if (isRawSilicon) {
+            val rawCfg = settings.rawSilicon
+            val cleanX = rawUncalGyroX - gyroBiasX
+            val cleanY = rawUncalGyroY - gyroBiasY
+            val cleanZ = rawUncalGyroZ - gyroBiasZ
+
+            pitchDps = cleanX * RAD_TO_DEG
+            yawDps   = cleanZ * RAD_TO_DEG
+            rollDps  = cleanY * RAD_TO_DEG
+
+            horizontalAxis = rawCfg.horizontalAxis
+            invertX = rawCfg.invertX
+            invertY = rawCfg.invertY
+            invertRoll = rawCfg.invertRoll
+            deadzoneThreshold = rawCfg.deadzoneThreshold
+            tighteningEnabled = rawCfg.tighteningEnabled
+            tighteningThreshold = rawCfg.tighteningThreshold
+            lowSpeedAmpEnabled = rawCfg.lowSpeedAmplifierEnabled
+            lowSpeedAmpAmount = rawCfg.lowSpeedAmplifierAmount
+            lowSpeedAmpThreshold = rawCfg.lowSpeedAmplifierThreshold
+            lowSpeedAmpHarshness = rawCfg.lowSpeedAmplifierHarshness
+            maxDpsYaw = rawCfg.maxDpsYaw
+            maxDpsPitch = rawCfg.maxDpsPitch
+            maxDpsRoll = rawCfg.maxDpsRoll
+
+            smoothingEnabled = false
+            smoothingAmount = 0f
+            adaptiveSmoothing = false
+            smoothingThreshold = 0f
+            accelerationEnabled = false
+            accelerationType = AccelerationType.LINEAR
+            minSensitivity = 1f
+            maxSensitivity = 1f
+            minThreshold = 0f
+            maxThreshold = 1f
+        } else {
+            val aimCfg = settings.precisionAiming
+            pitchDps = rawGyroX * RAD_TO_DEG
+            yawDps   = rawGyroZ * RAD_TO_DEG
+            rollDps  = rawGyroY * RAD_TO_DEG
+
+            horizontalAxis = aimCfg.horizontalAxis
+            invertX = aimCfg.invertX
+            invertY = aimCfg.invertY
+            invertRoll = aimCfg.invertRoll
+            deadzoneThreshold = aimCfg.deadzoneThreshold
+            tighteningEnabled = aimCfg.tighteningEnabled
+            tighteningThreshold = aimCfg.tighteningThreshold
+            lowSpeedAmpEnabled = aimCfg.lowSpeedAmplifierEnabled
+            lowSpeedAmpAmount = aimCfg.lowSpeedAmplifierAmount
+            lowSpeedAmpThreshold = aimCfg.lowSpeedAmplifierThreshold
+            lowSpeedAmpHarshness = aimCfg.lowSpeedAmplifierHarshness
+            maxDpsYaw = aimCfg.maxDpsYaw
+            maxDpsPitch = aimCfg.maxDpsPitch
+            maxDpsRoll = aimCfg.maxDpsRoll
+
+            smoothingEnabled = aimCfg.smoothingEnabled
+            smoothingAmount = aimCfg.smoothingAmount
+            adaptiveSmoothing = aimCfg.adaptiveSmoothing
+            smoothingThreshold = aimCfg.smoothingThreshold
+            accelerationEnabled = aimCfg.accelerationEnabled
+            accelerationType = aimCfg.accelerationType
+            minSensitivity = aimCfg.minSensitivity
+            maxSensitivity = aimCfg.maxSensitivity
+            minThreshold = aimCfg.minThreshold
+            maxThreshold = aimCfg.maxThreshold
+        }
+
+        val rawHorizontalDps = when (horizontalAxis) {
             HorizontalAxis.YAW  -> yawDps
             HorizontalAxis.ROLL -> rollDps
             HorizontalAxis.MIX  -> {
@@ -628,14 +619,13 @@ class GyroProcessor {
         val rawH = rawHorizontalDps
         val rawV = verticalDps
 
-        val hYaw = if (settings.invertX) -yawDps else yawDps
-        val hRoll = if (settings.invertRoll || (settings.horizontalAxis == HorizontalAxis.ROLL && settings.invertX)) -rollDps else rollDps
+        val hYaw = if (invertX) -yawDps else yawDps
+        val hRoll = if (invertRoll || (horizontalAxis == HorizontalAxis.ROLL && invertX)) -rollDps else rollDps
 
-        val horizontalDps = when (settings.horizontalAxis) {
+        val horizontalDps = when (horizontalAxis) {
             HorizontalAxis.YAW  -> hYaw
             HorizontalAxis.ROLL -> hRoll
             HorizontalAxis.MIX  -> {
-                // 2D Pythagorean Vector Norm (eliminates artificial 5+4=9 doubling while ensuring Roll never drops out):
                 val sum = hYaw + hRoll
                 if (hYaw * hRoll < 0f) {
                     sum
@@ -647,26 +637,26 @@ class GyroProcessor {
         }
 
         var hVal = horizontalDps
-        var vVal = if (settings.invertY) -verticalDps else verticalDps
+        var vVal = if (invertY) -verticalDps else verticalDps
 
         // Applying mathematical filters...
-        hVal = applyDeadzone(hVal, settings.deadzoneThreshold)
-        vVal = applyDeadzone(vVal, settings.deadzoneThreshold)
+        hVal = applyDeadzone(hVal, deadzoneThreshold)
+        vVal = applyDeadzone(vVal, deadzoneThreshold)
 
-        if (settings.tighteningEnabled) {
-            hVal = applyTightening(hVal, settings.tighteningThreshold)
-            vVal = applyTightening(vVal, settings.tighteningThreshold)
+        if (tighteningEnabled) {
+            hVal = applyTightening(hVal, tighteningThreshold)
+            vVal = applyTightening(vVal, tighteningThreshold)
         }
 
-        if (settings.smoothingEnabled) {
+        if (smoothingEnabled) {
             val speedH = abs(hVal)
             val speedV = abs(vVal)
             val maxSpeed = max(speedH, speedV)
 
-            val alpha = if (settings.adaptiveSmoothing) {
-                computeAdaptiveAlpha(maxSpeed, settings.smoothingThreshold, settings.smoothingAmount)
+            val alpha = if (adaptiveSmoothing) {
+                computeAdaptiveAlpha(maxSpeed, smoothingThreshold, smoothingAmount)
             } else {
-                settings.smoothingAmount
+                smoothingAmount
             }
 
             smoothedX = alpha * hVal + (1f - alpha) * smoothedX
@@ -675,22 +665,22 @@ class GyroProcessor {
             vVal = smoothedY
         }
 
-        if (settings.accelerationEnabled) {
-            hVal *= computeAccelerationSensitivity(abs(hVal), settings)
-            vVal *= computeAccelerationSensitivity(abs(vVal), settings)
+        if (accelerationEnabled) {
+            hVal *= computeAccelerationSensitivity(abs(hVal), minThreshold, maxThreshold, minSensitivity, maxSensitivity, accelerationType)
+            vVal *= computeAccelerationSensitivity(abs(vVal), minThreshold, maxThreshold, minSensitivity, maxSensitivity, accelerationType)
         }
 
-        hVal = applyLowSpeedAmplifier(hVal, settings)
-        vVal = applyLowSpeedAmplifier(vVal, settings)
+        hVal = applyLowSpeedAmplifier(hVal, lowSpeedAmpEnabled, lowSpeedAmpAmount, lowSpeedAmpThreshold, lowSpeedAmpHarshness)
+        vVal = applyLowSpeedAmplifier(vVal, lowSpeedAmpEnabled, lowSpeedAmpAmount, lowSpeedAmpThreshold, lowSpeedAmpHarshness)
 
-        val effectiveSensX = when (settings.horizontalAxis) {
-            HorizontalAxis.YAW -> 200.0f / settings.maxDpsYaw
-            HorizontalAxis.ROLL -> 200.0f / settings.maxDpsRoll
-            HorizontalAxis.MIX -> 200.0f / settings.maxDpsYaw
+        val effectiveSensX = when (horizontalAxis) {
+            HorizontalAxis.YAW -> 200.0f / maxDpsYaw
+            HorizontalAxis.ROLL -> 200.0f / maxDpsRoll
+            HorizontalAxis.MIX -> 200.0f / maxDpsYaw
         }
         
         hVal *= effectiveSensX
-        vVal *= (200.0f / settings.maxDpsPitch)
+        vVal *= (200.0f / maxDpsPitch)
 
         return ProcessedGyro(
             yawDps = hVal,
@@ -698,20 +688,6 @@ class GyroProcessor {
             rollDps = rollDps,
             rawYawDps = rawH,
             rawPitchDps = rawV,
-            gestureMagnitude = gestureMag,
-            gestureDetected = gestureDet,
-            gesturePulseRT = pulseRT,
-            gesturePulseB = pulseB,
-            gesturePulseX = pulseX,
-            gesturePulseA = pulseA,
-            snapTurnStickX = snapStickX,
-            flightLsX = gestureFlightLsX,
-            flightLsY = gestureFlightLsY,
-            flightRsX = gestureFlightRsX,
-            flightRsY = gestureFlightRsY,
-            activeGestureButtons = activeButtons,
-            tiltAngleDeg = currentPitchDeg,
-            isShaking = isCurrentlyShaking,
         )
     }
 
@@ -759,7 +735,6 @@ class GyroProcessor {
         curveExp: Float
     ): Float {
         val absAngle = abs(angleDeg)
-        // If max angle is smaller than deadzone, scale deadzone down so user can still reach full stick deflection
         val safeDeadzone = min(deadzoneDeg, max(0f, maxAngleDeg - 0.2f))
         if (absAngle <= safeDeadzone) return 0f
         val span = maxAngleDeg - safeDeadzone
@@ -789,21 +764,26 @@ class GyroProcessor {
         return sign(value) * (t * t * threshold)
     }
 
-    private fun applyLowSpeedAmplifier(value: Float, settings: GyroSettings): Float {
-        if (!settings.lowSpeedAmplifierEnabled) return value
+    private fun applyLowSpeedAmplifier(
+        value: Float,
+        enabled: Boolean,
+        amount: Float,
+        threshold: Float,
+        harshness: Float
+    ): Float {
+        if (!enabled) return value
         val speed = abs(value)
-        if (speed >= settings.lowSpeedAmplifierThreshold || settings.lowSpeedAmplifierThreshold <= 0f) {
+        if (speed >= threshold || threshold <= 0f) {
             return value
         }
-        val slownessRatio = 1f - (speed / settings.lowSpeedAmplifierThreshold)
-        val curve = slownessRatio.pow(settings.lowSpeedAmplifierHarshness)
-        val multiplier = 1.0f + (settings.lowSpeedAmplifierAmount - 1.0f) * curve
+        val slownessRatio = 1f - (speed / threshold)
+        val curve = slownessRatio.pow(harshness)
+        val multiplier = 1.0f + (amount - 1.0f) * curve
         return value * multiplier
     }
 
     private fun computeAdaptiveAlpha(speed: Float, threshold: Float, baseAlpha: Float): Float {
         if (threshold <= 0f) return baseAlpha
-        // Maintain a crisp minimum alpha (>= 0.72) to eliminate low-speed tracking delay
         val alphaMin = max(baseAlpha * 0.85f, 0.72f) 
         val alphaMax = 1.0f              
         return when {
@@ -816,21 +796,26 @@ class GyroProcessor {
         }
     }
 
-    private fun computeAccelerationSensitivity(speed: Float, settings: GyroSettings): Float {
-        val minT = settings.minThreshold
-        val maxT = settings.maxThreshold
-        if (maxT <= minT) return settings.minSensitivity
+    private fun computeAccelerationSensitivity(
+        speed: Float,
+        minT: Float,
+        maxT: Float,
+        minS: Float,
+        maxS: Float,
+        accelType: AccelerationType
+    ): Float {
+        if (maxT <= minT) return minS
         return when {
-            speed <= minT -> settings.minSensitivity
-            speed >= maxT -> settings.maxSensitivity
+            speed <= minT -> minS
+            speed >= maxT -> maxS
             else -> {
                 val t = (speed - minT) / (maxT - minT) 
-                val curved = when (settings.accelerationType) {
+                val curved = when (accelType) {
                     AccelerationType.LINEAR -> t
                     AccelerationType.POWER -> t.pow(2.0f)
                     AccelerationType.SMOOTH_STEP -> t * t * (3f - 2f * t)
                 }
-                settings.minSensitivity + curved * (settings.maxSensitivity - settings.minSensitivity)
+                minS + curved * (maxS - minS)
             }
         }
     }

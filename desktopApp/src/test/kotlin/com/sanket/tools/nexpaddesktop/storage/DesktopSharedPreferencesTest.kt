@@ -64,61 +64,69 @@ class DesktopSharedPreferencesTest {
         // Build customized GyroSettings with distinct non-default values across all modes
         val customizedSettings = GyroSettings(
             enabled = true,
-            invertX = true,
-            invertRoll = true,
-            invertY = false,
-            horizontalAxis = HorizontalAxis.YAW,
-            deadzoneThreshold = 1.8f,
-            smoothingEnabled = true,
-            smoothingAmount = 0.92f,
-            adaptiveSmoothing = true,
-            smoothingThreshold = 45.0f,
-            accelerationEnabled = true,
-            maxSensitivity = 2.8f,
-            maxThreshold = 220.0f,
-            stickResponseCurve = StickResponseCurve.LINEARIZED,
-            gameDeadzoneCompensation = 0.18f,
-            activationButtons = setOf("LT", "RT"),
-            lowSpeedAmplifierEnabled = true,
-            lowSpeedAmplifierAmount = 3.2f,
-            lowSpeedAmplifierThreshold = 18.0f,
-            // Mode-specific fields
             inputMode = InputMode.AIR_MOUSE,
-            absoluteMaxTilt = 60.0f,
-            absoluteSensitivityX = 1.45f,
-            absoluteCurve = 1.8f,
-            airMousePitchTarget = FlightStickAxisTarget.RS_Y,
-            airMousePitchInvert = false,
-            airMouseMaxPitch = 50.0f,
-            airMouseRollTarget = FlightStickAxisTarget.LS_X,
-            airMouseRollInvert = true,
-            airMouseMaxRoll = 42.0f,
-            airMouseYawTarget = FlightStickAxisTarget.NONE,
-            airMouseDeadzone = 2.2f,
-            airMouseCurve = 1.5f,
-            // Combat Gestures fields
-            gestureFlicksEnabled = true,
-            gestureFlickUpAction = GestureButton.TRIGGER_LT,
-            gestureFlickDownAction = GestureButton.BTN_RS,
-            gestureFlickLeftAction = GestureButton.DPAD_LEFT,
-            gestureFlickRightAction = GestureButton.DPAD_RIGHT,
-            gestureFlickThreshold = 12.5f,
-            gestureFlickCooldownMs = 280L,
-            gestureTiltEnabled = true,
-            gestureTiltPitchThreshold = 35.0f,
-            gestureTiltRollThreshold = 25.0f,
-            gestureTiltUpAction = GestureButton.BTN_A,
-            gestureTiltDownAction = GestureButton.BTN_B,
-            gestureTiltLeftAction = GestureButton.BTN_LB,
-            gestureTiltRightAction = GestureButton.BTN_RB,
-            gestureTiltHoldMode = true,
-            gestureShakeEnabled = true,
-            gestureShakeThreshold = 14.5f,
-            gestureShakeAction = GestureButton.TRIGGER_RT,
-            gestureShakeCooldownMs = 500L,
-            gestureJoystickMode = GestureJoystickMode.FLIGHT_STICK,
-            xboxTargetStick = XboxTargetStick.LEFT_STICK,
-            xboxBlendMode = XboxBlendMode.ADDITIVE
+            precisionAiming = PrecisionAimingSettings(
+                invertX = true,
+                invertRoll = true,
+                invertY = false,
+                horizontalAxis = HorizontalAxis.YAW,
+                deadzoneThreshold = 1.8f,
+                smoothingEnabled = true,
+                smoothingAmount = 0.92f,
+                adaptiveSmoothing = true,
+                smoothingThreshold = 45.0f,
+                accelerationEnabled = true,
+                maxSensitivity = 2.8f,
+                maxThreshold = 220.0f,
+                stickResponseCurve = StickResponseCurve.LINEARIZED,
+                antiDeadzone = 0.18f,
+                activationButtons = setOf("LT", "RT"),
+                lowSpeedAmplifierEnabled = true,
+                lowSpeedAmplifierAmount = 3.2f,
+                lowSpeedAmplifierThreshold = 18.0f
+            ),
+            steeringWheel = SteeringWheelSettings(
+                maxTiltAngle = 60.0f,
+                sensitivityX = 1.45f,
+                responseCurve = 1.8f,
+                targetStick = XboxTargetStick.LEFT_STICK,
+                blendMode = XboxBlendMode.ADDITIVE
+            ),
+            flightStick = FlightStickSettings(
+                pitchTarget = FlightStickAxisTarget.RS_Y,
+                pitchInvert = false,
+                maxPitchAngle = 50.0f,
+                rollTarget = FlightStickAxisTarget.LS_X,
+                rollInvert = true,
+                maxRollAngle = 42.0f,
+                yawTarget = FlightStickAxisTarget.NONE,
+                deadzone = 2.2f,
+                curveExponent = 1.5f
+            ),
+            combatGestures = CombatGesturesSettings(
+                flicksEnabled = true,
+                flickUpAction = GestureButton.TRIGGER_LT,
+                flickDownAction = GestureButton.BTN_RS,
+                flickLeftAction = GestureButton.DPAD_LEFT,
+                flickRightAction = GestureButton.DPAD_RIGHT,
+                flickThreshold = 12.5f,
+                flickCooldownMs = 280L,
+                tiltEnabled = true,
+                tiltPitchThreshold = 35.0f,
+                tiltRollThreshold = 25.0f,
+                tiltUpAction = GestureButton.BTN_A,
+                tiltDownAction = GestureButton.BTN_B,
+                tiltLeftAction = GestureButton.BTN_LB,
+                tiltRightAction = GestureButton.BTN_RB,
+                tiltHoldMode = true,
+                shakeEnabled = true,
+                shakeThreshold = 14.5f,
+                shakeAction = GestureButton.TRIGGER_RT,
+                shakeCooldownMs = 500L
+            ),
+            rawSilicon = RawSiliconSettings(
+                deadzoneThreshold = 0.5f
+            )
         )
 
         // Save customized settings
@@ -128,42 +136,23 @@ class DesktopSharedPreferencesTest {
         val restartedPrefs = DesktopSharedPreferences.getCustomInstance(tempFile)
         val loadedSettings = restartedPrefs.loadGyroSettings()
 
-        // Verify full fidelity restoration
+        // Verify full fidelity restoration across all 5 isolated domain models
         assertEquals(customizedSettings.enabled, loadedSettings.enabled)
+        assertEquals(customizedSettings.inputMode, loadedSettings.inputMode)
+        assertEquals(customizedSettings.precisionAiming, loadedSettings.precisionAiming)
+        assertEquals(customizedSettings.steeringWheel, loadedSettings.steeringWheel)
+        assertEquals(customizedSettings.flightStick, loadedSettings.flightStick)
+        assertEquals(customizedSettings.combatGestures, loadedSettings.combatGestures)
+        assertEquals(customizedSettings.rawSilicon, loadedSettings.rawSilicon)
+
+        // Verify backward-compatible delegation
         assertEquals(customizedSettings.invertX, loadedSettings.invertX)
         assertEquals(customizedSettings.invertRoll, loadedSettings.invertRoll)
         assertEquals(customizedSettings.invertY, loadedSettings.invertY)
         assertEquals(customizedSettings.horizontalAxis, loadedSettings.horizontalAxis)
         assertEquals(customizedSettings.deadzoneThreshold, loadedSettings.deadzoneThreshold, 0.001f)
-        assertEquals(customizedSettings.smoothingAmount, loadedSettings.smoothingAmount, 0.001f)
-        assertEquals(customizedSettings.adaptiveSmoothing, loadedSettings.adaptiveSmoothing)
-        assertEquals(customizedSettings.accelerationEnabled, loadedSettings.accelerationEnabled)
-        assertEquals(customizedSettings.maxSensitivity, loadedSettings.maxSensitivity, 0.001f)
-        assertEquals(customizedSettings.stickResponseCurve, loadedSettings.stickResponseCurve)
-        assertEquals(customizedSettings.gameDeadzoneCompensation, loadedSettings.gameDeadzoneCompensation, 0.001f)
-        assertEquals(customizedSettings.activationButtons, loadedSettings.activationButtons)
-        assertEquals(customizedSettings.lowSpeedAmplifierEnabled, loadedSettings.lowSpeedAmplifierEnabled)
-        assertEquals(customizedSettings.lowSpeedAmplifierAmount, loadedSettings.lowSpeedAmplifierAmount, 0.001f)
-
-        // Verify Flight Stick fields
-        assertEquals(customizedSettings.inputMode, loadedSettings.inputMode)
         assertEquals(customizedSettings.airMousePitchTarget, loadedSettings.airMousePitchTarget)
-        assertEquals(customizedSettings.airMousePitchInvert, loadedSettings.airMousePitchInvert)
-        assertEquals(customizedSettings.airMouseMaxPitch, loadedSettings.airMouseMaxPitch, 0.001f)
-        assertEquals(customizedSettings.airMouseRollTarget, loadedSettings.airMouseRollTarget)
-        assertEquals(customizedSettings.airMouseRollInvert, loadedSettings.airMouseRollInvert)
-        assertEquals(customizedSettings.airMouseMaxRoll, loadedSettings.airMouseMaxRoll, 0.001f)
-        assertEquals(customizedSettings.airMouseYawTarget, loadedSettings.airMouseYawTarget)
-        assertEquals(customizedSettings.airMouseDeadzone, loadedSettings.airMouseDeadzone, 0.001f)
-        assertEquals(customizedSettings.airMouseCurve, loadedSettings.airMouseCurve, 0.001f)
-
-        // Verify Combat Gesture fields
         assertEquals(customizedSettings.gestureFlicksEnabled, loadedSettings.gestureFlicksEnabled)
-        assertEquals(customizedSettings.gestureFlickUpAction, loadedSettings.gestureFlickUpAction)
-        assertEquals(customizedSettings.gestureFlickDownAction, loadedSettings.gestureFlickDownAction)
-        assertEquals(customizedSettings.gestureFlickLeftAction, loadedSettings.gestureFlickLeftAction)
-        assertEquals(customizedSettings.gestureFlickRightAction, loadedSettings.gestureFlickRightAction)
-        assertEquals(customizedSettings.gestureFlickThreshold, loadedSettings.gestureFlickThreshold, 0.001f)
         assertEquals(customizedSettings.gestureFlickCooldownMs, loadedSettings.gestureFlickCooldownMs)
         assertEquals(customizedSettings.gestureTiltEnabled, loadedSettings.gestureTiltEnabled)
         assertEquals(customizedSettings.gestureTiltPitchThreshold, loadedSettings.gestureTiltPitchThreshold, 0.001f)
@@ -172,7 +161,6 @@ class DesktopSharedPreferencesTest {
         assertEquals(customizedSettings.gestureShakeEnabled, loadedSettings.gestureShakeEnabled)
         assertEquals(customizedSettings.gestureShakeThreshold, loadedSettings.gestureShakeThreshold, 0.001f)
         assertEquals(customizedSettings.gestureShakeAction, loadedSettings.gestureShakeAction)
-        assertEquals(customizedSettings.gestureJoystickMode, loadedSettings.gestureJoystickMode)
         assertEquals(customizedSettings.xboxTargetStick, loadedSettings.xboxTargetStick)
         assertEquals(customizedSettings.xboxBlendMode, loadedSettings.xboxBlendMode)
     }

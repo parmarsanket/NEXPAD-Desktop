@@ -15,10 +15,10 @@ object InputPipeline {
         activeController: ControllerType,
         gyroProcessor: GyroProcessor,
         gyroSettings: GyroSettings,
-        lsSensitivityX: Float,
-        lsSensitivityY: Float,
-        rsSensitivityX: Float,
-        rsSensitivityY: Float,
+        lsSensitivityX: Float = gyroSettings.lsSensitivityX,
+        lsSensitivityY: Float = gyroSettings.lsSensitivityY,
+        rsSensitivityX: Float = gyroSettings.rsSensitivityX,
+        rsSensitivityY: Float = gyroSettings.rsSensitivityY,
         onProcessedAngles: (yawDps: Float, pitchDps: Float) -> Unit
     ): GamepadInput {
         
@@ -72,11 +72,17 @@ object InputPipeline {
 
         onProcessedAngles(processed.yawDps, processed.pitchDps)
 
-        // 3. Build final stick values and button states
-        var finalLeftX = input.leftStickX
-        var finalLeftY = input.leftStickY
-        var finalRightX = input.rightStickX
-        var finalRightY = input.rightStickY
+        // 3. Pre-scale physical thumbsticks with base sensitivity (isolated from motion processing)
+        // Hardware scaling applies strictly to physical on-screen thumbsticks from mobile device.
+        val physLeftX = (input.leftStickX * lsSensitivityX).coerceIn(-1.0f, 1.0f)
+        val physLeftY = (input.leftStickY * lsSensitivityY).coerceIn(-1.0f, 1.0f)
+        val physRightX = (input.rightStickX * rsSensitivityX).coerceIn(-1.0f, 1.0f)
+        val physRightY = (input.rightStickY * rsSensitivityY).coerceIn(-1.0f, 1.0f)
+
+        var finalLeftX = physLeftX
+        var finalLeftY = physLeftY
+        var finalRightX = physRightX
+        var finalRightY = physRightY
         var finalTriggerL2 = input.triggerL2
         var finalTriggerR2 = input.triggerR2
         var finalBtnA = input.btnA
@@ -93,8 +99,7 @@ object InputPipeline {
         var finalDpadRight = input.dpadRight
 
         if (activeController == ControllerType.XBOX_360 && gyroSettings.enabled) {
-            if (gyroSettings.inputMode == InputMode.AIR_MOUSE ||
-                (gyroSettings.inputMode == InputMode.GESTURE && gyroSettings.effectiveGestureJoystickMode == GestureJoystickMode.FLIGHT_STICK)) {
+            if (gyroSettings.inputMode == InputMode.AIR_MOUSE) {
                 // 3D Flight Stick: Direct independent axis routing to Left Stick & Right Stick
                 fun blendFlight(physical: Float, flight: Float): Float {
                     val isPhysActive = abs(physical) > 0.05f
@@ -116,10 +121,10 @@ object InputPipeline {
                     }
                 }
 
-                finalLeftX = blendFlight(input.leftStickX, processed.flightLsX)
-                finalLeftY = blendFlight(input.leftStickY, processed.flightLsY)
-                finalRightX = blendFlight(input.rightStickX, processed.flightRsX)
-                finalRightY = blendFlight(input.rightStickY, processed.flightRsY)
+                finalLeftX = blendFlight(physLeftX, processed.flightLsX)
+                finalLeftY = blendFlight(physLeftY, processed.flightLsY)
+                finalRightX = blendFlight(physRightX, processed.flightRsX)
+                finalRightY = blendFlight(physRightY, processed.flightRsY)
             } else {
                 val gyroToStickScale = 1.0f / 200.0f
                 val rawStickX = (processed.yawDps * gyroToStickScale).coerceIn(-1f, 1f)
@@ -182,8 +187,8 @@ object InputPipeline {
                 // On-screen physical joystick from phone is supreme. If active, it drives the controller.
                 // If idle (released/resting), motion takes over.
                 val isTargetRightStick = gyroSettings.xboxTargetStick == XboxTargetStick.RIGHT_STICK
-                val physicalStickX = if (isTargetRightStick) input.rightStickX else input.leftStickX
-                val physicalStickY = if (isTargetRightStick) input.rightStickY else input.leftStickY
+                val physicalStickX = if (isTargetRightStick) physRightX else physLeftX
+                val physicalStickY = if (isTargetRightStick) physRightY else physLeftY
                 val isStickActive = abs(physicalStickX) > 0.05f || abs(physicalStickY) > 0.05f
 
                 var blendedX: Float
@@ -222,8 +227,8 @@ object InputPipeline {
                 // 180° Snap Turn Injection (Instant tactical turnaround)
                 if (processed.snapTurnStickX != 0f) {
                     finalRightX = processed.snapTurnStickX
-                } else if (gyroSettings.inputMode == InputMode.GESTURE && gyroSettings.effectiveGestureJoystickMode == GestureJoystickMode.OFF) {
-                    // Joystick Gyro is completely OFF: physical gamepad sticks pass through 100% untouched!
+                } else if (gyroSettings.inputMode == InputMode.GESTURE) {
+                    // Combat Gestures: joysticks are NEVER driven by gyro. Physical gamepad sticks pass through 100% untouched!
                 } else {
                     when (gyroSettings.xboxTargetStick) {
                         XboxTargetStick.RIGHT_STICK -> {
@@ -271,10 +276,10 @@ object InputPipeline {
         }
         
         return input.copy(
-            leftStickX = (finalLeftX * lsSensitivityX).coerceIn(-1.0f, 1.0f),
-            leftStickY = (finalLeftY * lsSensitivityY).coerceIn(-1.0f, 1.0f),
-            rightStickX = (finalRightX * rsSensitivityX).coerceIn(-1.0f, 1.0f),
-            rightStickY = (finalRightY * rsSensitivityY).coerceIn(-1.0f, 1.0f),
+            leftStickX = finalLeftX.coerceIn(-1.0f, 1.0f),
+            leftStickY = finalLeftY.coerceIn(-1.0f, 1.0f),
+            rightStickX = finalRightX.coerceIn(-1.0f, 1.0f),
+            rightStickY = finalRightY.coerceIn(-1.0f, 1.0f),
             triggerL2 = maxOf(input.triggerL2, finalTriggerL2),
             triggerR2 = maxOf(input.triggerR2, finalTriggerR2),
             btnA = input.btnA || finalBtnA,

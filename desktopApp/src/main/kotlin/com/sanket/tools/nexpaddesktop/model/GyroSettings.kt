@@ -34,445 +34,545 @@ import kotlinx.serialization.Serializable
  *   → Tightening → Smoothing → Acceleration → Low-Speed Amp → Sensitivity → Output
  * ```
  */
+/**
+ * Configuration for Precision Gyro Aiming (FPS / 1:1 Mouse-like Aiming).
+ * Completely isolated from other modes.
+ */
+@Serializable
+data class PrecisionAimingSettings(
+    val targetStick: XboxTargetStick = XboxTargetStick.RIGHT_STICK,
+    val maxDpsYaw: Float = 200.0f,
+    val maxDpsPitch: Float = 200.0f,
+    val maxDpsRoll: Float = 200.0f,
+    val horizontalAxis: HorizontalAxis = HorizontalAxis.MIX,
+    val invertX: Boolean = false,
+    val invertY: Boolean = false,
+    val invertRoll: Boolean = false,
+    val deadzoneThreshold: Float = 0.8f,
+    val antiDeadzone: Float = 0.0f,
+    val stickResponseCurve: StickResponseCurve = StickResponseCurve.LINEAR,
+    val tighteningEnabled: Boolean = false,
+    val tighteningThreshold: Float = 10.0f,
+    val smoothingEnabled: Boolean = true,
+    val smoothingAmount: Float = 0.85f,
+    val adaptiveSmoothing: Boolean = true,
+    val smoothingThreshold: Float = 30.0f,
+    val accelerationEnabled: Boolean = false,
+    val accelerationType: AccelerationType = AccelerationType.LINEAR,
+    val minSensitivity: Float = 1.0f,
+    val maxSensitivity: Float = 2.0f,
+    val minThreshold: Float = 0.0f,
+    val maxThreshold: Float = 150.0f,
+    val lowSpeedAmplifierEnabled: Boolean = false,
+    val lowSpeedAmplifierAmount: Float = 2.0f,
+    val lowSpeedAmplifierThreshold: Float = 20.0f,
+    val lowSpeedAmplifierHarshness: Float = 2.0f,
+    val blendMode: XboxBlendMode = XboxBlendMode.JOYSTICK_SUPREME,
+    val activationMode: ActivationMode = ActivationMode.ALWAYS_ON,
+    val activationButtons: Set<String> = emptySet(),
+    val lsSensitivityX: Float = 1.0f,
+    val lsSensitivityY: Float = 1.0f,
+    val rsSensitivityX: Float = 1.0f,
+    val rsSensitivityY: Float = 1.0f,
+)
+
+/**
+ * Configuration for Virtual Steering Wheel (Gravity-based tilt emulation).
+ * Completely isolated from other modes.
+ */
+@Serializable
+data class SteeringWheelSettings(
+    val targetStick: XboxTargetStick = XboxTargetStick.LEFT_STICK,
+    val maxTiltAngle: Float = 35.0f,
+    val sensitivityX: Float = 1.0f,
+    val sensitivityY: Float = 1.0f,
+    val responseCurve: Float = 1.0f,
+    val invertSteering: Boolean = false,
+    val invertPitch: Boolean = false,
+    val deadzoneThreshold: Float = 2.0f,
+    val blendMode: XboxBlendMode = XboxBlendMode.JOYSTICK_SUPREME,
+    val lsSensitivityX: Float = 1.0f,
+    val lsSensitivityY: Float = 1.0f,
+    val rsSensitivityX: Float = 1.0f,
+    val rsSensitivityY: Float = 1.0f,
+)
+
+/**
+ * Configuration for 3D Flight Stick & Aviation Yoke (6-DoF attitude emulation).
+ * Completely isolated from other modes.
+ */
+@Serializable
+data class FlightStickSettings(
+    val pitchTarget: FlightStickAxisTarget = FlightStickAxisTarget.LS_Y,
+    val pitchInvert: Boolean = true,
+    val maxPitchAngle: Float = 35.0f,
+    val rollTarget: FlightStickAxisTarget = FlightStickAxisTarget.LS_X,
+    val rollInvert: Boolean = false,
+    val maxRollAngle: Float = 35.0f,
+    val yawTarget: FlightStickAxisTarget = FlightStickAxisTarget.NONE,
+    val yawInvert: Boolean = false,
+    val maxYawAngle: Float = 35.0f,
+    val deadzone: Float = 1.5f,
+    val curveExponent: Float = 1.3f,
+    val blendMode: XboxBlendMode = XboxBlendMode.JOYSTICK_SUPREME,
+    val lsSensitivityX: Float = 1.0f,
+    val lsSensitivityY: Float = 1.0f,
+    val rsSensitivityX: Float = 1.0f,
+    val rsSensitivityY: Float = 1.0f,
+)
+
+/**
+ * Configuration for Combat Gestures (Kinetic flicks, tilt postures, and shakes).
+ * Completely isolated from other modes; joysticks remain 100% untouched.
+ */
+@Serializable
+data class CombatGesturesSettings(
+    val flicksEnabled: Boolean = true,
+    val flickThreshold: Float = 8.5f,
+    val flickCooldownMs: Long = 350L,
+    val flickUpAction: GestureButton = GestureButton.BTN_X,
+    val flickDownAction: GestureButton = GestureButton.BTN_Y,
+    val flickLeftAction: GestureButton = GestureButton.SNAP_TURN_180,
+    val flickRightAction: GestureButton = GestureButton.TRIGGER_RT,
+    val tiltEnabled: Boolean = false,
+    val tiltPitchThreshold: Float = 30.0f,
+    val tiltRollThreshold: Float = 30.0f,
+    val tiltUpAction: GestureButton = GestureButton.BTN_X,
+    val tiltDownAction: GestureButton = GestureButton.BTN_Y,
+    val tiltLeftAction: GestureButton = GestureButton.BTN_LB,
+    val tiltRightAction: GestureButton = GestureButton.BTN_RB,
+    val tiltHoldMode: Boolean = false,
+    val shakeEnabled: Boolean = false,
+    val shakeThreshold: Float = 11.0f,
+    val shakeAction: GestureButton = GestureButton.BTN_X,
+    val shakeCooldownMs: Long = 450L,
+    val lsSensitivityX: Float = 1.0f,
+    val lsSensitivityY: Float = 1.0f,
+    val rsSensitivityX: Float = 1.0f,
+    val rsSensitivityY: Float = 1.0f,
+)
+
+/**
+ * Configuration for Esports Direct Raw Silicon Gyro (Uncalibrated MEMS sensor stream).
+ * Completely isolated from other modes.
+ */
+@Serializable
+data class RawSiliconSettings(
+    val targetStick: XboxTargetStick = XboxTargetStick.RIGHT_STICK,
+    val maxDpsYaw: Float = 200.0f,
+    val maxDpsPitch: Float = 200.0f,
+    val maxDpsRoll: Float = 200.0f,
+    val horizontalAxis: HorizontalAxis = HorizontalAxis.MIX,
+    val invertX: Boolean = false,
+    val invertY: Boolean = false,
+    val invertRoll: Boolean = false,
+    val deadzoneThreshold: Float = 0.8f,
+    val antiDeadzone: Float = 0.0f,
+    val stickResponseCurve: StickResponseCurve = StickResponseCurve.LINEAR,
+    val tighteningEnabled: Boolean = false,
+    val tighteningThreshold: Float = 10.0f,
+    val lowSpeedAmplifierEnabled: Boolean = false,
+    val lowSpeedAmplifierAmount: Float = 2.0f,
+    val lowSpeedAmplifierThreshold: Float = 20.0f,
+    val lowSpeedAmplifierHarshness: Float = 2.0f,
+    val blendMode: XboxBlendMode = XboxBlendMode.JOYSTICK_SUPREME,
+    val activationMode: ActivationMode = ActivationMode.ALWAYS_ON,
+    val activationButtons: Set<String> = emptySet(),
+    val lsSensitivityX: Float = 1.0f,
+    val lsSensitivityY: Float = 1.0f,
+    val rsSensitivityX: Float = 1.0f,
+    val rsSensitivityY: Float = 1.0f,
+)
+
+/**
+ * Root composite configuration for NEXPAD motion controls.
+ *
+ * Each motion mode has its own dedicated, encapsulated configuration class.
+ * Adjusting settings in one mode will NEVER leak, collide, or overwrite settings
+ * in any other mode!
+ */
 @Serializable
 data class GyroSettings(
-
-    // ══════════════════════════════════════════════════════════
-    //  SHARED — Affects both Xbox 360 and PS4 modes
-    // ══════════════════════════════════════════════════════════
-
-    /** Master on/off switch for all motion processing. When false, no gyro data is processed. */
     val enabled: Boolean = true,
-
-    /** If true, horizontal (left/right) camera movement is reversed. Applies to both gyro and accel modes. */
-    val invertX: Boolean = false,
-
-    /** If true, roll (sideways tilt / bank) camera movement is reversed. */
-    val invertRoll: Boolean = false,
-
-    /** If true, vertical (up/down) camera movement is reversed. Applies to both gyro and accel modes. */
-    val invertY: Boolean = false,
-
-    /**
-     * Which physical rotation axis drives horizontal camera movement.
-     * - YAW: Rotating the phone flat on a table (turning wrist left/right)
-     * - ROLL: Tilting the phone sideways (like a steering wheel)
-     * - MIX: Both yaw and roll contribute to horizontal movement
-     */
-    val horizontalAxis: HorizontalAxis = HorizontalAxis.MIX,
-
-    /**
-     * Hard deadzone threshold in °/s. Rotation speeds below this value are
-     * completely ignored (output = 0). This prevents micro-vibrations and
-     * sensor noise from moving the crosshair when the phone is resting still.
-     * Typical values: 2.0–5.0 °/s.
-     */
-    val deadzoneThreshold: Float = 0.8f,
-
-    /** Whether EMA (Exponential Moving Average) smoothing is applied to gyro output. */
-    val smoothingEnabled: Boolean = true,
-
-    /**
-     * EMA alpha coefficient. Controls how much each new frame blends with history.
-     * - 0.1 = very heavy smoothing (laggy but silky smooth)
-     * - 0.85 = crisp & responsive (zero lag, eliminates jitter)
-     * - 1.0 = no smoothing (raw, immediate)
-     */
-    val smoothingAmount: Float = 0.85f,
-
-    /**
-     * If true, only smooth slow movements. Fast flicks pass through unsmoothed
-     * for maximum responsiveness. Slow movements get full smoothing to remove jitter.
-     */
-    val adaptiveSmoothing: Boolean = true,
-
-    /** °/s speed below which adaptive smoothing applies full smoothing. Above this, smoothing fades out. */
-    val smoothingThreshold: Float = 30.0f,
-
-    /**
-     * Whether an acceleration curve is applied to gyro output (speed-dependent sensitivity).
-     * Defaults to false for consistent, predictable 1:1 mouse-like muscle memory (JoyShockLibrary standard).
-     */
-    val accelerationEnabled: Boolean = false,
-
-    /** The shape of the acceleration curve interpolation between min/max thresholds. */
-    val accelerationType: AccelerationType = AccelerationType.LINEAR,
-
-    /** Sensitivity multiplier at very slow rotation speeds. 1.0 = 100% of base speed. */
-    val minSensitivity: Float = 1.0f,
-
-    /** Sensitivity multiplier at very fast rotation speeds. E.g., 2.0 = 200% of base speed. */
-    val maxSensitivity: Float = 2.0f,
-
-    /** °/s rotation speed at which [minSensitivity] applies (lower bound of the curve). */
-    val minThreshold: Float = 0.0f,
-
-    /** °/s rotation speed at which [maxSensitivity] applies (upper bound of the curve). */
-    val maxThreshold: Float = 150.0f,
-
-    /**
-     * Stick response curve applied when converting gyro velocity to Xbox analog stick deflection.
-     * - LINEAR: 1:1 direct proportional mapping (JoyShockLibrary/Steam Input standard).
-     * - LINEARIZED: Counteracts games with aggressive in-game quadratic stick curves.
-     * - PRECISION: Gentle quadratic center curve for fine sniping adjustments.
-     */
-    val stickResponseCurve: StickResponseCurve = StickResponseCurve.LINEAR,
-
-    /** Whether tightening (soft quadratic deadzone) is enabled. Reduces very small movements smoothly. */
-    val tighteningEnabled: Boolean = false,
-
-    /** °/s threshold below which tightening smoothly reduces inputs toward zero using a quadratic curve. */
-    val tighteningThreshold: Float = 10.0f,
-
-
-    // ══════════════════════════════════════════════════════════
-    //  XBOX GYRO AIMING — Only used when Xbox 360 controller is active
-    // ══════════════════════════════════════════════════════════
-
-    /**
-     * Whether the motion system uses rotation speed (gyro aiming / mouse-like)
-     * or absolute tilt angle (steering wheel). This only applies to Xbox mode
-     * where gyro data must be converted to stick movement. PS4 mode sends raw
-     * sensor data directly to the game.
-     */
     val inputMode: InputMode = InputMode.VELOCITY,
-
-    /**
-     * Max rotation speed (°/s) for 100% stick output on the Yaw axis (turning left/right).
-     * Lower values = higher sensitivity. At this speed, the analog stick hits ±1.0.
-     * Example: 200 means you must rotate at 200°/s to get full stick deflection.
-     */
-    val maxDpsYaw: Float = 200.0f,
-
-    /**
-     * Max rotation speed (°/s) for 100% stick output on the Roll axis (tilting sideways).
-     * Only meaningful when [horizontalAxis] includes ROLL or MIX.
-     */
-    val maxDpsRoll: Float = 200.0f,
-
-    /**
-     * Max rotation speed (°/s) for 100% stick output on the Pitch axis (tilting forward/back).
-     * Controls vertical aiming sensitivity.
-     */
-    val maxDpsPitch: Float = 200.0f,
-
-    /**
-     * Which Xbox analog stick receives the converted gyro movement.
-     * RIGHT_STICK is standard for FPS aiming. LEFT_STICK for driving games.
-     */
-    val xboxTargetStick: XboxTargetStick = XboxTargetStick.RIGHT_STICK,
-
-    /**
-     * How gyro-generated stick values combine with physical stick input from the phone.
-     * - JOYSTICK_SUPREME: Physical on-screen joystick is supreme; gyro only takes over when stick is idle
-     * - ADDITIVE: Gyro fine aiming is added on top of physical thumbstick deflection
-     * - MUTE_ON_STICK: Gyro is disabled whenever you touch the physical thumbstick
-     */
-    val xboxBlendMode: XboxBlendMode = XboxBlendMode.JOYSTICK_SUPREME,
-
-    /**
-     * In-game stick deadzone compensation (Anti-Deadzone).
-     * Bypasses the minimum 10-18% deadzone enforced by PC games on Xbox thumbsticks.
-     * When motion is detected, output begins immediately above the in-game deadzone threshold,
-     * delivering 1:1 mouse-like micro-aiming responsiveness that matches DualShock 4.
-     */
-    val gameDeadzoneCompensation: Float = 0.0f,
-
-    /**
-     * How the gyro is activated during gameplay (Xbox mode only).
-     * PS4 games handle activation themselves since they receive raw sensor data.
-     */
-    val activationMode: ActivationMode = ActivationMode.ALWAYS_ON,
-
-    /** Set of button names that must be held to activate gyro (e.g., "LT", "RT"). Empty = always active. */
-    val activationButtons: Set<String> = emptySet(),
-
-    /** Whether the Low-Speed Amplifier is enabled. Boosts tiny movements to overcome in-game deadzones. */
-    val lowSpeedAmplifierEnabled: Boolean = false,
-
-    /** Multiplier applied to very slow movements. E.g., 2.0 = double speed at near-zero rotation. */
-    val lowSpeedAmplifierAmount: Float = 2.0f,
-
-    /** °/s threshold below which the amplifier kicks in. Above this speed, no amplification. */
-    val lowSpeedAmplifierThreshold: Float = 20.0f,
-
-    /** How sharply the amplifier transitions from boosted to normal. Higher = sharper drop-off. */
-    val lowSpeedAmplifierHarshness: Float = 2.0f,
-
-
-    // ══════════════════════════════════════════════════════════
-    //  STEERING WHEEL — Only used in Absolute Tilt (InputMode.ABSOLUTE_TILT)
-    // ══════════════════════════════════════════════════════════
-
-    /**
-     * The physical tilt angle (in degrees) that results in 100% stick deflection.
-     * Lower values = more sensitive steering. 35° is a natural comfortable range.
-     */
-    val absoluteMaxTilt: Float = 35.0f,
-
-    /** Horizontal sensitivity multiplier for Steering Wheel mode. 1.0 = 1:1 mapping. */
-    val absoluteSensitivityX: Float = 1.0f,
-
-    /** Vertical sensitivity multiplier for Steering Wheel mode. 1.0 = 1:1 mapping. */
-    val absoluteSensitivityY: Float = 1.0f,
-
-    /**
-     * Non-linear response curve for Steering Wheel mode.
-     * 1.0 = linear, 2.0 = quadratic (precise center, fast edges), 3.0 = cubic.
-     * Higher values give you more precision near the center of the tilt range.
-     */
-    val absoluteCurve: Float = 1.0f,
-
-
-    // ══════════════════════════════════════════════════════════
-    //  AIR MOUSE (3D FLIGHT YOKE / ATTITUDE STICK) — InputMode.AIR_MOUSE
-    // ══════════════════════════════════════════════════════════
-
-    /**
-     * Physical forward/backward tilt angle (pitch) in degrees for 100% stick deflection.
-     * 35° is standard for flight simulators (pull back to climb, push forward to dive).
-     */
-    val airMouseMaxPitch: Float = 35.0f,
-
-    /**
-     * Physical sideways banking angle (roll) in degrees for 100% stick deflection.
-     * 35° allows natural wing banking turns.
-     */
-    val airMouseMaxRoll: Float = 35.0f,
-
-    /**
-     * Physical flat wrist turn angle (yaw) in degrees for 100% stick deflection.
-     */
-    val airMouseMaxYaw: Float = 35.0f,
-
-    /** Legacy alias for roll/yaw max angle */
-    val airMouseMaxRollYaw: Float = 35.0f,
-
-    /**
-     * Center resting deadzone (in degrees) to eliminate hand tremors while holding phone.
-     */
-    val airMouseDeadzone: Float = 1.5f,
-
-    /**
-     * Response curve exponent for flight stick center stability (1.0 = linear, 1.3 = smooth center).
-     */
-    val airMouseCurve: Float = 1.3f,
-
-    // ── Individual 3D Flight Stick Axis Assignments ──
-
-    /** Target stick and direction for Pitch (forward/back tilt). Default: LS Up/Down (Y). */
-    val airMousePitchTarget: FlightStickAxisTarget = FlightStickAxisTarget.LS_Y,
-
-    /** Whether Pitch deflection is inverted. Default: true (Aviation standard: pull back to climb). */
-    val airMousePitchInvert: Boolean = true,
-
-    /** Target stick and direction for Roll (sideways tilt / wing bank). Default: LS Left/Right (X). */
-    val airMouseRollTarget: FlightStickAxisTarget = FlightStickAxisTarget.LS_X,
-
-    /** Whether Roll deflection is inverted. Default: false. */
-    val airMouseRollInvert: Boolean = false,
-
-    /** Target stick and direction for Yaw (flat wrist turn / rudder). Default: NONE (Disabled / Off). */
-    val airMouseYawTarget: FlightStickAxisTarget = FlightStickAxisTarget.NONE,
-
-    /** Whether Yaw deflection is inverted. Default: false. */
-    val airMouseYawInvert: Boolean = false,
-
-    // Legacy fields preserved for backward compatibility
-    val airMouseHorizontalAxis: HorizontalAxis = HorizontalAxis.ROLL,
-    val airMouseTargetStick: XboxTargetStick = XboxTargetStick.LEFT_STICK,
-    val airMouseInvertPitch: Boolean = true,
-
-
-    // ══════════════════════════════════════════════════════════
-    //  MOTION GESTURES & KINETIC COMBAT — InputMode.GESTURE
-    // ══════════════════════════════════════════════════════════
-
-    // ── Card 1: Directional Kinetic Flicks (Up, Down, Left, Right) ──
-    /** Master on/off toggle for directional kinetic flicks. */
-    val gestureFlicksEnabled: Boolean = true,
-
-    /** Linear acceleration threshold (m/s²) required to trigger a flick. */
-    val gestureFlickThreshold: Float = 8.5f,
-
-    /** Debounce cooldown in milliseconds for directional flicks. */
-    val gestureFlickCooldownMs: Long = 350L,
-
-    /** Action triggered on Fast UP flick (e.g. flick phone upward). */
-    val gestureFlickUpAction: GestureButton = GestureButton.BTN_X,
-
-    /** Action triggered on Fast DOWN flick (e.g. flick phone downward). */
-    val gestureFlickDownAction: GestureButton = GestureButton.BTN_Y,
-
-    /** Action triggered on Fast LEFT flick. */
-    val gestureFlickLeftAction: GestureButton = GestureButton.SNAP_TURN_180,
-
-    /** Action triggered on Fast RIGHT flick. */
-    val gestureFlickRightAction: GestureButton = GestureButton.TRIGGER_RT,
-
-    // ── Card 2: Gravity Tilt Posture (Angle Trigger - Up, Down, Left, Right) ──
-    /** Master on/off toggle for gravity tilt posture trigger. */
-    val gestureTiltEnabled: Boolean = false,
-
-    /** Tilt angle threshold in degrees for Up/Down pitch postures (default: 30°). */
-    val gestureTiltPitchThreshold: Float = 30.0f,
-
-    /** Tilt angle threshold in degrees for Left/Right roll postures (default: 30°). */
-    val gestureTiltRollThreshold: Float = 30.0f,
-
-    /** Action triggered when phone is tilted UP (raised past threshold angle). */
-    val gestureTiltUpAction: GestureButton = GestureButton.BTN_X,
-
-    /** Action triggered when phone is tilted DOWN (lowered past threshold angle). */
-    val gestureTiltDownAction: GestureButton = GestureButton.BTN_Y,
-
-    /** Action triggered when phone is tilted LEFT (banked left past threshold angle). */
-    val gestureTiltLeftAction: GestureButton = GestureButton.BTN_LB,
-
-    /** Action triggered when phone is tilted RIGHT (banked right past threshold angle). */
-    val gestureTiltRightAction: GestureButton = GestureButton.BTN_RB,
-
-    /** If true, holds button while phone is tilted; if false, pulses button once with hysteresis reset. */
-    val gestureTiltHoldMode: Boolean = false,
-
-    // Legacy aliases for backward compatibility
-    val gestureTiltAngleThreshold: Float = 30.0f,
-    val gestureTiltAction: GestureButton = GestureButton.BTN_X,
-
-    // ── Card 3: Shake Motion Detection ──
-    /** Master on/off toggle for vigorous phone shaking detection. */
-    val gestureShakeEnabled: Boolean = false,
-
-    /** Acceleration threshold (m/s²) required to register shake oscillation peaks. */
-    val gestureShakeThreshold: Float = 11.0f,
-
-    /** Action triggered when phone is shaken vigorously. */
-    val gestureShakeAction: GestureButton = GestureButton.BTN_X,
-
-    /** Debounce cooldown in milliseconds between shake triggers. */
-    val gestureShakeCooldownMs: Long = 450L,
-
-    /** Mode for joystick motion control while in GESTURE mode. Default: OFF (no joystick deflection). */
-    val gestureJoystickMode: GestureJoystickMode = GestureJoystickMode.OFF,
-
-    /** Legacy boolean flag for whether gyro aiming is active in Gesture mode. */
-    val gestureAimingEnabled: Boolean = false,
-
-    // ── Legacy Fields Preserved for Backward Compatibility ──
-    val gestureThreshold: Float = 8.5f,
-    val gestureAction: GestureAction = GestureAction.SNAP_TURN_180,
-    val gestureCooldownMs: Long = 400L,
-    val gestureSnapTurnDurationMs: Long = 140L,
-
+    val precisionAiming: PrecisionAimingSettings = PrecisionAimingSettings(),
+    val steeringWheel: SteeringWheelSettings = SteeringWheelSettings(),
+    val flightStick: FlightStickSettings = FlightStickSettings(),
+    val combatGestures: CombatGesturesSettings = CombatGesturesSettings(),
+    val rawSilicon: RawSiliconSettings = RawSiliconSettings(),
 ) {
-    /** Resolved effective joystick motion mode for Combat Gestures. */
-    val effectiveGestureJoystickMode: GestureJoystickMode
-        get() = if (gestureJoystickMode != GestureJoystickMode.OFF) {
-            gestureJoystickMode
-        } else if (gestureAimingEnabled) {
-            GestureJoystickMode.GYRO_AIMING
-        } else {
-            GestureJoystickMode.OFF
+    // ══════════════════════════════════════════════════════════
+    //  BACKWARD-COMPATIBLE ACCESSORS (DELEGATES TO ACTIVE MODE)
+    // ══════════════════════════════════════════════════════════
+
+    val lsSensitivityX: Float
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.lsSensitivityX
+            InputMode.ABSOLUTE_TILT -> steeringWheel.lsSensitivityX
+            InputMode.AIR_MOUSE -> flightStick.lsSensitivityX
+            InputMode.GESTURE -> combatGestures.lsSensitivityX
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.lsSensitivityX
         }
+
+    val lsSensitivityY: Float
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.lsSensitivityY
+            InputMode.ABSOLUTE_TILT -> steeringWheel.lsSensitivityY
+            InputMode.AIR_MOUSE -> flightStick.lsSensitivityY
+            InputMode.GESTURE -> combatGestures.lsSensitivityY
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.lsSensitivityY
+        }
+
+    val rsSensitivityX: Float
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.rsSensitivityX
+            InputMode.ABSOLUTE_TILT -> steeringWheel.rsSensitivityX
+            InputMode.AIR_MOUSE -> flightStick.rsSensitivityX
+            InputMode.GESTURE -> combatGestures.rsSensitivityX
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.rsSensitivityX
+        }
+
+    val rsSensitivityY: Float
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.rsSensitivityY
+            InputMode.ABSOLUTE_TILT -> steeringWheel.rsSensitivityY
+            InputMode.AIR_MOUSE -> flightStick.rsSensitivityY
+            InputMode.GESTURE -> combatGestures.rsSensitivityY
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.rsSensitivityY
+        }
+
+    fun updateActiveStickSensitivities(
+        lsX: Float = lsSensitivityX,
+        lsY: Float = lsSensitivityY,
+        rsX: Float = rsSensitivityX,
+        rsY: Float = rsSensitivityY
+    ): GyroSettings {
+        return when (inputMode) {
+            InputMode.VELOCITY -> copy(precisionAiming = precisionAiming.copy(lsSensitivityX = lsX, lsSensitivityY = lsY, rsSensitivityX = rsX, rsSensitivityY = rsY))
+            InputMode.ABSOLUTE_TILT -> copy(steeringWheel = steeringWheel.copy(lsSensitivityX = lsX, lsSensitivityY = lsY, rsSensitivityX = rsX, rsSensitivityY = rsY))
+            InputMode.AIR_MOUSE -> copy(flightStick = flightStick.copy(lsSensitivityX = lsX, lsSensitivityY = lsY, rsSensitivityX = rsX, rsSensitivityY = rsY))
+            InputMode.GESTURE -> copy(combatGestures = combatGestures.copy(lsSensitivityX = lsX, lsSensitivityY = lsY, rsSensitivityX = rsX, rsSensitivityY = rsY))
+            InputMode.RAW_UNCALIBRATED -> copy(rawSilicon = rawSilicon.copy(lsSensitivityX = lsX, lsSensitivityY = lsY, rsSensitivityX = rsX, rsSensitivityY = rsY))
+        }
+    }
+    // ══════════════════════════════════════════════════════════
+
+    val xboxTargetStick: XboxTargetStick
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.targetStick
+            InputMode.ABSOLUTE_TILT -> steeringWheel.targetStick
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.targetStick
+            else -> XboxTargetStick.RIGHT_STICK
+        }
+
+    val xboxBlendMode: XboxBlendMode
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.blendMode
+            InputMode.ABSOLUTE_TILT -> steeringWheel.blendMode
+            InputMode.AIR_MOUSE -> flightStick.blendMode
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.blendMode
+            else -> XboxBlendMode.JOYSTICK_SUPREME
+        }
+
+    val activationButtons: Set<String>
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.activationButtons
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.activationButtons
+            else -> emptySet()
+        }
+
+    val activationMode: ActivationMode
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.activationMode
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.activationMode
+            else -> ActivationMode.ALWAYS_ON
+        }
+
+    val invertX: Boolean
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.invertX
+            InputMode.ABSOLUTE_TILT -> steeringWheel.invertSteering
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.invertX
+            else -> false
+        }
+
+    val invertY: Boolean
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.invertY
+            InputMode.ABSOLUTE_TILT -> steeringWheel.invertPitch
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.invertY
+            else -> false
+        }
+
+    val invertRoll: Boolean
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.invertRoll
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.invertRoll
+            else -> false
+        }
+
+    val gameDeadzoneCompensation: Float
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.antiDeadzone
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.antiDeadzone
+            else -> 0f
+        }
+
+    val deadzoneThreshold: Float
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.deadzoneThreshold
+            InputMode.ABSOLUTE_TILT -> steeringWheel.deadzoneThreshold
+            InputMode.AIR_MOUSE -> flightStick.deadzone
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.deadzoneThreshold
+            else -> 0f
+        }
+
+    val stickResponseCurve: StickResponseCurve
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.stickResponseCurve
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.stickResponseCurve
+            else -> StickResponseCurve.LINEAR
+        }
+
+    val horizontalAxis: HorizontalAxis
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.horizontalAxis
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.horizontalAxis
+            else -> HorizontalAxis.MIX
+        }
+
+    val maxDpsYaw: Float
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.maxDpsYaw
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.maxDpsYaw
+            else -> 200.0f
+        }
+
+    val maxDpsPitch: Float
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.maxDpsPitch
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.maxDpsPitch
+            else -> 200.0f
+        }
+
+    val maxDpsRoll: Float
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.maxDpsRoll
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.maxDpsRoll
+            else -> 200.0f
+        }
+
+    val smoothingEnabled: Boolean
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.smoothingEnabled
+            else -> true
+        }
+
+    val smoothingAmount: Float
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.smoothingAmount
+            else -> 0.85f
+        }
+
+    val adaptiveSmoothing: Boolean
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.adaptiveSmoothing
+            else -> true
+        }
+
+    val accelerationEnabled: Boolean
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.accelerationEnabled
+            else -> false
+        }
+
+    val maxSensitivity: Float
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.maxSensitivity
+            else -> 2.0f
+        }
+
+    val lowSpeedAmplifierEnabled: Boolean
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.lowSpeedAmplifierEnabled
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.lowSpeedAmplifierEnabled
+            else -> false
+        }
+
+    val lowSpeedAmplifierAmount: Float
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.lowSpeedAmplifierAmount
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.lowSpeedAmplifierAmount
+            else -> 2.0f
+        }
+
+    val absoluteMaxTilt: Float get() = steeringWheel.maxTiltAngle
+    val absoluteSensitivityX: Float get() = steeringWheel.sensitivityX
+    val absoluteSensitivityY: Float get() = steeringWheel.sensitivityY
+    val absoluteCurve: Float get() = steeringWheel.responseCurve
+
+    val airMouseMaxPitch: Float get() = flightStick.maxPitchAngle
+    val airMouseMaxRoll: Float get() = flightStick.maxRollAngle
+    val airMouseMaxYaw: Float get() = flightStick.maxYawAngle
+    val airMouseDeadzone: Float get() = flightStick.deadzone
+    val airMouseCurve: Float get() = flightStick.curveExponent
+    val airMousePitchInvert: Boolean get() = flightStick.pitchInvert
+    val airMouseRollInvert: Boolean get() = flightStick.rollInvert
+    val airMouseYawInvert: Boolean get() = flightStick.yawInvert
+    val airMousePitchTarget: FlightStickAxisTarget get() = flightStick.pitchTarget
+    val airMouseRollTarget: FlightStickAxisTarget get() = flightStick.rollTarget
+    val airMouseYawTarget: FlightStickAxisTarget get() = flightStick.yawTarget
+
+    val gestureFlicksEnabled: Boolean get() = combatGestures.flicksEnabled
+    val gestureFlickThreshold: Float get() = combatGestures.flickThreshold
+    val gestureFlickCooldownMs: Long get() = combatGestures.flickCooldownMs
+    val gestureFlickUpAction: GestureButton get() = combatGestures.flickUpAction
+    val gestureFlickDownAction: GestureButton get() = combatGestures.flickDownAction
+    val gestureFlickLeftAction: GestureButton get() = combatGestures.flickLeftAction
+    val gestureFlickRightAction: GestureButton get() = combatGestures.flickRightAction
+    val gestureTiltEnabled: Boolean get() = combatGestures.tiltEnabled
+    val gestureTiltPitchThreshold: Float get() = combatGestures.tiltPitchThreshold
+    val gestureTiltRollThreshold: Float get() = combatGestures.tiltRollThreshold
+    val gestureTiltHoldMode: Boolean get() = combatGestures.tiltHoldMode
+    val gestureTiltUpAction: GestureButton get() = combatGestures.tiltUpAction
+    val gestureTiltDownAction: GestureButton get() = combatGestures.tiltDownAction
+    val gestureTiltLeftAction: GestureButton get() = combatGestures.tiltLeftAction
+    val gestureTiltRightAction: GestureButton get() = combatGestures.tiltRightAction
+    val gestureShakeEnabled: Boolean get() = combatGestures.shakeEnabled
+    val gestureShakeAction: GestureButton get() = combatGestures.shakeAction
+    val gestureShakeThreshold: Float get() = combatGestures.shakeThreshold
+    val gestureShakeCooldownMs: Long get() = combatGestures.shakeCooldownMs
+
+    val tighteningEnabled: Boolean
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.tighteningEnabled
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.tighteningEnabled
+            else -> false
+        }
+
+    val tighteningThreshold: Float
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.tighteningThreshold
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.tighteningThreshold
+            else -> 10.0f
+        }
+
+    val smoothingThreshold: Float
+        get() = precisionAiming.smoothingThreshold
+
+    val minSensitivity: Float
+        get() = precisionAiming.minSensitivity
+
+    val minThreshold: Float
+        get() = precisionAiming.minThreshold
+
+    val maxThreshold: Float
+        get() = precisionAiming.maxThreshold
+
+    val accelerationType: AccelerationType
+        get() = precisionAiming.accelerationType
+
+    val lowSpeedAmplifierThreshold: Float
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.lowSpeedAmplifierThreshold
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.lowSpeedAmplifierThreshold
+            else -> 20.0f
+        }
+
+    val lowSpeedAmplifierHarshness: Float
+        get() = when (inputMode) {
+            InputMode.VELOCITY -> precisionAiming.lowSpeedAmplifierHarshness
+            InputMode.RAW_UNCALIBRATED -> rawSilicon.lowSpeedAmplifierHarshness
+            else -> 2.0f
+        }
+
     companion object {
 
         /** Best defaults for FPS / aiming games (high sensitivity, responsive adaptive smoothing, pure linear 1:1 aiming). */
         val FPS_PRESET = GyroSettings(
-            maxDpsYaw = 160f,
-            maxDpsRoll = 160f,
-            maxDpsPitch = 240f,
-            deadzoneThreshold = 0.8f,
-            smoothingEnabled = true,
-            smoothingAmount = 0.85f,
-            adaptiveSmoothing = true,
-            smoothingThreshold = 30.0f,
-            accelerationEnabled = false,
-            stickResponseCurve = StickResponseCurve.LINEAR,
-            gameDeadzoneCompensation = 0.0f,
-            xboxBlendMode = XboxBlendMode.JOYSTICK_SUPREME,
+            inputMode = InputMode.VELOCITY,
+            precisionAiming = PrecisionAimingSettings(
+                maxDpsYaw = 160f,
+                maxDpsRoll = 160f,
+                maxDpsPitch = 240f,
+                deadzoneThreshold = 0.8f,
+                smoothingEnabled = true,
+                smoothingAmount = 0.85f,
+                adaptiveSmoothing = true,
+                smoothingThreshold = 30.0f,
+                accelerationEnabled = false,
+                stickResponseCurve = StickResponseCurve.LINEAR,
+                antiDeadzone = 0.0f,
+                blendMode = XboxBlendMode.JOYSTICK_SUPREME,
+            )
         )
 
         /** Best defaults for racing / steering games (switches to Steering Wheel mode). */
         val RACING_PRESET = GyroSettings(
             inputMode = InputMode.ABSOLUTE_TILT,
-            absoluteMaxTilt = 35.0f,
-            absoluteSensitivityX = 1.2f,
-            absoluteSensitivityY = 1.0f,
-            absoluteCurve = 1.5f,
-            deadzoneThreshold = 3.0f,
-            smoothingEnabled = true,
-            smoothingAmount = 0.7f,
-            adaptiveSmoothing = false,
-            gameDeadzoneCompensation = 0.0f,
-            xboxTargetStick = XboxTargetStick.LEFT_STICK,
+            steeringWheel = SteeringWheelSettings(
+                targetStick = XboxTargetStick.LEFT_STICK,
+                maxTiltAngle = 35.0f,
+                sensitivityX = 1.2f,
+                sensitivityY = 1.0f,
+                responseCurve = 1.5f,
+                deadzoneThreshold = 3.0f,
+                blendMode = XboxBlendMode.JOYSTICK_SUPREME,
+            )
         )
 
         /** Best defaults for flight simulators & space combat (3D Flight Yoke / Attitude Stick). */
         val FLIGHT_SIM_PRESET = GyroSettings(
             inputMode = InputMode.AIR_MOUSE,
-            airMouseMaxPitch = 35.0f,
-            airMouseMaxRoll = 35.0f,
-            airMouseMaxYaw = 35.0f,
-            airMouseMaxRollYaw = 35.0f,
-            airMouseDeadzone = 1.5f,
-            airMouseCurve = 1.3f,
-            airMousePitchTarget = FlightStickAxisTarget.LS_Y,
-            airMousePitchInvert = true,
-            airMouseRollTarget = FlightStickAxisTarget.LS_X,
-            airMouseRollInvert = false,
-            airMouseYawTarget = FlightStickAxisTarget.NONE,
-            airMouseYawInvert = false,
-            airMouseTargetStick = XboxTargetStick.LEFT_STICK,
-            airMouseInvertPitch = true,
-            gameDeadzoneCompensation = 0.0f,
+            flightStick = FlightStickSettings(
+                pitchTarget = FlightStickAxisTarget.LS_Y,
+                pitchInvert = true,
+                maxPitchAngle = 35.0f,
+                rollTarget = FlightStickAxisTarget.LS_X,
+                rollInvert = false,
+                maxRollAngle = 35.0f,
+                yawTarget = FlightStickAxisTarget.NONE,
+                yawInvert = false,
+                maxYawAngle = 35.0f,
+                deadzone = 1.5f,
+                curveExponent = 1.3f,
+                blendMode = XboxBlendMode.JOYSTICK_SUPREME,
+            )
         )
 
         /** Best defaults for action / combat games (kinetic weapon swings, directional flicks & 180° snap turns). */
         val ACTION_COMBAT_PRESET = GyroSettings(
             inputMode = InputMode.GESTURE,
-            gestureFlicksEnabled = true,
-            gestureFlickThreshold = 8.5f,
-            gestureFlickCooldownMs = 350L,
-            gestureFlickUpAction = GestureButton.BTN_X,
-            gestureFlickDownAction = GestureButton.BTN_Y,
-            gestureFlickLeftAction = GestureButton.SNAP_TURN_180,
-            gestureFlickRightAction = GestureButton.TRIGGER_RT,
-            gestureTiltEnabled = false,
-            gestureTiltPitchThreshold = 30.0f,
-            gestureTiltRollThreshold = 30.0f,
-            gestureTiltUpAction = GestureButton.BTN_X,
-            gestureTiltDownAction = GestureButton.BTN_Y,
-            gestureTiltLeftAction = GestureButton.BTN_LB,
-            gestureTiltRightAction = GestureButton.BTN_RB,
-            gestureTiltAngleThreshold = 30.0f,
-            gestureTiltAction = GestureButton.BTN_X,
-            gestureShakeEnabled = false,
-            gestureShakeThreshold = 11.0f,
-            gestureShakeAction = GestureButton.BTN_X,
-            gestureShakeCooldownMs = 450L,
-            gestureThreshold = 8.5f,
-            gestureAction = GestureAction.MELEE_RT,
-            gestureCooldownMs = 400L,
-            maxDpsYaw = 180.0f,
-            maxDpsPitch = 220.0f,
-            gameDeadzoneCompensation = 0.12f,
-            stickResponseCurve = StickResponseCurve.LINEAR,
+            combatGestures = CombatGesturesSettings(
+                flicksEnabled = true,
+                flickThreshold = 8.5f,
+                flickCooldownMs = 350L,
+                flickUpAction = GestureButton.BTN_X,
+                flickDownAction = GestureButton.BTN_Y,
+                flickLeftAction = GestureButton.SNAP_TURN_180,
+                flickRightAction = GestureButton.TRIGGER_RT,
+                tiltEnabled = false,
+                shakeEnabled = false,
+            )
         )
 
         /** High-precision preset for slow, accurate aiming (sniping / bow games). */
         val PRECISION_PRESET = GyroSettings(
-            maxDpsYaw = 250f,
-            maxDpsRoll = 250f,
-            maxDpsPitch = 444f,
-            deadzoneThreshold = 0.5f,
-            smoothingEnabled = true,
-            smoothingAmount = 0.80f,
-            adaptiveSmoothing = true,
-            smoothingThreshold = 25.0f,
-            accelerationEnabled = false,
-            stickResponseCurve = StickResponseCurve.LINEAR,
-            gameDeadzoneCompensation = 0.12f,
-            xboxBlendMode = XboxBlendMode.JOYSTICK_SUPREME,
+            inputMode = InputMode.VELOCITY,
+            precisionAiming = PrecisionAimingSettings(
+                maxDpsYaw = 250f,
+                maxDpsRoll = 250f,
+                maxDpsPitch = 444f,
+                deadzoneThreshold = 0.5f,
+                smoothingEnabled = true,
+                smoothingAmount = 0.80f,
+                adaptiveSmoothing = true,
+                smoothingThreshold = 25.0f,
+                accelerationEnabled = false,
+                stickResponseCurve = StickResponseCurve.LINEAR,
+                antiDeadzone = 0.12f,
+                blendMode = XboxBlendMode.JOYSTICK_SUPREME,
+            )
         )
 
         /** Factory defaults — all settings at their neutral/default values. */
@@ -631,31 +731,6 @@ enum class FlightStickAxisTarget(val displayName: String) {
     }
 }
 
-/** Mode for joystick motion control while Combat Gestures (InputMode.GESTURE) is active. */
-@Serializable
-enum class GestureJoystickMode(val displayName: String, val shortName: String, val description: String) {
-    OFF(
-        "Off (No Gyro on Joystick)",
-        "Off",
-        "Joysticks are completely detached from gyro. Pure touch/gamepad sticks only."
-    ),
-    GYRO_AIMING(
-        "Gyro Aiming (Standard 1:1 FPS)",
-        "Gyro Aiming",
-        "Translates physical wrist velocity into camera stick speed. 1:1 mouse-like aiming."
-    ),
-    FLIGHT_STICK(
-        "3D Flight Stick (Attitude Yoke)",
-        "Flight Stick",
-        "3D orientation quaternion mapped to analog sticks for aviation and space flight."
-    ),
-    RAW_SILICON(
-        "Raw Silicon Gyro (Esports Direct)",
-        "Raw Silicon",
-        "Pure MEMS silicon sensor stream without software filtering."
-    )
-}
-
 /**
  * Resolves the protocol sensor mode (0x00..0x04) required from the mobile client
  * based on the active controller and gyro configuration.
@@ -676,13 +751,7 @@ fun GyroSettings.computeSensorMode(controller: ControllerType): Byte {
         InputMode.VELOCITY -> NexpadProtocol.SENSOR_MODE_IMU_6AXIS
         InputMode.ABSOLUTE_TILT -> NexpadProtocol.SENSOR_MODE_GRAVITY
         InputMode.AIR_MOUSE -> NexpadProtocol.SENSOR_MODE_GAME_ROTATION
-        InputMode.GESTURE -> {
-            when (effectiveGestureJoystickMode) {
-                GestureJoystickMode.FLIGHT_STICK -> NexpadProtocol.SENSOR_MODE_GAME_ROTATION
-                GestureJoystickMode.RAW_SILICON -> NexpadProtocol.SENSOR_MODE_RAW_UNCALIBRATED
-                else -> NexpadProtocol.SENSOR_MODE_LINEAR_GESTURE
-            }
-        }
+        InputMode.GESTURE -> NexpadProtocol.SENSOR_MODE_LINEAR_GESTURE
         InputMode.RAW_UNCALIBRATED -> NexpadProtocol.SENSOR_MODE_RAW_UNCALIBRATED
     }
 }

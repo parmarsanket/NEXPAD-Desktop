@@ -17,7 +17,7 @@ class GyroComparisonAndBenchmarkTest {
 
     @Test
     fun benchmarkDs4VsXboxSmallInputResponse() {
-        val defaultSettings = GyroSettings.DEFAULT.copy(gameDeadzoneCompensation = 0.14f) // Benchmark with Anti-Deadzone = 0.14 and deadzone = 0.8°/s
+        val defaultSettings = GyroSettings.DEFAULT.copy(precisionAiming = GyroSettings.DEFAULT.precisionAiming.copy(antiDeadzone = 0.14f)) // Benchmark with Anti-Deadzone = 0.14 and deadzone = 0.8°/s
 
         println("==========================================================================================================")
         println("  BENCHMARK 1: DS4 vs REFINED XBOX GYRO AT SPEEDS FROM 0.0°/s (REST) TO 100°/s (FLICK)")
@@ -117,7 +117,7 @@ class GyroComparisonAndBenchmarkTest {
         println("==========================================================================================================")
 
         val gyroProcessor = GyroProcessor()
-        val settings = GyroSettings.DEFAULT.copy(gameDeadzoneCompensation = 0.14f) // Default is JOYSTICK_SUPREME with Anti-Deadzone
+        val settings = GyroSettings.DEFAULT.copy(precisionAiming = GyroSettings.DEFAULT.precisionAiming.copy(antiDeadzone = 0.14f)) // Default is JOYSTICK_SUPREME with Anti-Deadzone
         val gyroRad = 15f * degToRad // Phone has 15°/s gyro motion
 
         // Case 1: User pushes physical Right Stick to full right (+1.0) on phone screen
@@ -182,8 +182,8 @@ class GyroComparisonAndBenchmarkTest {
 
     @Test
     fun benchmarkRawSiliconGyroVsCalibratedGyro() {
-        val calibratedSettings = GyroSettings.DEFAULT.copy(inputMode = InputMode.VELOCITY, gameDeadzoneCompensation = 0.14f)
-        val rawSiliconSettings = GyroSettings.DEFAULT.copy(inputMode = InputMode.RAW_UNCALIBRATED, gameDeadzoneCompensation = 0.14f)
+        val calibratedSettings = GyroSettings.DEFAULT.copy(inputMode = InputMode.VELOCITY, precisionAiming = GyroSettings.DEFAULT.precisionAiming.copy(antiDeadzone = 0.14f))
+        val rawSiliconSettings = GyroSettings.DEFAULT.copy(inputMode = InputMode.RAW_UNCALIBRATED, rawSilicon = GyroSettings.DEFAULT.rawSilicon.copy(antiDeadzone = 0.14f))
 
         println("==========================================================================================================")
         println("  BENCHMARK 4: RAW SILICON GYRO (UNCALIBRATED + BIAS) VS CALIBRATED GYRO (0.0°/s TO 100°/s)")
@@ -267,12 +267,14 @@ class GyroComparisonAndBenchmarkTest {
     fun benchmarkYawAndRollSimultaneousBlending() {
         val processor = GyroProcessor()
         val mixSettings = GyroSettings.DEFAULT.copy(
-            horizontalAxis = HorizontalAxis.MIX,
-            deadzoneThreshold = 0f,
-            tighteningEnabled = false,
-            smoothingEnabled = false,
-            accelerationEnabled = false,
-            maxDpsYaw = 200f // 1.0x sensitivity scale
+            precisionAiming = GyroSettings.DEFAULT.precisionAiming.copy(
+                horizontalAxis = HorizontalAxis.MIX,
+                deadzoneThreshold = 0f,
+                tighteningEnabled = false,
+                smoothingEnabled = false,
+                accelerationEnabled = false,
+                maxDpsYaw = 200f
+            )
         )
 
         println("==========================================================================================================")
@@ -335,13 +337,17 @@ class GyroComparisonAndBenchmarkTest {
         }
 
         val baseSettings = GyroSettings.DEFAULT.copy(
-            maxDpsYaw = 200f,
-            accelerationEnabled = false,
-            deadzoneThreshold = 0.8f,
-            gameDeadzoneCompensation = 0.14f
+            precisionAiming = GyroSettings.DEFAULT.precisionAiming.copy(
+                maxDpsYaw = 200f,
+                accelerationEnabled = false,
+                deadzoneThreshold = 0.8f,
+                antiDeadzone = 0.14f
+            )
         )
         val linearizedSettings = baseSettings.copy(
-            stickResponseCurve = com.sanket.tools.nexpaddesktop.model.StickResponseCurve.LINEARIZED
+            precisionAiming = baseSettings.precisionAiming.copy(
+                stickResponseCurve = com.sanket.tools.nexpaddesktop.model.StickResponseCurve.LINEARIZED
+            )
         )
 
         // Speed sweep: 0.0, 0.2, 0.5, 0.8 (threshold), 1.0, 2.0, 5.0, 10.0, 25.0, 50.0, 100.0, 150.0, 200.0, 250.0, 300.0 °/s

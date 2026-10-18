@@ -72,7 +72,7 @@ class AirMouseFlightSimTest {
     @Test
     fun testCenterRestingDeadzoneFiltersMicroTremors() {
         val processor = GyroProcessor()
-        val settings = GyroSettings.FLIGHT_SIM_PRESET.copy(airMouseDeadzone = 2.0f)
+        val settings = GyroSettings.FLIGHT_SIM_PRESET.copy(flightStick = GyroSettings.FLIGHT_SIM_PRESET.flightStick.copy(deadzone = 2.0f))
 
         // Initialize at 0
         val neutralQ = createQuat(0f, 0f, 0f)
@@ -99,11 +99,14 @@ class AirMouseFlightSimTest {
     fun testWingBankingAndElevatorPitchDeflection() {
         val processor = GyroProcessor()
         val settings = GyroSettings.FLIGHT_SIM_PRESET.copy(
-            airMouseMaxPitch = 35.0f,
-            airMouseMaxRollYaw = 35.0f,
-            airMouseDeadzone = 0.0f,
-            airMouseCurve = 1.0f, // Pure linear for exact check
-            airMouseInvertPitch = true
+            flightStick = GyroSettings.FLIGHT_SIM_PRESET.flightStick.copy(
+                maxPitchAngle = 35.0f,
+                maxRollAngle = 35.0f,
+                maxYawAngle = 35.0f,
+                deadzone = 0.0f,
+                curveExponent = 1.0f,
+                pitchInvert = true
+            )
         )
 
         // Init reference
@@ -138,9 +141,11 @@ class AirMouseFlightSimTest {
     fun testInputPipelineRoutesFlightControlsToLeftStickByDefault() {
         val processor = GyroProcessor()
         val settings = GyroSettings.FLIGHT_SIM_PRESET.copy(
-            airMouseTargetStick = XboxTargetStick.LEFT_STICK,
-            airMouseDeadzone = 0.0f,
-            airMouseCurve = 1.0f
+            flightStick = GyroSettings.FLIGHT_SIM_PRESET.flightStick.copy(
+                rollTarget = FlightStickAxisTarget.LS_X,
+                deadzone = 0.0f,
+                curveExponent = 1.0f
+            )
         )
 
         // Init
@@ -184,17 +189,19 @@ class AirMouseFlightSimTest {
         // Pitch -> Right Stick Left/Right (RS_X), normal
         // Roll -> Left Stick Up/Down (LS_Y), normal
         val settings = GyroSettings.FLIGHT_SIM_PRESET.copy(
-            airMouseYawTarget = FlightStickAxisTarget.RS_Y,
-            airMouseYawInvert = true,
-            airMousePitchTarget = FlightStickAxisTarget.RS_X,
-            airMousePitchInvert = false,
-            airMouseRollTarget = FlightStickAxisTarget.LS_Y,
-            airMouseRollInvert = false,
-            airMouseDeadzone = 0.0f,
-            airMouseCurve = 1.0f,
-            airMouseMaxYaw = 35.0f,
-            airMouseMaxPitch = 35.0f,
-            airMouseMaxRoll = 35.0f,
+            flightStick = GyroSettings.FLIGHT_SIM_PRESET.flightStick.copy(
+                yawTarget = FlightStickAxisTarget.RS_Y,
+                yawInvert = true,
+                pitchTarget = FlightStickAxisTarget.RS_X,
+                pitchInvert = false,
+                rollTarget = FlightStickAxisTarget.LS_Y,
+                rollInvert = false,
+                deadzone = 0.0f,
+                curveExponent = 1.0f,
+                maxYawAngle = 35.0f,
+                maxPitchAngle = 35.0f,
+                maxRollAngle = 35.0f,
+            )
         )
 
         // Init
@@ -234,10 +241,12 @@ class AirMouseFlightSimTest {
     fun testExtremeSmallMaxLockAngleOneDegree() {
         val processor = GyroProcessor()
         val settings = GyroSettings.FLIGHT_SIM_PRESET.copy(
-            airMouseMaxRoll = 1.0f,
-            airMouseCurve = 1.0f,
-            airMouseRollTarget = FlightStickAxisTarget.LS_X,
-            airMouseRollInvert = false,
+            flightStick = GyroSettings.FLIGHT_SIM_PRESET.flightStick.copy(
+                maxRollAngle = 1.0f,
+                curveExponent = 1.0f,
+                rollTarget = FlightStickAxisTarget.LS_X,
+                rollInvert = false,
+            )
         )
 
         // Init
@@ -274,11 +283,13 @@ class AirMouseFlightSimTest {
     fun testExtremeLargeMaxLockAngle179Degrees() {
         val processor = GyroProcessor()
         val settings = GyroSettings.FLIGHT_SIM_PRESET.copy(
-            airMouseMaxRoll = 179.0f,
-            airMouseDeadzone = 0.0f,
-            airMouseCurve = 1.0f,
-            airMouseRollTarget = FlightStickAxisTarget.LS_X,
-            airMouseRollInvert = false,
+            flightStick = GyroSettings.FLIGHT_SIM_PRESET.flightStick.copy(
+                maxRollAngle = 179.0f,
+                deadzone = 0.0f,
+                curveExponent = 1.0f,
+                rollTarget = FlightStickAxisTarget.LS_X,
+                rollInvert = false,
+            )
         )
 
         // Init

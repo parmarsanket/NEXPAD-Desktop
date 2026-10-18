@@ -1,11 +1,7 @@
 package com.sanket.tools.nexpaddesktop.driver
 
 import com.sanket.tools.nexpad.protocol.NexpadProtocol
-import com.sanket.tools.nexpaddesktop.model.FlightStickAxisTarget
-import com.sanket.tools.nexpaddesktop.model.GyroSettings
-import com.sanket.tools.nexpaddesktop.model.HorizontalAxis
-import com.sanket.tools.nexpaddesktop.model.InputMode
-import com.sanket.tools.nexpaddesktop.model.computeSensorMode
+import com.sanket.tools.nexpaddesktop.model.*
 import org.junit.Assert.*
 import org.junit.Test
 import kotlin.math.abs
@@ -18,8 +14,10 @@ class GyroProcessorSensorModeTest {
         val settings = GyroSettings(
             enabled = true,
             inputMode = InputMode.VELOCITY,
-            smoothingEnabled = false,
-            deadzoneThreshold = 0f
+            precisionAiming = PrecisionAimingSettings(
+                smoothingEnabled = false,
+                deadzoneThreshold = 0f
+            )
         )
 
         val result = processor.process(
@@ -48,10 +46,12 @@ class GyroProcessorSensorModeTest {
         val settings = GyroSettings(
             enabled = true,
             inputMode = InputMode.VELOCITY,
-            horizontalAxis = com.sanket.tools.nexpaddesktop.model.HorizontalAxis.YAW,
-            invertX = false,
-            smoothingEnabled = false,
-            deadzoneThreshold = 0f
+            precisionAiming = PrecisionAimingSettings(
+                horizontalAxis = com.sanket.tools.nexpaddesktop.model.HorizontalAxis.YAW,
+                invertX = false,
+                smoothingEnabled = false,
+                deadzoneThreshold = 0f
+            )
         )
 
         // Turning right produces positive rawGyroZ from Android phone
@@ -72,10 +72,12 @@ class GyroProcessorSensorModeTest {
         val settings = GyroSettings(
             enabled = true,
             inputMode = InputMode.ABSOLUTE_TILT,
-            absoluteMaxTilt = 45f,
-            absoluteCurve = 1.0f,
-            absoluteSensitivityX = 1.0f,
-            invertX = false
+            steeringWheel = SteeringWheelSettings(
+                maxTiltAngle = 45f,
+                responseCurve = 1.0f,
+                sensitivityX = 1.0f,
+                invertSteering = false
+            )
         )
 
         // In Mode 0x01 (Gravity), rawAccelX is 0f, rawGravityX is ~4.9f (~30 deg tilt)
@@ -103,10 +105,12 @@ class GyroProcessorSensorModeTest {
         val settings = GyroSettings(
             enabled = true,
             inputMode = InputMode.ABSOLUTE_TILT,
-            absoluteMaxTilt = 45f,
-            absoluteCurve = 1.0f,
-            absoluteSensitivityX = 1.0f,
-            invertX = false
+            steeringWheel = SteeringWheelSettings(
+                maxTiltAngle = 45f,
+                responseCurve = 1.0f,
+                sensitivityX = 1.0f,
+                invertSteering = false
+            )
         )
 
         // In Mode 0x00 fallback, rawGravityX is 0f, rawAccelX is 4.9f
@@ -133,11 +137,10 @@ class GyroProcessorSensorModeTest {
         val settings = GyroSettings(
             enabled = true,
             inputMode = InputMode.AIR_MOUSE,
-            smoothingEnabled = false,
-            deadzoneThreshold = 0f,
-            airMouseDeadzone = 0f,
-            airMouseYawTarget = FlightStickAxisTarget.RS_X,
-            airMouseHorizontalAxis = HorizontalAxis.YAW
+            flightStick = FlightStickSettings(
+                deadzone = 0f,
+                yawTarget = FlightStickAxisTarget.RS_X
+            )
         )
 
         // Frame 1: Initial baseline quaternion
@@ -167,8 +170,9 @@ class GyroProcessorSensorModeTest {
         val settings = GyroSettings(
             enabled = true,
             inputMode = InputMode.GESTURE,
-            smoothingEnabled = false,
-            deadzoneThreshold = 0f
+            combatGestures = CombatGesturesSettings(
+                flicksEnabled = true
+            )
         )
 
         val result = processor.process(
@@ -189,8 +193,9 @@ class GyroProcessorSensorModeTest {
         val settings = GyroSettings(
             enabled = true,
             inputMode = InputMode.RAW_UNCALIBRATED,
-            smoothingEnabled = false,
-            deadzoneThreshold = 0f
+            rawSilicon = RawSiliconSettings(
+                deadzoneThreshold = 0f
+            )
         )
 
         // Raw gyro is 0.05 (pure drift), bias is 0.05 -> Clean gyro is 0.0

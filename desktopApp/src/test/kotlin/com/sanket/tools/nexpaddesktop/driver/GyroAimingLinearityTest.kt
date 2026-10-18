@@ -2,10 +2,7 @@ package com.sanket.tools.nexpaddesktop.driver
 
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpad.protocol.NexpadProtocol
-import com.sanket.tools.nexpaddesktop.model.GyroSettings
-import com.sanket.tools.nexpaddesktop.model.HorizontalAxis
-import com.sanket.tools.nexpaddesktop.model.InputMode
-import com.sanket.tools.nexpaddesktop.model.StickResponseCurve
+import com.sanket.tools.nexpaddesktop.model.*
 import com.sanket.tools.nexpaddesktop.ui.ControllerType
 import org.junit.Assert.*
 import org.junit.Test
@@ -25,11 +22,13 @@ class GyroAimingLinearityTest {
         val settings = GyroSettings(
             enabled = true,
             inputMode = InputMode.VELOCITY,
-            horizontalAxis = HorizontalAxis.YAW,
-            maxDpsYaw = 200.0f,
-            accelerationEnabled = false,
-            smoothingEnabled = false,
-            deadzoneThreshold = 0f
+            precisionAiming = PrecisionAimingSettings(
+                horizontalAxis = HorizontalAxis.YAW,
+                maxDpsYaw = 200.0f,
+                accelerationEnabled = false,
+                smoothingEnabled = false,
+                deadzoneThreshold = 0f
+            )
         )
 
         // 1. Slow micro-movement: 20 deg/s (10% of max 200 dps)
@@ -68,13 +67,15 @@ class GyroAimingLinearityTest {
         val settings = GyroSettings(
             enabled = true,
             inputMode = InputMode.VELOCITY,
-            horizontalAxis = HorizontalAxis.YAW,
-            maxDpsYaw = 200.0f,
-            accelerationEnabled = false,
-            stickResponseCurve = StickResponseCurve.LINEAR,
-            gameDeadzoneCompensation = 0.0f, // Test pure stick mapping without offset
-            smoothingEnabled = false,
-            deadzoneThreshold = 0f
+            precisionAiming = PrecisionAimingSettings(
+                horizontalAxis = HorizontalAxis.YAW,
+                maxDpsYaw = 200.0f,
+                accelerationEnabled = false,
+                stickResponseCurve = StickResponseCurve.LINEAR,
+                antiDeadzone = 0.0f,
+                smoothingEnabled = false,
+                deadzoneThreshold = 0f
+            )
         )
 
         // 50 deg/s at 200 dps max -> exactly 0.25 stick deflection (25%)
@@ -100,13 +101,15 @@ class GyroAimingLinearityTest {
         val settings = GyroSettings(
             enabled = true,
             inputMode = InputMode.VELOCITY,
-            horizontalAxis = HorizontalAxis.YAW,
-            maxDpsYaw = 200.0f,
-            accelerationEnabled = false,
-            stickResponseCurve = StickResponseCurve.LINEARIZED, // exponent = 0.72
-            gameDeadzoneCompensation = 0.0f,
-            smoothingEnabled = false,
-            deadzoneThreshold = 0f
+            precisionAiming = PrecisionAimingSettings(
+                horizontalAxis = HorizontalAxis.YAW,
+                maxDpsYaw = 200.0f,
+                accelerationEnabled = false,
+                stickResponseCurve = StickResponseCurve.LINEARIZED,
+                antiDeadzone = 0.0f,
+                smoothingEnabled = false,
+                deadzoneThreshold = 0f
+            )
         )
 
         // 20 deg/s at 200 dps max -> raw is 0.10. With exponent 0.72: 0.10^0.72 ≈ 0.190
@@ -145,12 +148,14 @@ class GyroAimingLinearityTest {
         val normalRollSettings = GyroSettings(
             enabled = true,
             inputMode = InputMode.VELOCITY,
-            horizontalAxis = HorizontalAxis.ROLL,
-            invertRoll = false,
-            invertX = false,
-            deadzoneThreshold = 0f,
-            smoothingEnabled = false,
-            accelerationEnabled = false
+            precisionAiming = PrecisionAimingSettings(
+                horizontalAxis = HorizontalAxis.ROLL,
+                invertRoll = false,
+                invertX = false,
+                deadzoneThreshold = 0f,
+                smoothingEnabled = false,
+                accelerationEnabled = false
+            )
         )
         val normalRollRes = processor.process(
             rawGyroX = 0f, rawGyroY = rollRadPerSec, rawGyroZ = 0f,
@@ -159,7 +164,7 @@ class GyroAimingLinearityTest {
         assertTrue("Normal roll should be positive", normalRollRes.yawDps > 0f)
 
         // 2. ROLL axis with invertRoll = true
-        val invertedRollSettings = normalRollSettings.copy(invertRoll = true)
+        val invertedRollSettings = normalRollSettings.copy(precisionAiming = normalRollSettings.precisionAiming.copy(invertRoll = true))
         val invertedRollRes = processor.process(
             rawGyroX = 0f, rawGyroY = rollRadPerSec, rawGyroZ = 0f,
             settings = invertedRollSettings
@@ -171,12 +176,14 @@ class GyroAimingLinearityTest {
         val mixNormal = GyroSettings(
             enabled = true,
             inputMode = InputMode.VELOCITY,
-            horizontalAxis = HorizontalAxis.MIX,
-            invertX = false,
-            invertRoll = false,
-            deadzoneThreshold = 0f,
-            smoothingEnabled = false,
-            accelerationEnabled = false
+            precisionAiming = PrecisionAimingSettings(
+                horizontalAxis = HorizontalAxis.MIX,
+                invertX = false,
+                invertRoll = false,
+                deadzoneThreshold = 0f,
+                smoothingEnabled = false,
+                accelerationEnabled = false
+            )
         )
         val mixNormalRes = processor.process(
             rawGyroX = 0f, rawGyroY = rollRadPerSec, rawGyroZ = yawRadPerSec,
@@ -185,7 +192,7 @@ class GyroAimingLinearityTest {
         assertTrue("Mix with both positive should be positive", mixNormalRes.yawDps > 0f)
 
         // Invert Roll only in MIX: roll cancels yaw because hYaw is +50, hRoll is -50 -> sum = 0
-        val mixInvertRoll = mixNormal.copy(invertRoll = true)
+        val mixInvertRoll = mixNormal.copy(precisionAiming = mixNormal.precisionAiming.copy(invertRoll = true))
         val mixInvertRollRes = processor.process(
             rawGyroX = 0f, rawGyroY = rollRadPerSec, rawGyroZ = yawRadPerSec,
             settings = mixInvertRoll
@@ -199,11 +206,13 @@ class GyroAimingLinearityTest {
         val settings = GyroSettings(
             enabled = true,
             inputMode = InputMode.ABSOLUTE_TILT,
-            xboxTargetStick = com.sanket.tools.nexpaddesktop.model.XboxTargetStick.LEFT_STICK,
-            absoluteMaxTilt = 35.0f,
-            absoluteSensitivityX = 1.0f,
-            absoluteCurve = 1.0f,
-            gameDeadzoneCompensation = 0.14f
+            steeringWheel = SteeringWheelSettings(
+                targetStick = XboxTargetStick.LEFT_STICK,
+                maxTiltAngle = 35.0f,
+                sensitivityX = 1.0f,
+                responseCurve = 1.0f,
+                deadzoneThreshold = 0.0f
+            )
         )
 
         // 35° steering lock on gravity: 9.8 * sin(35°) ≈ 5.62 m/s²
@@ -310,13 +319,15 @@ class GyroAimingLinearityTest {
         val settings = GyroSettings(
             enabled = true,
             inputMode = InputMode.VELOCITY,
-            horizontalAxis = HorizontalAxis.YAW,
-            maxDpsYaw = 200.0f,
-            maxDpsPitch = 200.0f,
-            accelerationEnabled = false,
-            smoothingEnabled = false,
-            deadzoneThreshold = 0f,
-            gameDeadzoneCompensation = 0.14f
+            precisionAiming = PrecisionAimingSettings(
+                horizontalAxis = HorizontalAxis.YAW,
+                maxDpsYaw = 200.0f,
+                maxDpsPitch = 200.0f,
+                accelerationEnabled = false,
+                smoothingEnabled = false,
+                deadzoneThreshold = 0f,
+                antiDeadzone = 0.14f
+            )
         )
 
         // Full 200 dps rotation on both Yaw (X) and Pitch (Y) -> Top-Right diagonal tilt
@@ -355,11 +366,13 @@ class GyroAimingLinearityTest {
         val defaultSettings = GyroSettings(
             enabled = true,
             inputMode = InputMode.VELOCITY,
-            horizontalAxis = HorizontalAxis.YAW,
-            maxDpsYaw = 200.0f,
-            accelerationEnabled = false,
-            smoothingEnabled = false,
-            deadzoneThreshold = 0f
+            precisionAiming = PrecisionAimingSettings(
+                horizontalAxis = HorizontalAxis.YAW,
+                maxDpsYaw = 200.0f,
+                accelerationEnabled = false,
+                smoothingEnabled = false,
+                deadzoneThreshold = 0f
+            )
         )
         val rad1 = 1.0f / GyroProcessor.RAD_TO_DEG
         val inputSlow = GamepadInput(
@@ -386,13 +399,15 @@ class GyroAimingLinearityTest {
         val settings = GyroSettings(
             enabled = true,
             inputMode = InputMode.VELOCITY,
-            horizontalAxis = HorizontalAxis.YAW,
-            maxDpsYaw = 200.0f,
-            maxDpsPitch = 200.0f,
-            accelerationEnabled = false,
-            smoothingEnabled = false,
-            deadzoneThreshold = 0f,
-            gameDeadzoneCompensation = 0.14f
+            precisionAiming = PrecisionAimingSettings(
+                horizontalAxis = HorizontalAxis.YAW,
+                maxDpsYaw = 200.0f,
+                maxDpsPitch = 200.0f,
+                accelerationEnabled = false,
+                smoothingEnabled = false,
+                deadzoneThreshold = 0f,
+                antiDeadzone = 0.14f
+            )
         )
 
         // 1. Pure Horizontal motion (departure from center)

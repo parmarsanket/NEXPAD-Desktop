@@ -181,18 +181,15 @@ fun ControllerScreen(
 
                 // ── Gamepad Base Sticks Sensitivity ──
                 ModernSectionCard(
-                    title = "Analog Sticks Base Sensitivity",
+                    title = "Analog Sticks Base Sensitivity (${gyroSettings.inputMode.displayName})",
                     icon = Icons.Default.Tune,
                     onReset = {
-                        onRsSensitivityXChange(1.0f)
-                        onRsSensitivityYChange(1.0f)
-                        onLsSensitivityXChange(1.0f)
-                        onLsSensitivityYChange(1.0f)
+                        onGyroSettingsChange(gyroSettings.updateActiveStickSensitivities(1.0f, 1.0f, 1.0f, 1.0f))
                     },
-                    resetTooltip = "Reset Stick Sensitivities to 1.00×"
+                    resetTooltip = "Reset Stick Sensitivities for ${gyroSettings.inputMode.displayName} to 1.00×"
                 ) {
                     Text(
-                        "Hardware scaling applied to the physical on-screen thumbsticks from your phone.",
+                        "Hardware scaling applied to the physical on-screen thumbsticks specifically for ${gyroSettings.inputMode.displayName}.",
                         fontSize = 12.sp,
                         color = NeonPalette.CardIdleText
                     )
@@ -201,34 +198,34 @@ fun ControllerScreen(
                     Text("Right Stick (Camera / Look)", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = NeonPalette.Cyan)
                     ModernSlider(
                         label = "RS Horizontal Sensitivity",
-                        value = rsSensitivityX,
+                        value = gyroSettings.rsSensitivityX,
                         valueRange = 0.1f..3.0f,
                         format = "%.2f×",
-                        onValueChange = onRsSensitivityXChange
+                        onValueChange = { onGyroSettingsChange(gyroSettings.updateActiveStickSensitivities(rsX = it)) }
                     )
                     ModernSlider(
                         label = "RS Vertical Sensitivity",
-                        value = rsSensitivityY,
+                        value = gyroSettings.rsSensitivityY,
                         valueRange = 0.1f..3.0f,
                         format = "%.2f×",
-                        onValueChange = onRsSensitivityYChange
+                        onValueChange = { onGyroSettingsChange(gyroSettings.updateActiveStickSensitivities(rsY = it)) }
                     )
 
                     Spacer(modifier = Modifier.height(10.dp))
                     Text("Left Stick (Movement)", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = NeonPalette.Cyan)
                     ModernSlider(
                         label = "LS Horizontal Sensitivity",
-                        value = lsSensitivityX,
+                        value = gyroSettings.lsSensitivityX,
                         valueRange = 0.1f..3.0f,
                         format = "%.2f×",
-                        onValueChange = onLsSensitivityXChange
+                        onValueChange = { onGyroSettingsChange(gyroSettings.updateActiveStickSensitivities(lsX = it)) }
                     )
                     ModernSlider(
                         label = "LS Vertical Sensitivity",
-                        value = lsSensitivityY,
+                        value = gyroSettings.lsSensitivityY,
                         valueRange = 0.1f..3.0f,
                         format = "%.2f×",
-                        onValueChange = onLsSensitivityYChange
+                        onValueChange = { onGyroSettingsChange(gyroSettings.updateActiveStickSensitivities(lsY = it)) }
                     )
                 }
             }

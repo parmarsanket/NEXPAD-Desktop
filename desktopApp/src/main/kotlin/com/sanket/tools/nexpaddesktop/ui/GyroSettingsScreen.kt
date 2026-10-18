@@ -120,84 +120,12 @@ fun XboxMotionSettingsSection(
                     if (settings.enabled) {
                         OutlinedButton(
                             onClick = {
-                                val defaults = GyroSettings()
                                 val resetSettings = when (settings.inputMode) {
-                                    InputMode.VELOCITY, InputMode.RAW_UNCALIBRATED -> settings.copy(
-                                        maxDpsYaw = defaults.maxDpsYaw,
-                                        maxDpsPitch = defaults.maxDpsPitch,
-                                        maxDpsRoll = defaults.maxDpsRoll,
-                                        horizontalAxis = defaults.horizontalAxis,
-                                        invertX = defaults.invertX,
-                                        invertRoll = defaults.invertRoll,
-                                        invertY = defaults.invertY,
-                                        stickResponseCurve = defaults.stickResponseCurve,
-                                        accelerationEnabled = defaults.accelerationEnabled,
-                                        maxSensitivity = defaults.maxSensitivity,
-                                        maxThreshold = defaults.maxThreshold,
-                                        minThreshold = defaults.minThreshold,
-                                        gameDeadzoneCompensation = defaults.gameDeadzoneCompensation,
-                                        deadzoneThreshold = defaults.deadzoneThreshold,
-                                        tighteningEnabled = defaults.tighteningEnabled,
-                                        tighteningThreshold = defaults.tighteningThreshold,
-                                        lowSpeedAmplifierEnabled = defaults.lowSpeedAmplifierEnabled,
-                                        lowSpeedAmplifierAmount = defaults.lowSpeedAmplifierAmount,
-                                        lowSpeedAmplifierThreshold = defaults.lowSpeedAmplifierThreshold,
-                                        smoothingEnabled = defaults.smoothingEnabled,
-                                        smoothingAmount = defaults.smoothingAmount,
-                                        adaptiveSmoothing = defaults.adaptiveSmoothing,
-                                        smoothingThreshold = defaults.smoothingThreshold,
-                                        xboxTargetStick = defaults.xboxTargetStick,
-                                        xboxBlendMode = defaults.xboxBlendMode,
-                                        activationButtons = defaults.activationButtons
-                                    )
-                                    InputMode.ABSOLUTE_TILT -> settings.copy(
-                                        absoluteMaxTilt = defaults.absoluteMaxTilt,
-                                        absoluteSensitivityX = defaults.absoluteSensitivityX,
-                                        absoluteSensitivityY = defaults.absoluteSensitivityY,
-                                        absoluteCurve = defaults.absoluteCurve,
-                                        invertX = defaults.invertX,
-                                        xboxTargetStick = XboxTargetStick.LEFT_STICK,
-                                        activationButtons = defaults.activationButtons
-                                    )
-                                    InputMode.AIR_MOUSE -> settings.copy(
-                                        airMousePitchTarget = defaults.airMousePitchTarget,
-                                        airMousePitchInvert = defaults.airMousePitchInvert,
-                                        airMouseMaxPitch = defaults.airMouseMaxPitch,
-                                        airMouseRollTarget = defaults.airMouseRollTarget,
-                                        airMouseRollInvert = defaults.airMouseRollInvert,
-                                        airMouseMaxRoll = defaults.airMouseMaxRoll,
-                                        airMouseMaxRollYaw = defaults.airMouseMaxRollYaw,
-                                        airMouseYawTarget = defaults.airMouseYawTarget,
-                                        airMouseYawInvert = defaults.airMouseYawInvert,
-                                        airMouseMaxYaw = defaults.airMouseMaxYaw,
-                                        airMouseDeadzone = defaults.airMouseDeadzone,
-                                        airMouseCurve = defaults.airMouseCurve,
-                                        activationButtons = defaults.activationButtons
-                                    )
-                                    InputMode.GESTURE -> settings.copy(
-                                        gestureFlicksEnabled = defaults.gestureFlicksEnabled,
-                                        gestureFlickUpAction = defaults.gestureFlickUpAction,
-                                        gestureFlickDownAction = defaults.gestureFlickDownAction,
-                                        gestureFlickLeftAction = defaults.gestureFlickLeftAction,
-                                        gestureFlickRightAction = defaults.gestureFlickRightAction,
-                                        gestureFlickThreshold = defaults.gestureFlickThreshold,
-                                        gestureFlickCooldownMs = defaults.gestureFlickCooldownMs,
-                                        gestureTiltEnabled = defaults.gestureTiltEnabled,
-                                        gestureTiltPitchThreshold = defaults.gestureTiltPitchThreshold,
-                                        gestureTiltRollThreshold = defaults.gestureTiltRollThreshold,
-                                        gestureTiltUpAction = defaults.gestureTiltUpAction,
-                                        gestureTiltDownAction = defaults.gestureTiltDownAction,
-                                        gestureTiltLeftAction = defaults.gestureTiltLeftAction,
-                                        gestureTiltRightAction = defaults.gestureTiltRightAction,
-                                        gestureTiltHoldMode = defaults.gestureTiltHoldMode,
-                                        gestureShakeEnabled = defaults.gestureShakeEnabled,
-                                        gestureShakeThreshold = defaults.gestureShakeThreshold,
-                                        gestureShakeAction = defaults.gestureShakeAction,
-                                        gestureShakeCooldownMs = defaults.gestureShakeCooldownMs,
-                                        gestureJoystickMode = defaults.gestureJoystickMode,
-                                        gestureAimingEnabled = defaults.gestureAimingEnabled,
-                                        activationButtons = defaults.activationButtons
-                                    )
+                                    InputMode.VELOCITY -> settings.copy(precisionAiming = PrecisionAimingSettings())
+                                    InputMode.ABSOLUTE_TILT -> settings.copy(steeringWheel = SteeringWheelSettings())
+                                    InputMode.AIR_MOUSE -> settings.copy(flightStick = FlightStickSettings())
+                                    InputMode.GESTURE -> settings.copy(combatGestures = CombatGesturesSettings())
+                                    InputMode.RAW_UNCALIBRATED -> settings.copy(rawSilicon = RawSiliconSettings())
                                 }
                                 onSettingsChange(resetSettings)
                             },
@@ -353,435 +281,47 @@ fun XboxMotionSettingsSection(
         when (settings.inputMode) {
             InputMode.ABSOLUTE_TILT -> {
                 SteeringWheelDeepSettings(
-                    settings = settings,
-                    onSettingsChange = onSettingsChange
+                    settings = settings.steeringWheel,
+                    onSettingsChange = { updated ->
+                        onSettingsChange(settings.copy(steeringWheel = updated))
+                    }
                 )
             }
 
             InputMode.AIR_MOUSE -> {
                 FlightStickDeepSettings(
-                    settings = settings,
-                    onSettingsChange = onSettingsChange
+                    settings = settings.flightStick,
+                    onSettingsChange = { updated ->
+                        onSettingsChange(settings.copy(flightStick = updated))
+                    }
                 )
             }
 
             InputMode.GESTURE -> {
-                // ── Card 1: Directional Kinetic Flicks (Up, Down, Left, Right) ──
-                ModernSectionCard(
-                    title = "Directional Kinetic Flicks",
-                    icon = Icons.Default.SportsEsports,
-                    onReset = {
-                        onSettingsChange(
-                            settings.copy(
-                                gestureFlicksEnabled = true,
-                                gestureFlickUpAction = GestureButton.BTN_X,
-                                gestureFlickDownAction = GestureButton.BTN_Y,
-                                gestureFlickLeftAction = GestureButton.SNAP_TURN_180,
-                                gestureFlickRightAction = GestureButton.TRIGGER_RT,
-                                gestureFlickThreshold = 8.5f,
-                                gestureFlickCooldownMs = 350L,
-                                gestureThreshold = 8.5f,
-                                gestureCooldownMs = 400L,
-                                invertX = false
-                            )
-                        )
-                    },
-                    resetTooltip = "Reset Flicks to Defaults"
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Fast Directional Flicks", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
-                            Text("Sharp physical flicks in 4 directions trigger individual controller buttons", fontSize = 11.sp, color = NeonPalette.CardIdleText)
-                        }
-                        Switch(
-                            checked = settings.gestureFlicksEnabled,
-                            onCheckedChange = { onSettingsChange(settings.copy(gestureFlicksEnabled = it)) }
-                        )
+                CombatGesturesDeepSettings(
+                    settings = settings.combatGestures,
+                    onSettingsChange = { updated ->
+                        onSettingsChange(settings.copy(combatGestures = updated))
                     }
-
-                    if (settings.gestureFlicksEnabled) {
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        GestureButtonDropdown(
-                            label = "⬆️ Fast Flick UP:",
-                            selectedButton = settings.gestureFlickUpAction,
-                            onSelect = { onSettingsChange(settings.copy(gestureFlickUpAction = it)) }
-                        )
-
-                        GestureButtonDropdown(
-                            label = "⬇️ Fast Flick DOWN:",
-                            selectedButton = settings.gestureFlickDownAction,
-                            onSelect = { onSettingsChange(settings.copy(gestureFlickDownAction = it)) }
-                        )
-
-                        GestureButtonDropdown(
-                            label = "⬅️ Fast Flick LEFT:",
-                            selectedButton = settings.gestureFlickLeftAction,
-                            onSelect = { onSettingsChange(settings.copy(gestureFlickLeftAction = it)) }
-                        )
-
-                        GestureButtonDropdown(
-                            label = "➡️ Fast Flick RIGHT:",
-                            selectedButton = settings.gestureFlickRightAction,
-                            onSelect = { onSettingsChange(settings.copy(gestureFlickRightAction = it)) }
-                        )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-                        ModernSlider(
-                            label = "Flick Trigger Force Threshold",
-                            value = settings.gestureFlickThreshold,
-                            valueRange = 4.0f..20.0f,
-                            format = "%.1f m/s²",
-                            onValueChange = { onSettingsChange(settings.copy(gestureFlickThreshold = it, gestureThreshold = it)) }
-                        )
-
-                        ModernSlider(
-                            label = "Flick Debounce Cooldown",
-                            value = settings.gestureFlickCooldownMs.toFloat(),
-                            valueRange = 150.0f..800.0f,
-                            format = "%.0f ms",
-                            onValueChange = { onSettingsChange(settings.copy(gestureFlickCooldownMs = it.toLong(), gestureCooldownMs = it.toLong())) }
-                        )
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("Invert Flick / Snap Direction", fontSize = 13.sp, color = Color.White)
-                            Switch(
-                                checked = settings.invertX,
-                                onCheckedChange = { onSettingsChange(settings.copy(invertX = it)) }
-                            )
-                        }
-                    }
-                }
-
-                // ── Card 2: Gravity Tilt Posture (Angle Trigger) ──
-                ModernSectionCard(
-                    title = "Gravity Tilt Posture (Angle Trigger)",
-                    icon = Icons.Default.SportsEsports,
-                    onReset = {
-                        onSettingsChange(
-                            settings.copy(
-                                gestureTiltEnabled = false,
-                                gestureTiltPitchThreshold = 30.0f,
-                                gestureTiltRollThreshold = 30.0f,
-                                gestureTiltUpAction = GestureButton.BTN_X,
-                                gestureTiltDownAction = GestureButton.BTN_Y,
-                                gestureTiltLeftAction = GestureButton.BTN_LB,
-                                gestureTiltRightAction = GestureButton.BTN_RB,
-                                gestureTiltHoldMode = false,
-                                gestureTiltAngleThreshold = 30.0f,
-                                gestureTiltAction = GestureButton.BTN_X
-                            )
-                        )
-                    },
-                    resetTooltip = "Reset Tilt Posture to Defaults"
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Tilt Posture Triggers (Up, Down, Left, Right)", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
-                            Text("Triggers buttons when phone is tilted past specified angles (tactical lean, raise/lower phone)", fontSize = 11.sp, color = NeonPalette.CardIdleText)
-                        }
-                        Switch(
-                            checked = settings.gestureTiltEnabled,
-                            onCheckedChange = { onSettingsChange(settings.copy(gestureTiltEnabled = it)) }
-                        )
-                    }
-
-                    if (settings.gestureTiltEnabled) {
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        GestureButtonDropdown(
-                            label = "⬆️ Tilt UP (Raise Phone):",
-                            selectedButton = settings.gestureTiltUpAction,
-                            onSelect = { onSettingsChange(settings.copy(gestureTiltUpAction = it, gestureTiltAction = it)) }
-                        )
-
-                        GestureButtonDropdown(
-                            label = "⬇️ Tilt DOWN (Lower Phone):",
-                            selectedButton = settings.gestureTiltDownAction,
-                            onSelect = { onSettingsChange(settings.copy(gestureTiltDownAction = it)) }
-                        )
-
-                        GestureButtonDropdown(
-                            label = "⬅️ Tilt LEFT (Bank Left / Lean):",
-                            selectedButton = settings.gestureTiltLeftAction,
-                            onSelect = { onSettingsChange(settings.copy(gestureTiltLeftAction = it)) }
-                        )
-
-                        GestureButtonDropdown(
-                            label = "➡️ Tilt RIGHT (Bank Right / Lean):",
-                            selectedButton = settings.gestureTiltRightAction,
-                            onSelect = { onSettingsChange(settings.copy(gestureTiltRightAction = it)) }
-                        )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-                        ModernSlider(
-                            label = "Pitch Tilt Angle (Up / Down)",
-                            value = settings.gestureTiltPitchThreshold,
-                            valueRange = 10.0f..80.0f,
-                            format = "%.0f°",
-                            onValueChange = { onSettingsChange(settings.copy(gestureTiltPitchThreshold = it, gestureTiltAngleThreshold = it)) }
-                        )
-
-                        ModernSlider(
-                            label = "Roll Tilt Angle (Left / Right)",
-                            value = settings.gestureTiltRollThreshold,
-                            valueRange = 10.0f..80.0f,
-                            format = "%.0f°",
-                            onValueChange = { onSettingsChange(settings.copy(gestureTiltRollThreshold = it)) }
-                        )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text("Trigger Behavior:", fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = Color.White)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            FilterChip(
-                                selected = !settings.gestureTiltHoldMode,
-                                onClick = { onSettingsChange(settings.copy(gestureTiltHoldMode = false)) },
-                                label = { Text("Pulse on Tilt (Single Press)", fontSize = 11.sp) }
-                            )
-                            FilterChip(
-                                selected = settings.gestureTiltHoldMode,
-                                onClick = { onSettingsChange(settings.copy(gestureTiltHoldMode = true)) },
-                                label = { Text("Hold while Tilted (Lean / Block)", fontSize = 11.sp) }
-                            )
-                        }
-                    }
-                }
-
-                // ── Card 3: Shake Motion Detection ──
-                ModernSectionCard(
-                    title = "Shake Motion Detection (Vigorous Shaking)",
-                    icon = Icons.Default.SportsEsports,
-                    onReset = {
-                        onSettingsChange(
-                            settings.copy(
-                                gestureShakeEnabled = false,
-                                gestureShakeThreshold = 11.0f,
-                                gestureShakeAction = GestureButton.BTN_X,
-                                gestureShakeCooldownMs = 450L
-                            )
-                        )
-                    },
-                    resetTooltip = "Reset Shake Motion to Defaults"
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Vigorous Phone Shaking", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
-                            Text("Detects rapid back-and-forth phone shaking (recharge flashlight, grab escape, reload)", fontSize = 11.sp, color = NeonPalette.CardIdleText)
-                        }
-                        Switch(
-                            checked = settings.gestureShakeEnabled,
-                            onCheckedChange = { onSettingsChange(settings.copy(gestureShakeEnabled = it)) }
-                        )
-                    }
-
-                    if (settings.gestureShakeEnabled) {
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        GestureButtonDropdown(
-                            label = "📳 Triggered Button / Action:",
-                            selectedButton = settings.gestureShakeAction,
-                            onSelect = { onSettingsChange(settings.copy(gestureShakeAction = it)) }
-                        )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-                        ModernSlider(
-                            label = "Shake Sensitivity Threshold",
-                            value = settings.gestureShakeThreshold,
-                            valueRange = 6.0f..22.0f,
-                            format = "%.1f m/s²",
-                            onValueChange = { onSettingsChange(settings.copy(gestureShakeThreshold = it)) }
-                        )
-
-                        ModernSlider(
-                            label = "Shake Debounce Cooldown",
-                            value = settings.gestureShakeCooldownMs.toFloat(),
-                            valueRange = 200.0f..1000.0f,
-                            format = "%.0f ms",
-                            onValueChange = { onSettingsChange(settings.copy(gestureShakeCooldownMs = it.toLong())) }
-                        )
-                    }
-                }
-
-                // ── Card 4: Joystick Gyro Settings ──
-                ModernSectionCard(
-                    title = "Joystick Gyro Settings",
-                    icon = Icons.Default.Speed,
-                    onReset = {
-                        onSettingsChange(
-                            settings.copy(
-                                gestureJoystickMode = GestureJoystickMode.OFF,
-                                gestureAimingEnabled = false
-                            )
-                        )
-                    },
-                    resetTooltip = "Reset Joystick Mode to Default (Off)"
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Attach Gyro to Joystick", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
-                            Text(
-                                if (settings.effectiveGestureJoystickMode != GestureJoystickMode.OFF)
-                                    "Active • ${settings.effectiveGestureJoystickMode.displayName} attached to joysticks"
-                                else
-                                    "Off • Gyro is completely detached from joysticks. Physical gamepad inputs pass through 100%",
-                                fontSize = 11.sp,
-                                color = if (settings.effectiveGestureJoystickMode != GestureJoystickMode.OFF) NeonPalette.Cyan else NeonPalette.CardIdleText
-                            )
-                        }
-                        Switch(
-                            checked = settings.effectiveGestureJoystickMode != GestureJoystickMode.OFF,
-                            onCheckedChange = { isChecked ->
-                                val newMode = if (isChecked) {
-                                    if (settings.gestureJoystickMode != GestureJoystickMode.OFF) settings.gestureJoystickMode
-                                    else GestureJoystickMode.GYRO_AIMING
-                                } else {
-                                    GestureJoystickMode.OFF
-                                }
-                                onSettingsChange(
-                                    settings.copy(
-                                        gestureJoystickMode = newMode,
-                                        gestureAimingEnabled = isChecked
-                                    )
-                                )
-                            }
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    GestureJoystickModeDropdown(
-                        selectedMode = settings.effectiveGestureJoystickMode,
-                        onSelect = { newMode ->
-                            onSettingsChange(
-                                settings.copy(
-                                    gestureJoystickMode = newMode,
-                                    gestureAimingEnabled = (newMode != GestureJoystickMode.OFF)
-                                )
-                            )
-                        }
-                    )
-
-                    if (settings.effectiveGestureJoystickMode == GestureJoystickMode.OFF) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(10.dp),
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
-                            border = BorderStroke(1.dp, NeonPalette.CardIdleBorder)
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Text(
-                                    "🛑 Gyro Completely Detached from Joysticks",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp,
-                                    color = NeonPalette.Cyan
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    "Joysticks operate with 100% purity from physical gamepad inputs. Phone flicks, gravity tilts, and shakes trigger buttons with ZERO joystick interference.",
-                                    fontSize = 11.sp,
-                                    color = NeonPalette.CardIdleText
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Render Deep Settings for the selected joystick motion mode
-                when (settings.effectiveGestureJoystickMode) {
-                    GestureJoystickMode.OFF -> { /* Detached status confirmed in Card 4 */ }
-                    GestureJoystickMode.GYRO_AIMING -> {
-                        GyroAimingDeepSettings(settings, onSettingsChange)
-                    }
-                    GestureJoystickMode.FLIGHT_STICK -> {
-                        FlightStickDeepSettings(settings, onSettingsChange)
-                    }
-                    GestureJoystickMode.RAW_SILICON -> {
-                        RawSiliconDeepSettings(settings, onSettingsChange)
-                    }
-                }
+                )
             }
 
             InputMode.RAW_UNCALIBRATED -> {
-                RawSiliconDeepSettings(settings, onSettingsChange)
-            }
-
-            else -> {
-                // VELOCITY: Standard calibrated gyroscope
-                GyroAimingDeepSettings(settings, onSettingsChange)
-            }
-        }
-
-        // ── 4. Activation Trigger (ADS / Button Hold) ──
-        ModernSectionCard(
-            title = "Activation Trigger (Aim-Down-Sights)",
-            icon = Icons.Default.SportsEsports,
-            onReset = {
-                onSettingsChange(settings.copy(activationButtons = emptySet()))
-            },
-            resetTooltip = "Reset Activation Trigger to Always Active"
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text("Require Button Hold", fontSize = 13.sp, color = Color.White)
-                    Text("Only active while holding aim trigger (e.g. LT / Left Trigger)", fontSize = 11.sp, color = NeonPalette.CardIdleText)
-                }
-                Switch(
-                    checked = settings.activationButtons.isNotEmpty(),
-                    onCheckedChange = {
-                        if (it) onSettingsChange(settings.copy(activationButtons = setOf(NexpadKeys.LT)))
-                        else onSettingsChange(settings.copy(activationButtons = emptySet()))
+                RawSiliconDeepSettings(
+                    settings = settings.rawSilicon,
+                    onSettingsChange = { updated ->
+                        onSettingsChange(settings.copy(rawSilicon = updated))
                     }
                 )
             }
 
-            if (settings.activationButtons.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(6.dp))
-                val buttons = listOf(
-                    NexpadKeys.LT, NexpadKeys.RT,
-                    NexpadKeys.LB, NexpadKeys.RB,
-                    NexpadKeys.A, NexpadKeys.B,
-                    NexpadKeys.X, NexpadKeys.Y
-                )
-                @OptIn(ExperimentalLayoutApi::class)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    buttons.forEach { btn ->
-                        FilterChip(
-                            selected = settings.activationButtons.contains(btn),
-                            onClick = {
-                                val current = settings.activationButtons.toMutableSet()
-                                if (current.contains(btn)) current.remove(btn) else current.add(btn)
-                                if (current.isEmpty()) onSettingsChange(settings.copy(activationButtons = emptySet()))
-                                else onSettingsChange(settings.copy(activationButtons = current))
-                            },
-                            label = { Text(btn) }
-                        )
+            InputMode.VELOCITY -> {
+                PrecisionAimingDeepSettings(
+                    settings = settings.precisionAiming,
+                    onSettingsChange = { updated ->
+                        onSettingsChange(settings.copy(precisionAiming = updated))
                     }
-                }
+                )
             }
         }
 
@@ -1208,104 +748,18 @@ fun GestureButtonDropdown(
 }
 
 /**
- * Modern Material 3 Dropdown selector for mapping joystick gyro modes in Combat Gestures.
- */
-@Composable
-fun GestureJoystickModeDropdown(
-    selectedMode: GestureJoystickMode,
-    onSelect: (GestureJoystickMode) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text("Joystick Gyro Mode:", fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
-            Text(selectedMode.description, fontSize = 11.sp, color = NeonPalette.CardIdleText)
-        }
-        Spacer(modifier = Modifier.width(8.dp))
-        Box {
-            OutlinedButton(
-                onClick = { expanded = true },
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f)),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = NeonPalette.Cyan.copy(alpha = 0.1f),
-                    contentColor = NeonPalette.Cyan
-                ),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-            ) {
-                Text(
-                    text = selectedMode.displayName,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("▼", fontSize = 9.sp)
-            }
-
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                GestureJoystickMode.entries.forEach { mode ->
-                    DropdownMenuItem(
-                        text = {
-                            Column {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        mode.displayName,
-                                        fontSize = 12.sp,
-                                        fontWeight = if (mode == selectedMode) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (mode == selectedMode) NeonPalette.Cyan else Color.White
-                                    )
-                                    if (mode == selectedMode) {
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text("✓", fontSize = 12.sp, color = NeonPalette.Cyan)
-                                    }
-                                }
-                                Text(mode.description, fontSize = 10.sp, color = NeonPalette.CardIdleText)
-                            }
-                        },
-                        onClick = {
-                            onSelect(mode)
-                            expanded = false
-                        }
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
  * Deep tuning parameters for Steering Wheel mode (Gravity Vector).
  */
 @Composable
 fun SteeringWheelDeepSettings(
-    settings: GyroSettings,
-    onSettingsChange: (GyroSettings) -> Unit
+    settings: SteeringWheelSettings,
+    onSettingsChange: (SteeringWheelSettings) -> Unit
 ) {
     ModernSectionCard(
         title = "Steering Wheel Parameters (Gravity Vector)",
         icon = Icons.Default.DirectionsCar,
         onReset = {
-            onSettingsChange(
-                settings.copy(
-                    absoluteMaxTilt = 35.0f,
-                    absoluteSensitivityX = 1.0f,
-                    absoluteSensitivityY = 1.0f,
-                    absoluteCurve = 1.0f,
-                    invertX = false,
-                    xboxTargetStick = XboxTargetStick.LEFT_STICK
-                )
-            )
+            onSettingsChange(SteeringWheelSettings())
         },
         resetTooltip = "Reset Steering Wheel to Defaults"
     ) {
@@ -1318,26 +772,26 @@ fun SteeringWheelDeepSettings(
 
         ModernSlider(
             label = "Max Steering Lock Angle",
-            value = settings.absoluteMaxTilt.coerceIn(1.0f, 179.0f),
+            value = settings.maxTiltAngle.coerceIn(1.0f, 179.0f),
             valueRange = 1.0f..179.0f,
             format = "%.0f°",
-            onValueChange = { onSettingsChange(settings.copy(absoluteMaxTilt = it)) }
+            onValueChange = { onSettingsChange(settings.copy(maxTiltAngle = it)) }
         )
 
         ModernSlider(
             label = "Steering Sensitivity",
-            value = settings.absoluteSensitivityX,
+            value = settings.sensitivityX,
             valueRange = 0.1f..3.0f,
             format = "%.2f×",
-            onValueChange = { onSettingsChange(settings.copy(absoluteSensitivityX = it)) }
+            onValueChange = { onSettingsChange(settings.copy(sensitivityX = it)) }
         )
 
         ModernSlider(
             label = "Response Curve (Center Stability)",
-            value = settings.absoluteCurve,
+            value = settings.responseCurve,
             valueRange = 1.0f..3.0f,
             format = "%.1f",
-            onValueChange = { onSettingsChange(settings.copy(absoluteCurve = it)) }
+            onValueChange = { onSettingsChange(settings.copy(responseCurve = it)) }
         )
 
         Row(
@@ -1347,8 +801,8 @@ fun SteeringWheelDeepSettings(
         ) {
             Text("Invert Steering Direction", fontSize = 13.sp, color = Color.White)
             Switch(
-                checked = settings.invertX,
-                onCheckedChange = { onSettingsChange(settings.copy(invertX = it)) }
+                checked = settings.invertSteering,
+                onCheckedChange = { onSettingsChange(settings.copy(invertSteering = it)) }
             )
         }
 
@@ -1356,14 +810,14 @@ fun SteeringWheelDeepSettings(
         Text("Target Analog Stick", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
         Row(verticalAlignment = Alignment.CenterVertically) {
             RadioButton(
-                selected = settings.xboxTargetStick == XboxTargetStick.LEFT_STICK,
-                onClick = { onSettingsChange(settings.copy(xboxTargetStick = XboxTargetStick.LEFT_STICK)) }
+                selected = settings.targetStick == XboxTargetStick.LEFT_STICK,
+                onClick = { onSettingsChange(settings.copy(targetStick = XboxTargetStick.LEFT_STICK)) }
             )
             Text("Left Stick (Standard Steering)", fontSize = 13.sp, color = Color.White)
             Spacer(modifier = Modifier.width(16.dp))
             RadioButton(
-                selected = settings.xboxTargetStick == XboxTargetStick.RIGHT_STICK,
-                onClick = { onSettingsChange(settings.copy(xboxTargetStick = XboxTargetStick.RIGHT_STICK)) }
+                selected = settings.targetStick == XboxTargetStick.RIGHT_STICK,
+                onClick = { onSettingsChange(settings.copy(targetStick = XboxTargetStick.RIGHT_STICK)) }
             )
             Text("Right Stick", fontSize = 13.sp, color = Color.White)
         }
@@ -1375,29 +829,14 @@ fun SteeringWheelDeepSettings(
  */
 @Composable
 fun FlightStickDeepSettings(
-    settings: GyroSettings,
-    onSettingsChange: (GyroSettings) -> Unit
+    settings: FlightStickSettings,
+    onSettingsChange: (FlightStickSettings) -> Unit
 ) {
     ModernSectionCard(
         title = "3D Flight Stick & Aviation Yoke (Independent Axis Mapping)",
         icon = Icons.Default.SportsEsports,
         onReset = {
-            onSettingsChange(
-                settings.copy(
-                    airMousePitchTarget = FlightStickAxisTarget.LS_Y,
-                    airMousePitchInvert = true,
-                    airMouseMaxPitch = 35.0f,
-                    airMouseRollTarget = FlightStickAxisTarget.LS_X,
-                    airMouseRollInvert = false,
-                    airMouseMaxRoll = 35.0f,
-                    airMouseMaxRollYaw = 35.0f,
-                    airMouseYawTarget = FlightStickAxisTarget.NONE,
-                    airMouseYawInvert = false,
-                    airMouseMaxYaw = 35.0f,
-                    airMouseDeadzone = 1.5f,
-                    airMouseCurve = 1.3f
-                )
-            )
+            onSettingsChange(FlightStickSettings())
         },
         resetTooltip = "Reset All Flight Stick Settings to Defaults"
     ) {
@@ -1413,18 +852,18 @@ fun FlightStickDeepSettings(
             axisTitle = "Pitch Axis (Tilt Forward / Backward)",
             icon = "📐",
             description = "Nose up/down. Standard: Left Stick Up/Down (Y), inverted pull-back.",
-            currentTarget = settings.airMousePitchTarget,
-            currentInvert = settings.airMousePitchInvert,
-            maxAngle = settings.airMouseMaxPitch,
-            onTargetChange = { onSettingsChange(settings.copy(airMousePitchTarget = it)) },
-            onInvertChange = { onSettingsChange(settings.copy(airMousePitchInvert = it)) },
-            onMaxAngleChange = { onSettingsChange(settings.copy(airMouseMaxPitch = it)) },
+            currentTarget = settings.pitchTarget,
+            currentInvert = settings.pitchInvert,
+            maxAngle = settings.maxPitchAngle,
+            onTargetChange = { onSettingsChange(settings.copy(pitchTarget = it)) },
+            onInvertChange = { onSettingsChange(settings.copy(pitchInvert = it)) },
+            onMaxAngleChange = { onSettingsChange(settings.copy(maxPitchAngle = it)) },
             onReset = {
                 onSettingsChange(
                     settings.copy(
-                        airMousePitchTarget = FlightStickAxisTarget.LS_Y,
-                        airMousePitchInvert = true,
-                        airMouseMaxPitch = 35.0f
+                        pitchTarget = FlightStickAxisTarget.LS_Y,
+                        pitchInvert = true,
+                        maxPitchAngle = 35.0f
                     )
                 )
             }
@@ -1435,19 +874,18 @@ fun FlightStickDeepSettings(
             axisTitle = "Roll Axis (Tilt Sideways / Wing Bank)",
             icon = "🔄",
             description = "Ailerons / wing banking turns. Standard: Left Stick Left/Right (X).",
-            currentTarget = settings.airMouseRollTarget,
-            currentInvert = settings.airMouseRollInvert,
-            maxAngle = settings.airMouseMaxRoll,
-            onTargetChange = { onSettingsChange(settings.copy(airMouseRollTarget = it)) },
-            onInvertChange = { onSettingsChange(settings.copy(airMouseRollInvert = it)) },
-            onMaxAngleChange = { onSettingsChange(settings.copy(airMouseMaxRoll = it, airMouseMaxRollYaw = it)) },
+            currentTarget = settings.rollTarget,
+            currentInvert = settings.rollInvert,
+            maxAngle = settings.maxRollAngle,
+            onTargetChange = { onSettingsChange(settings.copy(rollTarget = it)) },
+            onInvertChange = { onSettingsChange(settings.copy(rollInvert = it)) },
+            onMaxAngleChange = { onSettingsChange(settings.copy(maxRollAngle = it)) },
             onReset = {
                 onSettingsChange(
                     settings.copy(
-                        airMouseRollTarget = FlightStickAxisTarget.LS_X,
-                        airMouseRollInvert = false,
-                        airMouseMaxRoll = 35.0f,
-                        airMouseMaxRollYaw = 35.0f
+                        rollTarget = FlightStickAxisTarget.LS_X,
+                        rollInvert = false,
+                        maxRollAngle = 35.0f
                     )
                 )
             }
@@ -1458,18 +896,18 @@ fun FlightStickDeepSettings(
             axisTitle = "Yaw Axis (Flat Wrist Turn / Rudder)",
             icon = "🧭",
             description = "Rudder steering or camera turn. Default: Disabled (Off) / Optional: Right Stick (RS) or Left Stick (LS).",
-            currentTarget = settings.airMouseYawTarget,
-            currentInvert = settings.airMouseYawInvert,
-            maxAngle = settings.airMouseMaxYaw,
-            onTargetChange = { onSettingsChange(settings.copy(airMouseYawTarget = it)) },
-            onInvertChange = { onSettingsChange(settings.copy(airMouseYawInvert = it)) },
-            onMaxAngleChange = { onSettingsChange(settings.copy(airMouseMaxYaw = it)) },
+            currentTarget = settings.yawTarget,
+            currentInvert = settings.yawInvert,
+            maxAngle = settings.maxYawAngle,
+            onTargetChange = { onSettingsChange(settings.copy(yawTarget = it)) },
+            onInvertChange = { onSettingsChange(settings.copy(yawInvert = it)) },
+            onMaxAngleChange = { onSettingsChange(settings.copy(maxYawAngle = it)) },
             onReset = {
                 onSettingsChange(
                     settings.copy(
-                        airMouseYawTarget = FlightStickAxisTarget.NONE,
-                        airMouseYawInvert = false,
-                        airMouseMaxYaw = 35.0f
+                        yawTarget = FlightStickAxisTarget.NONE,
+                        yawInvert = false,
+                        maxYawAngle = 35.0f
                     )
                 )
             }
@@ -1480,33 +918,337 @@ fun FlightStickDeepSettings(
 
         ModernSlider(
             label = "Center Neutral Deadzone (Tremor Filter)",
-            value = settings.airMouseDeadzone,
+            value = settings.deadzone,
             valueRange = 0.0f..5.0f,
             format = "%.1f°",
-            onValueChange = { onSettingsChange(settings.copy(airMouseDeadzone = it)) }
+            onValueChange = { onSettingsChange(settings.copy(deadzone = it)) }
         )
 
         ModernSlider(
             label = "Center Response Curve (Stability Exponent)",
-            value = settings.airMouseCurve,
+            value = settings.curveExponent,
             valueRange = 1.0f..3.0f,
             format = "%.1f",
-            onValueChange = { onSettingsChange(settings.copy(airMouseCurve = it)) }
+            onValueChange = { onSettingsChange(settings.copy(curveExponent = it)) }
         )
     }
 }
 
 /**
- * Deep tuning parameters for 1:1 Gyro Aiming and Raw Silicon modes.
+ * Deep tuning parameters for Combat Gestures mode (Kinetic Actions).
+ * Completely isolated from other modes; sticks are 100% untouched.
  */
 @Composable
-fun GyroAimingDeepSettings(
-    settings: GyroSettings,
-    onSettingsChange: (GyroSettings) -> Unit,
-    isRawSilicon: Boolean = false
+fun CombatGesturesDeepSettings(
+    settings: CombatGesturesSettings,
+    onSettingsChange: (CombatGesturesSettings) -> Unit
+) {
+    // ── Card 1: Directional Kinetic Flicks ──
+    ModernSectionCard(
+        title = "Directional Kinetic Flicks",
+        icon = Icons.Default.SportsEsports,
+        onReset = {
+            onSettingsChange(
+                settings.copy(
+                    flicksEnabled = true,
+                    flickUpAction = GestureButton.BTN_X,
+                    flickDownAction = GestureButton.BTN_Y,
+                    flickLeftAction = GestureButton.SNAP_TURN_180,
+                    flickRightAction = GestureButton.TRIGGER_RT,
+                    flickThreshold = 8.5f,
+                    flickCooldownMs = 350L
+                )
+            )
+        },
+        resetTooltip = "Reset Flicks to Defaults"
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Fast Directional Flicks", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                Text("Sharp physical flicks in 4 directions trigger individual controller buttons", fontSize = 11.sp, color = NeonPalette.CardIdleText)
+            }
+            Switch(
+                checked = settings.flicksEnabled,
+                onCheckedChange = { onSettingsChange(settings.copy(flicksEnabled = it)) }
+            )
+        }
+
+        if (settings.flicksEnabled) {
+            Spacer(modifier = Modifier.height(6.dp))
+
+            GestureButtonDropdown(
+                label = "⬆️ Fast Flick UP:",
+                selectedButton = settings.flickUpAction,
+                onSelect = { onSettingsChange(settings.copy(flickUpAction = it)) }
+            )
+
+            GestureButtonDropdown(
+                label = "⬇️ Fast Flick DOWN:",
+                selectedButton = settings.flickDownAction,
+                onSelect = { onSettingsChange(settings.copy(flickDownAction = it)) }
+            )
+
+            GestureButtonDropdown(
+                label = "⬅️ Fast Flick LEFT:",
+                selectedButton = settings.flickLeftAction,
+                onSelect = { onSettingsChange(settings.copy(flickLeftAction = it)) }
+            )
+
+            GestureButtonDropdown(
+                label = "➡️ Fast Flick RIGHT:",
+                selectedButton = settings.flickRightAction,
+                onSelect = { onSettingsChange(settings.copy(flickRightAction = it)) }
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+            ModernSlider(
+                label = "Flick Trigger Force Threshold",
+                value = settings.flickThreshold,
+                valueRange = 4.0f..20.0f,
+                format = "%.1f m/s²",
+                onValueChange = { onSettingsChange(settings.copy(flickThreshold = it)) }
+            )
+
+            ModernSlider(
+                label = "Flick Debounce Cooldown",
+                value = settings.flickCooldownMs.toFloat(),
+                valueRange = 150.0f..800.0f,
+                format = "%.0f ms",
+                onValueChange = { onSettingsChange(settings.copy(flickCooldownMs = it.toLong())) }
+            )
+        }
+    }
+
+    // ── Card 2: Gravity Tilt Posture ──
+    ModernSectionCard(
+        title = "Gravity Tilt Posture (Angle Trigger)",
+        icon = Icons.Default.SportsEsports,
+        onReset = {
+            onSettingsChange(
+                settings.copy(
+                    tiltEnabled = false,
+                    tiltPitchThreshold = 30.0f,
+                    tiltRollThreshold = 30.0f,
+                    tiltUpAction = GestureButton.BTN_X,
+                    tiltDownAction = GestureButton.BTN_Y,
+                    tiltLeftAction = GestureButton.BTN_LB,
+                    tiltRightAction = GestureButton.BTN_RB,
+                    tiltHoldMode = false
+                )
+            )
+        },
+        resetTooltip = "Reset Tilt Posture to Defaults"
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Tilt Posture Triggers (Up, Down, Left, Right)", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                Text("Triggers buttons when phone is tilted past specified angles (tactical lean, raise/lower phone)", fontSize = 11.sp, color = NeonPalette.CardIdleText)
+            }
+            Switch(
+                checked = settings.tiltEnabled,
+                onCheckedChange = { onSettingsChange(settings.copy(tiltEnabled = it)) }
+            )
+        }
+
+        if (settings.tiltEnabled) {
+            Spacer(modifier = Modifier.height(6.dp))
+
+            GestureButtonDropdown(
+                label = "⬆️ Tilt UP (Raise Phone):",
+                selectedButton = settings.tiltUpAction,
+                onSelect = { onSettingsChange(settings.copy(tiltUpAction = it)) }
+            )
+
+            GestureButtonDropdown(
+                label = "⬇️ Tilt DOWN (Lower Phone):",
+                selectedButton = settings.tiltDownAction,
+                onSelect = { onSettingsChange(settings.copy(tiltDownAction = it)) }
+            )
+
+            GestureButtonDropdown(
+                label = "⬅️ Tilt LEFT (Bank Left / Lean):",
+                selectedButton = settings.tiltLeftAction,
+                onSelect = { onSettingsChange(settings.copy(tiltLeftAction = it)) }
+            )
+
+            GestureButtonDropdown(
+                label = "➡️ Tilt RIGHT (Bank Right / Lean):",
+                selectedButton = settings.tiltRightAction,
+                onSelect = { onSettingsChange(settings.copy(tiltRightAction = it)) }
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+            ModernSlider(
+                label = "Tilt Pitch Trigger Angle",
+                value = settings.tiltPitchThreshold,
+                valueRange = 10.0f..60.0f,
+                format = "%.0f°",
+                onValueChange = { onSettingsChange(settings.copy(tiltPitchThreshold = it)) }
+            )
+
+            ModernSlider(
+                label = "Tilt Roll Trigger Angle",
+                value = settings.tiltRollThreshold,
+                valueRange = 10.0f..60.0f,
+                format = "%.0f°",
+                onValueChange = { onSettingsChange(settings.copy(tiltRollThreshold = it)) }
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+            Text("Tilt Hold Behavior:", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = !settings.tiltHoldMode,
+                    onClick = { onSettingsChange(settings.copy(tiltHoldMode = false)) },
+                    label = { Text("Pulse on Entry (Press Once)", fontSize = 11.sp) }
+                )
+                FilterChip(
+                    selected = settings.tiltHoldMode,
+                    onClick = { onSettingsChange(settings.copy(tiltHoldMode = true)) },
+                    label = { Text("Hold while Tilted (Lean / Block)", fontSize = 11.sp) }
+                )
+            }
+        }
+    }
+
+    // ── Card 3: Shake Motion Detection ──
+    ModernSectionCard(
+        title = "Shake Motion Detection (Vigorous Shaking)",
+        icon = Icons.Default.SportsEsports,
+        onReset = {
+            onSettingsChange(
+                settings.copy(
+                    shakeEnabled = false,
+                    shakeThreshold = 11.0f,
+                    shakeAction = GestureButton.BTN_X,
+                    shakeCooldownMs = 450L
+                )
+            )
+        },
+        resetTooltip = "Reset Shake Motion to Defaults"
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Vigorous Phone Shaking", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                Text("Detects rapid back-and-forth phone shaking (recharge flashlight, grab escape, reload)", fontSize = 11.sp, color = NeonPalette.CardIdleText)
+            }
+            Switch(
+                checked = settings.shakeEnabled,
+                onCheckedChange = { onSettingsChange(settings.copy(shakeEnabled = it)) }
+            )
+        }
+
+        if (settings.shakeEnabled) {
+            Spacer(modifier = Modifier.height(6.dp))
+
+            GestureButtonDropdown(
+                label = "📳 Triggered Button / Action:",
+                selectedButton = settings.shakeAction,
+                onSelect = { onSettingsChange(settings.copy(shakeAction = it)) }
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+            ModernSlider(
+                label = "Shake Sensitivity Threshold",
+                value = settings.shakeThreshold,
+                valueRange = 6.0f..22.0f,
+                format = "%.1f m/s²",
+                onValueChange = { onSettingsChange(settings.copy(shakeThreshold = it)) }
+            )
+
+            ModernSlider(
+                label = "Shake Debounce Cooldown",
+                value = settings.shakeCooldownMs.toFloat(),
+                valueRange = 200.0f..1000.0f,
+                format = "%.0f ms",
+                onValueChange = { onSettingsChange(settings.copy(shakeCooldownMs = it.toLong())) }
+            )
+        }
+    }
+}
+
+/**
+ * Reusable Activation Trigger (Aim-Down-Sights) component.
+ */
+@Composable
+fun ActivationTriggerCard(
+    activationButtons: Set<String>,
+    onButtonsChange: (Set<String>) -> Unit
 ) {
     ModernSectionCard(
-        title = if (isRawSilicon) "Raw Silicon Sensor Sensitivity (Esports Direct)" else "Aiming Speed & Sensitivity",
+        title = "Activation Trigger (Aim-Down-Sights)",
+        icon = Icons.Default.SportsEsports,
+        onReset = {
+            onButtonsChange(emptySet())
+        },
+        resetTooltip = "Reset Activation Trigger to Always Active"
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text("Require Button Hold", fontSize = 13.sp, color = Color.White)
+                Text("Only active while holding aim trigger (e.g. LT / Left Trigger)", fontSize = 11.sp, color = NeonPalette.CardIdleText)
+            }
+            Switch(
+                checked = activationButtons.isNotEmpty(),
+                onCheckedChange = {
+                    if (it) onButtonsChange(setOf(NexpadKeys.LT))
+                    else onButtonsChange(emptySet())
+                }
+            )
+        }
+
+        if (activationButtons.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(6.dp))
+            val buttons = listOf(
+                NexpadKeys.LT, NexpadKeys.RT,
+                NexpadKeys.LB, NexpadKeys.RB,
+                NexpadKeys.A, NexpadKeys.B,
+                NexpadKeys.X, NexpadKeys.Y
+            )
+            @OptIn(ExperimentalLayoutApi::class)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                buttons.forEach { btn ->
+                    FilterChip(
+                        selected = activationButtons.contains(btn),
+                        onClick = {
+                            val current = activationButtons.toMutableSet()
+                            if (current.contains(btn)) current.remove(btn) else current.add(btn)
+                            onButtonsChange(current)
+                        },
+                        label = { Text(btn) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Deep tuning parameters for 1:1 Gyro Precision Aiming mode.
+ */
+@Composable
+fun PrecisionAimingDeepSettings(
+    settings: PrecisionAimingSettings,
+    onSettingsChange: (PrecisionAimingSettings) -> Unit
+) {
+    ModernSectionCard(
+        title = "Aiming Speed & Sensitivity",
         icon = Icons.Default.Speed,
         onReset = {
             onSettingsChange(
@@ -1523,29 +1265,6 @@ fun GyroAimingDeepSettings(
         },
         resetTooltip = "Reset Sensitivity to Defaults (200 °/s, 1:1 Direct)"
     ) {
-        if (isRawSilicon) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                color = NeonPalette.Cyan.copy(alpha = 0.12f),
-                border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.35f))
-            ) {
-                Row(
-                    modifier = Modifier.padding(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text("⚡", fontSize = 16.sp)
-                    Text(
-                        "Direct Hardware Sensor Stream: Unfiltered raw silicon angular velocity with bias compensation. Zero Android OS smoothing or drift suppression.",
-                        fontSize = 11.sp,
-                        color = Color.White
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-        }
-
         Text(
             "1:1 Linear gyro aiming. 200 °/s represents standard 1.00× sensitivity. Lower °/s increases camera turn speed, higher °/s slows it down.",
             fontSize = 12.sp,
@@ -1713,7 +1432,7 @@ fun GyroAimingDeepSettings(
         onReset = {
             onSettingsChange(
                 settings.copy(
-                    gameDeadzoneCompensation = 0.0f,
+                    antiDeadzone = 0.0f,
                     deadzoneThreshold = 0.8f,
                     tighteningEnabled = false,
                     tighteningThreshold = 10.0f,
@@ -1727,10 +1446,10 @@ fun GyroAimingDeepSettings(
     ) {
         ModernSlider(
             label = "In-Game Deadzone Bridge (Anti-Deadzone)",
-            value = settings.gameDeadzoneCompensation,
+            value = settings.antiDeadzone,
             valueRange = 0.0f..0.30f,
             format = "%.2f",
-            onValueChange = { onSettingsChange(settings.copy(gameDeadzoneCompensation = it)) }
+            onValueChange = { onSettingsChange(settings.copy(antiDeadzone = it)) }
         )
         Text(
             "Bypasses PC games' internal stick deadzones (typically 0.10–0.18). " +
@@ -1820,14 +1539,17 @@ fun GyroAimingDeepSettings(
                 )
             )
         },
-        resetTooltip = "Reset Smoothing to Crisp EMA (0.85)"
+        resetTooltip = "Reset Smoothing to Defaults"
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Enable EMA Smoothing", fontSize = 13.sp, color = Color.White)
+            Column {
+                Text("Sensor Smoothing (EMA)", fontSize = 13.sp, color = Color.White)
+                Text("Filters out natural hand tremor for buttery smooth crosshair tracking", fontSize = 11.sp, color = NeonPalette.CardIdleText)
+            }
             Switch(
                 checked = settings.smoothingEnabled,
                 onCheckedChange = { onSettingsChange(settings.copy(smoothingEnabled = it)) }
@@ -1836,13 +1558,15 @@ fun GyroAimingDeepSettings(
 
         if (settings.smoothingEnabled) {
             ModernSlider(
-                label = "Smoothing Blend (0.1 heavy - 1.0 raw)",
+                label = "Smoothing Strength",
                 value = settings.smoothingAmount,
-                valueRange = 0.1f..1.0f,
+                valueRange = 0.5f..0.98f,
                 format = "%.2f",
+                displayValue = "${(settings.smoothingAmount * 100).toInt()}%",
                 onValueChange = { onSettingsChange(settings.copy(smoothingAmount = it)) }
             )
 
+            Spacer(modifier = Modifier.height(4.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1876,8 +1600,8 @@ fun GyroAimingDeepSettings(
         onReset = {
             onSettingsChange(
                 settings.copy(
-                    xboxTargetStick = XboxTargetStick.RIGHT_STICK,
-                    xboxBlendMode = XboxBlendMode.JOYSTICK_SUPREME
+                    targetStick = XboxTargetStick.RIGHT_STICK,
+                    blendMode = XboxBlendMode.JOYSTICK_SUPREME
                 )
             )
         },
@@ -1889,20 +1613,20 @@ fun GyroAimingDeepSettings(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             RadioButton(
-                selected = settings.xboxTargetStick == XboxTargetStick.RIGHT_STICK,
-                onClick = { onSettingsChange(settings.copy(xboxTargetStick = XboxTargetStick.RIGHT_STICK)) }
+                selected = settings.targetStick == XboxTargetStick.RIGHT_STICK,
+                onClick = { onSettingsChange(settings.copy(targetStick = XboxTargetStick.RIGHT_STICK)) }
             )
             Text("Right Stick (Aiming)", fontSize = 12.sp, color = Color.White)
 
             RadioButton(
-                selected = settings.xboxTargetStick == XboxTargetStick.LEFT_STICK,
-                onClick = { onSettingsChange(settings.copy(xboxTargetStick = XboxTargetStick.LEFT_STICK)) }
+                selected = settings.targetStick == XboxTargetStick.LEFT_STICK,
+                onClick = { onSettingsChange(settings.copy(targetStick = XboxTargetStick.LEFT_STICK)) }
             )
             Text("Left Stick", fontSize = 12.sp, color = Color.White)
 
             RadioButton(
-                selected = settings.xboxTargetStick == XboxTargetStick.NONE,
-                onClick = { onSettingsChange(settings.copy(xboxTargetStick = XboxTargetStick.NONE)) }
+                selected = settings.targetStick == XboxTargetStick.NONE,
+                onClick = { onSettingsChange(settings.copy(targetStick = XboxTargetStick.NONE)) }
             )
             Text("Off (Detached)", fontSize = 12.sp, color = NeonPalette.Cyan)
         }
@@ -1919,17 +1643,22 @@ fun GyroAimingDeepSettings(
             XboxBlendMode.entries.forEach { mode ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { onSettingsChange(settings.copy(xboxBlendMode = mode)) }
+                    modifier = Modifier.clickable { onSettingsChange(settings.copy(blendMode = mode)) }
                 ) {
                     RadioButton(
-                        selected = settings.xboxBlendMode == mode,
-                        onClick = { onSettingsChange(settings.copy(xboxBlendMode = mode)) }
+                        selected = settings.blendMode == mode,
+                        onClick = { onSettingsChange(settings.copy(blendMode = mode)) }
                     )
                     Text(mode.displayName, fontSize = 12.sp, color = Color.White)
                 }
             }
         }
     }
+
+    ActivationTriggerCard(
+        activationButtons = settings.activationButtons,
+        onButtonsChange = { onSettingsChange(settings.copy(activationButtons = it)) }
+    )
 }
 
 /**
@@ -1937,13 +1666,348 @@ fun GyroAimingDeepSettings(
  */
 @Composable
 fun RawSiliconDeepSettings(
-    settings: GyroSettings,
-    onSettingsChange: (GyroSettings) -> Unit
+    settings: RawSiliconSettings,
+    onSettingsChange: (RawSiliconSettings) -> Unit
 ) {
-    GyroAimingDeepSettings(
-        settings = settings,
-        onSettingsChange = onSettingsChange,
-        isRawSilicon = true
+    ModernSectionCard(
+        title = "Raw Silicon Sensor Sensitivity (Esports Direct)",
+        icon = Icons.Default.Speed,
+        onReset = {
+            onSettingsChange(
+                settings.copy(
+                    maxDpsYaw = 200.0f,
+                    maxDpsPitch = 200.0f,
+                    maxDpsRoll = 200.0f,
+                    horizontalAxis = HorizontalAxis.MIX,
+                    invertX = false,
+                    invertRoll = false,
+                    invertY = false
+                )
+            )
+        },
+        resetTooltip = "Reset Sensitivity to Defaults (200 °/s, 1:1 Direct)"
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp),
+            color = NeonPalette.Cyan.copy(alpha = 0.12f),
+            border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.35f))
+        ) {
+            Row(
+                modifier = Modifier.padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("⚡", fontSize = 16.sp)
+                Text(
+                    "Direct Hardware Sensor Stream: Unfiltered raw silicon angular velocity with bias compensation. Zero Android OS smoothing or drift suppression.",
+                    fontSize = 11.sp,
+                    color = Color.White
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            "1:1 Linear gyro aiming. 200 °/s represents standard 1.00× sensitivity. Lower °/s increases camera turn speed, higher °/s slows it down.",
+            fontSize = 12.sp,
+            color = NeonPalette.CardIdleText
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+
+        val horizontalAxisLabel = when (settings.horizontalAxis) {
+            HorizontalAxis.YAW -> "Horizontal Aim Speed (Yaw)"
+            HorizontalAxis.ROLL -> "Horizontal Aim Speed (Roll)"
+            HorizontalAxis.MIX -> "Horizontal Aim Speed (Yaw & Roll)"
+        }
+        val hSensMult = 200.0f / settings.maxDpsYaw
+        val vSensMult = 200.0f / settings.maxDpsPitch
+        val hSpeedLabel = when {
+            hSensMult >= 1.7f -> "Fast"
+            hSensMult <= 0.65f -> "Slow"
+            else -> "Normal"
+        }
+        val vSpeedLabel = when {
+            vSensMult >= 1.7f -> "Fast"
+            vSensMult <= 0.65f -> "Slow"
+            else -> "Normal"
+        }
+
+        ModernSlider(
+            label = horizontalAxisLabel,
+            value = settings.maxDpsYaw,
+            valueRange = 50.0f..600.0f,
+            format = "%.0f °/s",
+            displayValue = "${settings.maxDpsYaw.toInt()} °/s (${String.format("%.2f", hSensMult)}× $hSpeedLabel)",
+            onValueChange = { onSettingsChange(settings.copy(maxDpsYaw = it, maxDpsRoll = it)) }
+        )
+
+        ModernSlider(
+            label = "Vertical Aim Speed (Pitch)",
+            value = settings.maxDpsPitch,
+            valueRange = 50.0f..600.0f,
+            format = "%.0f °/s",
+            displayValue = "${settings.maxDpsPitch.toInt()} °/s (${String.format("%.2f", vSensMult)}× $vSpeedLabel)",
+            onValueChange = { onSettingsChange(settings.copy(maxDpsPitch = it)) }
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+        Text("Horizontal Rotation Axis", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            HorizontalAxis.entries.forEach { axis ->
+                RadioButton(
+                    selected = settings.horizontalAxis == axis,
+                    onClick = { onSettingsChange(settings.copy(horizontalAxis = axis)) }
+                )
+                Text(axis.displayName, fontSize = 12.sp, color = Color.White)
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Invert Horizontal (Yaw)", fontSize = 13.sp, color = Color.White)
+            Switch(checked = settings.invertX, onCheckedChange = { onSettingsChange(settings.copy(invertX = it)) })
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Invert Roll (Tilt / Bank)", fontSize = 13.sp, color = Color.White)
+            Switch(checked = settings.invertRoll, onCheckedChange = { onSettingsChange(settings.copy(invertRoll = it)) })
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Invert Vertical (Pitch)", fontSize = 13.sp, color = Color.White)
+            Switch(checked = settings.invertY, onCheckedChange = { onSettingsChange(settings.copy(invertY = it)) })
+        }
+    }
+
+    ModernSectionCard(
+        title = "Stick Response Curve",
+        icon = Icons.Default.Speed,
+        onReset = {
+            onSettingsChange(settings.copy(stickResponseCurve = StickResponseCurve.LINEAR))
+        },
+        resetTooltip = "Reset Curve to Linear 1:1"
+    ) {
+        Text(
+            "Translates physical gyro velocity into virtual analog stick deflection. Linear 1:1 is recommended so slow aiming and rapid turns feel consistent without unexpected exponential spikes.",
+            fontSize = 12.sp,
+            color = NeonPalette.CardIdleText
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text("Stick Response Curve:", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            StickResponseCurve.entries.forEach { curve ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable { onSettingsChange(settings.copy(stickResponseCurve = curve)) }
+                ) {
+                    RadioButton(
+                        selected = settings.stickResponseCurve == curve,
+                        onClick = { onSettingsChange(settings.copy(stickResponseCurve = curve)) }
+                    )
+                    Text(curve.displayName, fontSize = 12.sp, color = Color.White)
+                }
+            }
+        }
+    }
+
+    ModernSectionCard(
+        title = "Deadzone & Anti-Deadzone",
+        icon = Icons.Default.SportsEsports,
+        onReset = {
+            onSettingsChange(
+                settings.copy(
+                    antiDeadzone = 0.0f,
+                    deadzoneThreshold = 0.8f,
+                    tighteningEnabled = false,
+                    tighteningThreshold = 10.0f,
+                    lowSpeedAmplifierEnabled = false,
+                    lowSpeedAmplifierAmount = 2.0f,
+                    lowSpeedAmplifierThreshold = 20.0f
+                )
+            )
+        },
+        resetTooltip = "Reset Deadzones to Defaults"
+    ) {
+        ModernSlider(
+            label = "In-Game Deadzone Bridge (Anti-Deadzone)",
+            value = settings.antiDeadzone,
+            valueRange = 0.0f..0.30f,
+            format = "%.2f",
+            onValueChange = { onSettingsChange(settings.copy(antiDeadzone = it)) }
+        )
+        Text(
+            "Bypasses PC games' internal stick deadzones (typically 0.10–0.18). " +
+            "Enables instant 1:1 micro-aiming matching DualShock 4 responsiveness.",
+            fontSize = 11.sp,
+            color = NeonPalette.CardIdleText
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+
+        ModernSlider(
+            label = "Hardware Sensor Deadzone",
+            value = settings.deadzoneThreshold,
+            valueRange = 0.0f..10.0f,
+            format = "%.1f °/s",
+            onValueChange = { onSettingsChange(settings.copy(deadzoneThreshold = it)) }
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text("Soft Tightening Deadzone", fontSize = 13.sp, color = Color.White)
+                Text("Smooth quadratic curve for microscopic adjustments", fontSize = 11.sp, color = NeonPalette.CardIdleText)
+            }
+            Switch(
+                checked = settings.tighteningEnabled,
+                onCheckedChange = { onSettingsChange(settings.copy(tighteningEnabled = it)) }
+            )
+        }
+
+        if (settings.tighteningEnabled) {
+            ModernSlider(
+                label = "Tightening Threshold",
+                value = settings.tighteningThreshold,
+                valueRange = 1.0f..25.0f,
+                format = "%.1f °/s",
+                onValueChange = { onSettingsChange(settings.copy(tighteningThreshold = it)) }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text("Anti-Deadzone (Low-Speed Boost)", fontSize = 13.sp, color = Color.White)
+                Text("Amplifies slow movements to overcome in-game stick deadzones", fontSize = 11.sp, color = NeonPalette.CardIdleText)
+            }
+            Switch(
+                checked = settings.lowSpeedAmplifierEnabled,
+                onCheckedChange = { onSettingsChange(settings.copy(lowSpeedAmplifierEnabled = it)) }
+            )
+        }
+
+        if (settings.lowSpeedAmplifierEnabled) {
+            ModernSlider(
+                label = "Amplifier Multiplier",
+                value = settings.lowSpeedAmplifierAmount,
+                valueRange = 1.0f..5.0f,
+                format = "%.1f×",
+                onValueChange = { onSettingsChange(settings.copy(lowSpeedAmplifierAmount = it)) }
+            )
+            ModernSlider(
+                label = "Amplifier Cutoff Speed",
+                value = settings.lowSpeedAmplifierThreshold,
+                valueRange = 5.0f..40.0f,
+                format = "%.0f °/s",
+                onValueChange = { onSettingsChange(settings.copy(lowSpeedAmplifierThreshold = it)) }
+            )
+        }
+    }
+
+    ModernSectionCard(
+        title = "Stick Mapping & Blending",
+        icon = Icons.Default.SportsEsports,
+        onReset = {
+            onSettingsChange(
+                settings.copy(
+                    targetStick = XboxTargetStick.RIGHT_STICK,
+                    blendMode = XboxBlendMode.JOYSTICK_SUPREME
+                )
+            )
+        },
+        resetTooltip = "Reset Stick Mapping to Right Stick (Aiming)"
+    ) {
+        Text("Target Analog Stick:", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            RadioButton(
+                selected = settings.targetStick == XboxTargetStick.RIGHT_STICK,
+                onClick = { onSettingsChange(settings.copy(targetStick = XboxTargetStick.RIGHT_STICK)) }
+            )
+            Text("Right Stick (Aiming)", fontSize = 12.sp, color = Color.White)
+
+            RadioButton(
+                selected = settings.targetStick == XboxTargetStick.LEFT_STICK,
+                onClick = { onSettingsChange(settings.copy(targetStick = XboxTargetStick.LEFT_STICK)) }
+            )
+            Text("Left Stick", fontSize = 12.sp, color = Color.White)
+
+            RadioButton(
+                selected = settings.targetStick == XboxTargetStick.NONE,
+                onClick = { onSettingsChange(settings.copy(targetStick = XboxTargetStick.NONE)) }
+            )
+            Text("Off (Detached)", fontSize = 12.sp, color = NeonPalette.Cyan)
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+        Text("Physical Stick Supremacy & Blending:", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
+        Text(
+            "Controls priority between physical touch joystick and gyro motion. In 'Joystick Supreme', physical touches always override gyro.",
+            fontSize = 11.sp,
+            color = NeonPalette.CardIdleText
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            XboxBlendMode.entries.forEach { mode ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable { onSettingsChange(settings.copy(blendMode = mode)) }
+                ) {
+                    RadioButton(
+                        selected = settings.blendMode == mode,
+                        onClick = { onSettingsChange(settings.copy(blendMode = mode)) }
+                    )
+                    Text(mode.displayName, fontSize = 12.sp, color = Color.White)
+                }
+            }
+        }
+    }
+
+    ActivationTriggerCard(
+        activationButtons = settings.activationButtons,
+        onButtonsChange = { onSettingsChange(settings.copy(activationButtons = it)) }
     )
 }
 
+/**
+ * Backward compatibility overload for GyroAimingDeepSettings.
+ */
+@Composable
+fun GyroAimingDeepSettings(
+    settings: GyroSettings,
+    onSettingsChange: (GyroSettings) -> Unit,
+    isRawSilicon: Boolean = false
+) {
+    if (isRawSilicon) {
+        RawSiliconDeepSettings(
+            settings = settings.rawSilicon,
+            onSettingsChange = { updated -> onSettingsChange(settings.copy(rawSilicon = updated)) }
+        )
+    } else {
+        PrecisionAimingDeepSettings(
+            settings = settings.precisionAiming,
+            onSettingsChange = { updated -> onSettingsChange(settings.copy(precisionAiming = updated)) }
+        )
+    }
+}

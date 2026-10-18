@@ -44,11 +44,19 @@ class DesktopViewModel(
     var isDsuServerEnabled by mutableStateOf(prefs.loadDsuEnabled())
 
     // ── Sensitivity & Motion State ──
-    var lsSensitivityX by mutableStateOf(prefs.getFloat(DesktopSharedPreferences.KEY_LS_SENS_X, 1.0f))
-    var lsSensitivityY by mutableStateOf(prefs.getFloat(DesktopSharedPreferences.KEY_LS_SENS_Y, 1.0f))
-    var rsSensitivityX by mutableStateOf(prefs.getFloat(DesktopSharedPreferences.KEY_RS_SENS_X, 1.0f))
-    var rsSensitivityY by mutableStateOf(prefs.getFloat(DesktopSharedPreferences.KEY_RS_SENS_Y, 1.0f))
     var gyroSettings by mutableStateOf(prefs.loadGyroSettings())
+    var lsSensitivityX: Float
+        get() = gyroSettings.lsSensitivityX
+        set(value) { updateLsSensitivityX(value) }
+    var lsSensitivityY: Float
+        get() = gyroSettings.lsSensitivityY
+        set(value) { updateLsSensitivityY(value) }
+    var rsSensitivityX: Float
+        get() = gyroSettings.rsSensitivityX
+        set(value) { updateRsSensitivityX(value) }
+    var rsSensitivityY: Float
+        get() = gyroSettings.rsSensitivityY
+        set(value) { updateRsSensitivityY(value) }
     var processedYaw by mutableStateOf(0f)
     var processedPitch by mutableStateOf(0f)
 
@@ -63,23 +71,23 @@ class DesktopViewModel(
     }
 
     fun updateLsSensitivityX(value: Float) {
-        lsSensitivityX = value
-        prefs.putFloat(DesktopSharedPreferences.KEY_LS_SENS_X, value)
+        val updated = gyroSettings.updateActiveStickSensitivities(lsX = value)
+        updateGyroSettings(updated)
     }
 
     fun updateLsSensitivityY(value: Float) {
-        lsSensitivityY = value
-        prefs.putFloat(DesktopSharedPreferences.KEY_LS_SENS_Y, value)
+        val updated = gyroSettings.updateActiveStickSensitivities(lsY = value)
+        updateGyroSettings(updated)
     }
 
     fun updateRsSensitivityX(value: Float) {
-        rsSensitivityX = value
-        prefs.putFloat(DesktopSharedPreferences.KEY_RS_SENS_X, value)
+        val updated = gyroSettings.updateActiveStickSensitivities(rsX = value)
+        updateGyroSettings(updated)
     }
 
     fun updateRsSensitivityY(value: Float) {
-        rsSensitivityY = value
-        prefs.putFloat(DesktopSharedPreferences.KEY_RS_SENS_Y, value)
+        val updated = gyroSettings.updateActiveStickSensitivities(rsY = value)
+        updateGyroSettings(updated)
     }
 
     fun updateActiveController(controller: ControllerType) {

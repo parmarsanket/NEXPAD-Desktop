@@ -22,7 +22,7 @@ class MotionGestureCombatTest {
     @Test
     fun testRestingAndGentleMovementDoesNotTriggerGestures() {
         val processor = GyroProcessor()
-        val settings = GyroSettings.ACTION_COMBAT_PRESET.copy(gestureThreshold = 8.5f)
+        val settings = GyroSettings.ACTION_COMBAT_PRESET.copy(combatGestures = GyroSettings.ACTION_COMBAT_PRESET.combatGestures.copy(flickThreshold = 8.5f))
 
         // Gentle user movement: 2.5 m/s² (well below 8.5 m/s² threshold)
         val result = processor.process(
@@ -41,9 +41,11 @@ class MotionGestureCombatTest {
     fun testKineticMeleeStrikeFiresRightTriggerAndAppliesCooldown() {
         val processor = GyroProcessor()
         val settings = GyroSettings.ACTION_COMBAT_PRESET.copy(
-            gestureThreshold = 8.5f,
-            gestureAction = GestureAction.MELEE_RT,
-            gestureCooldownMs = 400L
+            combatGestures = GyroSettings.ACTION_COMBAT_PRESET.combatGestures.copy(
+                flickThreshold = 8.5f,
+                flickUpAction = GestureButton.TRIGGER_RT,
+                flickCooldownMs = 400L
+            )
         )
 
         // Kinetic strike: 10.0 m/s² forward thrust
@@ -74,8 +76,10 @@ class MotionGestureCombatTest {
     fun testKineticFlickTriggersDodgeRollButtonB() {
         val processor = GyroProcessor()
         val settings = GyroSettings.ACTION_COMBAT_PRESET.copy(
-            gestureThreshold = 8.5f,
-            gestureAction = GestureAction.DODGE_B
+            combatGestures = GyroSettings.ACTION_COMBAT_PRESET.combatGestures.copy(
+                flickThreshold = 8.5f,
+                flickRightAction = GestureButton.BTN_B
+            )
         )
 
         val flickInput = GamepadInput(linearAccelX = 9.5f)
@@ -96,8 +100,10 @@ class MotionGestureCombatTest {
     fun testSnapTurn180InjectsFullCameraStickSpin() {
         val processor = GyroProcessor()
         val settings = GyroSettings.ACTION_COMBAT_PRESET.copy(
-            gestureThreshold = 8.5f,
-            gestureAction = GestureAction.SNAP_TURN_180
+            combatGestures = GyroSettings.ACTION_COMBAT_PRESET.combatGestures.copy(
+                flickThreshold = 8.5f,
+                flickLeftAction = GestureButton.SNAP_TURN_180
+            )
         )
 
         // Sharp left wrist jerk: linearAccelX = -9.0 m/s²
@@ -117,13 +123,12 @@ class MotionGestureCombatTest {
     }
 
     @Test
-    fun testConcurrentGyroAimingWorksDuringGestureMode() {
+    fun testJoysticksRemainDetachedDuringGestureMode() {
         val processor = GyroProcessor()
         val settings = GyroSettings.ACTION_COMBAT_PRESET.copy(
-            gestureThreshold = 8.5f,
-            maxDpsYaw = 200.0f,
-            deadzoneThreshold = 0.0f,
-            gestureAimingEnabled = true
+            combatGestures = GyroSettings.ACTION_COMBAT_PRESET.combatGestures.copy(
+                flickThreshold = 8.5f
+            )
         )
 
         // Regular wrist rotation without physical strike: 100 °/s yaw (1.745 rad/s)
@@ -143,8 +148,11 @@ class MotionGestureCombatTest {
             onProcessedAngles = { _, _ -> }
         )
 
-        // Regular gyro aiming continues to drive camera stick (half deflection at 100 °/s with 200 max DPS)
-        assertTrue(abs(processedInput.rightStickX) > 0.4f, "Right stick X must receive concurrent gyro aim input")
+        // In Combat Gesture mode, joysticks are detached from gyro
+        assertEquals(0f, processedInput.rightStickX, "Right stick must remain 0 - detached in Combat Gesture mode")
+        assertEquals(0f, processedInput.rightStickY, "Right stick must remain 0 - detached in Combat Gesture mode")
+        assertEquals(0f, processedInput.leftStickX, "Left stick must remain 0 - detached in Combat Gesture mode")
+        assertEquals(0f, processedInput.leftStickY, "Left stick must remain 0 - detached in Combat Gesture mode")
         assertFalse(processedInput.btnB, "Normal aiming must not trigger buttons")
     }
 
@@ -153,11 +161,13 @@ class MotionGestureCombatTest {
         val processor = GyroProcessor()
         val settings = GyroSettings(
             inputMode = InputMode.GESTURE,
-            gestureFlicksEnabled = true,
-            gestureFlickThreshold = 8.5f,
-            gestureFlickUpAction = GestureButton.BTN_X,
-            gestureFlickDownAction = GestureButton.BTN_Y,
-            gestureFlickCooldownMs = 100L
+            combatGestures = CombatGesturesSettings(
+                flicksEnabled = true,
+                flickThreshold = 8.5f,
+                flickUpAction = GestureButton.BTN_X,
+                flickDownAction = GestureButton.BTN_Y,
+                flickCooldownMs = 100L
+            )
         )
 
         // 1. Fast UP flick (linearAccelY = 10.0f)
@@ -196,11 +206,13 @@ class MotionGestureCombatTest {
         val processor = GyroProcessor()
         val settings = GyroSettings(
             inputMode = InputMode.GESTURE,
-            gestureFlicksEnabled = false,
-            gestureTiltEnabled = true,
-            gestureTiltAngleThreshold = 30.0f,
-            gestureTiltAction = GestureButton.BTN_X,
-            gestureTiltHoldMode = false
+            combatGestures = CombatGesturesSettings(
+                flicksEnabled = false,
+                tiltEnabled = true,
+                tiltPitchThreshold = 30.0f,
+                tiltUpAction = GestureButton.BTN_X,
+                tiltHoldMode = false
+            )
         )
 
         // Tilt 15° upward (below 30° threshold) -> quat pitch = 15°
@@ -243,15 +255,17 @@ class MotionGestureCombatTest {
         val processor = GyroProcessor()
         val settings = GyroSettings(
             inputMode = InputMode.GESTURE,
-            gestureFlicksEnabled = false,
-            gestureTiltEnabled = true,
-            gestureTiltPitchThreshold = 30.0f,
-            gestureTiltRollThreshold = 30.0f,
-            gestureTiltUpAction = GestureButton.BTN_X,
-            gestureTiltDownAction = GestureButton.BTN_Y,
-            gestureTiltLeftAction = GestureButton.BTN_LB,
-            gestureTiltRightAction = GestureButton.BTN_RB,
-            gestureTiltHoldMode = true
+            combatGestures = CombatGesturesSettings(
+                flicksEnabled = false,
+                tiltEnabled = true,
+                tiltPitchThreshold = 30.0f,
+                tiltRollThreshold = 30.0f,
+                tiltUpAction = GestureButton.BTN_X,
+                tiltDownAction = GestureButton.BTN_Y,
+                tiltLeftAction = GestureButton.BTN_LB,
+                tiltRightAction = GestureButton.BTN_RB,
+                tiltHoldMode = true
+            )
         )
 
         // 1. Tilt DOWN (-35° pitch)
@@ -299,11 +313,13 @@ class MotionGestureCombatTest {
         val processor = GyroProcessor()
         val settings = GyroSettings(
             inputMode = InputMode.GESTURE,
-            gestureFlicksEnabled = false,
-            gestureShakeEnabled = true,
-            gestureShakeThreshold = 10.0f,
-            gestureShakeAction = GestureButton.BTN_X,
-            gestureShakeCooldownMs = 300L
+            combatGestures = CombatGesturesSettings(
+                flicksEnabled = false,
+                shakeEnabled = true,
+                shakeThreshold = 10.0f,
+                shakeAction = GestureButton.BTN_X,
+                shakeCooldownMs = 300L
+            )
         )
 
         // Simulate 3 rapid reversal shake peaks within 250ms
@@ -333,9 +349,11 @@ class MotionGestureCombatTest {
         val processor = GyroProcessor()
         val settings = GyroSettings(
             inputMode = InputMode.GESTURE,
-            gestureFlicksEnabled = false, // Turned OFF
-            gestureTiltEnabled = false,   // Turned OFF
-            gestureShakeEnabled = false   // Turned OFF
+            combatGestures = CombatGesturesSettings(
+                flicksEnabled = false,
+                tiltEnabled = false,
+                shakeEnabled = false
+            )
         )
 
         val heavyStrike = GamepadInput(linearAccelY = 15.0f, quatX = 0.5f, quatW = 0.866f)
@@ -359,13 +377,15 @@ class MotionGestureCombatTest {
         val processor = GyroProcessor()
         val settings = GyroSettings(
             inputMode = InputMode.GESTURE,
-            gestureFlicksEnabled = false,
-            gestureTiltEnabled = true,
-            gestureTiltPitchThreshold = 30.0f,
-            gestureTiltRollThreshold = 30.0f,
-            gestureTiltUpAction = GestureButton.BTN_X,
-            gestureTiltRightAction = GestureButton.BTN_RB,
-            gestureTiltHoldMode = true
+            combatGestures = CombatGesturesSettings(
+                flicksEnabled = false,
+                tiltEnabled = true,
+                tiltPitchThreshold = 30.0f,
+                tiltRollThreshold = 30.0f,
+                tiltUpAction = GestureButton.BTN_X,
+                tiltRightAction = GestureButton.BTN_RB,
+                tiltHoldMode = true
+            )
         )
 
         // Tilt 35° upward: rawAccelY = 9.8 * sin(35°) ≈ 5.62 m/s²
@@ -399,11 +419,9 @@ class MotionGestureCombatTest {
     fun testGyroOffDetachesFromJoystickCompletely() {
         val processor = GyroProcessor()
 
-        // 1. GESTURE mode with gestureAimingEnabled = false (default)
+        // 1. GESTURE mode (joysticks are completely detached)
         val gestureSettings = GyroSettings(
-            inputMode = InputMode.GESTURE,
-            gestureAimingEnabled = false,
-            xboxTargetStick = XboxTargetStick.RIGHT_STICK
+            inputMode = InputMode.GESTURE
         )
         val rotatingInput = GamepadInput(gyroZ = 2.0f, gyroX = 2.0f)
         val gestureProcessed = InputPipeline.processInput(
@@ -415,13 +433,15 @@ class MotionGestureCombatTest {
             rsSensitivityX = 1.0f, rsSensitivityY = 1.0f,
             onProcessedAngles = { _, _ -> }
         )
-        assertEquals(0f, gestureProcessed.rightStickX, "When gyro aiming is disabled in GESTURE mode, right stick must not move")
-        assertEquals(0f, gestureProcessed.rightStickY, "When gyro aiming is disabled in GESTURE mode, right stick must not move")
+        assertEquals(0f, gestureProcessed.rightStickX, "In GESTURE mode, right stick must not move")
+        assertEquals(0f, gestureProcessed.rightStickY, "In GESTURE mode, right stick must not move")
 
         // 2. Global Target Stick = NONE
         val detachedSettings = GyroSettings(
             inputMode = InputMode.VELOCITY,
-            xboxTargetStick = XboxTargetStick.NONE
+            precisionAiming = PrecisionAimingSettings(
+                targetStick = XboxTargetStick.NONE
+            )
         )
         val detachedProcessed = InputPipeline.processInput(
             input = rotatingInput,
@@ -437,60 +457,10 @@ class MotionGestureCombatTest {
     }
 
     @Test
-    fun testGestureJoystickModesDeepRouting() {
+    fun testPhysicalSticksPassThroughUntouchedInGestureMode() {
         val processor = GyroProcessor()
-
-        // 1. FLIGHT_STICK mode in GESTURE
-        val flightSettings = GyroSettings(
-            inputMode = InputMode.GESTURE,
-            gestureJoystickMode = GestureJoystickMode.FLIGHT_STICK,
-            gestureAimingEnabled = true,
-            airMousePitchTarget = FlightStickAxisTarget.LS_Y,
-            airMouseRollTarget = FlightStickAxisTarget.LS_X,
-            airMouseMaxPitch = 35.0f,
-            airMouseMaxRoll = 35.0f
-        )
-
-        // Pitch up 35° (accelY = -9.8 * sin(35°) ≈ -5.62 m/s²)
-        val pitchInput = GamepadInput(accelY = -5.62f)
-        val flightProcessed = InputPipeline.processInput(
-            input = pitchInput,
-            activeController = ControllerType.XBOX_360,
-            gyroProcessor = processor,
-            gyroSettings = flightSettings,
-            lsSensitivityX = 1.0f, lsSensitivityY = 1.0f,
-            rsSensitivityX = 1.0f, rsSensitivityY = 1.0f,
-            onProcessedAngles = { _, _ -> }
-        )
-        assertTrue(flightProcessed.leftStickY > 0.5f, "FLIGHT_STICK in GESTURE mode must deflect Left Stick Y on pitch tilt")
-
-        assertTrue(flightProcessed.leftStickY > 0.5f, "FLIGHT_STICK in GESTURE mode must deflect Left Stick Y on pitch tilt")
-
-        // 2. RAW_SILICON mode in GESTURE
-        val rawSiliconSettings = GyroSettings(
-            inputMode = InputMode.GESTURE,
-            gestureJoystickMode = GestureJoystickMode.RAW_SILICON,
-            gestureAimingEnabled = true,
-            xboxTargetStick = XboxTargetStick.RIGHT_STICK,
-            maxDpsYaw = 200.0f
-        )
-        val rawInput = GamepadInput(rawGyroZ = 2.0f, gyroBiasZ = 0.5f)
-        val rawProcessed = InputPipeline.processInput(
-            input = rawInput,
-            activeController = ControllerType.XBOX_360,
-            gyroProcessor = processor,
-            gyroSettings = rawSiliconSettings,
-            lsSensitivityX = 1.0f, lsSensitivityY = 1.0f,
-            rsSensitivityX = 1.0f, rsSensitivityY = 1.0f,
-            onProcessedAngles = { _, _ -> }
-        )
-        assertTrue(rawProcessed.rightStickX > 0.1f, "RAW_SILICON in GESTURE mode must deflect stick from uncalibrated sensor")
-
-        // 3. OFF mode in GESTURE passes physical sticks through completely untouched
         val offSettings = GyroSettings(
-            inputMode = InputMode.GESTURE,
-            gestureJoystickMode = GestureJoystickMode.OFF,
-            gestureAimingEnabled = false
+            inputMode = InputMode.GESTURE
         )
         val physicalInput = GamepadInput(
             leftStickX = 0.75f,
@@ -513,78 +483,5 @@ class MotionGestureCombatTest {
         assertEquals(-0.60f, offProcessed.leftStickY, 0.001f, "Physical LeftStickY must pass through untouched")
         assertEquals(-0.45f, offProcessed.rightStickX, 0.001f, "Physical RightStickX must pass through untouched")
         assertEquals(0.80f, offProcessed.rightStickY, 0.001f, "Physical RightStickY must pass through untouched")
-    }
-
-    @Test
-    fun testGyroAimingDeepSettingsReflectDirectlyInCombatGesture() {
-        val processor = GyroProcessor()
-
-        // 1. Configure custom aim speed (maxDpsYaw = 100°/s) and target stick = RIGHT_STICK
-        val sharedSettingsRightStick = GyroSettings(
-            inputMode = InputMode.GESTURE,
-            gestureJoystickMode = GestureJoystickMode.GYRO_AIMING,
-            gestureAimingEnabled = true,
-            maxDpsYaw = 100.0f,
-            maxDpsPitch = 100.0f,
-            xboxTargetStick = XboxTargetStick.RIGHT_STICK,
-            smoothingEnabled = false,
-            deadzoneThreshold = 0f,
-            stickResponseCurve = StickResponseCurve.LINEAR
-        )
-
-        // Rotation input: flat wrist turn at 1.0 rad/s (~57.3°/s)
-        val gyroTurnInput = GamepadInput(gyroZ = 1.0f)
-
-        val rightStickResult = InputPipeline.processInput(
-            input = gyroTurnInput,
-            activeController = ControllerType.XBOX_360,
-            gyroProcessor = processor,
-            gyroSettings = sharedSettingsRightStick,
-            lsSensitivityX = 1.0f, lsSensitivityY = 1.0f,
-            rsSensitivityX = 1.0f, rsSensitivityY = 1.0f,
-            onProcessedAngles = { _, _ -> }
-        )
-
-        assertTrue(rightStickResult.rightStickX > 0.5f, "Right stick should deflect based on maxDpsYaw in Combat Gesture")
-        assertEquals(0f, rightStickResult.leftStickX, 0.001f, "Left stick must remain zero when aiming stick is RIGHT")
-
-        // 2. Change Target Stick setting to LEFT_STICK (like in deep settings)
-        val sharedSettingsLeftStick = sharedSettingsRightStick.copy(
-            xboxTargetStick = XboxTargetStick.LEFT_STICK
-        )
-
-        val leftStickResult = InputPipeline.processInput(
-            input = gyroTurnInput,
-            activeController = ControllerType.XBOX_360,
-            gyroProcessor = processor,
-            gyroSettings = sharedSettingsLeftStick,
-            lsSensitivityX = 1.0f, lsSensitivityY = 1.0f,
-            rsSensitivityX = 1.0f, rsSensitivityY = 1.0f,
-            onProcessedAngles = { _, _ -> }
-        )
-
-        assertTrue(leftStickResult.leftStickX > 0.5f, "Left stick should now deflect when Target Stick changed to LEFT")
-        assertEquals(0f, leftStickResult.rightStickX, 0.001f, "Right stick must remain zero when aiming stick is LEFT")
-
-        // 3. Compare with standard standalone VELOCITY mode
-        val standaloneVelocitySettings = sharedSettingsRightStick.copy(
-            inputMode = InputMode.VELOCITY
-        )
-        val standaloneResult = InputPipeline.processInput(
-            input = gyroTurnInput,
-            activeController = ControllerType.XBOX_360,
-            gyroProcessor = processor,
-            gyroSettings = standaloneVelocitySettings,
-            lsSensitivityX = 1.0f, lsSensitivityY = 1.0f,
-            rsSensitivityX = 1.0f, rsSensitivityY = 1.0f,
-            onProcessedAngles = { _, _ -> }
-        )
-
-        assertEquals(
-            standaloneResult.rightStickX,
-            rightStickResult.rightStickX,
-            0.001f,
-            "Combat Gesture gyro aiming must produce identical deflection to standalone Gyro Aiming mode"
-        )
     }
 }

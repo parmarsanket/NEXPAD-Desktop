@@ -26,7 +26,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpaddesktop.model.FlightStickAxisTarget
-import com.sanket.tools.nexpaddesktop.model.GestureJoystickMode
 import com.sanket.tools.nexpaddesktop.model.GyroSettings
 import com.sanket.tools.nexpaddesktop.model.HorizontalAxis
 import com.sanket.tools.nexpaddesktop.model.InputMode
@@ -99,8 +98,8 @@ fun DashboardHeader(
     val totalAccelMag = sqrt(rawAccelX * rawAccelX + rawAccelY * rawAccelY + rawAccelZ * rawAccelZ)
     val effectiveCombatForce = if (linearMag > 1.0f) linearMag else totalAccelMag
 
-    val isStrikeDetected = (effectiveCombatForce >= settings.gestureFlickThreshold)
-    val isShakingDetected = (effectiveCombatForce >= settings.gestureShakeThreshold)
+    val isStrikeDetected = (effectiveCombatForce >= settings.combatGestures.flickThreshold)
+    val isShakingDetected = (effectiveCombatForce >= settings.combatGestures.shakeThreshold)
 
     // ─────────────────────────────────────────────────────────────────────────
     // 1. Physical 3D Spatial Angles (Pitch, Roll, Yaw)
@@ -114,10 +113,10 @@ fun DashboardHeader(
             // Steering Angle: computed from gravity vector X / accel X, with full fallback to processedYaw
             val effTiltX = if (rawGravityX != 0f) rawGravityX else if (rawAccelX != 0f) rawAccelX else (processedYaw / 200f * 9.8f)
             val steeringAngle = if (hasGrav && gravMag > 3.0f) {
-                (asin((effTiltX / gravMag).coerceIn(-1f, 1f)) * RAD_TO_DEG / settings.absoluteMaxTilt * settings.absoluteMaxTilt)
-                    .coerceIn(-settings.absoluteMaxTilt, settings.absoluteMaxTilt)
+                (asin((effTiltX / gravMag).coerceIn(-1f, 1f)) * RAD_TO_DEG / settings.steeringWheel.maxTiltAngle * settings.steeringWheel.maxTiltAngle)
+                    .coerceIn(-settings.steeringWheel.maxTiltAngle, settings.steeringWheel.maxTiltAngle)
             } else if (processedYaw != 0f) {
-                (processedYaw / 200.0f * settings.absoluteMaxTilt).coerceIn(-settings.absoluteMaxTilt, settings.absoluteMaxTilt)
+                (processedYaw / 200.0f * settings.steeringWheel.maxTiltAngle).coerceIn(-settings.steeringWheel.maxTiltAngle, settings.steeringWheel.maxTiltAngle)
             } else 0f
 
             // In Compose graphicsLayer:
@@ -129,8 +128,8 @@ fun DashboardHeader(
             displayPitch = (gravityPitchDeg * 0.55f).coerceIn(-35f, 35f)
         }
         InputMode.AIR_MOUSE -> {
-            val flightPitch = (processedPitch / 200.0f) * settings.airMouseMaxPitch
-            val flightRoll = (processedYaw / 200.0f) * settings.airMouseMaxRollYaw
+            val flightPitch = (processedPitch / 200.0f) * settings.flightStick.maxPitchAngle
+            val flightRoll = (processedYaw / 200.0f) * settings.flightStick.maxRollAngle
             displayPitch = (-flightPitch).coerceIn(-65f, 65f)
             displayRoll = flightRoll.coerceIn(-65f, 65f)
             displayYaw = (rawGyroZ * RAD_TO_DEG * 0.1f).coerceIn(-30f, 30f)
@@ -143,21 +142,21 @@ fun DashboardHeader(
 
             // 1. Kinetic Strike / Flick Recoil Impulse
             if (isStrikeDetected) {
-                val strikeIntensity = ((effectiveCombatForce - settings.gestureFlickThreshold) / 5f).coerceIn(0f, 2f)
+                val strikeIntensity = ((effectiveCombatForce - settings.combatGestures.flickThreshold) / 5f).coerceIn(0f, 2f)
                 val flickDirY = if (effLinY != 0f) kotlin.math.sign(effLinY) else 1f
                 pPitch += flickDirY * (14f + strikeIntensity * 8f)
             }
 
             // 2. Defensive Guard Posture Articulation
-            if (gravityPitchDeg >= settings.gestureTiltPitchThreshold) {
+            if (gravityPitchDeg >= settings.combatGestures.tiltPitchThreshold) {
                 // Shield / Guard Up stance: exaggerated defensive block posture
                 pPitch = (pPitch * 1.25f).coerceIn(-65f, 65f)
-            } else if (gravityPitchDeg <= -settings.gestureTiltPitchThreshold) {
+            } else if (gravityPitchDeg <= -settings.combatGestures.tiltPitchThreshold) {
                 // Low Guard / Crouch stance
                 pPitch = (pPitch * 1.25f).coerceIn(-65f, 65f)
             }
 
-            if (abs(gravityRollDeg) >= settings.gestureTiltRollThreshold) {
+            if (abs(gravityRollDeg) >= settings.combatGestures.tiltRollThreshold) {
                 // Side Dodge / Parry stance
                 pRoll = (pRoll * 1.2f).coerceIn(-65f, 65f)
             }
@@ -525,7 +524,7 @@ private fun TelemetryContent(
                     steeringAngle > 0 -> "TURNING RIGHT ▶"
                     else -> "TURNING LEFT ◀"
                 }
-                val steerPct = (abs(displayYaw) / settings.absoluteMaxTilt * 100f).coerceIn(0f, 100f)
+                val steerPct = (abs(displayYaw) / settings.steeringWheel.maxTiltAngle * 100f).coerceIn(0f, 100f)
 
                 val targetStickShort = when (settings.xboxTargetStick) {
                     XboxTargetStick.RIGHT_STICK -> "RS"
@@ -539,7 +538,7 @@ private fun TelemetryContent(
                     badgeText = steerStatus,
                     badgeColor = accentColor,
                     chip1 = "Deflection: ${steerPct.toInt()}%",
-                    chip2 = "Max Lock: ${settings.absoluteMaxTilt.toInt()}°",
+                    chip2 = "Max Lock: ${settings.steeringWheel.maxTiltAngle.toInt()}°",
                     chip3 = "Target: $targetStickShort",
                     isCompact = isCompact
                 )
@@ -554,15 +553,15 @@ private fun TelemetryContent(
                     )
                     TelemetryBar(
                         label = "Centering Authority",
-                        value = (settings.absoluteSensitivityX / 2.5f).coerceIn(0f, 1f),
-                        displayValue = "${String.format("%.2f", settings.absoluteSensitivityX)}×",
+                        value = (settings.steeringWheel.sensitivityX / 2.5f).coerceIn(0f, 1f),
+                        displayValue = "${String.format("%.2f", settings.steeringWheel.sensitivityX)}×",
                         color = Color(0xFF00E5FF),
                         labelWidth = if (isCompact) 105.dp else 125.dp
                     )
                     TelemetryBar(
                         label = "Response Curve",
-                        value = (settings.absoluteCurve / 3.0f).coerceIn(0f, 1f),
-                        displayValue = "${String.format("%.1f", settings.absoluteCurve)} exp",
+                        value = (settings.steeringWheel.responseCurve / 3.0f).coerceIn(0f, 1f),
+                        displayValue = "${String.format("%.1f", settings.steeringWheel.responseCurve)} exp",
                         color = Color(0xFF69F0AE),
                         labelWidth = if (isCompact) 105.dp else 125.dp
                     )
@@ -580,14 +579,14 @@ private fun TelemetryContent(
                     else -> "BANKING LEFT ◀"
                 }
 
-                val pitchTarget = when (settings.airMousePitchTarget) {
+                val pitchTarget = when (settings.flightStick.pitchTarget) {
                     FlightStickAxisTarget.LS_Y -> "LS-Y"
                     FlightStickAxisTarget.RS_Y -> "RS-Y"
                     FlightStickAxisTarget.LS_X -> "LS-X"
                     FlightStickAxisTarget.RS_X -> "RS-X"
                     FlightStickAxisTarget.NONE -> "Off"
                 }
-                val rollTarget = when (settings.airMouseRollTarget) {
+                val rollTarget = when (settings.flightStick.rollTarget) {
                     FlightStickAxisTarget.LS_X -> "LS-X"
                     FlightStickAxisTarget.RS_X -> "RS-X"
                     FlightStickAxisTarget.LS_Y -> "LS-Y"
@@ -602,12 +601,12 @@ private fun TelemetryContent(
                     badgeColor = accentColor,
                     chip1 = "Pitch: $pitchTarget",
                     chip2 = "Roll: $rollTarget",
-                    chip3 = "Yaw: ${if (settings.airMouseYawTarget == FlightStickAxisTarget.NONE) "Off" else "Active"}",
+                    chip3 = "Yaw: ${if (settings.flightStick.yawTarget == FlightStickAxisTarget.NONE) "Off" else "Active"}",
                     isCompact = isCompact
                 )
 
-                val pitchPct = (abs(finalPitch) / settings.airMouseMaxPitch).coerceIn(0f, 1f)
-                val rollPct = (abs(finalRoll) / settings.airMouseMaxRoll).coerceIn(0f, 1f)
+                val pitchPct = (abs(finalPitch) / settings.flightStick.maxPitchAngle).coerceIn(0f, 1f)
+                val rollPct = (abs(finalRoll) / settings.flightStick.maxRollAngle).coerceIn(0f, 1f)
 
                 Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     TelemetryBar(
@@ -626,8 +625,8 @@ private fun TelemetryContent(
                     )
                     TelemetryBar(
                         label = "Tremor Deadzone",
-                        value = (settings.airMouseDeadzone / 5f).coerceIn(0f, 1f),
-                        displayValue = "${String.format("%.1f", settings.airMouseDeadzone)}°",
+                        value = (settings.flightStick.deadzone / 5f).coerceIn(0f, 1f),
+                        displayValue = "${String.format("%.1f", settings.flightStick.deadzone)}°",
                         color = Color(0xFFFFB300),
                         labelWidth = if (isCompact) 105.dp else 125.dp
                     )
@@ -638,11 +637,9 @@ private fun TelemetryContent(
                 val strikeStatus = when {
                     isStrikeDetected -> "STRIKE DETECTED ⚡"
                     isShakingDetected -> "SHAKING / CHARGING ⚡"
-                    abs(gravityPitchDeg) >= settings.gestureTiltPitchThreshold || abs(gravityRollDeg) >= settings.gestureTiltRollThreshold -> "POSTURE TRIGGERED"
+                    abs(gravityPitchDeg) >= settings.combatGestures.tiltPitchThreshold || abs(gravityRollDeg) >= settings.combatGestures.tiltRollThreshold -> "POSTURE TRIGGERED"
                     else -> "MONITORING KINETIC FORCE"
                 }
-
-                val gestureJoy = settings.effectiveGestureJoystickMode.shortName
 
                 HeroMetricSection(
                     heroValue = "${String.format("%.1f", effectiveCombatForce)} m/s²",
@@ -651,32 +648,32 @@ private fun TelemetryContent(
                     badgeColor = if (isStrikeDetected) Color(0xFFFF1744) else accentColor,
                     chip1 = "Pitch: ${String.format("%+.0f", gravityPitchDeg)}°",
                     chip2 = "Roll: ${String.format("%+.0f", gravityRollDeg)}°",
-                    chip3 = "Joystick: $gestureJoy",
+                    chip3 = "Sticks: Pure Pass-Through",
                     isCompact = isCompact
                 )
 
-                val flickProgress = (effectiveCombatForce / settings.gestureFlickThreshold).coerceIn(0f, 1f)
-                val pitchPostureProgress = (abs(gravityPitchDeg) / settings.gestureTiltPitchThreshold).coerceIn(0f, 1f)
+                val flickProgress = (effectiveCombatForce / settings.combatGestures.flickThreshold).coerceIn(0f, 1f)
+                val pitchPostureProgress = (abs(gravityPitchDeg) / settings.combatGestures.tiltPitchThreshold).coerceIn(0f, 1f)
 
                 Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     TelemetryBar(
                         label = "Flick Trigger Force",
                         value = flickProgress,
-                        displayValue = "${settings.gestureFlickThreshold.toInt()} m/s²",
+                        displayValue = "${settings.combatGestures.flickThreshold.toInt()} m/s²",
                         color = Color(0xFFFF1744),
                         labelWidth = if (isCompact) 105.dp else 125.dp
                     )
                     TelemetryBar(
                         label = "Tilt Posture Force",
                         value = pitchPostureProgress,
-                        displayValue = "${settings.gestureTiltPitchThreshold.toInt()}°",
+                        displayValue = "${settings.combatGestures.tiltPitchThreshold.toInt()}°",
                         color = Color(0xFFFF9100),
                         labelWidth = if (isCompact) 105.dp else 125.dp
                     )
                     TelemetryBar(
                         label = "Shake Trigger Window",
-                        value = (settings.gestureShakeThreshold / 20f).coerceIn(0f, 1f),
-                        displayValue = "${settings.gestureShakeThreshold.toInt()} m/s²",
+                        value = (settings.combatGestures.shakeThreshold / 20f).coerceIn(0f, 1f),
+                        displayValue = "${settings.combatGestures.shakeThreshold.toInt()} m/s²",
                         color = Color(0xFF00E5FF),
                         labelWidth = if (isCompact) 105.dp else 125.dp
                     )
