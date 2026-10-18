@@ -90,7 +90,7 @@ object AoaHandshake {
                 "Nexpad Controller",   // model
                 pcName,                // description (carries laptop hostname to phone)
                 "1.0",                 // version
-                "https://nexpad.dev",  // URI
+                "",                    // URI (empty string suppresses Android OS "No installed apps" popup)
                 "nexpad-serial-001"    // serial
             )
 
