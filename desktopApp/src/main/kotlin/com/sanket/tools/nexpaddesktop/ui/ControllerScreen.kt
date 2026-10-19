@@ -1,6 +1,9 @@
 package com.sanket.tools.nexpaddesktop.ui
 
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -9,8 +12,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
@@ -24,6 +33,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpaddesktop.model.GyroSettings
 import com.sanket.tools.nexpaddesktop.ui.components.DesktopVerticalScrollbar
@@ -55,6 +66,9 @@ fun ControllerScreen(
         onGyroSettingsChange = { viewModel.updateGyroSettings(it) },
         processedYaw = viewModel.processedYaw,
         processedPitch = viewModel.processedPitch,
+        flightPitchDeg = viewModel.flightPitchDeg,
+        flightRollDeg = viewModel.flightRollDeg,
+        flightYawDeg = viewModel.flightYawDeg,
         onRecalibrate = viewModel.onRecalibrate
     )
 }
@@ -78,6 +92,9 @@ fun ControllerScreen(
     onGyroSettingsChange: (GyroSettings) -> Unit,
     processedYaw: Float,
     processedPitch: Float,
+    flightPitchDeg: Float = 0f,
+    flightRollDeg: Float = 0f,
+    flightYawDeg: Float = 0f,
     onRecalibrate: () -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -94,139 +111,117 @@ fun ControllerScreen(
             Column {
                 Text(
                     text = "CONTROLLER & MOTION",
-                    style = TextStyle(
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 1.sp,
+                    style = MaterialTheme.typography.headlineMedium.copy(
                         brush = Brush.linearGradient(
-                            colors = listOf(Color.White, NeonPalette.Cyan, NeonPalette.Purple)
+                            colors = listOf(Color.White, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
                         )
                     )
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "Select your target gamepad emulation profile and configure motion control parameters.",
-                    color = NeonPalette.CardIdleText,
-                    fontSize = 13.sp
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            // ── Controller Mode Selector Cards ──
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                ControllerProfileCard(
-                    modifier = Modifier.weight(1f),
-                    title = "Xbox 360",
-                    subtitle = "Virtual XInput (ViGEm)",
-                    badge = "Motion Translation Active",
-                    accentColor = NeonPalette.Cyan,
-                    isSelected = activeController == ControllerType.XBOX_360,
-                    description = "Converts phone sensors to analog stick aiming & steering. Tailored for Windows PC gaming without native gyro.",
-                    onClick = { onSaveController(ControllerType.XBOX_360) }
-                )
-
-                ControllerProfileCard(
-                    modifier = Modifier.weight(1f),
-                    title = "DualShock 4",
-                    subtitle = "DirectInput & DSU Motion",
-                    badge = "Native Passthrough",
-                    accentColor = NeonPalette.Purple,
-                    isSelected = activeController == ControllerType.DUALSHOCK_4,
-                    description = "100% raw 6-axis motion stream directly to games, Steam Input, and motion applications. In-game settings control sensitivity.",
-                    onClick = { onSaveController(ControllerType.DUALSHOCK_4) }
-                )
-            }
+            // ── Material 3 Expressive Controller Selector ──
+            ExpressiveControllerSelector(
+                activeController = activeController,
+                onSelect = onSaveController
+            )
 
             // ════════════════════════════════════════════════════
-            //  BRANCH: DUALSHOCK 4 NATIVE MODE
+            //  DYNAMIC ANIMATED CONTROLLER PROFILE VIEWPORT
             // ════════════════════════════════════════════════════
-            if (activeController == ControllerType.DUALSHOCK_4) {
-                DualShock4Dashboard(
-                    latestInput = latestInput,
-                    isDriverConnected = isDriverConnected,
-                    dsuClientCount = dsuClientCount,
-                    gyroSettings = gyroSettings,
-                    processedYaw = processedYaw,
-                    processedPitch = processedPitch,
-                    onRecalibrate = onRecalibrate
-                )
-            } else {
-                // ════════════════════════════════════════════════════
-                //  BRANCH: XBOX 360 MOTION CONTROL CENTER
-                // ════════════════════════════════════════════════════
-                XboxMotionSettingsSection(
-                    settings = gyroSettings,
-                    onSettingsChange = onGyroSettingsChange,
-                    rawGyroX = latestInput.gyroX,
-                    rawGyroY = latestInput.gyroY,
-                    rawGyroZ = latestInput.gyroZ,
-                    rawAccelX = latestInput.accelX,
-                    rawAccelY = latestInput.accelY,
-                    rawAccelZ = latestInput.accelZ,
-                    rawGravityX = latestInput.gravityX,
-                    rawGravityY = latestInput.gravityY,
-                    rawGravityZ = latestInput.gravityZ,
-                    linearAccelX = latestInput.linearAccelX,
-                    linearAccelY = latestInput.linearAccelY,
-                    linearAccelZ = latestInput.linearAccelZ,
-                    rawUncalGyroX = latestInput.rawGyroX,
-                    rawUncalGyroY = latestInput.rawGyroY,
-                    rawUncalGyroZ = latestInput.rawGyroZ,
-                    processedYaw = processedYaw,
-                    processedPitch = processedPitch,
-                    onRecalibrate = onRecalibrate
-                )
+            AnimatedContent(
+                targetState = activeController,
+                transitionSpec = {
+                    (slideInVertically(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) { height -> height / 8 } + fadeIn())
+                        .togetherWith(slideOutVertically(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) { height -> -height / 8 } + fadeOut())
+                },
+                label = "controller_mode_transition"
+            ) { targetController ->
+                if (targetController == ControllerType.DUALSHOCK_4) {
+                    DualShock4Dashboard(
+                        latestInput = latestInput,
+                        isDriverConnected = isDriverConnected,
+                        dsuClientCount = dsuClientCount,
+                        gyroSettings = gyroSettings,
+                        processedYaw = processedYaw,
+                        processedPitch = processedPitch,
+                        flightPitchDeg = flightPitchDeg,
+                        flightRollDeg = flightRollDeg,
+                        flightYawDeg = flightYawDeg,
+                        onRecalibrate = onRecalibrate
+                    )
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                        XboxMotionSettingsSection(
+                            settings = gyroSettings,
+                            onSettingsChange = onGyroSettingsChange,
+                            rawGyroX = latestInput.gyroX,
+                            rawGyroY = latestInput.gyroY,
+                            rawGyroZ = latestInput.gyroZ,
+                            rawAccelX = latestInput.accelX,
+                            rawAccelY = latestInput.accelY,
+                            rawAccelZ = latestInput.accelZ,
+                            rawGravityX = latestInput.gravityX,
+                            rawGravityY = latestInput.gravityY,
+                            rawGravityZ = latestInput.gravityZ,
+                            linearAccelX = latestInput.linearAccelX,
+                            linearAccelY = latestInput.linearAccelY,
+                            linearAccelZ = latestInput.linearAccelZ,
+                            rawUncalGyroX = latestInput.rawGyroX,
+                            rawUncalGyroY = latestInput.rawGyroY,
+                            rawUncalGyroZ = latestInput.rawGyroZ,
+                            processedYaw = processedYaw,
+                            processedPitch = processedPitch,
+                            flightPitchDeg = flightPitchDeg,
+                            flightRollDeg = flightRollDeg,
+                            flightYawDeg = flightYawDeg,
+                            onRecalibrate = onRecalibrate
+                        )
 
-                // ── Gamepad Base Sticks Sensitivity ──
-                ModernSectionCard(
-                    title = "Analog Sticks Base Sensitivity (${gyroSettings.inputMode.displayName})",
-                    icon = Icons.Default.Tune,
-                    onReset = {
-                        onGyroSettingsChange(gyroSettings.updateActiveStickSensitivities(1.0f, 1.0f, 1.0f, 1.0f))
-                    },
-                    resetTooltip = "Reset Stick Sensitivities for ${gyroSettings.inputMode.displayName} to 1.00×"
-                ) {
-                    Text(
-                        "Hardware scaling applied to the physical on-screen thumbsticks specifically for ${gyroSettings.inputMode.displayName}.",
-                        fontSize = 12.sp,
-                        color = NeonPalette.CardIdleText
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+                        // ── Gamepad Base Sticks Sensitivity ──
+                        ModernSectionCard(
+                            title = "Analog Sticks Base Sensitivity (${gyroSettings.inputMode.displayName})",
+                            icon = Icons.Default.Tune,
+                            onReset = {
+                                onGyroSettingsChange(gyroSettings.updateActiveStickSensitivities(1.0f, 1.0f, 1.0f, 1.0f))
+                            },
+                            resetTooltip = "Reset Stick Sensitivities for ${gyroSettings.inputMode.displayName} to 1.00×"
+                        ) {
+                            Text(
+                                "Hardware scaling applied to the physical on-screen thumbsticks specifically for ${gyroSettings.inputMode.displayName}.",
+                                fontSize = 12.sp,
+                                color = NeonPalette.CardIdleText
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
 
-                    Text("Right Stick (Camera / Look)", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = NeonPalette.Cyan)
-                    ModernSlider(
-                        label = "RS Horizontal Sensitivity",
-                        value = gyroSettings.rsSensitivityX,
-                        valueRange = 0.1f..3.0f,
-                        format = "%.2f×",
-                        onValueChange = { onGyroSettingsChange(gyroSettings.updateActiveStickSensitivities(rsX = it)) }
-                    )
-                    ModernSlider(
-                        label = "RS Vertical Sensitivity",
-                        value = gyroSettings.rsSensitivityY,
-                        valueRange = 0.1f..3.0f,
-                        format = "%.2f×",
-                        onValueChange = { onGyroSettingsChange(gyroSettings.updateActiveStickSensitivities(rsY = it)) }
-                    )
+                            StickSensitivityGroup(
+                                title = "Right Stick (Camera / Look)",
+                                subtitle = "Thumbstick aiming sensitivity for ${gyroSettings.inputMode.displayName}",
+                                sensX = gyroSettings.rsSensitivityX,
+                                sensY = gyroSettings.rsSensitivityY,
+                                onUpdate = { x, y ->
+                                    onGyroSettingsChange(gyroSettings.updateActiveStickSensitivities(rsX = x, rsY = y))
+                                }
+                            )
 
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text("Left Stick (Movement)", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = NeonPalette.Cyan)
-                    ModernSlider(
-                        label = "LS Horizontal Sensitivity",
-                        value = gyroSettings.lsSensitivityX,
-                        valueRange = 0.1f..3.0f,
-                        format = "%.2f×",
-                        onValueChange = { onGyroSettingsChange(gyroSettings.updateActiveStickSensitivities(lsX = it)) }
-                    )
-                    ModernSlider(
-                        label = "LS Vertical Sensitivity",
-                        value = gyroSettings.lsSensitivityY,
-                        valueRange = 0.1f..3.0f,
-                        format = "%.2f×",
-                        onValueChange = { onGyroSettingsChange(gyroSettings.updateActiveStickSensitivities(lsY = it)) }
-                    )
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            StickSensitivityGroup(
+                                title = "Left Stick (Movement)",
+                                subtitle = "Thumbstick movement sensitivity for ${gyroSettings.inputMode.displayName}",
+                                sensX = gyroSettings.lsSensitivityX,
+                                sensY = gyroSettings.lsSensitivityY,
+                                onUpdate = { x, y ->
+                                    onGyroSettingsChange(gyroSettings.updateActiveStickSensitivities(lsX = x, lsY = y))
+                                }
+                            )
+                        }
+                    }
                 }
             }
 
@@ -247,39 +242,71 @@ fun ControllerScreen(
 }
 
 /**
- * Modern Material 3 Controller Profile Selection Card.
+ * Material 3 Expressive Controller Selector (Replaces bulky text-heavy profile cards).
  */
 @Composable
-private fun ControllerProfileCard(
+fun ExpressiveControllerSelector(
+    activeController: ControllerType,
+    onSelect: (ControllerType) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        ControllerOptionCard(
+            modifier = Modifier.weight(1f),
+            title = "Xbox 360",
+            badge = "Stick Emulation",
+            summary = "Translates motion into analog thumbstick movement for any Windows PC game.",
+            accentColor = NeonPalette.Cyan,
+            isSelected = activeController == ControllerType.XBOX_360,
+            onClick = { onSelect(ControllerType.XBOX_360) }
+        )
+        ControllerOptionCard(
+            modifier = Modifier.weight(1f),
+            title = "DualShock 4",
+            badge = "Native 6-Axis Gyro",
+            summary = "Streams raw 1:1 motion directly to Steam Input & native gyro games without software knobs.",
+            accentColor = NeonPalette.Purple,
+            isSelected = activeController == ControllerType.DUALSHOCK_4,
+            onClick = { onSelect(ControllerType.DUALSHOCK_4) }
+        )
+    }
+}
+
+@Composable
+private fun ControllerOptionCard(
     modifier: Modifier = Modifier,
     title: String,
-    subtitle: String,
     badge: String,
+    summary: String,
     accentColor: Color,
     isSelected: Boolean,
-    description: String,
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
 
-    var cardModifier = modifier
-        .hoverable(interactionSource)
-        .clickable(interactionSource, indication = null, onClick = onClick)
-
-    if (isSelected) {
-        cardModifier = cardModifier.selectedGlow(cornerRadius = 16.dp)
-    }
+    // M3 Expressive Spring Animations
+    val cornerRadius by animateDpAsState(
+        targetValue = if (isSelected) 24.dp else 16.dp,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+    )
+    val containerColor by animateColorAsState(
+        targetValue = when {
+            isSelected -> accentColor.copy(alpha = 0.14f)
+            isHovered -> MaterialTheme.colorScheme.surfaceContainerHigh
+            else -> MaterialTheme.colorScheme.surfaceContainerLow
+        }
+    )
 
     Surface(
-        modifier = cardModifier,
-        shape = RoundedCornerShape(16.dp),
-        color = if (isSelected) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
-        border = BorderStroke(
-            if (isSelected) 2.dp else 1.dp,
-            if (isSelected) accentColor else if (isHovered) Color.White.copy(alpha = 0.3f) else NeonPalette.CardIdleBorder
-        )
+        onClick = onClick,
+        interactionSource = interactionSource,
+        modifier = modifier,
+        shape = RoundedCornerShape(cornerRadius),
+        color = containerColor,
+        border = if (isSelected) BorderStroke(1.5.dp, accentColor) else null
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(
@@ -287,69 +314,164 @@ private fun ControllerProfileCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = accentColor.copy(alpha = 0.15f),
-                    border = BorderStroke(1.dp, accentColor.copy(alpha = 0.35f))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        text = badge,
-                        color = accentColor,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                    )
+                    // Tonal Icon Container
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isSelected) accentColor.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SportsEsports,
+                            contentDescription = null,
+                            tint = if (isSelected) accentColor else NeonPalette.CardIdleText,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = badge,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (isSelected) accentColor else NeonPalette.CardIdleText
+                        )
+                    }
                 }
 
-                if (isSelected) {
-                    Icon(
-                        Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = accentColor,
-                        modifier = Modifier.size(20.dp)
+                RadioButton(
+                    selected = isSelected,
+                    onClick = null,
+                    colors = RadioButtonDefaults.colors(
+                        selectedColor = accentColor,
+                        unselectedColor = Color.White.copy(alpha = 0.3f)
                     )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Icon(
-                    Icons.Default.SportsEsports,
-                    contentDescription = null,
-                    tint = if (isSelected) accentColor else Color.Gray,
-                    modifier = Modifier.size(28.dp)
                 )
-                Column {
-                    Text(
-                        text = title,
-                        fontWeight = FontWeight.Black,
-                        fontSize = 18.sp,
-                        color = Color.White
-                    )
-                    Text(
-                        text = subtitle,
-                        fontSize = 12.sp,
-                        color = NeonPalette.CardIdleText
-                    )
-                }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = description,
-                fontSize = 12.sp,
+                text = summary,
+                style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.75f),
-                lineHeight = 16.sp
+                lineHeight = 18.sp
             )
         }
     }
 }
 
 /**
- * Dedicated DualShock 4 Native Mode Dashboard.
+ * Simplified Stick Sensitivity Group with "Link X & Y" Toggle (Reduces slider clutter by 50%).
+ */
+@Composable
+private fun StickSensitivityGroup(
+    title: String,
+    subtitle: String,
+    sensX: Float,
+    sensY: Float,
+    onUpdate: (Float, Float) -> Unit
+) {
+    var linkAxes by remember { mutableStateOf(kotlin.math.abs(sensX - sensY) < 0.001f) }
+
+    Surface(
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = subtitle,
+                        fontSize = 11.sp,
+                        color = NeonPalette.CardIdleText
+                    )
+                }
+                FilterChip(
+                    selected = linkAxes,
+                    onClick = {
+                        linkAxes = !linkAxes
+                        if (linkAxes) onUpdate(sensX, sensX)
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = if (linkAxes) Icons.Default.Link else Icons.Default.LinkOff,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
+                    label = { Text("Link X & Y", fontSize = 11.sp, fontWeight = FontWeight.Medium) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = NeonPalette.Cyan.copy(alpha = 0.2f),
+                        selectedLabelColor = NeonPalette.Cyan,
+                        selectedLeadingIconColor = NeonPalette.Cyan
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            AnimatedContent(
+                targetState = linkAxes,
+                transitionSpec = {
+                    (fadeIn(tween(200)) + expandVertically())
+                        .togetherWith(fadeOut(tween(200)) + shrinkVertically())
+                },
+                label = "stick_sensitivity_expansion"
+            ) { linked ->
+                if (linked) {
+                    ModernSlider(
+                        label = "Overall Sensitivity",
+                        value = sensX,
+                        valueRange = 0.1f..3.0f,
+                        format = "%.2f×",
+                        onValueChange = { onUpdate(it, it) }
+                    )
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        ModernSlider(
+                            label = "Horizontal (X) Sensitivity",
+                            value = sensX,
+                            valueRange = 0.1f..3.0f,
+                            format = "%.2f×",
+                            onValueChange = { onUpdate(it, sensY) }
+                        )
+                        ModernSlider(
+                            label = "Vertical (Y) Sensitivity",
+                            value = sensY,
+                            valueRange = 0.1f..3.0f,
+                            format = "%.2f×",
+                            onValueChange = { onUpdate(sensX, it) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Dedicated DualShock 4 Native Mode Dashboard (Material 3 Expressive).
  *
  * Informs the user that raw motion is passed directly to games/applications,
  * avoiding unnecessary conversion settings that don't apply to native gyro.
@@ -362,6 +484,9 @@ private fun DualShock4Dashboard(
     gyroSettings: GyroSettings,
     processedYaw: Float,
     processedPitch: Float,
+    flightPitchDeg: Float = 0f,
+    flightRollDeg: Float = 0f,
+    flightYawDeg: Float = 0f,
     onRecalibrate: () -> Unit
 ) {
     Column(
@@ -371,24 +496,28 @@ private fun DualShock4Dashboard(
         // ── Native Passthrough Banner ──
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-            border = BorderStroke(1.dp, NeonPalette.Purple.copy(alpha = 0.4f))
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.35f))
         ) {
-            Column(modifier = Modifier.padding(22.dp)) {
+            Column(modifier = Modifier.padding(20.dp)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = NeonPalette.Purple.copy(alpha = 0.15f),
-                        border = BorderStroke(1.dp, NeonPalette.Purple.copy(alpha = 0.4f)),
-                        modifier = Modifier.size(44.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .background(NeonPalette.Purple.copy(alpha = 0.18f)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text("🎮", fontSize = 20.sp)
-                        }
+                        Icon(
+                            imageVector = Icons.Default.SportsEsports,
+                            contentDescription = null,
+                            tint = NeonPalette.Purple,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                     Column {
                         Text(
@@ -406,19 +535,32 @@ private fun DualShock4Dashboard(
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
-                Text(
-                    text = "DualShock 4 features native gyro & accelerometer support across modern PC gaming. " +
-                            "NEXPAD delivers high-frequency uncompressed sensor packets directly into the virtual DS4 driver and DSU Server.\n\n" +
-                            "• All aiming sensitivity, steering deadzones, and inverted axes are configured directly inside your PC game's settings, Steam Input, or game settings.\n" +
-                            "• Software conversion knobs (smoothing, curve acceleration) are bypassed to maintain bit-perfect hardware compliance.",
-                    fontSize = 13.sp,
-                    color = Color.White.copy(alpha = 0.85f),
-                    lineHeight = 18.sp
-                )
+
+                // Scannable side-by-side Info Chips / Callout Pills
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    InfoCalloutPill(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.Tune,
+                        title = "In-Game Sensitivity",
+                        subtitle = "Deadzones, curves, and sensitivity are tuned directly inside PC game settings or Steam Input.",
+                        accentColor = NeonPalette.Cyan
+                    )
+
+                    InfoCalloutPill(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.Speed,
+                        title = "1:1 Bit-Perfect Stream",
+                        subtitle = "High-frequency uncompressed sensor packets; software conversion knobs are bypassed.",
+                        accentColor = NeonPalette.Purple
+                    )
+                }
             }
         }
 
-        // ── Telemetry & Service Status Tiles ──
+        // ── Humanized Telemetry & Service Status Tiles ──
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -426,66 +568,27 @@ private fun DualShock4Dashboard(
             StatusTile(
                 modifier = Modifier.weight(1f),
                 title = "ViGEm DS4 Driver",
-                value = if (isDriverConnected) "Connected" else "Waiting...",
-                color = if (isDriverConnected) NeonPalette.ConnectedDot else NeonPalette.CardIdleText
+                value = if (isDriverConnected) "Connected" else "Standby",
+                subtitle = if (isDriverConnected) "Virtual Gamepad Active" else "Awaiting Driver",
+                color = if (isDriverConnected) NeonPalette.ConnectedDot else NeonPalette.CardIdleText,
+                showIndicator = true
             )
 
             StatusTile(
                 modifier = Modifier.weight(1f),
-                title = "DSU Server (26760)",
+                title = "DSU Motion Server",
                 value = "$dsuClientCount Active Client${if (dsuClientCount != 1) "s" else ""}",
+                subtitle = "UDP Port 26760 (Cemuhook)",
                 color = NeonPalette.Cyan
             )
 
             StatusTile(
                 modifier = Modifier.weight(1f),
-                title = "Sensor Mode",
-                value = "0x00 (IMU 6-Axis)",
+                title = "Sensor Pipeline",
+                value = "6-Axis IMU Active",
+                subtitle = "Mode 0x00 Direct Passthrough",
                 color = NeonPalette.Purple
             )
-        }
-
-        // ── Real-Time Raw Sensor Readout ──
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-            border = BorderStroke(1.dp, NeonPalette.CardIdleBorder)
-        ) {
-            Column(modifier = Modifier.padding(18.dp)) {
-                Text(
-                    text = "Live Hardware Sensor Telemetry",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text("Calibrated Gyroscope (rad/s)", fontSize = 12.sp, color = NeonPalette.Cyan)
-                        Text(
-                            text = String.format("X: %+.2f   Y: %+.2f   Z: %+.2f", latestInput.gyroX, latestInput.gyroY, latestInput.gyroZ),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
-                            color = Color.White
-                        )
-                    }
-
-                    Column {
-                        Text("Accelerometer (m/s²)", fontSize = 12.sp, color = NeonPalette.Purple)
-                        Text(
-                            text = String.format("X: %+.2f   Y: %+.2f   Z: %+.2f", latestInput.accelX, latestInput.accelY, latestInput.accelZ),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
-                            color = Color.White
-                        )
-                    }
-                }
-            }
         }
 
         // ── 3D Live Orientation Visualizer ──
@@ -507,15 +610,18 @@ private fun DualShock4Dashboard(
             rawUncalGyroY = latestInput.rawGyroY,
             rawUncalGyroZ = latestInput.rawGyroZ,
             processedYaw = processedYaw,
-            processedPitch = processedPitch
+            processedPitch = processedPitch,
+            flightPitchDeg = flightPitchDeg,
+            flightRollDeg = flightRollDeg,
+            flightYawDeg = flightYawDeg
         )
 
-        // ── Sensor Zero Baseline Action ──
+        // ── Sensor Zero Baseline Action with Interactive Morphing Feedback ──
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
-            border = BorderStroke(1.dp, NeonPalette.CardIdleBorder)
+            shape = MaterialTheme.shapes.medium,
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         ) {
             Row(
                 modifier = Modifier
@@ -525,17 +631,199 @@ private fun DualShock4Dashboard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text("Sensor Zero Calibration", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
-                    Text("Re-align resting attitude if phone was tilted when connecting.", fontSize = 12.sp, color = NeonPalette.CardIdleText)
+                    Text("Sensor Zero Calibration", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text("Re-align resting attitude if phone was tilted when connecting.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Button(
-                    onClick = onRecalibrate,
-                    colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Purple.copy(alpha = 0.25f), contentColor = NeonPalette.Purple)
+                RecalibrateZeroButton(onRecalibrate = onRecalibrate)
+            }
+        }
+
+        // ── Optional Advanced Raw Sensor Readout (Progressive Disclosure) ──
+        var showRawTelemetry by remember { mutableStateOf(false) }
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.medium,
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showRawTelemetry = !showRawTelemetry },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Recalibrate Zero")
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Tune,
+                            contentDescription = null,
+                            tint = NeonPalette.CardIdleText,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "Advanced Raw Sensor Telemetry",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp,
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
+                    }
+                    Icon(
+                        imageVector = if (showRawTelemetry) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null,
+                        tint = NeonPalette.CardIdleText,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
+
+                AnimatedVisibility(
+                    visible = showRawTelemetry,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    Column(modifier = Modifier.padding(top = 12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text("Calibrated Gyroscope (rad/s)", fontSize = 11.sp, color = NeonPalette.Cyan)
+                                Text(
+                                    text = String.format("X: %+.2f   Y: %+.2f   Z: %+.2f", latestInput.gyroX, latestInput.gyroY, latestInput.gyroZ),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = Color.White
+                                )
+                            }
+                            Column {
+                                Text("Accelerometer (m/s²)", fontSize = 11.sp, color = NeonPalette.Purple)
+                                Text(
+                                    text = String.format("X: %+.2f   Y: %+.2f   Z: %+.2f", latestInput.accelX, latestInput.accelY, latestInput.accelZ),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InfoCalloutPill(
+    modifier: Modifier = Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    accentColor: Color
+) {
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.25f))
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(accentColor.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Column {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    fontSize = 11.sp,
+                    color = NeonPalette.CardIdleText,
+                    lineHeight = 15.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecalibrateZeroButton(
+    onRecalibrate: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    var isCalibrated by remember { mutableStateOf(false) }
+
+    val containerColor by animateColorAsState(
+        targetValue = if (isCalibrated) NeonPalette.ConnectedDot.copy(alpha = 0.25f) else NeonPalette.Purple.copy(alpha = 0.20f),
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (isCalibrated) NeonPalette.ConnectedDot else NeonPalette.Purple
+    )
+
+    Button(
+        onClick = {
+            if (!isCalibrated) {
+                onRecalibrate()
+                scope.launch {
+                    isCalibrated = true
+                    delay(2500)
+                    isCalibrated = false
+                }
+            }
+        },
+        shape = RoundedCornerShape(20.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = containerColor,
+            contentColor = contentColor
+        ),
+        border = BorderStroke(1.dp, contentColor.copy(alpha = 0.4f)),
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp)
+    ) {
+        AnimatedContent(
+            targetState = isCalibrated,
+            transitionSpec = {
+                (fadeIn() + scaleIn(initialScale = 0.85f))
+                    .togetherWith(fadeOut() + scaleOut(targetScale = 0.85f))
+            },
+            label = "recalibrate_button_morph"
+        ) { calibrated ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = if (calibrated) Icons.Default.CheckCircle else Icons.Default.Refresh,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = if (calibrated) "✓ Calibrated to Current Posture" else "Recalibrate Zero",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp
+                )
             }
         }
     }
@@ -546,18 +834,37 @@ private fun StatusTile(
     modifier: Modifier = Modifier,
     title: String,
     value: String,
-    color: Color
+    subtitle: String? = null,
+    color: Color,
+    showIndicator: Boolean = false
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-        border = BorderStroke(1.dp, NeonPalette.CardIdleBorder)
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Text(title, fontSize = 11.sp, color = NeonPalette.CardIdleText)
             Spacer(modifier = Modifier.height(4.dp))
-            Text(value, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = color)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                if (showIndicator) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(color)
+                    )
+                }
+                Text(value, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = color)
+            }
+            if (subtitle != null) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(subtitle, fontSize = 11.sp, color = Color.White.copy(alpha = 0.5f))
+            }
         }
     }
 }

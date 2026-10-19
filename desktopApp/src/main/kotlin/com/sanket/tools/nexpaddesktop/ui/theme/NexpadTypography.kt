@@ -1,0 +1,82 @@
+package com.sanket.tools.nexpaddesktop.ui.theme
+
+import androidx.compose.material3.Typography
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+
+val NexpadTypography = Typography(
+    // Screen Main Title ("CONTROLLER & MOTION")
+    headlineMedium = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Black,
+        fontSize = 26.sp,
+        lineHeight = 32.sp,
+        letterSpacing = 0.8.sp
+    ),
+    // Hero Telemetry Readout ("184.5 °/s", "+28 °") - Tabular numbers prevent 60Hz jitter!
+    displaySmall = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Bold,
+        fontSize = 28.sp,
+        lineHeight = 34.sp,
+        letterSpacing = (-0.5).sp,
+        fontFeatureSettings = "tnum"
+    ),
+    // Card Titles ("Xbox 360", "DualShock 4")
+    titleLarge = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.ExtraBold,
+        fontSize = 18.sp,
+        lineHeight = 24.sp,
+        letterSpacing = 0.2.sp
+    ),
+    // Section Headers ("Gyro Precision Aiming", "Analog Sticks Base Sensitivity")
+    titleMedium = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Bold,
+        fontSize = 15.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.3.sp
+    ),
+    // Sub-group Headers & Live Value Readouts ("Right Stick", "+12.4 °/s")
+    titleSmall = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
+        fontFeatureSettings = "tnum"
+    ),
+    // Primary Explanatory Copy
+    bodyMedium = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Normal,
+        fontSize = 13.sp,
+        lineHeight = 19.sp
+    ),
+    // Secondary Descriptions & Slider Labels
+    bodySmall = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Normal,
+        fontSize = 12.sp,
+        lineHeight = 16.sp
+    ),
+    // Badges, Mode Pills, FilterChips ("Stick Emulation", "ACTIVE")
+    labelMedium = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Bold,
+        fontSize = 11.5.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.5.sp
+    ),
+    // STRICT FLOOR (11.sp): Telemetry Axis Labels, Chips, 3D Viewport Overlays (Replaces 8.sp-9.sp)
+    labelSmall = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 11.sp,
+        lineHeight = 14.sp,
+        letterSpacing = 0.4.sp,
+        fontFeatureSettings = "tnum"
+    )
+)

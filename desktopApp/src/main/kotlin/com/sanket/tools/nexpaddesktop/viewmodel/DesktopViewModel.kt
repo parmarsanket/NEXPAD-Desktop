@@ -59,6 +59,9 @@ class DesktopViewModel(
         set(value) { updateRsSensitivityY(value) }
     var processedYaw by mutableStateOf(0f)
     var processedPitch by mutableStateOf(0f)
+    var flightPitchDeg by mutableStateOf(0f)
+    var flightRollDeg by mutableStateOf(0f)
+    var flightYawDeg by mutableStateOf(0f)
 
     // ── Diagnostics & Actions ──
     var appError by mutableStateOf("")

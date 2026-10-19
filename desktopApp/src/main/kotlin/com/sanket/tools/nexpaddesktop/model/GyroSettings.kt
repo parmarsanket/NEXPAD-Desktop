@@ -112,8 +112,8 @@ data class FlightStickSettings(
     val yawTarget: FlightStickAxisTarget = FlightStickAxisTarget.NONE,
     val yawInvert: Boolean = false,
     val maxYawAngle: Float = 35.0f,
-    val deadzone: Float = 1.5f,
-    val curveExponent: Float = 1.3f,
+    val deadzone: Float = 0.0f,
+    val curveExponent: Float = 1.0f,
     val blendMode: XboxBlendMode = XboxBlendMode.JOYSTICK_SUPREME,
     val lsSensitivityX: Float = 1.0f,
     val lsSensitivityY: Float = 1.0f,
@@ -534,8 +534,8 @@ data class GyroSettings(
                 yawTarget = FlightStickAxisTarget.NONE,
                 yawInvert = false,
                 maxYawAngle = 35.0f,
-                deadzone = 1.5f,
-                curveExponent = 1.3f,
+                deadzone = 0.0f,
+                curveExponent = 1.0f,
                 blendMode = XboxBlendMode.JOYSTICK_SUPREME,
             )
         )

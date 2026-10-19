@@ -240,6 +240,11 @@ fun main(args: Array<String>) {
                         viewModel.processedPitch = pitch
                         viewModel.latestInput = input // We update latestInput here for the UI to prevent excessive recomposition
                     }
+                },
+                onFlightAttitude = { pitch, roll, yaw ->
+                    viewModel.flightPitchDeg = pitch
+                    viewModel.flightRollDeg = roll
+                    viewModel.flightYawDeg = yaw
                 }
             )
 
@@ -339,9 +344,12 @@ fun main(args: Array<String>) {
     }
 
     viewModel.onRecalibrate = {
-        // Reset the DS4 driver's internal calibration
-        activeDriver?.disconnect()
-        activeDriver?.connect()
+        if (viewModel.activeController == ControllerType.DUALSHOCK_4) {
+            // Reset the DS4 driver's internal calibration
+            activeDriver?.disconnect()
+            activeDriver?.connect()
+        }
+        gyroProcessor.recalibrateZeroAttitude()
         gyroProcessor.reset()
     }
     viewModel.onControllerChange = {

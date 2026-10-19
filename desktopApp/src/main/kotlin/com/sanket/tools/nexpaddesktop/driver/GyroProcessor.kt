@@ -37,6 +37,10 @@ class GyroProcessor {
     private var refQuatZ = 0f
     private var refQuatW = 1f
     private var hasInitialQuat = false
+    private var lastInputMode: InputMode? = null
+    private var lastFlightYawTarget: FlightStickAxisTarget? = null
+    private var lastFlightPitchTarget: FlightStickAxisTarget? = null
+    private var lastFlightRollTarget: FlightStickAxisTarget? = null
 
     // Motion Gesture kinetic state
     private var lastFlickTriggerTime = 0L
@@ -123,6 +127,18 @@ class GyroProcessor {
         isActivationButtonPressed: Boolean = true,
     ): ProcessedGyro {
 
+        if (settings.inputMode != lastInputMode ||
+            settings.flightStick.yawTarget != lastFlightYawTarget ||
+            settings.flightStick.pitchTarget != lastFlightPitchTarget ||
+            settings.flightStick.rollTarget != lastFlightRollTarget
+        ) {
+            lastInputMode = settings.inputMode
+            lastFlightYawTarget = settings.flightStick.yawTarget
+            lastFlightPitchTarget = settings.flightStick.pitchTarget
+            lastFlightRollTarget = settings.flightStick.rollTarget
+            hasInitialQuat = false
+        }
+
         if (!settings.enabled || !isGyroActive(settings, isActivationButtonPressed)) {
             smoothedX = 0f
             smoothedY = 0f
@@ -174,8 +190,13 @@ class GyroProcessor {
         // ---------------------------------------------------------------------
         if (settings.inputMode == InputMode.AIR_MOUSE) {
             val cfg = settings.flightStick
+            val isExplicitNonGameMode = (sensorFlags.toInt() and 0xFF) in listOf(
+                com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_GRAVITY.toInt(),
+                com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_LINEAR_GESTURE.toInt(),
+                com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_RAW_UNCALIBRATED.toInt()
+            )
             val magSq = quatX * quatX + quatY * quatY + quatZ * quatZ + quatW * quatW
-            if (magSq < 0.1f) {
+            if (isExplicitNonGameMode || magSq < 0.1f) {
                 return ProcessedGyro(0f, 0f, 0f, 0f, 0f)
             }
             if (!hasInitialQuat) {
@@ -198,20 +219,21 @@ class GyroProcessor {
             val qz = quatW * rz + quatX * ry - quatY * rx + quatZ * rw
             val qw = quatW * rw - quatX * rx - quatY * ry - quatZ * rz
 
-            // Euler Angles from Q_rel (Phone Landscape Coordinates)
-            val sinP = 2.0f * (qw * qx - qy * qz)
-            val pitchRad = if (abs(sinP) >= 1.0f) {
-                sign(sinP) * (Math.PI.toFloat() / 2.0f)
-            } else {
-                asin(sinP)
-            }
+            // Euler Angles from Q_rel for Steady Landscape Phone:
+            // Pitch: tilting phone up and down (around landscape horizontal axis)
+            val sinP = (2.0f * (qx * qz - qw * qy)).coerceIn(-1.0f, 1.0f)
+            val pitchRad = asin(sinP)
             val pitchDeg = pitchRad * RAD_TO_DEG
 
-            val rollRad = atan2(2.0f * (qw * qy + qz * qx), 1.0f - 2.0f * (qy * qy + qx * qx))
+            // Roll: tilting phone right and left (wing banking / aileron)
+            val rollRad = atan2(2.0f * (qw * qx + qy * qz), 1.0f - 2.0f * (qx * qx + qy * qy))
             val rollDeg = rollRad * RAD_TO_DEG
 
-            val yawRad = atan2(2.0f * (qw * qz + qx * qy), 1.0f - 2.0f * (qx * qx + qz * qz))
-            val yawDeg = yawRad * RAD_TO_DEG
+            // Yaw: swiveling flat on table (compass rudder swivel)
+            // Steady Phone Coordinate Topology: Turning phone clockwise (right) produces positive yaw (+yawDeg)
+            // matching roll right (+rollDeg) and pitch up (+pitchDeg), deflecting stick right (+1.0).
+            val yawRad = atan2(2.0f * (qw * qz + qx * qy), 1.0f - 2.0f * (qy * qy + qz * qz))
+            val yawDeg = -yawRad * RAD_TO_DEG
 
             // 1. Pitch Deflection (tilt forward/backward)
             var defPitch = mapAngleToStick(pitchDeg, cfg.maxPitchAngle, cfg.deadzone, cfg.curveExponent)
@@ -701,6 +723,9 @@ class GyroProcessor {
         refQuatZ = 0f
         refQuatW = 1f
         hasInitialQuat = false
+        lastFlightYawTarget = null
+        lastFlightPitchTarget = null
+        lastFlightRollTarget = null
         lastFlickTriggerTime = 0L
         flickPulseEndTime = 0L
         activeFlickAction = null

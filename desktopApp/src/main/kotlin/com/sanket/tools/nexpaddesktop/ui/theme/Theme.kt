@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.ui.theme
+package com.sanket.tools.nexpaddesktop.ui.theme
 
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.MaterialTheme
@@ -40,9 +40,5 @@ private val DarkColors = darkColorScheme(
 fun NexpadDesktopTheme(
     content: @Composable () -> Unit
 ) {
-    MaterialTheme(
-        colorScheme = DarkColors,
-        typography = Typography,
-        content = content
-    )
+    NexpadTheme(content = content)
 }
