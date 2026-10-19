@@ -2,6 +2,7 @@ package com.sanket.tools.nexpaddesktop.ui.components.home
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.hoverable
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -55,6 +57,7 @@ fun BackgroundGamingCard(
     val cardInteractionSource = remember { MutableInteractionSource() }
     val buttonInteractionSource = remember { MutableInteractionSource() }
     val isHovered by cardInteractionSource.collectIsHoveredAsState()
+    val isButtonHovered by buttonInteractionSource.collectIsHoveredAsState()
 
     val glowAlpha by animateFloatAsState(
         targetValue = if (isHovered) 0.35f else 0.18f,
@@ -90,11 +93,11 @@ fun BackgroundGamingCard(
         )
     }
 
-    val buttonBgBrush = remember {
+    val buttonOutlineBrush = remember {
         Brush.horizontalGradient(
             colors = listOf(
-                Color(0xFF00C6FF),
-                Color(0xFF0072FF)
+                NeonPalette.Cyan,
+                NeonPalette.Purple
             )
         )
     }
@@ -222,39 +225,42 @@ fun BackgroundGamingCard(
 
             Spacer(modifier = Modifier.width(24.dp))
 
-            // Right Action: "Minimize for Game" Button with Subtitle
+            // Right Action: "Minimize for Game" Outline Button with Subtitle
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Button(
+                OutlinedButton(
                     onClick = onMinimizeToTray,
                     interactionSource = buttonInteractionSource,
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = Color.White
+                    border = BorderStroke(
+                        width = 1.5.dp,
+                        brush = Brush.horizontalGradient(
+                            colors = if (isButtonHovered) {
+                                listOf(NeonPalette.Cyan, NeonPalette.Purple)
+                            } else {
+                                listOf(NeonPalette.Cyan.copy(alpha = 0.65f), NeonPalette.Purple.copy(alpha = 0.5f))
+                            }
+                        )
+                    ),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = if (isButtonHovered) NeonPalette.Cyan.copy(alpha = 0.12f) else Color.Transparent,
+                        contentColor = NeonPalette.Cyan
                     ),
                     contentPadding = PaddingValues(horizontal = 18.dp, vertical = 11.dp),
-                    modifier = Modifier
-                        .height(42.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(buttonBgBrush)
-                        .border(
-                            1.dp,
-                            Color.White.copy(alpha = 0.3f),
-                            RoundedCornerShape(12.dp)
-                        )
+                    modifier = Modifier.height(42.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.SportsEsports,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = if (isButtonHovered) Color.White else NeonPalette.Cyan,
                         modifier = Modifier.size(17.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Minimize for Game",
+                        color = if (isButtonHovered) Color.White else NeonPalette.Cyan,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.4.sp
