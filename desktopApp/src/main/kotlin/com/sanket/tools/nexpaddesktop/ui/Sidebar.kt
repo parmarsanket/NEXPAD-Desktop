@@ -71,6 +71,30 @@ fun Sidebar(
         }
     }
 
+    val edgeBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(NeonPalette.Cyan, NeonPalette.Purple, NeonPalette.Cyan)
+        )
+    }
+    val logoGlowBrush = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                NeonPalette.Cyan.copy(alpha = 0.15f),
+                Color.Transparent
+            )
+        )
+    }
+    val logoRingBrush = remember {
+        Brush.linearGradient(
+            colors = NeonPalette.GradientBorder
+        )
+    }
+    val logoInnerBrush = remember {
+        Brush.linearGradient(
+            colors = listOf(NeonPalette.Cyan, NeonPalette.Purple)
+        )
+    }
+
     Box(
         modifier = Modifier
             .width(100.dp)
@@ -78,11 +102,8 @@ fun Sidebar(
             .background(NeonPalette.PanelBgTop)
             .drawBehind {
                 // Gradient edge line on right side
-                val brush = Brush.verticalGradient(
-                    colors = listOf(NeonPalette.Cyan, NeonPalette.Purple, NeonPalette.Cyan)
-                )
                 drawLine(
-                    brush = brush,
+                    brush = edgeBrush,
                     start = Offset(size.width, 0f),
                     end = Offset(size.width, size.height),
                     strokeWidth = 1.dp.toPx()
@@ -104,19 +125,12 @@ fun Sidebar(
                         .drawBehind {
                             // Outer glow
                             drawCircle(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(
-                                        NeonPalette.Cyan.copy(alpha = 0.15f),
-                                        Color.Transparent
-                                    )
-                                ),
+                                brush = logoGlowBrush,
                                 radius = 28.dp.toPx()
                             )
                             // Gradient ring
                             drawCircle(
-                                brush = Brush.linearGradient(
-                                    colors = NeonPalette.GradientBorder
-                                ),
+                                brush = logoRingBrush,
                                 style = Stroke(width = 1.5.dp.toPx())
                             )
                         },
@@ -126,11 +140,7 @@ fun Sidebar(
                         modifier = Modifier
                             .size(20.dp)
                             .clip(CircleShape)
-                            .background(
-                                Brush.linearGradient(
-                                    colors = listOf(NeonPalette.Cyan, NeonPalette.Purple)
-                                )
-                            )
+                            .background(logoInnerBrush)
                     )
                 }
 
@@ -171,6 +181,25 @@ private fun SidebarItem(
     }
     val contentColor by animateColorAsState(contentColorTarget, tween(200), label = "content")
 
+    val softGlowBrush = remember {
+        Brush.linearGradient(
+            colors = listOf(
+                NeonPalette.Cyan.copy(alpha = 0.10f),
+                NeonPalette.Purple.copy(alpha = 0.08f)
+            )
+        )
+    }
+    val glassFillBrush = remember {
+        Brush.linearGradient(
+            colors = NeonPalette.SelectedFillGradient
+        )
+    }
+    val borderBrush = remember {
+        Brush.linearGradient(
+            colors = NeonPalette.GradientBorder
+        )
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -184,12 +213,7 @@ private fun SidebarItem(
                 if (isSelected) {
                     // Soft outer glow behind the pill (#3)
                     drawRoundRect(
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                NeonPalette.Cyan.copy(alpha = 0.10f),
-                                NeonPalette.Purple.copy(alpha = 0.08f)
-                            )
-                        ),
+                        brush = softGlowBrush,
                         topLeft = Offset(inset - 4.dp.toPx(), 4.dp.toPx()),
                         size = Size(size.width - inset * 2 + 8.dp.toPx(), size.height - 8.dp.toPx()),
                         cornerRadius = CornerRadius(cr + 4.dp.toPx())
@@ -197,9 +221,7 @@ private fun SidebarItem(
 
                     // Gradient-tinted glass fill (#3)
                     drawRoundRect(
-                        brush = Brush.linearGradient(
-                            colors = NeonPalette.SelectedFillGradient
-                        ),
+                        brush = glassFillBrush,
                         topLeft = Offset(inset, 6.dp.toPx()),
                         size = Size(size.width - inset * 2, size.height - 12.dp.toPx()),
                         cornerRadius = CornerRadius(cr)
@@ -207,11 +229,7 @@ private fun SidebarItem(
 
                     // Gradient border on the pill (#3)
                     drawRoundRect(
-                        brush = Brush.linearGradient(
-                            colors = NeonPalette.GradientBorder,
-                            start = Offset.Zero,
-                            end = Offset(size.width, size.height)
-                        ),
+                        brush = borderBrush,
                         topLeft = Offset(inset, 6.dp.toPx()),
                         size = Size(size.width - inset * 2, size.height - 12.dp.toPx()),
                         cornerRadius = CornerRadius(cr),

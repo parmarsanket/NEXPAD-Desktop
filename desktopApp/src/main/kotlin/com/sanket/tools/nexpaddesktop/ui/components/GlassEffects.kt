@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.ui.components
+package com.sanket.tools.nexpaddesktop.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -23,6 +23,37 @@ import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 //  Every "selected/active" state in the app uses the same
 //  cyan→purple gradient border + soft outer glow + tinted fill.
 // ═══════════════════════════════════════════════════════
+
+/**
+ * Pre-allocated immutable brushes for zero-allocation rendering in draw loops.
+ */
+object GlassCache {
+    val selectedFillBrush = Brush.linearGradient(NeonPalette.SelectedFillGradient)
+    val gradientBorderBrush = Brush.linearGradient(NeonPalette.GradientBorder)
+    val glassCardFillBrush = Brush.linearGradient(
+        listOf(
+            NeonPalette.Cyan.copy(alpha = 0.03f),
+            NeonPalette.Purple.copy(alpha = 0.02f)
+        )
+    )
+    val defaultBorderBrush = Brush.linearGradient(
+        listOf(
+            Color.White.copy(alpha = 0.07f),
+            NeonPalette.Cyan.copy(alpha = 0.035f),
+            NeonPalette.Purple.copy(alpha = 0.021f),
+            Color.White.copy(alpha = 0.035f)
+        )
+    )
+    val dividerBrush = Brush.horizontalGradient(
+        listOf(
+            Color.Transparent,
+            NeonPalette.Cyan.copy(alpha = 0.3f),
+            NeonPalette.Purple.copy(alpha = 0.3f),
+            NeonPalette.Cyan.copy(alpha = 0.3f),
+            Color.Transparent
+        )
+    )
+}
 
 /**
  * Draws a faint cyan grid overlay (graph-paper texture) for background depth.
@@ -81,21 +112,13 @@ fun Modifier.selectedGlow(
 
         // Gradient fill tint
         drawRoundRect(
-            brush = Brush.linearGradient(
-                colors = NeonPalette.SelectedFillGradient,
-                start = Offset.Zero,
-                end = Offset(size.width, size.height)
-            ),
+            brush = GlassCache.selectedFillBrush,
             cornerRadius = CornerRadius(cr),
         )
 
         // Gradient border
         drawRoundRect(
-            brush = Brush.linearGradient(
-                colors = NeonPalette.GradientBorder,
-                start = Offset.Zero,
-                end = Offset(size.width, size.height)
-            ),
+            brush = GlassCache.gradientBorderBrush,
             cornerRadius = CornerRadius(cr),
             style = Stroke(width = bw)
         )
@@ -133,12 +156,7 @@ fun Modifier.glassCard(
 
         // Glass fill: slightly lighter than background
         drawRoundRect(
-            brush = Brush.linearGradient(
-                colors = listOf(
-                    NeonPalette.Cyan.copy(alpha = 0.03f),
-                    NeonPalette.Purple.copy(alpha = 0.02f)
-                )
-            ),
+            brush = GlassCache.glassCardFillBrush,
             cornerRadius = CornerRadius(cr),
         )
         drawRoundRect(
@@ -147,15 +165,16 @@ fun Modifier.glassCard(
         )
 
         // Faint gradient border
+        val borderBrush = if (borderAlpha == 0.07f) GlassCache.defaultBorderBrush else Brush.linearGradient(
+            listOf(
+                Color.White.copy(alpha = borderAlpha),
+                NeonPalette.Cyan.copy(alpha = borderAlpha * 0.5f),
+                NeonPalette.Purple.copy(alpha = borderAlpha * 0.3f),
+                Color.White.copy(alpha = borderAlpha * 0.5f)
+            )
+        )
         drawRoundRect(
-            brush = Brush.linearGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = borderAlpha),
-                    NeonPalette.Cyan.copy(alpha = borderAlpha * 0.5f),
-                    NeonPalette.Purple.copy(alpha = borderAlpha * 0.3f),
-                    Color.White.copy(alpha = borderAlpha * 0.5f)
-                )
-            ),
+            brush = borderBrush,
             cornerRadius = CornerRadius(cr),
             style = Stroke(width = 1.dp.toPx())
         )
@@ -178,7 +197,7 @@ fun Modifier.glassCardHovered(
         val blurSteps = 3
         for (i in 1..blurSteps) {
             val expand = maxSpread * (i.toFloat() / blurSteps)
-            val alpha = (if(isHovered) 0.05f else 0.03f) / blurSteps
+            val alpha = (if (isHovered) 0.05f else 0.03f) / blurSteps
             drawRoundRect(
                 brush = Brush.linearGradient(
                     colors = listOf(
@@ -193,12 +212,7 @@ fun Modifier.glassCardHovered(
         }
 
         drawRoundRect(
-            brush = Brush.linearGradient(
-                colors = listOf(
-                    NeonPalette.Cyan.copy(alpha = 0.03f),
-                    NeonPalette.Purple.copy(alpha = 0.02f)
-                )
-            ),
+            brush = GlassCache.glassCardFillBrush,
             cornerRadius = CornerRadius(cr),
         )
         drawRoundRect(
@@ -252,16 +266,6 @@ fun GradientDivider(modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .height(1.dp)
-            .background(
-                Brush.horizontalGradient(
-                    colors = listOf(
-                        Color.Transparent,
-                        NeonPalette.Cyan.copy(alpha = 0.3f),
-                        NeonPalette.Purple.copy(alpha = 0.3f),
-                        NeonPalette.Cyan.copy(alpha = 0.3f),
-                        Color.Transparent
-                    )
-                )
-            )
+            .background(GlassCache.dividerBrush)
     )
 }
