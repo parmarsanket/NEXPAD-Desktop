@@ -212,4 +212,25 @@ class DesktopSharedPreferencesTest {
         assertFalse(prefs.contains("key2"))
         assertTrue(prefs.getAll().isEmpty())
     }
+
+    @Test
+    fun testDeveloperOptionsPersistence() {
+        // Defaults to false
+        assertFalse(prefs.loadDeveloperOptionsEnabled())
+
+        // Save true and verify
+        prefs.saveDeveloperOptionsEnabled(true)
+        assertTrue(prefs.loadDeveloperOptionsEnabled())
+
+        // Verify persistence across restart
+        val restartedPrefs = DesktopSharedPreferences.getCustomInstance(tempFile)
+        assertTrue(restartedPrefs.loadDeveloperOptionsEnabled())
+
+        // Toggle back to false
+        restartedPrefs.saveDeveloperOptionsEnabled(false)
+        assertFalse(restartedPrefs.loadDeveloperOptionsEnabled())
+
+        val finalPrefs = DesktopSharedPreferences.getCustomInstance(tempFile)
+        assertFalse(finalPrefs.loadDeveloperOptionsEnabled())
+    }
 }

@@ -42,6 +42,7 @@ class DesktopViewModel(
     var latestFeedback by mutableStateOf(GamepadFeedback(leftMotorSpeed = 0, rightMotorSpeed = 0))
     var dsuClientCount by mutableStateOf(0)
     var isDsuServerEnabled by mutableStateOf(prefs.loadDsuEnabled())
+    var isDeveloperOptionsEnabled by mutableStateOf(prefs.loadDeveloperOptionsEnabled())
 
     // ── Sensitivity & Motion State ──
     var gyroSettings by mutableStateOf(prefs.loadGyroSettings())
@@ -101,6 +102,11 @@ class DesktopViewModel(
     fun updateDsuServerEnabled(enabled: Boolean) {
         isDsuServerEnabled = enabled
         prefs.saveDsuEnabled(enabled)
+    }
+
+    fun updateDeveloperOptionsEnabled(enabled: Boolean) {
+        isDeveloperOptionsEnabled = enabled
+        prefs.saveDeveloperOptionsEnabled(enabled)
     }
 
     /**

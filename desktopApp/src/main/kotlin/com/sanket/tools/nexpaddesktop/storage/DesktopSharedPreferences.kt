@@ -292,6 +292,7 @@ class DesktopSharedPreferences private constructor(
         const val KEY_RS_SENS_X = "nexpad_rs_sensitivity_x"
         const val KEY_RS_SENS_Y = "nexpad_rs_sensitivity_y"
         const val KEY_DSU_ENABLED = "nexpad_dsu_server_enabled"
+        const val KEY_DEVELOPER_OPTIONS_ENABLED = "nexpad_developer_options_enabled"
 
         @Volatile
         private var instance: DesktopSharedPreferences? = null
@@ -411,5 +412,19 @@ class DesktopSharedPreferences private constructor(
      */
     fun loadDsuEnabled(): Boolean {
         return getBoolean(KEY_DSU_ENABLED, false)
+    }
+
+    /**
+     * Saves whether Developer Options (Debug screen in sidebar) is enabled.
+     */
+    fun saveDeveloperOptionsEnabled(enabled: Boolean) {
+        putBoolean(KEY_DEVELOPER_OPTIONS_ENABLED, enabled)
+    }
+
+    /**
+     * Loads whether Developer Options is enabled (defaults to false).
+     */
+    fun loadDeveloperOptionsEnabled(): Boolean {
+        return getBoolean(KEY_DEVELOPER_OPTIONS_ENABLED, false)
     }
 }

@@ -41,23 +41,35 @@ private data class SidebarDestination(
     val label: String
 )
 
-private val sidebarDestinations = listOf(
+private val baseSidebarDestinations = listOf(
     SidebarDestination(Screen.HOME, Icons.Default.Home, "Home"),
     SidebarDestination(Screen.CONTROLLER, Icons.Default.SportsEsports, "Controller"),
-    SidebarDestination(Screen.NODE, Icons.Default.DeviceHub, "Node"),
+    // TODO: Future release - Node graph routing screen
+    // SidebarDestination(Screen.NODE, Icons.Default.DeviceHub, "Node"),
     SidebarDestination(Screen.PLUGINS, Icons.Default.Extension, "Plugins"),
-    SidebarDestination(Screen.CONVERTER, Icons.Default.SettingsEthernet, "Converter"),
-    SidebarDestination(Screen.OUTPUT, Icons.Default.Output, "Output"),
-    SidebarDestination(Screen.KBM, Icons.Default.Keyboard, "KBM"),
-    SidebarDestination(Screen.DEBUG, Icons.Default.BugReport, "Debug")
+    // TODO: Future release - Layout/Profile converter screen
+    // SidebarDestination(Screen.CONVERTER, Icons.Default.SettingsEthernet, "Converter"),
+    SidebarDestination(Screen.OUTPUT, Icons.Default.Output, "Output")
+    // TODO: Future release - Keyboard & Mouse remapping screen
+    // SidebarDestination(Screen.KBM, Icons.Default.Keyboard, "KBM"),
 )
+
+private val debugSidebarDestination = SidebarDestination(Screen.DEBUG, Icons.Default.BugReport, "Debug")
 
 @Composable
 fun Sidebar(
     currentScreen: Screen,
-    onNavigate: (Screen) -> Unit
+    onNavigate: (Screen) -> Unit,
+    isDeveloperOptionsEnabled: Boolean = false
 ) {
     val sidebarListState = rememberLazyListState()
+    val activeDestinations = remember(isDeveloperOptionsEnabled) {
+        if (isDeveloperOptionsEnabled) {
+            baseSidebarDestinations + debugSidebarDestination
+        } else {
+            baseSidebarDestinations
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -125,7 +137,7 @@ fun Sidebar(
                 Spacer(modifier = Modifier.height(32.dp))
             }
 
-            items(sidebarDestinations, key = { it.screen.name }) { destination ->
+            items(activeDestinations, key = { it.screen.name }) { destination ->
                 SidebarItem(
                     icon = destination.icon,
                     label = destination.label,

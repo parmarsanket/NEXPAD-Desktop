@@ -48,7 +48,8 @@ fun MainApplicationWindow(
         // Left Sidebar Navigation
         Sidebar(
             currentScreen = currentScreen,
-            onNavigate = { screen -> navigator.navigate(screen) }
+            onNavigate = { screen -> navigator.navigate(screen) },
+            isDeveloperOptionsEnabled = viewModel.isDeveloperOptionsEnabled
         )
         
         // Vertical Divider
@@ -72,7 +73,13 @@ fun MainApplicationWindow(
                         is DesktopScreenKey.Controller -> ControllerScreen(viewModel = viewModel)
                         is DesktopScreenKey.Plugins -> PluginsScreen(viewModel = viewModel)
                         is DesktopScreenKey.Output -> OutputScreen(viewModel = viewModel)
-                        is DesktopScreenKey.Debug -> DebugScreen(viewModel = viewModel)
+                        is DesktopScreenKey.Debug -> {
+                            if (viewModel.isDeveloperOptionsEnabled) {
+                                DebugScreen(viewModel = viewModel)
+                            } else {
+                                HomeScreen(viewModel = viewModel)
+                            }
+                        }
                         else -> {
                             val screenName = (key as? DesktopScreenKey)?.toScreen()?.name ?: "UNKNOWN"
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

@@ -90,6 +90,25 @@ class DesktopNavigation3Test {
         assertEquals(com.sanket.tools.nexpaddesktop.connection.ActiveTransport.NONE, vm.activeTransport)
         assertFalse(vm.isAoaDriverNeeded)
         assertEquals(com.sanket.tools.nexpaddesktop.ui.ControllerType.XBOX_360, vm.activeController)
+        assertFalse(vm.isDeveloperOptionsEnabled)
+    }
+
+    @Test
+    fun testDeveloperOptionsViewModelToggle() {
+        val tempFile = java.io.File.createTempFile("test_dev_prefs", ".json").apply { deleteOnExit() }
+        val testPrefs = com.sanket.tools.nexpaddesktop.storage.DesktopSharedPreferences.getCustomInstance(tempFile)
+        val vm = com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel(testPrefs)
+
+        assertFalse(vm.isDeveloperOptionsEnabled)
+        assertFalse(testPrefs.loadDeveloperOptionsEnabled())
+
+        vm.updateDeveloperOptionsEnabled(true)
+        assertTrue(vm.isDeveloperOptionsEnabled)
+        assertTrue(testPrefs.loadDeveloperOptionsEnabled())
+
+        vm.updateDeveloperOptionsEnabled(false)
+        assertFalse(vm.isDeveloperOptionsEnabled)
+        assertFalse(testPrefs.loadDeveloperOptionsEnabled())
     }
 
     @Test

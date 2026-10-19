@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Usb
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.Bluetooth
@@ -57,7 +58,9 @@ fun HomeScreen(
         activeTransport = viewModel.activeTransport,
         isAoaDriverNeeded = viewModel.isAoaDriverNeeded,
         driverInstallState = viewModel.driverInstallState,
-        onInstallAoaDriver = viewModel.onInstallAoaDriver
+        onInstallAoaDriver = viewModel.onInstallAoaDriver,
+        isDeveloperOptionsEnabled = viewModel.isDeveloperOptionsEnabled,
+        onDeveloperOptionsChange = { viewModel.updateDeveloperOptionsEnabled(it) }
     )
 }
 
@@ -68,7 +71,9 @@ fun HomeScreen(
     activeTransport: com.sanket.tools.nexpaddesktop.connection.ActiveTransport = com.sanket.tools.nexpaddesktop.connection.ActiveTransport.NONE,
     isAoaDriverNeeded: Boolean = false,
     driverInstallState: com.sanket.tools.nexpaddesktop.connection.DriverInstallState = com.sanket.tools.nexpaddesktop.connection.DriverInstallState.IDLE,
-    onInstallAoaDriver: () -> Unit = {}
+    onInstallAoaDriver: () -> Unit = {},
+    isDeveloperOptionsEnabled: Boolean = false,
+    onDeveloperOptionsChange: (Boolean) -> Unit = {}
 ) {
     // Server pulse
     val infinite = rememberInfiniteTransition(label = "pulse")
@@ -385,6 +390,108 @@ fun HomeScreen(
                     isDeviceConnected = isDeviceConnected,
                     isActive = activeTransport == com.sanket.tools.nexpaddesktop.connection.ActiveTransport.BLUETOOTH
                 )
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // ── Gradient Divider ──
+            GradientDivider()
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // ── System Preferences / Developer Options ──
+            Text("System Preferences", color = NeonPalette.CardIdleText, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .glassCard(cornerRadius = 14.dp)
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .drawBehind {
+                                    drawCircle(
+                                        brush = Brush.radialGradient(
+                                            colors = listOf(
+                                                (if (isDeveloperOptionsEnabled) NeonPalette.Cyan else Color.Gray).copy(alpha = 0.25f),
+                                                Color.Transparent
+                                            )
+                                        ),
+                                        radius = 20.dp.toPx() + 10f
+                                    )
+                                }
+                                .clip(CircleShape)
+                                .background(
+                                    (if (isDeveloperOptionsEnabled) NeonPalette.Cyan else Color.Gray).copy(alpha = 0.12f)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Code,
+                                contentDescription = "Developer Options",
+                                tint = if (isDeveloperOptionsEnabled) NeonPalette.Cyan else Color.Gray,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        Column {
+                            Text(
+                                text = "Developer Options",
+                                color = Color.White,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Show low-level debugging tools, IMU inspector & driver logs in sidebar",
+                                color = NeonPalette.CardIdleText,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF161E30))
+                            .border(1.dp, Color(0xFF222E4A), RoundedCornerShape(10.dp))
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
+                    ) {
+                        Text(
+                            text = if (isDeveloperOptionsEnabled) "ON" else "OFF",
+                            color = if (isDeveloperOptionsEnabled) NeonPalette.Cyan else Color.Gray,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Switch(
+                            checked = isDeveloperOptionsEnabled,
+                            onCheckedChange = onDeveloperOptionsChange,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = NeonPalette.Cyan,
+                                checkedTrackColor = NeonPalette.Cyan.copy(alpha = 0.35f),
+                                uncheckedThumbColor = Color.Gray,
+                                uncheckedTrackColor = Color(0xFF111726)
+                            )
+                        )
+                    }
+                }
             }
         }
 
