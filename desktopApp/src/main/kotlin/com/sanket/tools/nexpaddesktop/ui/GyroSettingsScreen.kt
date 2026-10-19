@@ -36,11 +36,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sanket.tools.nexpaddesktop.model.*
 import com.sanket.tools.nexpaddesktop.ui.theme.ModeAccentPair
 import com.sanket.tools.nexpaddesktop.ui.theme.NexpadTheme
-import com.sanket.tools.nexpaddesktop.ui.visualizers.DashboardHeader
+import com.sanket.tools.nexpaddesktop.ui.visualizers.*
 import kotlinx.coroutines.delay
 
 @Composable
@@ -195,36 +196,8 @@ private fun MotionMasterControlBar(
             modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Switch(
-                        checked = settings.enabled,
-                        onCheckedChange = { onSettingsChange(settings.copy(enabled = it)) },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                            checkedTrackColor = activePalette.accent
-                        )
-                    )
-                    Column {
-                        Text(
-                            text = if (settings.enabled) "Motion Processing Active" else "Motion Processing Paused",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "Real-time 60Hz sensor translation into virtual Xbox 360 inputs",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val isNarrow = maxWidth < 600.dp
 
                 // Morphing Recalibrate Button with 2-second confirmation feedback
                 val calButtonColor by animateColorAsState(
@@ -238,59 +211,150 @@ private fun MotionMasterControlBar(
                     label = "calBtnFg"
                 )
 
-                FilledTonalButton(
-                    onClick = {
-                        onRecalibrate()
-                        justCalibrated = true
-                    },
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = calButtonColor,
-                        contentColor = calContentColor
-                    )
-                ) {
-                    Icon(
-                        imageVector = if (justCalibrated) Icons.Default.Check else Icons.Default.Refresh,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = if (justCalibrated) "Zero Baseline Locked" else "Recalibrate Zero",
-                        style = MaterialTheme.typography.labelMedium
-                    )
+                if (isNarrow) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Switch(
+                                checked = settings.enabled,
+                                onCheckedChange = { onSettingsChange(settings.copy(enabled = it)) },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                    checkedTrackColor = activePalette.accent
+                                )
+                            )
+                            Column {
+                                Text(
+                                    text = if (settings.enabled) "Motion Processing Active" else "Motion Processing Paused",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Real-time 60Hz Xbox 360 sensor translation",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        FilledTonalButton(
+                            onClick = {
+                                onRecalibrate()
+                                justCalibrated = true
+                            },
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = calButtonColor,
+                                contentColor = calContentColor
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = if (justCalibrated) Icons.Default.Check else Icons.Default.Refresh,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (justCalibrated) "Zero Baseline Locked" else "Recalibrate Zero",
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f, fill = false),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Switch(
+                                checked = settings.enabled,
+                                onCheckedChange = { onSettingsChange(settings.copy(enabled = it)) },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                    checkedTrackColor = activePalette.accent
+                                )
+                            )
+                            Column(modifier = Modifier.padding(end = 12.dp)) {
+                                Text(
+                                    text = if (settings.enabled) "Motion Processing Active" else "Motion Processing Paused",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Real-time 60Hz sensor translation into virtual Xbox 360 inputs",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        FilledTonalButton(
+                            onClick = {
+                                onRecalibrate()
+                                justCalibrated = true
+                            },
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = calButtonColor,
+                                contentColor = calContentColor
+                            )
+                        ) {
+                            Icon(
+                                imageVector = if (justCalibrated) Icons.Default.Check else Icons.Default.Refresh,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (justCalibrated) "Zero Baseline Locked" else "Recalibrate Zero",
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    }
                 }
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            // Quick-Load Genre Presets Strip
-            Row(
+            // Quick-Load Genre Presets Strip with Responsive Flow
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.AutoAwesome,
-                    contentDescription = null,
-                    tint = activePalette.accent,
-                    modifier = Modifier.size(16.dp)
-                )
-                Text(
-                    text = "Quick Presets:",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    PresetPill("FPS Aiming") { onSettingsChange(GyroSettings.FPS_PRESET) }
-                    PresetPill("Sniper Precision") { onSettingsChange(GyroSettings.PRECISION_PRESET) }
-                    PresetPill("Sim Racing") { onSettingsChange(GyroSettings.RACING_PRESET) }
-                    PresetPill("Flight Yoke") { onSettingsChange(GyroSettings.FLIGHT_SIM_PRESET) }
-                    PresetPill("Action Combat") { onSettingsChange(GyroSettings.ACTION_COMBAT_PRESET) }
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = activePalette.accent,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "Quick Presets:",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
+
+                PresetPill("FPS Aiming") { onSettingsChange(GyroSettings.FPS_PRESET) }
+                PresetPill("Sniper Precision") { onSettingsChange(GyroSettings.PRECISION_PRESET) }
+                PresetPill("Sim Racing") { onSettingsChange(GyroSettings.RACING_PRESET) }
+                PresetPill("Flight Yoke") { onSettingsChange(GyroSettings.FLIGHT_SIM_PRESET) }
+                PresetPill("Action Combat") { onSettingsChange(GyroSettings.ACTION_COMBAT_PRESET) }
             }
         }
     }
@@ -323,70 +387,121 @@ private fun ExpressiveInputModeSelector(
 ) {
     val modes = remember {
         listOf(
-            Triple(InputMode.VELOCITY, "Precision Aim", Icons.Default.GpsFixed),
-            Triple(InputMode.ABSOLUTE_TILT, "Steering Wheel", Icons.Default.DirectionsCar),
-            Triple(InputMode.AIR_MOUSE, "3D Flight Stick", Icons.Default.Flight),
-            Triple(InputMode.GESTURE, "Combat Gestures", Icons.Default.Bolt),
-            Triple(InputMode.RAW_UNCALIBRATED, "Raw Silicon", Icons.Default.Memory)
+            InputMode.VELOCITY to "Precision Aim",
+            InputMode.ABSOLUTE_TILT to "Steering Wheel",
+            InputMode.AIR_MOUSE to "3D Flight Stick",
+            InputMode.GESTURE to "Combat",
+            InputMode.RAW_UNCALIBRATED to "Raw Silicon"
         )
     }
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        modes.forEach { (mode, shortTitle, icon) ->
-            val isSelected = activeMode == mode
-            val palette = NexpadTheme.colors.forMode(mode)
-
-            val cornerRadius by animateDpAsState(
-                targetValue = if (isSelected) 20.dp else 12.dp,
-                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-                label = "modeCorner"
-            )
-            val bgColor by animateColorAsState(
-                targetValue = if (isSelected) palette.container else MaterialTheme.colorScheme.surfaceContainerLow,
-                label = "modeBg"
-            )
-
-            Surface(
-                onClick = { onSelectMode(mode) },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(cornerRadius),
-                color = bgColor,
-                border = if (isSelected) BorderStroke(1.5.dp, palette.accent) else null
-            ) {
-                Column(
-                    modifier = Modifier.padding(vertical = 14.dp, horizontal = 10.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val isNarrow = maxWidth < 640.dp
+        if (isNarrow) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Row 1: 3 primary modes
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (isSelected) palette.accent.copy(alpha = 0.22f)
-                                else MaterialTheme.colorScheme.surfaceContainerHigh
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            tint = if (isSelected) palette.accent else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
+                    modes.take(3).forEach { (mode, shortTitle) ->
+                        ModeSelectorCard(
+                            mode = mode,
+                            shortTitle = shortTitle,
+                            isSelected = activeMode == mode,
+                            onClick = { onSelectMode(mode) },
+                            modifier = Modifier.weight(1f)
                         )
                     }
-                    Text(
-                        text = shortTitle,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (isSelected) MaterialTheme.colorScheme.onSurface
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
+                }
+                // Row 2: 2 specialized modes
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    modes.drop(3).forEach { (mode, shortTitle) ->
+                        ModeSelectorCard(
+                            mode = mode,
+                            shortTitle = shortTitle,
+                            isSelected = activeMode == mode,
+                            onClick = { onSelectMode(mode) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                modes.forEach { (mode, shortTitle) ->
+                    ModeSelectorCard(
+                        mode = mode,
+                        shortTitle = shortTitle,
+                        isSelected = activeMode == mode,
+                        onClick = { onSelectMode(mode) },
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ModeSelectorCard(
+    mode: InputMode,
+    shortTitle: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val palette = NexpadTheme.colors.forMode(mode)
+
+    val cornerRadius by animateDpAsState(
+        targetValue = if (isSelected) 20.dp else 12.dp,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "modeCorner"
+    )
+    val bgColor by animateColorAsState(
+        targetValue = if (isSelected) palette.container else MaterialTheme.colorScheme.surfaceContainerLow,
+        label = "modeBg"
+    )
+
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(cornerRadius),
+        color = bgColor,
+        border = if (isSelected) BorderStroke(1.5.dp, palette.accent) else null
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 12.dp, horizontal = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Box(
+                modifier = Modifier.size(52.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                when (mode) {
+                    InputMode.VELOCITY -> ModeVectorIconGyroAiming(modifier = Modifier.fillMaxSize(), isSelected = isSelected)
+                    InputMode.ABSOLUTE_TILT -> ModeVectorIconSteeringWheel(modifier = Modifier.fillMaxSize(), isSelected = isSelected)
+                    InputMode.AIR_MOUSE -> ModeVectorIconFlightStick(modifier = Modifier.fillMaxSize(), isSelected = isSelected)
+                    InputMode.GESTURE -> ModeVectorIconCombatGestures(modifier = Modifier.fillMaxSize(), isSelected = isSelected)
+                    InputMode.RAW_UNCALIBRATED -> ModeVectorIconRawSilicon(modifier = Modifier.fillMaxSize(), isSelected = isSelected)
+                }
+            }
+            Text(
+                text = shortTitle,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = if (isSelected) MaterialTheme.colorScheme.onSurface
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -438,15 +553,17 @@ private fun PrecisionAimingPanel(
                 Text(
                     text = "Angular Velocity Range (°/s for 100% Stick)",
                     style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f, fill = false)
                 )
+                Spacer(modifier = Modifier.width(8.dp))
                 FilterChip(
                     selected = linkYawPitch,
                     onClick = {
                         linkYawPitch = !linkYawPitch
                         if (linkYawPitch) onUpdate(config.copy(maxDpsPitch = config.maxDpsYaw))
                     },
-                    label = { Text("Link Yaw & Pitch", style = MaterialTheme.typography.labelSmall) }
+                    label = { Text("Link Yaw & Pitch", style = MaterialTheme.typography.labelSmall, maxLines = 1, softWrap = false) }
                 )
             }
 
@@ -852,35 +969,69 @@ private fun CombatGesturesPanel(
             onCheckedChange = { onUpdate(config.copy(tiltEnabled = it)) }
         ) {
             // Posture Output Behavior Toggle (Tap vs Hold while tilted)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Posture Activation Behavior",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = if (config.tiltHoldMode) "Holds button continuously while tilted past angle"
-                        else "Fires a single button press when entering tilt angle",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = !config.tiltHoldMode,
-                        onClick = { onUpdate(config.copy(tiltHoldMode = false)) },
-                        label = { Text("Single Tap", style = MaterialTheme.typography.labelSmall) }
-                    )
-                    FilterChip(
-                        selected = config.tiltHoldMode,
-                        onClick = { onUpdate(config.copy(tiltHoldMode = true)) },
-                        label = { Text("Hold Stance", style = MaterialTheme.typography.labelSmall) }
-                    )
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val isNarrow = maxWidth < 560.dp
+                if (isNarrow) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column {
+                            Text(
+                                text = "Posture Activation Behavior",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = if (config.tiltHoldMode) "Holds button continuously while tilted past angle"
+                                else "Fires a single button press when entering tilt angle",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(
+                                selected = !config.tiltHoldMode,
+                                onClick = { onUpdate(config.copy(tiltHoldMode = false)) },
+                                label = { Text("Single Tap", style = MaterialTheme.typography.labelSmall, maxLines = 1, softWrap = false) }
+                            )
+                            FilterChip(
+                                selected = config.tiltHoldMode,
+                                onClick = { onUpdate(config.copy(tiltHoldMode = true)) },
+                                label = { Text("Hold Stance", style = MaterialTheme.typography.labelSmall, maxLines = 1, softWrap = false) }
+                            )
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f, fill = false)) {
+                            Text(
+                                text = "Posture Activation Behavior",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = if (config.tiltHoldMode) "Holds button continuously while tilted past angle"
+                                else "Fires a single button press when entering tilt angle",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(
+                                selected = !config.tiltHoldMode,
+                                onClick = { onUpdate(config.copy(tiltHoldMode = false)) },
+                                label = { Text("Single Tap", style = MaterialTheme.typography.labelSmall, maxLines = 1, softWrap = false) }
+                            )
+                            FilterChip(
+                                selected = config.tiltHoldMode,
+                                onClick = { onUpdate(config.copy(tiltHoldMode = true)) },
+                                label = { Text("Hold Stance", style = MaterialTheme.typography.labelSmall, maxLines = 1, softWrap = false) }
+                            )
+                        }
+                    }
                 }
             }
 
@@ -1077,52 +1228,134 @@ fun ExpressiveSectionCard(
             modifier = Modifier.padding(22.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Surface(
-                        shape = MaterialTheme.shapes.small,
-                        color = accentColor.copy(alpha = 0.14f),
-                        modifier = Modifier.size(38.dp)
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val isCompact = maxWidth < 560.dp
+                if (isCompact) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = null,
-                                tint = accentColor,
-                                modifier = Modifier.size(20.dp)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f, fill = false),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Surface(
+                                    shape = MaterialTheme.shapes.small,
+                                    color = accentColor.copy(alpha = 0.14f),
+                                    modifier = Modifier.size(34.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = icon,
+                                            contentDescription = null,
+                                            tint = accentColor,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = title,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            if (onReset != null) {
+                                FilledTonalButton(
+                                    onClick = onReset,
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                    modifier = Modifier.height(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.RestartAlt,
+                                        contentDescription = "Reset section to defaults",
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Reset",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
+                            }
+                        }
+
+                        if (subtitle.isNotBlank()) {
+                            Text(
+                                text = subtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
-                    Column {
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = subtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f, fill = false),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Surface(
+                                shape = MaterialTheme.shapes.small,
+                                color = accentColor.copy(alpha = 0.14f),
+                                modifier = Modifier.size(38.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = null,
+                                        tint = accentColor,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                            Column(modifier = Modifier.padding(end = 12.dp)) {
+                                Text(
+                                    text = title,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = subtitle,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
 
-                if (onReset != null) {
-                    TextButton(onClick = onReset) {
-                        Icon(
-                            imageVector = Icons.Default.RestartAlt,
-                            contentDescription = "Reset section to defaults",
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Reset Defaults", style = MaterialTheme.typography.labelMedium)
+                        if (onReset != null) {
+                            TextButton(
+                                onClick = onReset,
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.RestartAlt,
+                                    contentDescription = "Reset section to defaults",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Reset Defaults",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -1153,8 +1386,10 @@ fun ExpressiveSlider(
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f, fill = false)
             )
+            Spacer(modifier = Modifier.width(8.dp))
             // Tonal Value Readout Pill with Tabular Numerals
             Surface(
                 shape = MaterialTheme.shapes.extraSmall,
@@ -1164,6 +1399,8 @@ fun ExpressiveSlider(
                     text = "${String.format(format, value)} $unit".trim(),
                     style = MaterialTheme.typography.labelSmall,
                     color = accentColor,
+                    maxLines = 1,
+                    softWrap = false,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                 )
             }
@@ -1286,6 +1523,7 @@ private fun ExpandableFeatureBlock(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AxisInvertRow(
     invertX: Boolean,
@@ -1295,10 +1533,10 @@ private fun AxisInvertRow(
     onInvertY: (Boolean) -> Unit,
     onInvertRoll: (Boolean) -> Unit
 ) {
-    Row(
+    FlowRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
             text = "Invert Axes:",
@@ -1358,6 +1596,7 @@ fun ModernSectionCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
+                    modifier = Modifier.weight(1f, fill = false),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -1374,11 +1613,14 @@ fun ModernSectionCard(
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
                 if (onReset != null) {
+                    Spacer(modifier = Modifier.width(8.dp))
                     FilledTonalButton(
                         onClick = onReset,
                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
@@ -1392,7 +1634,9 @@ fun ModernSectionCard(
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = "Reset",
-                            style = MaterialTheme.typography.labelSmall
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
                 }
@@ -1424,8 +1668,10 @@ fun ModernSlider(
             Text(
                 text = label,
                 color = MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f, fill = false)
             )
+            Spacer(modifier = Modifier.width(8.dp))
             Surface(
                 shape = MaterialTheme.shapes.extraSmall,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -1434,6 +1680,8 @@ fun ModernSlider(
                     text = displayValue ?: String.format(format, value),
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1,
+                    softWrap = false,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                 )
             }

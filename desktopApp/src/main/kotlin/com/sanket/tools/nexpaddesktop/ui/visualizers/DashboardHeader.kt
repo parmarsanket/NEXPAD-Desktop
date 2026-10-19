@@ -364,6 +364,7 @@ private fun TelemetryPanel(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
+                modifier = Modifier.weight(1f, fill = false),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -382,7 +383,7 @@ private fun TelemetryPanel(
                     }
                 }
 
-                Column {
+                Column(modifier = Modifier.weight(1f, fill = false)) {
                     Text(
                         text = meta.title,
                         style = MaterialTheme.typography.titleMedium,
@@ -395,6 +396,8 @@ private fun TelemetryPanel(
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.width(8.dp))
 
             // Live Active Pill
             Surface(
@@ -457,34 +460,32 @@ private fun TelemetryPanel(
                             )
                         )
 
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             val yawDir = when {
-                                processedYaw > 2.0f -> "RIGHT ▶"
-                                processedYaw < -2.0f -> "◀ LEFT"
-                                else -> "CENTER"
+                                processedYaw > 2.0f -> "▶"
+                                processedYaw < -2.0f -> "◀"
+                                else -> "•"
                             }
                             val pitchDir = when {
-                                processedPitch > 2.0f -> "UP ▲"
-                                processedPitch < -2.0f -> "▼ DOWN"
-                                else -> "CENTER"
+                                processedPitch > 2.0f -> "▲"
+                                processedPitch < -2.0f -> "▼"
+                                else -> "•"
                             }
 
-                            LiveAimSpeedRow(
-                                axisName = "Horizontal (Yaw)",
-                                directionText = yawDir,
-                                speedText = "${String.format("%+.1f", processedYaw)} °/s",
-                                maxLimitText = "Max ${settings.maxDpsYaw.toInt()}°/s",
-                                barRatio = abs(processedYaw) / settings.maxDpsYaw.coerceAtLeast(1f),
-                                accentColor = NexpadTheme.colors.rollAxis
+                            TelemetryBar(
+                                label = "Horizontal Yaw $yawDir",
+                                value = abs(processedYaw) / settings.maxDpsYaw.coerceAtLeast(1f),
+                                displayValue = "${String.format("%+.0f", processedYaw)}°/s",
+                                color = NexpadTheme.colors.rollAxis,
+                                labelWidth = if (isCompact) 130.dp else 150.dp
                             )
 
-                            LiveAimSpeedRow(
-                                axisName = "Vertical (Pitch)",
-                                directionText = pitchDir,
-                                speedText = "${String.format("%+.1f", processedPitch)} °/s",
-                                maxLimitText = "Max ${settings.maxDpsPitch.toInt()}°/s",
-                                barRatio = abs(processedPitch) / settings.maxDpsPitch.coerceAtLeast(1f),
-                                accentColor = NexpadTheme.colors.flightStick.accent
+                            TelemetryBar(
+                                label = "Vertical Pitch $pitchDir",
+                                value = abs(processedPitch) / settings.maxDpsPitch.coerceAtLeast(1f),
+                                displayValue = "${String.format("%+.0f", processedPitch)}°/s",
+                                color = modePalette.accent,
+                                labelWidth = if (isCompact) 130.dp else 150.dp
                             )
                         }
                     }
@@ -1132,96 +1133,4 @@ private fun TelemetryBar(
             maxLines = 1
         )
     }
-}
-
-@Composable
-private fun LiveAimSpeedRow(
-    axisName: String,
-    directionText: String,
-    speedText: String,
-    maxLimitText: String,
-    barRatio: Float,
-    accentColor: Color
-) {
-    val animatedRatio by animateFloatAsState(
-        targetValue = barRatio.coerceIn(0f, 1f),
-        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
-        label = "aimSpeedBar"
-    )
-
-    // Uses surfaceContainerHigh for clean tonal separation without borders
-    Surface(
-        shape = MaterialTheme.shapes.small,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = axisName,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Surface(
-                        shape = MaterialTheme.shapes.extraSmall,
-                        color = accentColor.copy(alpha = 0.15f)
-                    ) {
-                        Text(
-                            text = directionText,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = accentColor,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                }
-
-                Text(
-                    text = speedText,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(5.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerLowest)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .fillMaxWidth(animatedRatio)
-                            .clip(CircleShape)
-                            .background(accentColor)
-                    )
-                }
-
-                Text(
-                    text = maxLimitText,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
+}

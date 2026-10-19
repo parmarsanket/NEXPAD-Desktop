@@ -42,14 +42,6 @@ object InputPipeline {
             }
         }
 
-        // 2. Filter uninitialized dummy quaternion data (0,0,0,1) arriving before Game Rotation is active in AIR_MOUSE
-        val isGameRotationActive = (input.sensorFlags == com.sanket.tools.nexpad.protocol.NexpadProtocol.SENSOR_MODE_GAME_ROTATION) ||
-                (input.quatX != 0f || input.quatY != 0f || input.quatZ != 0f)
-
-        val effQuatX = if (isGameRotationActive) input.quatX else 0f
-        val effQuatY = if (isGameRotationActive) input.quatY else 0f
-        val effQuatZ = if (isGameRotationActive) input.quatZ else 0f
-        val effQuatW = if (isGameRotationActive) input.quatW else 0f
         // Run gyro through the processing pipeline
         val processed = gyroProcessor.process(
             rawGyroX = input.gyroX,
@@ -61,10 +53,10 @@ object InputPipeline {
             rawGravityX = input.gravityX,
             rawGravityY = input.gravityY,
             rawGravityZ = input.gravityZ,
-            quatX = effQuatX,
-            quatY = effQuatY,
-            quatZ = effQuatZ,
-            quatW = effQuatW,
+            quatX = input.quatX,
+            quatY = input.quatY,
+            quatZ = input.quatZ,
+            quatW = input.quatW,
             linearAccelX = input.linearAccelX,
             linearAccelY = input.linearAccelY,
             linearAccelZ = input.linearAccelZ,

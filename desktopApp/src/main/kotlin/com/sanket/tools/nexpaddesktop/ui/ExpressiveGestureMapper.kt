@@ -82,13 +82,17 @@ fun SpatialGestureMappingGrid(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f, fill = false)
                 )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = if (activeDirection == null) "Click any direction to rebind"
                     else "Selecting action for ${activeDirection!!.title}...",
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (activeDirection != null) accentColor else MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (activeDirection != null) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
 

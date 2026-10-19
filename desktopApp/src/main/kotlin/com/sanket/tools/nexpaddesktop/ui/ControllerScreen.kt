@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -99,13 +100,19 @@ fun ControllerScreen(
 ) {
     val scrollState = rememberScrollState()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val isCompact = maxWidth < 640.dp
+        val startPadding = if (isCompact) 16.dp else 32.dp
+        val topPadding = if (isCompact) 16.dp else 32.dp
+        val bottomPadding = if (isCompact) 20.dp else 32.dp
+        val endPadding = if (isCompact) 12.dp else 24.dp
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = 32.dp, top = 32.dp, bottom = 32.dp, end = 24.dp)
+                .padding(start = startPadding, top = topPadding, bottom = bottomPadding, end = endPadding)
                 .verticalScroll(scrollState),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            verticalArrangement = Arrangement.spacedBy(if (isCompact) 16.dp else 24.dp)
         ) {
             // ── Top Title ──
             Column {
@@ -249,28 +256,57 @@ fun ExpressiveControllerSelector(
     activeController: ControllerType,
     onSelect: (ControllerType) -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        ControllerOptionCard(
-            modifier = Modifier.weight(1f),
-            title = "Xbox 360",
-            badge = "Stick Emulation",
-            summary = "Translates motion into analog thumbstick movement for any Windows PC game.",
-            accentColor = NeonPalette.Cyan,
-            isSelected = activeController == ControllerType.XBOX_360,
-            onClick = { onSelect(ControllerType.XBOX_360) }
-        )
-        ControllerOptionCard(
-            modifier = Modifier.weight(1f),
-            title = "DualShock 4",
-            badge = "Native 6-Axis Gyro",
-            summary = "Streams raw 1:1 motion directly to Steam Input & native gyro games without software knobs.",
-            accentColor = NeonPalette.Purple,
-            isSelected = activeController == ControllerType.DUALSHOCK_4,
-            onClick = { onSelect(ControllerType.DUALSHOCK_4) }
-        )
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val isNarrow = maxWidth < 560.dp
+        if (isNarrow) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                ControllerOptionCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    title = "Xbox 360",
+                    badge = "Stick Emulation",
+                    summary = "Translates motion into analog thumbstick movement for any Windows PC game.",
+                    accentColor = NeonPalette.Cyan,
+                    isSelected = activeController == ControllerType.XBOX_360,
+                    onClick = { onSelect(ControllerType.XBOX_360) }
+                )
+                ControllerOptionCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    title = "DualShock 4",
+                    badge = "Native 6-Axis Gyro",
+                    summary = "Streams raw 1:1 motion directly to Steam Input & native gyro games without software knobs.",
+                    accentColor = NeonPalette.Purple,
+                    isSelected = activeController == ControllerType.DUALSHOCK_4,
+                    onClick = { onSelect(ControllerType.DUALSHOCK_4) }
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                ControllerOptionCard(
+                    modifier = Modifier.weight(1f),
+                    title = "Xbox 360",
+                    badge = "Stick Emulation",
+                    summary = "Translates motion into analog thumbstick movement for any Windows PC game.",
+                    accentColor = NeonPalette.Cyan,
+                    isSelected = activeController == ControllerType.XBOX_360,
+                    onClick = { onSelect(ControllerType.XBOX_360) }
+                )
+                ControllerOptionCard(
+                    modifier = Modifier.weight(1f),
+                    title = "DualShock 4",
+                    badge = "Native 6-Axis Gyro",
+                    summary = "Streams raw 1:1 motion directly to Steam Input & native gyro games without software knobs.",
+                    accentColor = NeonPalette.Purple,
+                    isSelected = activeController == ControllerType.DUALSHOCK_4,
+                    onClick = { onSelect(ControllerType.DUALSHOCK_4) }
+                )
+            }
+        }
     }
 }
 
@@ -315,6 +351,7 @@ private fun ControllerOptionCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
+                    modifier = Modifier.weight(1f, fill = false),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -333,20 +370,26 @@ private fun ControllerOptionCard(
                             modifier = Modifier.size(22.dp)
                         )
                     }
-                    Column {
+                    Column(modifier = Modifier.weight(1f, fill = false)) {
                         Text(
                             text = title,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = badge,
                             style = MaterialTheme.typography.labelMedium,
-                            color = if (isSelected) accentColor else NeonPalette.CardIdleText
+                            color = if (isSelected) accentColor else NeonPalette.CardIdleText,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.width(8.dp))
 
                 RadioButton(
                     selected = isSelected,
@@ -388,46 +431,87 @@ private fun StickSensitivityGroup(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = Color.White,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = subtitle,
-                        fontSize = 11.sp,
-                        color = NeonPalette.CardIdleText
-                    )
-                }
-                FilterChip(
-                    selected = linkAxes,
-                    onClick = {
-                        linkAxes = !linkAxes
-                        if (linkAxes) onUpdate(sensX, sensX)
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = if (linkAxes) Icons.Default.Link else Icons.Default.LinkOff,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            val isNarrow = maxWidth < 480.dp
+            Column {
+                if (isNarrow) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column {
+                            Text(
+                                text = title,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = Color.White,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = subtitle,
+                                fontSize = 11.sp,
+                                color = NeonPalette.CardIdleText
+                            )
+                        }
+                        FilterChip(
+                            selected = linkAxes,
+                            onClick = {
+                                linkAxes = !linkAxes
+                                if (linkAxes) onUpdate(sensX, sensX)
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = if (linkAxes) Icons.Default.Link else Icons.Default.LinkOff,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            },
+                            label = { Text("Link X & Y", fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1, softWrap = false) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = NeonPalette.Cyan.copy(alpha = 0.2f),
+                                selectedLabelColor = NeonPalette.Cyan,
+                                selectedLeadingIconColor = NeonPalette.Cyan
+                            )
                         )
-                    },
-                    label = { Text("Link X & Y", fontSize = 11.sp, fontWeight = FontWeight.Medium) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = NeonPalette.Cyan.copy(alpha = 0.2f),
-                        selectedLabelColor = NeonPalette.Cyan,
-                        selectedLeadingIconColor = NeonPalette.Cyan
-                    )
-                )
-            }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f, fill = false)) {
+                            Text(
+                                text = title,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = Color.White,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = subtitle,
+                                fontSize = 11.sp,
+                                color = NeonPalette.CardIdleText
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        FilterChip(
+                            selected = linkAxes,
+                            onClick = {
+                                linkAxes = !linkAxes
+                                if (linkAxes) onUpdate(sensX, sensX)
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = if (linkAxes) Icons.Default.Link else Icons.Default.LinkOff,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            },
+                            label = { Text("Link X & Y", fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1, softWrap = false) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = NeonPalette.Cyan.copy(alpha = 0.2f),
+                                selectedLabelColor = NeonPalette.Cyan,
+                                selectedLeadingIconColor = NeonPalette.Cyan
+                            )
+                        )
+                    }
+                }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -469,6 +553,7 @@ private fun StickSensitivityGroup(
         }
     }
 }
+}
 
 /**
  * Dedicated DualShock 4 Native Mode Dashboard (Material 3 Expressive).
@@ -502,6 +587,7 @@ private fun DualShock4Dashboard(
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -519,7 +605,7 @@ private fun DualShock4Dashboard(
                             modifier = Modifier.size(24.dp)
                         )
                     }
-                    Column {
+                    Column(modifier = Modifier.weight(1f, fill = false)) {
                         Text(
                             text = "DualShock 4 Native Hardware Passthrough",
                             fontWeight = FontWeight.Bold,
@@ -537,58 +623,113 @@ private fun DualShock4Dashboard(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // Scannable side-by-side Info Chips / Callout Pills
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    InfoCalloutPill(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.Default.Tune,
-                        title = "In-Game Sensitivity",
-                        subtitle = "Deadzones, curves, and sensitivity are tuned directly inside PC game settings or Steam Input.",
-                        accentColor = NeonPalette.Cyan
-                    )
-
-                    InfoCalloutPill(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.Default.Speed,
-                        title = "1:1 Bit-Perfect Stream",
-                        subtitle = "High-frequency uncompressed sensor packets; software conversion knobs are bypassed.",
-                        accentColor = NeonPalette.Purple
-                    )
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    if (maxWidth < 540.dp) {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            InfoCalloutPill(
+                                modifier = Modifier.fillMaxWidth(),
+                                icon = Icons.Default.Tune,
+                                title = "In-Game Sensitivity",
+                                subtitle = "Deadzones, curves, and sensitivity are tuned directly inside PC game settings or Steam Input.",
+                                accentColor = NeonPalette.Cyan
+                            )
+                            InfoCalloutPill(
+                                modifier = Modifier.fillMaxWidth(),
+                                icon = Icons.Default.Speed,
+                                title = "1:1 Bit-Perfect Stream",
+                                subtitle = "High-frequency uncompressed sensor packets; software conversion knobs are bypassed.",
+                                accentColor = NeonPalette.Purple
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            InfoCalloutPill(
+                                modifier = Modifier.weight(1f),
+                                icon = Icons.Default.Tune,
+                                title = "In-Game Sensitivity",
+                                subtitle = "Deadzones, curves, and sensitivity are tuned directly inside PC game settings or Steam Input.",
+                                accentColor = NeonPalette.Cyan
+                            )
+                            InfoCalloutPill(
+                                modifier = Modifier.weight(1f),
+                                icon = Icons.Default.Speed,
+                                title = "1:1 Bit-Perfect Stream",
+                                subtitle = "High-frequency uncompressed sensor packets; software conversion knobs are bypassed.",
+                                accentColor = NeonPalette.Purple
+                            )
+                        }
+                    }
                 }
             }
         }
 
         // ── Humanized Telemetry & Service Status Tiles ──
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            StatusTile(
-                modifier = Modifier.weight(1f),
-                title = "ViGEm DS4 Driver",
-                value = if (isDriverConnected) "Connected" else "Standby",
-                subtitle = if (isDriverConnected) "Virtual Gamepad Active" else "Awaiting Driver",
-                color = if (isDriverConnected) NeonPalette.ConnectedDot else NeonPalette.CardIdleText,
-                showIndicator = true
-            )
-
-            StatusTile(
-                modifier = Modifier.weight(1f),
-                title = "DSU Motion Server",
-                value = "$dsuClientCount Active Client${if (dsuClientCount != 1) "s" else ""}",
-                subtitle = "UDP Port 26760 (Cemuhook)",
-                color = NeonPalette.Cyan
-            )
-
-            StatusTile(
-                modifier = Modifier.weight(1f),
-                title = "Sensor Pipeline",
-                value = "6-Axis IMU Active",
-                subtitle = "Mode 0x00 Direct Passthrough",
-                color = NeonPalette.Purple
-            )
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            if (maxWidth < 620.dp) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    StatusTile(
+                        modifier = Modifier.fillMaxWidth(),
+                        title = "ViGEm DS4 Driver",
+                        value = if (isDriverConnected) "Connected" else "Standby",
+                        subtitle = if (isDriverConnected) "Virtual Gamepad Active" else "Awaiting Driver",
+                        color = if (isDriverConnected) NeonPalette.ConnectedDot else NeonPalette.CardIdleText,
+                        showIndicator = true
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        StatusTile(
+                            modifier = Modifier.weight(1f),
+                            title = "DSU Motion Server",
+                            value = "$dsuClientCount Active Client${if (dsuClientCount != 1) "s" else ""}",
+                            subtitle = "UDP Port 26760 (Cemuhook)",
+                            color = NeonPalette.Cyan
+                        )
+                        StatusTile(
+                            modifier = Modifier.weight(1f),
+                            title = "Sensor Pipeline",
+                            value = "6-Axis IMU Active",
+                            subtitle = "Mode 0x00 Direct Passthrough",
+                            color = NeonPalette.Purple
+                        )
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    StatusTile(
+                        modifier = Modifier.weight(1f),
+                        title = "ViGEm DS4 Driver",
+                        value = if (isDriverConnected) "Connected" else "Standby",
+                        subtitle = if (isDriverConnected) "Virtual Gamepad Active" else "Awaiting Driver",
+                        color = if (isDriverConnected) NeonPalette.ConnectedDot else NeonPalette.CardIdleText,
+                        showIndicator = true
+                    )
+                    StatusTile(
+                        modifier = Modifier.weight(1f),
+                        title = "DSU Motion Server",
+                        value = "$dsuClientCount Active Client${if (dsuClientCount != 1) "s" else ""}",
+                        subtitle = "UDP Port 26760 (Cemuhook)",
+                        color = NeonPalette.Cyan
+                    )
+                    StatusTile(
+                        modifier = Modifier.weight(1f),
+                        title = "Sensor Pipeline",
+                        value = "6-Axis IMU Active",
+                        subtitle = "Mode 0x00 Direct Passthrough",
+                        color = NeonPalette.Purple
+                    )
+                }
+            }
         }
 
         // ── 3D Live Orientation Visualizer ──
@@ -623,19 +764,32 @@ private fun DualShock4Dashboard(
             color = MaterialTheme.colorScheme.surfaceContainerLow,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text("Sensor Zero Calibration", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text("Re-align resting attitude if phone was tilted when connecting.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                val isNarrow = maxWidth < 520.dp
+                if (isNarrow) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Column {
+                            Text("Sensor Zero Calibration", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text("Re-align resting attitude if phone was tilted when connecting.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        RecalibrateZeroButton(onRecalibrate = onRecalibrate)
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f, fill = false)) {
+                            Text("Sensor Zero Calibration", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text("Re-align resting attitude if phone was tilted when connecting.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        RecalibrateZeroButton(onRecalibrate = onRecalibrate)
+                    }
                 }
-                RecalibrateZeroButton(onRecalibrate = onRecalibrate)
             }
         }
 
@@ -685,28 +839,52 @@ private fun DualShock4Dashboard(
                     enter = fadeIn() + expandVertically(),
                     exit = fadeOut() + shrinkVertically()
                 ) {
-                    Column(modifier = Modifier.padding(top = 12.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column {
-                                Text("Calibrated Gyroscope (rad/s)", fontSize = 11.sp, color = NeonPalette.Cyan)
-                                Text(
-                                    text = String.format("X: %+.2f   Y: %+.2f   Z: %+.2f", latestInput.gyroX, latestInput.gyroY, latestInput.gyroZ),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp,
-                                    color = Color.White
-                                )
+                    BoxWithConstraints(modifier = Modifier.padding(top = 12.dp).fillMaxWidth()) {
+                        val isNarrow = maxWidth < 460.dp
+                        if (isNarrow) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Column {
+                                    Text("Calibrated Gyroscope (rad/s)", fontSize = 11.sp, color = NeonPalette.Cyan)
+                                    Text(
+                                        text = String.format("X: %+.2f   Y: %+.2f   Z: %+.2f", latestInput.gyroX, latestInput.gyroY, latestInput.gyroZ),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = Color.White
+                                    )
+                                }
+                                Column {
+                                    Text("Accelerometer (m/s²)", fontSize = 11.sp, color = NeonPalette.Purple)
+                                    Text(
+                                        text = String.format("X: %+.2f   Y: %+.2f   Z: %+.2f", latestInput.accelX, latestInput.accelY, latestInput.accelZ),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = Color.White
+                                    )
+                                }
                             }
-                            Column {
-                                Text("Accelerometer (m/s²)", fontSize = 11.sp, color = NeonPalette.Purple)
-                                Text(
-                                    text = String.format("X: %+.2f   Y: %+.2f   Z: %+.2f", latestInput.accelX, latestInput.accelY, latestInput.accelZ),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp,
-                                    color = Color.White
-                                )
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f, fill = false)) {
+                                    Text("Calibrated Gyroscope (rad/s)", fontSize = 11.sp, color = NeonPalette.Cyan)
+                                    Text(
+                                        text = String.format("X: %+.2f   Y: %+.2f   Z: %+.2f", latestInput.gyroX, latestInput.gyroY, latestInput.gyroZ),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = Color.White
+                                    )
+                                }
+                                Column(modifier = Modifier.weight(1f, fill = false)) {
+                                    Text("Accelerometer (m/s²)", fontSize = 11.sp, color = NeonPalette.Purple)
+                                    Text(
+                                        text = String.format("X: %+.2f   Y: %+.2f   Z: %+.2f", latestInput.accelX, latestInput.accelY, latestInput.accelZ),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = Color.White
+                                    )
+                                }
                             }
                         }
                     }
@@ -822,7 +1000,9 @@ private fun RecalibrateZeroButton(
                 Text(
                     text = if (calibrated) "✓ Calibrated to Current Posture" else "Recalibrate Zero",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
         }
