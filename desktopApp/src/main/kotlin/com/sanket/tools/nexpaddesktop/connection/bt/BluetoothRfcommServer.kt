@@ -38,6 +38,7 @@ class BluetoothRfcommServer {
     private var serverSocket: Long = WinsockBluetooth.INVALID_SOCKET
     private var clientSocket: Long = WinsockBluetooth.INVALID_SOCKET
     private var assignedChannel: Int = 0
+    private var lastQuerySet: WinsockBluetooth.WSAQUERYSETW? = null
 
     private val feedbackChannel = Channel<GamepadFeedback>(Channel.CONFLATED)
     private val fileSyncChannel = Channel<ByteArray>(Channel.UNLIMITED)
@@ -78,6 +79,7 @@ class BluetoothRfcommServer {
     }
 
     fun pause() {
+        deregisterSdpService()
         if (serverSocket != WinsockBluetooth.INVALID_SOCKET) {
             val s = serverSocket
             serverSocket = WinsockBluetooth.INVALID_SOCKET
@@ -90,6 +92,8 @@ class BluetoothRfcommServer {
 
         isConnected.set(false)
         serverJob?.cancel()
+
+        deregisterSdpService()
 
         closeSocket(clientSocket)
         clientSocket = WinsockBluetooth.INVALID_SOCKET
@@ -121,6 +125,7 @@ class BluetoothRfcommServer {
             // Single Active Transport Guard: If another transport is active (AOA, ADB, Wi-Fi), completely pause!
             if (isExternalTransportActive()) {
                 if (serverSocket != WinsockBluetooth.INVALID_SOCKET) {
+                    deregisterSdpService()
                     val s = serverSocket
                     serverSocket = WinsockBluetooth.INVALID_SOCKET
                     closeSocket(s)
@@ -189,6 +194,7 @@ class BluetoothRfcommServer {
             // 5. Start listening
             val listenRes = WinsockBluetooth.INSTANCE.listen(sock, 1)
             if (listenRes == WinsockBluetooth.SOCKET_ERROR) {
+                deregisterSdpService()
                 closeSocket(sock)
                 serverSocket = WinsockBluetooth.INVALID_SOCKET
                 delay(3000)
@@ -200,6 +206,7 @@ class BluetoothRfcommServer {
             // 6. Accept Loop
             while (isRunning.get() && currentCoroutineContext().isActive) {
                 if (isExternalTransportActive()) {
+                    deregisterSdpService()
                     closeSocket(sock)
                     serverSocket = WinsockBluetooth.INVALID_SOCKET
                     break
@@ -252,6 +259,8 @@ class BluetoothRfcommServer {
 
     private fun registerSdpService(boundAddr: WinsockBluetooth.SOCKADDR_BTH) {
         try {
+            deregisterSdpService()
+
             val serviceGuid = GUID.fromString(NEXPAD_BT_UUID_STRING)
 
             // Memory for CSADDR_INFO and SOCKADDR_BTH
@@ -288,6 +297,7 @@ class BluetoothRfcommServer {
             )
 
             if (res == 0) {
+                lastQuerySet = querySet
                 println("⚡ [Bluetooth] SDP Service successfully registered for UUID $NEXPAD_BT_UUID_STRING")
             } else {
                 val err = WinsockBluetooth.INSTANCE.WSAGetLastError()
@@ -295,6 +305,26 @@ class BluetoothRfcommServer {
             }
         } catch (e: Exception) {
             println("⚠️ [Bluetooth] SDP registration exception: ${e.message}")
+        }
+    }
+
+    private fun deregisterSdpService() {
+        lastQuerySet?.let { qs ->
+            try {
+                val res = WinsockBluetooth.INSTANCE.WSASetServiceW(
+                    qs,
+                    WinsockBluetooth.RNRSERVICE_DEREGISTER,
+                    0
+                )
+                if (res != 0) {
+                    val err = WinsockBluetooth.INSTANCE.WSAGetLastError()
+                    println("⚠️ [Bluetooth] WSASetService deregister warning: Win32 Error $err")
+                }
+            } catch (e: Exception) {
+                println("⚠️ [Bluetooth] SDP deregistration exception: ${e.message}")
+            } finally {
+                lastQuerySet = null
+            }
         }
     }
 
@@ -397,8 +427,12 @@ class BluetoothRfcommServer {
             while (isActive && isConnected.get()) {
                 val bytesRead = WinsockBluetooth.INSTANCE.recv(socket, rxRawBuffer, rxRawBuffer.size, 0)
                 if (bytesRead <= 0) {
-                    val err = WinsockBluetooth.INSTANCE.WSAGetLastError()
-                    if (bytesRead < 0 && err != WinsockBluetooth.WSAEWOULDBLOCK) {
+                    if (bytesRead < 0) {
+                        val err = WinsockBluetooth.INSTANCE.WSAGetLastError()
+                        if (err == WinsockBluetooth.WSAEWOULDBLOCK) {
+                            delay(1)
+                            continue
+                        }
                         println("[Bluetooth] Client read error: $err")
                     }
                     break

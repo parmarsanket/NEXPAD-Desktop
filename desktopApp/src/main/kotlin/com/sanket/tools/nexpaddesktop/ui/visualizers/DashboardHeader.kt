@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -781,6 +782,25 @@ private fun Gamepad3DModelViewport(
             ) {
                 val strikeColor = NexpadTheme.colors.combatGesture.accent
                 val warningColor = NexpadTheme.colors.statusWarning
+                val activeRimColor = when {
+                    isStrikeActive -> strikeColor
+                    isShakingActive -> warningColor
+                    else -> accentColor
+                }
+
+                val chassisBrush = remember(chassisTopColor, chassisBottomColor) {
+                    Brush.verticalGradient(listOf(chassisTopColor, chassisBottomColor))
+                }
+                val rimBrush = remember(activeRimColor, chassisTopColor) {
+                    Brush.linearGradient(
+                        listOf(
+                            activeRimColor.copy(alpha = 0.9f),
+                            chassisTopColor,
+                            activeRimColor.copy(alpha = 0.45f)
+                        )
+                    )
+                }
+                val wavePath = remember { Path() }
 
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val w = size.width
@@ -828,28 +848,15 @@ private fun Gamepad3DModelViewport(
                         )
                     }
 
-                    // Active Rim Color
-                    val activeRimColor = when {
-                        isStrikeActive -> strikeColor
-                        isShakingActive -> warningColor
-                        else -> accentColor
-                    }
-
                     // Main Chassis Faceplate
                     drawRoundRect(
-                        brush = Brush.verticalGradient(listOf(chassisTopColor, chassisBottomColor)),
+                        brush = chassisBrush,
                         topLeft = Offset.Zero,
                         size = Size(w, h),
                         cornerRadius = CornerRadius(16.dp.toPx(), 16.dp.toPx())
                     )
                     drawRoundRect(
-                        brush = Brush.linearGradient(
-                            listOf(
-                                activeRimColor.copy(alpha = 0.9f),
-                                chassisTopColor,
-                                activeRimColor.copy(alpha = 0.45f)
-                            )
-                        ),
+                        brush = rimBrush,
                         topLeft = Offset.Zero,
                         size = Size(w, h),
                         cornerRadius = CornerRadius(16.dp.toPx(), 16.dp.toPx()),
@@ -906,15 +913,14 @@ private fun Gamepad3DModelViewport(
                         }
 
                         InputMode.RAW_UNCALIBRATED -> {
-                            val wavePath = Path().apply {
-                                moveTo(screenLeft + 6.dp.toPx(), cy)
-                                lineTo(screenLeft + screenW * 0.30f, cy)
-                                lineTo(screenLeft + screenW * 0.40f, cy - 10.dp.toPx())
-                                lineTo(screenLeft + screenW * 0.50f, cy + 12.dp.toPx())
-                                lineTo(screenLeft + screenW * 0.60f, cy - 8.dp.toPx())
-                                lineTo(screenLeft + screenW * 0.70f, cy)
-                                lineTo(screenLeft + screenW - 6.dp.toPx(), cy)
-                            }
+                            wavePath.reset()
+                            wavePath.moveTo(screenLeft + 6.dp.toPx(), cy)
+                            wavePath.lineTo(screenLeft + screenW * 0.30f, cy)
+                            wavePath.lineTo(screenLeft + screenW * 0.40f, cy - 10.dp.toPx())
+                            wavePath.lineTo(screenLeft + screenW * 0.50f, cy + 12.dp.toPx())
+                            wavePath.lineTo(screenLeft + screenW * 0.60f, cy - 8.dp.toPx())
+                            wavePath.lineTo(screenLeft + screenW * 0.70f, cy)
+                            wavePath.lineTo(screenLeft + screenW - 6.dp.toPx(), cy)
                             drawPath(wavePath, color = accentColor.copy(alpha = 0.85f), style = Stroke(1.5f.dp.toPx()))
                         }
 

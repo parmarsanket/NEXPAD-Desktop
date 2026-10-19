@@ -40,6 +40,22 @@ import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 import java.awt.Toolkit
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+private fun safeCopyToClipboard(text: String): Boolean {
+    val selection = StringSelection(text)
+    for (attempt in 1..3) {
+        try {
+            Toolkit.getDefaultToolkit().systemClipboard.setContents(selection, null)
+            return true
+        } catch (_: Throwable) {
+            try { Thread.sleep(30) } catch (_: InterruptedException) {}
+        }
+    }
+    return false
+}
 
 /**
  * Dedicated, full-screen creative workspace for the NEXPAD Button Controller Layer Studio.
@@ -68,6 +84,8 @@ fun LayerStudioFullScreen(
     onFeedback: (String) -> Unit,
     onClose: () -> Unit
 ) {
+    val coroutineScope = rememberCoroutineScope()
+
     // Transactional Sandboxed State:
     // Surgical edits modify currentHtml and currentDoc locally for real-time live preview in Layer Studio.
     // They are ONLY committed to the main editor when user explicitly clicks "💾 Save Changes".
@@ -546,7 +564,9 @@ fun LayerStudioFullScreen(
                         val dragging = reorderableLazyListState.isAnyItemDragging
                         if (isAnyItemDragging && !dragging) {
                             // Drag gesture completed: synchronize CSS z-index for all layers in currentHtml
-                            currentHtml = NxprcSurgicalReplacer.syncLayersZIndexInHtml(currentHtml, currentDoc)
+                            currentHtml = withContext(Dispatchers.Default) {
+                                NxprcSurgicalReplacer.syncLayersZIndexInHtml(currentHtml, currentDoc)
+                            }
                             hasUnsavedChanges = true
                             onFeedback("Reordered layers • Synchronized z-index in HTML/CSS")
                         }
@@ -1072,11 +1092,12 @@ fun LayerStudioFullScreen(
 
                             Button(
                                 onClick = {
-                                    Toolkit.getDefaultToolkit().systemClipboard.setContents(
-                                        StringSelection(selectedDetails.codeSnippet),
-                                        null
-                                    )
-                                    onFeedback("✓ Layer #$safeSelectedIndex code copied!")
+                                    val copied = safeCopyToClipboard(selectedDetails.codeSnippet)
+                                    if (copied) {
+                                        onFeedback("✓ Layer #$safeSelectedIndex code copied!")
+                                    } else {
+                                        onFeedback("⚠️ Failed to access clipboard. Please retry.")
+                                    }
                                 },
                                 shape = RoundedCornerShape(4.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B263A)),
@@ -1175,11 +1196,12 @@ fun LayerStudioFullScreen(
                                             userInstruction = userAiPrompt,
                                             htmlSource = currentHtml
                                         )
-                                        Toolkit.getDefaultToolkit().systemClipboard.setContents(
-                                            StringSelection(surgicalPrompt),
-                                            null
-                                        )
-                                        onFeedback("✓ Surgical prompt for Layer #$safeSelectedIndex copied!")
+                                        val copied = safeCopyToClipboard(surgicalPrompt)
+                                        if (copied) {
+                                            onFeedback("✓ Surgical prompt for Layer #$safeSelectedIndex copied!")
+                                        } else {
+                                            onFeedback("⚠️ Failed to access clipboard. Please retry.")
+                                        }
                                     },
                                     shape = RoundedCornerShape(6.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
@@ -1264,31 +1286,37 @@ fun LayerStudioFullScreen(
                                         onFeedback("⚠️ Please paste or type replacement code first.")
                                         return@Button
                                     }
-                                    val result = NxprcSurgicalReplacer.applySurgicalChange(
-                                        originalHtml = currentHtml,
-                                        layerIndex = safeSelectedIndex,
-                                        layer = selectedLayer,
-                                        doc = currentDoc,
-                                        replacementInput = replacementCode
-                                    )
-                                    if (result.success) {
-                                        try {
-                                            val recompiled = NxprcHtmlCssConverter.convert(
-                                                source = result.updatedHtml,
-                                                id = currentDoc.manifest.id,
-                                                name = currentDoc.manifest.name,
-                                                category = currentDoc.manifest.category,
-                                                defaultControl = currentDoc.manifest.defaultControl
+                                    coroutineScope.launch {
+                                        val result = withContext(Dispatchers.Default) {
+                                            NxprcSurgicalReplacer.applySurgicalChange(
+                                                originalHtml = currentHtml,
+                                                layerIndex = safeSelectedIndex,
+                                                layer = selectedLayer,
+                                                doc = currentDoc,
+                                                replacementInput = replacementCode
                                             )
-                                            currentHtml = result.updatedHtml
-                                            currentDoc = recompiled
-                                            hasUnsavedChanges = true
-                                            onFeedback("✓ ${result.message} Live preview updated (Staged — click '💾 Save Changes' to keep)!")
-                                        } catch (e: Exception) {
-                                            onFeedback("⚠️ Recompilation failed: ${e.message}")
                                         }
-                                    } else {
-                                        onFeedback("⚠️ ${result.message}")
+                                        if (result.success) {
+                                            try {
+                                                val recompiled = withContext(Dispatchers.Default) {
+                                                    NxprcHtmlCssConverter.convert(
+                                                        source = result.updatedHtml,
+                                                        id = currentDoc.manifest.id,
+                                                        name = currentDoc.manifest.name,
+                                                        category = currentDoc.manifest.category,
+                                                        defaultControl = currentDoc.manifest.defaultControl
+                                                    )
+                                                }
+                                                currentHtml = result.updatedHtml
+                                                currentDoc = recompiled
+                                                hasUnsavedChanges = true
+                                                onFeedback("✓ ${result.message} Live preview updated (Staged — click '💾 Save Changes' to keep)!")
+                                            } catch (e: Exception) {
+                                                onFeedback("⚠️ Recompilation failed: ${e.message}")
+                                            }
+                                        } else {
+                                            onFeedback("⚠️ ${result.message}")
+                                        }
                                     }
                                 },
                                 enabled = replacementCode.isNotBlank(),

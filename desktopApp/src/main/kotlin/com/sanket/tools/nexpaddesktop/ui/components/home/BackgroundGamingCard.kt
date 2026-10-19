@@ -52,8 +52,9 @@ fun BackgroundGamingCard(
     modifier: Modifier = Modifier,
     onMinimizeToTray: () -> Unit
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isHovered by interactionSource.collectIsHoveredAsState()
+    val cardInteractionSource = remember { MutableInteractionSource() }
+    val buttonInteractionSource = remember { MutableInteractionSource() }
+    val isHovered by cardInteractionSource.collectIsHoveredAsState()
 
     val glowAlpha by animateFloatAsState(
         targetValue = if (isHovered) 0.35f else 0.18f,
@@ -101,7 +102,7 @@ fun BackgroundGamingCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .hoverable(interactionSource)
+            .hoverable(cardInteractionSource)
             .drawBehind {
                 drawRoundRect(
                     brush = Brush.radialGradient(
@@ -228,7 +229,7 @@ fun BackgroundGamingCard(
             ) {
                 Button(
                     onClick = onMinimizeToTray,
-                    interactionSource = interactionSource,
+                    interactionSource = buttonInteractionSource,
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.Transparent,

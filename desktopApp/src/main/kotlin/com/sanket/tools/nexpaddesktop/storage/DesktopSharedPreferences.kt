@@ -326,7 +326,7 @@ class DesktopSharedPreferences private constructor(
     fun saveGyroSettings(settings: GyroSettings) {
         try {
             val jsonStr = json.encodeToString(settings)
-            putString(KEY_GYRO_SETTINGS, jsonStr)
+            edit().putString(KEY_GYRO_SETTINGS, jsonStr).commit()
         } catch (e: Exception) {
             println("❌ [Preferences] Failed to encode GyroSettings: ${e.message}")
         }

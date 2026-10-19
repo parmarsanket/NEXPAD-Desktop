@@ -1,6 +1,7 @@
 package com.sanket.tools.nexpaddesktop.driver
 
 import com.sanket.tools.nexpaddesktop.model.*
+import java.util.Collections
 import kotlin.math.*
 
 /**
@@ -30,6 +31,14 @@ class GyroProcessor {
 
     private var toggleActive = false
     private var toggleButtonWasPressed = false
+
+    // Resting bias for Velocity mode drift compensation
+    var biasYaw = 0f
+    var biasPitch = 0f
+    var biasRoll = 0f
+    private var lastRawGyroX = 0f
+    private var lastRawGyroY = 0f
+    private var lastRawGyroZ = 0f
 
     // Air Mouse (3D Flight Yoke / Attitude Stick) zero reference
     private var refQuatX = 0f
@@ -126,6 +135,10 @@ class GyroProcessor {
         settings: GyroSettings,
         isActivationButtonPressed: Boolean = true,
     ): ProcessedGyro {
+
+        if (rawGyroX.isFinite()) lastRawGyroX = rawGyroX
+        if (rawGyroY.isFinite()) lastRawGyroY = rawGyroY
+        if (rawGyroZ.isFinite()) lastRawGyroZ = rawGyroZ
 
         if (settings.inputMode != lastInputMode ||
             settings.flightStick.yawTarget != lastFlightYawTarget ||
@@ -249,6 +262,10 @@ class GyroProcessor {
 
             // 3. Yaw Deflection (flat wrist turn / rudder)
             var defYaw = mapAngleToStick(yawDeg, cfg.maxYawAngle, cfg.deadzone, cfg.curveExponent)
+            if (abs(yawDeg) > 90f) {
+                val taper = ((180f - abs(yawDeg)) / 90f).coerceIn(0f, 1f)
+                defYaw *= taper
+            }
             if (cfg.yawInvert) {
                 defYaw = -defYaw
             }
@@ -324,7 +341,7 @@ class GyroProcessor {
             val gestureMag = sqrt(effLinX * effLinX + effLinY * effLinY + effLinZ * effLinZ)
             var gestureDet = false
             var snapStickX = 0f
-            val activeButtons = mutableSetOf<GestureButton>()
+            val activeButtons = Collections.synchronizedSet(mutableSetOf<GestureButton>())
             var isCurrentlyShaking = false
             var currentPitchDeg = 0f
             var currentRollDeg = 0f
@@ -467,17 +484,19 @@ class GyroProcessor {
             // ── Card 3: Shake Motion Detection ──
             if (cfg.shakeEnabled && cfg.shakeAction != GestureButton.NONE) {
                 if (gestureMag >= cfg.shakeThreshold) {
-                    shakePeakTimestamps.removeAll { (now - it) > 400L }
-                    if (shakePeakTimestamps.isEmpty() || (now - shakePeakTimestamps.last()) >= 50L) {
-                        shakePeakTimestamps.add(now)
-                    }
-                    if (shakePeakTimestamps.size >= 3 && (now - lastShakeTriggerTime) >= cfg.shakeCooldownMs) {
-                        lastShakeTriggerTime = now
-                        shakePulseEndTime = now + 120L
-                        activeShakeAction = cfg.shakeAction
-                        shakePeakTimestamps.clear()
-                        isCurrentlyShaking = true
-                        gestureDet = true
+                    synchronized(shakePeakTimestamps) {
+                        shakePeakTimestamps.removeAll { (now - it) > 400L }
+                        if (shakePeakTimestamps.isEmpty() || (now - shakePeakTimestamps.last()) >= 50L) {
+                            shakePeakTimestamps.add(now)
+                        }
+                        if (shakePeakTimestamps.size >= 3 && (now - lastShakeTriggerTime) >= cfg.shakeCooldownMs) {
+                            lastShakeTriggerTime = now
+                            shakePulseEndTime = now + 120L
+                            activeShakeAction = cfg.shakeAction
+                            shakePeakTimestamps.clear()
+                            isCurrentlyShaking = true
+                            gestureDet = true
+                        }
                     }
                 }
 
@@ -524,9 +543,9 @@ class GyroProcessor {
         // 4. Gyro Aiming (Precision Aiming & Raw Silicon Modes)
         // ---------------------------------------------------------------------
         val isRawSilicon = settings.inputMode == InputMode.RAW_UNCALIBRATED
-        val pitchDps: Float
-        val yawDps: Float
-        val rollDps: Float
+        var pitchDps: Float
+        var yawDps: Float
+        var rollDps: Float
 
         val horizontalAxis: HorizontalAxis
         val invertX: Boolean
@@ -592,9 +611,9 @@ class GyroProcessor {
             maxThreshold = 1f
         } else {
             val aimCfg = settings.precisionAiming
-            pitchDps = rawGyroX * RAD_TO_DEG
-            yawDps   = rawGyroZ * RAD_TO_DEG
-            rollDps  = rawGyroY * RAD_TO_DEG
+            pitchDps = (rawGyroX * RAD_TO_DEG) - biasPitch
+            yawDps   = (rawGyroZ * RAD_TO_DEG) - biasYaw
+            rollDps  = (rawGyroY * RAD_TO_DEG) - biasRoll
 
             horizontalAxis = aimCfg.horizontalAxis
             invertX = aimCfg.invertX
@@ -623,6 +642,10 @@ class GyroProcessor {
             maxThreshold = aimCfg.maxThreshold
         }
 
+        if (!yawDps.isFinite()) yawDps = 0f
+        if (!pitchDps.isFinite()) pitchDps = 0f
+        if (!rollDps.isFinite()) rollDps = 0f
+
         val rawHorizontalDps = when (horizontalAxis) {
             HorizontalAxis.YAW  -> yawDps
             HorizontalAxis.ROLL -> rollDps
@@ -642,7 +665,7 @@ class GyroProcessor {
         val rawV = verticalDps
 
         val hYaw = if (invertX) -yawDps else yawDps
-        val hRoll = if (invertRoll || (horizontalAxis == HorizontalAxis.ROLL && invertX)) -rollDps else rollDps
+        val hRoll = if (invertRoll || ((horizontalAxis == HorizontalAxis.ROLL || horizontalAxis == HorizontalAxis.MIX) && invertX)) -rollDps else rollDps
 
         val horizontalDps = when (horizontalAxis) {
             HorizontalAxis.YAW  -> hYaw
@@ -683,6 +706,8 @@ class GyroProcessor {
 
             smoothedX = alpha * hVal + (1f - alpha) * smoothedX
             smoothedY = alpha * vVal + (1f - alpha) * smoothedY
+            if (!smoothedX.isFinite()) smoothedX = 0f
+            if (!smoothedY.isFinite()) smoothedY = 0f
             hVal = smoothedX
             vVal = smoothedY
         }
@@ -696,13 +721,13 @@ class GyroProcessor {
         vVal = applyLowSpeedAmplifier(vVal, lowSpeedAmpEnabled, lowSpeedAmpAmount, lowSpeedAmpThreshold, lowSpeedAmpHarshness)
 
         val effectiveSensX = when (horizontalAxis) {
-            HorizontalAxis.YAW -> 200.0f / maxDpsYaw
-            HorizontalAxis.ROLL -> 200.0f / maxDpsRoll
-            HorizontalAxis.MIX -> 200.0f / maxDpsYaw
+            HorizontalAxis.YAW -> 200.0f / maxDpsYaw.coerceAtLeast(1.0f)
+            HorizontalAxis.ROLL -> 200.0f / maxDpsRoll.coerceAtLeast(1.0f)
+            HorizontalAxis.MIX -> 200.0f / maxDpsYaw.coerceAtLeast(1.0f)
         }
         
         hVal *= effectiveSensX
-        vVal *= (200.0f / maxDpsPitch)
+        vVal *= (200.0f / maxDpsPitch.coerceAtLeast(1.0f))
 
         return ProcessedGyro(
             yawDps = hVal,
@@ -713,7 +738,7 @@ class GyroProcessor {
         )
     }
 
-    fun reset() {
+    fun reset() = synchronized(this) {
         smoothedX = 0f
         smoothedY = 0f
         toggleActive = false
@@ -739,18 +764,23 @@ class GyroProcessor {
         tiltDownPulseEndTime = 0L
         tiltLeftPulseEndTime = 0L
         tiltRightPulseEndTime = 0L
-        shakePeakTimestamps.clear()
+        synchronized(shakePeakTimestamps) {
+            shakePeakTimestamps.clear()
+        }
         lastShakeTriggerTime = 0L
         shakePulseEndTime = 0L
         activeShakeAction = null
     }
 
     /**
-     * Zeros the current attitude orientation for Air Mouse (3D Flight Yoke).
-     * The next quaternion frame will be captured as the new neutral forward attitude.
+     * Zeros the current attitude orientation for Air Mouse (3D Flight Yoke)
+     * and captures current resting rates as bias for Velocity mode.
      */
-    fun recalibrateZeroAttitude() {
+    fun recalibrateZeroAttitude() = synchronized(this) {
         hasInitialQuat = false
+        biasPitch = if (lastRawGyroX.isFinite()) lastRawGyroX * RAD_TO_DEG else 0f
+        biasRoll = if (lastRawGyroY.isFinite()) lastRawGyroY * RAD_TO_DEG else 0f
+        biasYaw = if (lastRawGyroZ.isFinite()) lastRawGyroZ * RAD_TO_DEG else 0f
     }
 
     private fun mapAngleToStick(

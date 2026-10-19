@@ -8,8 +8,15 @@ import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpaddesktop.connection.ActiveTransport
 import com.sanket.tools.nexpaddesktop.connection.DriverInstallState
 import com.sanket.tools.nexpaddesktop.model.GyroSettings
+import com.sanket.tools.nexpaddesktop.plugins.UniversalPushManager
 import com.sanket.tools.nexpaddesktop.storage.DesktopSharedPreferences
 import com.sanket.tools.nexpaddesktop.ui.ControllerType
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Single source of truth ViewModel for NEXPAD Desktop.
@@ -27,6 +34,9 @@ import com.sanket.tools.nexpaddesktop.ui.ControllerType
 class DesktopViewModel(
     private val prefs: DesktopSharedPreferences = DesktopSharedPreferences.getInstance()
 ) {
+
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var gyroSaveJob: Job? = null
 
     // ── Connection & Transport State ──
     var isDriverConnected by mutableStateOf(false)
@@ -71,9 +81,20 @@ class DesktopViewModel(
     var onRecalibrate: () -> Unit = {}
     var onControllerChange: (ControllerType) -> Unit = { updateActiveController(it) }
 
+    fun clearCallbacks() {
+        onInstallAoaDriver = {}
+        onShowTrayNotification = null
+        onRecalibrate = {}
+        onControllerChange = { updateActiveController(it) }
+    }
+
     fun updateGyroSettings(newSettings: GyroSettings) {
         gyroSettings = newSettings
-        prefs.saveGyroSettings(newSettings)
+        gyroSaveJob?.cancel()
+        gyroSaveJob = scope.launch {
+            delay(300L)
+            prefs.saveGyroSettings(newSettings)
+        }
     }
 
     fun updateLsSensitivityX(value: Float) {
@@ -130,6 +151,7 @@ class DesktopViewModel(
     fun updateConnectedDevice(name: String?, transport: ActiveTransport) {
         connectedDeviceName = name
         activeTransport = transport
+        UniversalPushManager.currentTransport = transport
         if (transport != ActiveTransport.NONE) {
             isAoaDriverNeeded = false
         }
@@ -142,6 +164,7 @@ class DesktopViewModel(
         if (activeTransport == transport) {
             activeTransport = ActiveTransport.NONE
             connectedDeviceName = null
+            UniversalPushManager.currentTransport = ActiveTransport.NONE
         }
     }
 }

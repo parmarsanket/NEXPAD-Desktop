@@ -554,6 +554,8 @@ fun NxprcCanvasPreview(
         modifier = modifier
             .size(sizeDp.dp)
             .drawBehind {
+                if (size.width <= 0f || size.height <= 0f || size.minDimension <= 0f) return@drawBehind
+
                 val activeHueDegrees = if (hasDynamicTracks && trackHueAngle != 0f) {
                     trackHueAngle
                 } else if (needsRgbCycle) {
@@ -572,9 +574,10 @@ fun NxprcCanvasPreview(
 
                 if (isStick && !isTouchpad) {
                     val maxR = size.minDimension * 0.35f
-                    val dispFraction = (hypot(thumbOffsetX.value, thumbOffsetY.value) / maxR).coerceIn(0f, 1f)
+                    val dispFraction = (hypot(thumbOffsetX.value, thumbOffsetY.value) / maxR.coerceAtLeast(1f)).coerceIn(0f, 1f)
 
                     // 1. Base socket containment bloom
+                    val socketRadius = (size.minDimension * 0.55f).coerceAtLeast(1f)
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
@@ -583,9 +586,9 @@ fun NxprcCanvasPreview(
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = size.minDimension * 0.55f
+                            radius = socketRadius
                         ),
-                        radius = size.minDimension * 0.55f,
+                        radius = socketRadius,
                         center = center
                     )
 
@@ -594,7 +597,7 @@ fun NxprcCanvasPreview(
                         center.x + thumbOffsetX.value * 0.65f,
                         center.y + thumbOffsetY.value * 0.65f
                     )
-                    val plumeRadius = size.minDimension * (0.40f + 0.35f * dispFraction)
+                    val plumeRadius = (size.minDimension * (0.40f + 0.35f * dispFraction)).coerceAtLeast(1f)
                     drawCircle(
                         brush = Brush.radialGradient(
                             colorStops = arrayOf(
@@ -611,7 +614,7 @@ fun NxprcCanvasPreview(
 
                     // 3. High-energy thumbstick cap beacon bloom
                     val capPos = Offset(center.x + thumbOffsetX.value, center.y + thumbOffsetY.value)
-                    val capBloomR = (size.minDimension * 0.32f) + (size.minDimension * 0.08f * dispFraction)
+                    val capBloomR = ((size.minDimension * 0.32f) + (size.minDimension * 0.08f * dispFraction)).coerceAtLeast(1f)
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
@@ -627,7 +630,7 @@ fun NxprcCanvasPreview(
                     )
                 } else {
                     // Shape-aware atmospheric socket bloom: matches button geometry and stays safely within container bounds
-                    val auraRadius = size.minDimension * 0.48f
+                    val auraRadius = (size.minDimension * 0.48f).coerceAtLeast(1f)
                     if (rootIsOval) {
                         drawCircle(
                             brush = Brush.radialGradient(
@@ -687,6 +690,8 @@ fun NxprcCanvasPreview(
             contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.size(sizeDp.dp).background(backgroundColor)) {
+                if (size.width <= 0f || size.height <= 0f || size.minDimension <= 0f) return@Canvas
+
                 // Safe headroom calculation: Outset shadows, glow rings, and press glows
                 // require padding around the button body so they never collide with the
                 // Canvas hardware texture boundary and get clipped into squares.
@@ -1085,7 +1090,7 @@ fun NxprcCanvasPreview(
                             val glowColor = Color(layer.glowColor)
                             val buttonRadius = minOf(buttonW, buttonH) / 2f
                             val blurPx = (layer.blurRadius * pxPerUnit).coerceAtLeast(8f * scaleRatio)
-                            val totalRadius = (buttonRadius + blurPx).coerceAtMost(size.minDimension * 0.49f)
+                            val totalRadius = (buttonRadius + blurPx).coerceAtMost(size.minDimension * 0.49f).coerceAtLeast(1f)
                             val innerRatio = (buttonRadius / totalRadius).coerceIn(0.1f, 0.85f)
                             if (rootIsOval) {
                                 drawCircle(

@@ -32,7 +32,7 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
      */
     private var notificationCallback: ViGEmClientLibrary.PVIGEM_X360_NOTIFICATION? = null
 
-    override fun connect() {
+    override fun connect() = synchronized(this) {
         // Prevent memory leaks during retry loops: completely clear old state before attempting
         disconnect()
 
@@ -88,46 +88,58 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
         }
     }
 
-    override fun disconnect() {
-        if (client != null && target != null) {
+    override fun disconnect() = synchronized(this) {
+        val lib = ViGEmClientLibrary.INSTANCE
+        target?.let { t ->
             try {
-                val lib = ViGEmClientLibrary.INSTANCE
-                
                 // Unregister callbacks before destroying device to prevent C++ null-pointer crashes
-                lib.vigem_target_x360_unregister_notification(target)
-                
-                // Unplug device from Windows
-                lib.vigem_target_remove(client, target)
-                
-                // Free Native Memory Pointers
-                if (target != null) lib.vigem_target_free(target)
-                if (client != null) {
-                    lib.vigem_disconnect(client)
-                    lib.vigem_free(client)
+                lib.vigem_target_x360_unregister_notification(t)
+                client?.let { c ->
+                    // Unplug device from Windows
+                    lib.vigem_target_remove(c, t)
                 }
-            } catch (e: Exception) { 
-                System.err.println("⚠️ Xbox disconnect error: ${e.message}") 
+                // Free Native Memory Pointers
+                lib.vigem_target_free(t)
+            } catch (e: Exception) {
+                System.err.println("⚠️ Xbox target disconnect error: ${e.message}")
+            } finally {
+                target = null
+            }
+        }
+
+        client?.let { c ->
+            try {
+                lib.vigem_disconnect(c)
+                lib.vigem_free(c)
+            } catch (e: Exception) {
+                System.err.println("⚠️ Xbox client disconnect error: ${e.message}")
+            } finally {
+                client = null
             }
         }
         
         isConnected = false
-        client = null
-        target = null
         println("Disconnected Virtual Controller.")
     }
 
     override fun updateInput(input: GamepadInput) {
-        if (!isConnected || client == null || target == null) return
+        synchronized(this) {
+            if (!isConnected || client == null || target == null) return
 
-        // 1. Pack data into native 12-byte struct
-        val report = ViGEmInputMapper.map(input)
+            // 1. Pack data into native 12-byte struct
+            val report = ViGEmInputMapper.map(input)
 
-        try {
-            // 2. Submit C-Struct to Windows Kernel
-            ViGEmClientLibrary.INSTANCE.vigem_target_x360_update(client, target, report)
-        } catch (e: Exception) { 
-            System.err.println("⚠️ Xbox input update error: ${e.message}") 
+            try {
+                // 2. Submit C-Struct to Windows Kernel
+                ViGEmClientLibrary.INSTANCE.vigem_target_x360_update(client, target, report)
+            } catch (e: Exception) { 
+                System.err.println("⚠️ Xbox input update error: ${e.message}") 
+            }
         }
+    }
+
+    override fun recalibrate() = synchronized(this) {
+        // Xbox 360 virtual device does not have gyro bias state
     }
 
     override fun simulateCrash() {
@@ -135,7 +147,7 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
         onRumble(GamepadFeedback(leftMotorSpeed = 255, rightMotorSpeed = 200))
     }
 
-    override fun isDriverConnected(): Boolean {
+    override fun isDriverConnected(): Boolean = synchronized(this) {
         return isConnected
     }
 }

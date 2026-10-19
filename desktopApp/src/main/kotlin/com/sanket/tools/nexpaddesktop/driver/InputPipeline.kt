@@ -78,10 +78,10 @@ object InputPipeline {
 
         // 3. Pre-scale physical thumbsticks with base sensitivity (isolated from motion processing)
         // Hardware scaling applies strictly to physical on-screen thumbsticks from mobile device.
-        val physLeftX = (input.leftStickX * lsSensitivityX).coerceIn(-1.0f, 1.0f)
-        val physLeftY = (input.leftStickY * lsSensitivityY).coerceIn(-1.0f, 1.0f)
-        val physRightX = (input.rightStickX * rsSensitivityX).coerceIn(-1.0f, 1.0f)
-        val physRightY = (input.rightStickY * rsSensitivityY).coerceIn(-1.0f, 1.0f)
+        val physLeftX = (input.leftStickX * lsSensitivityX).let { if (it.isFinite()) it.coerceIn(-1.0f, 1.0f) else 0f }
+        val physLeftY = (input.leftStickY * lsSensitivityY).let { if (it.isFinite()) it.coerceIn(-1.0f, 1.0f) else 0f }
+        val physRightX = (input.rightStickX * rsSensitivityX).let { if (it.isFinite()) it.coerceIn(-1.0f, 1.0f) else 0f }
+        val physRightY = (input.rightStickY * rsSensitivityY).let { if (it.isFinite()) it.coerceIn(-1.0f, 1.0f) else 0f }
 
         var finalLeftX = physLeftX
         var finalLeftY = physLeftY
@@ -131,8 +131,8 @@ object InputPipeline {
                 finalRightY = blendFlight(physRightY, processed.flightRsY)
             } else {
                 val gyroToStickScale = 1.0f / 200.0f
-                val rawStickX = (processed.yawDps * gyroToStickScale).coerceIn(-1f, 1f)
-                val rawStickY = (processed.pitchDps * gyroToStickScale).coerceIn(-1f, 1f)
+                val rawStickX = (processed.yawDps * gyroToStickScale).let { if (it.isFinite()) it.coerceIn(-1f, 1f) else 0f }
+                val rawStickY = (processed.pitchDps * gyroToStickScale).let { if (it.isFinite()) it.coerceIn(-1f, 1f) else 0f }
 
                 // 1. Stick Response Curve Shaping (Per-Axis Independent - Free Gyro Unconstrained)
                 // Gyroscope, gravity, and motion sensors operate with independent physical degrees of freedom.
@@ -285,10 +285,10 @@ object InputPipeline {
         val finalGyroZ = if (isGated) 0f else input.gyroZ
 
         return input.copy(
-            leftStickX = finalLeftX.coerceIn(-1.0f, 1.0f),
-            leftStickY = finalLeftY.coerceIn(-1.0f, 1.0f),
-            rightStickX = finalRightX.coerceIn(-1.0f, 1.0f),
-            rightStickY = finalRightY.coerceIn(-1.0f, 1.0f),
+            leftStickX = if (finalLeftX.isFinite()) finalLeftX.coerceIn(-1.0f, 1.0f) else 0f,
+            leftStickY = if (finalLeftY.isFinite()) finalLeftY.coerceIn(-1.0f, 1.0f) else 0f,
+            rightStickX = if (finalRightX.isFinite()) finalRightX.coerceIn(-1.0f, 1.0f) else 0f,
+            rightStickY = if (finalRightY.isFinite()) finalRightY.coerceIn(-1.0f, 1.0f) else 0f,
             triggerL2 = maxOf(input.triggerL2, finalTriggerL2),
             triggerR2 = maxOf(input.triggerR2, finalTriggerR2),
             btnA = input.btnA || finalBtnA,

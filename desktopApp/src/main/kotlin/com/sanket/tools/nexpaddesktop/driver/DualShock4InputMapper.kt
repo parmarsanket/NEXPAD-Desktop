@@ -129,7 +129,8 @@ class DualShock4InputMapper {
     // =========================================================================
 
     private fun stickToByte(value: Float): Byte {
-        return ((value.coerceIn(-1f, 1f) + 1f) * 127.5f).roundToInt().coerceIn(0, 255).toByte()
+        val safeValue = if (value.isFinite()) value.coerceIn(-1f, 1f) else 0f
+        return ((safeValue + 1f) * 127.5f).roundToInt().coerceIn(0, 255).toByte()
     }
 
     private fun triggerToByte(value: Float): Byte {
@@ -137,6 +138,7 @@ class DualShock4InputMapper {
     }
 
     private fun toSafeShort(value: Float): Short {
+        if (!value.isFinite()) return 0
         return value.toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
     }
 
@@ -173,7 +175,7 @@ class DualShock4InputMapper {
                     }
                 }
             }
-            return Triple(0f, 0f, 0f)
+            return Triple(rawX, rawY, rawZ)
         }
         val calX = rawX - gyroBiasX
         val calY = rawY - gyroBiasY

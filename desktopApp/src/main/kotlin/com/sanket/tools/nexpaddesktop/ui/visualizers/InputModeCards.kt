@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -271,6 +272,7 @@ fun ModeVectorIconGyroAiming(
     isSelected: Boolean = false
 ) {
     val accent = NeonPalette.Cyan
+    val gimbalDashEffect = remember { PathEffect.dashPathEffect(floatArrayOf(8f, 6f)) }
     Canvas(modifier = modifier) {
         val cx = size.width / 2f
         val cy = size.height / 2f
@@ -290,7 +292,7 @@ fun ModeVectorIconGyroAiming(
         // Outer Gimbal Track (Dual sweeping arcs with dash effect)
         val gimbalStroke = Stroke(
             width = 1.6f.dp.toPx(),
-            pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f))
+            pathEffect = gimbalDashEffect
         )
         val gimbalColor = if (isSelected) accent.copy(alpha = 0.85f) else Color(0xFF4A6572)
         drawArc(
@@ -381,6 +383,7 @@ fun ModeVectorIconSteeringWheel(
     isSelected: Boolean = false
 ) {
     val accent = Color(0xFFFFB300) // Amber / Gold
+    val tachDashEffect = remember { PathEffect.dashPathEffect(floatArrayOf(4f, 4f)) }
     Canvas(modifier = modifier) {
         val cx = size.width / 2f
         val cy = size.height / 2f
@@ -405,7 +408,7 @@ fun ModeVectorIconSteeringWheel(
             useCenter = false,
             style = Stroke(
                 width = 1.dp.toPx(),
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
+                pathEffect = tachDashEffect
             ),
             topLeft = Offset(cx - 25.dp.toPx(), cy - 25.dp.toPx()),
             size = Size(50.dp.toPx(), 50.dp.toPx())
@@ -489,6 +492,7 @@ fun ModeVectorIconFlightStick(
     isSelected: Boolean = false
 ) {
     val accent = Color(0xFF00E676) // Electric Emerald / Aerodynamic Sky
+    val jetPath = remember { Path() }
     Canvas(modifier = modifier) {
         val cx = size.width / 2f
         val cy = size.height / 2f
@@ -556,19 +560,18 @@ fun ModeVectorIconFlightStick(
         )
 
         // Delta-Wing Supersonic Fighter Jet Symbol
-        val jetPath = Path().apply {
-            moveTo(cx, cy - 11.dp.toPx()) // Nose cone
-            lineTo(cx - 4.dp.toPx(), cy - 2.dp.toPx()) // Left fuselage strake
-            lineTo(cx - 17.dp.toPx(), cy + 6.dp.toPx()) // Left delta wingtip
-            lineTo(cx - 8.dp.toPx(), cy + 5.dp.toPx()) // Left trailing edge notch
-            lineTo(cx - 3.dp.toPx(), cy + 10.dp.toPx()) // Left nozzle
-            lineTo(cx, cy + 9.dp.toPx()) // Engine center
-            lineTo(cx + 3.dp.toPx(), cy + 10.dp.toPx()) // Right nozzle
-            lineTo(cx + 8.dp.toPx(), cy + 5.dp.toPx()) // Right trailing edge notch
-            lineTo(cx + 17.dp.toPx(), cy + 6.dp.toPx()) // Right delta wingtip
-            lineTo(cx + 4.dp.toPx(), cy - 2.dp.toPx()) // Right fuselage strake
-            close()
-        }
+        jetPath.reset()
+        jetPath.moveTo(cx, cy - 11.dp.toPx()) // Nose cone
+        jetPath.lineTo(cx - 4.dp.toPx(), cy - 2.dp.toPx()) // Left fuselage strake
+        jetPath.lineTo(cx - 17.dp.toPx(), cy + 6.dp.toPx()) // Left delta wingtip
+        jetPath.lineTo(cx - 8.dp.toPx(), cy + 5.dp.toPx()) // Left trailing edge notch
+        jetPath.lineTo(cx - 3.dp.toPx(), cy + 10.dp.toPx()) // Left nozzle
+        jetPath.lineTo(cx, cy + 9.dp.toPx()) // Engine center
+        jetPath.lineTo(cx + 3.dp.toPx(), cy + 10.dp.toPx()) // Right nozzle
+        jetPath.lineTo(cx + 8.dp.toPx(), cy + 5.dp.toPx()) // Right trailing edge notch
+        jetPath.lineTo(cx + 17.dp.toPx(), cy + 6.dp.toPx()) // Right delta wingtip
+        jetPath.lineTo(cx + 4.dp.toPx(), cy - 2.dp.toPx()) // Right fuselage strake
+        jetPath.close()
 
         drawPath(
             path = jetPath,
@@ -598,6 +601,7 @@ fun ModeVectorIconCombatGestures(
     isSelected: Boolean = false
 ) {
     val accent = Color(0xFFFF1744) // Crimson Red / Laser Flame
+    val chevronPath = remember { Path() }
     Canvas(modifier = modifier) {
         val cx = size.width / 2f
         val cy = size.height / 2f
@@ -618,42 +622,42 @@ fun ModeVectorIconCombatGestures(
         val chevronColor = if (isSelected) accent else accent.copy(alpha = 0.5f)
         val chevronStroke = Stroke(width = 1.6f.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
         // Up
+        chevronPath.reset()
+        chevronPath.moveTo(cx - 4.5f.dp.toPx(), cy - 19.dp.toPx())
+        chevronPath.lineTo(cx, cy - 23.5f.dp.toPx())
+        chevronPath.lineTo(cx + 4.5f.dp.toPx(), cy - 19.dp.toPx())
         drawPath(
-            path = Path().apply {
-                moveTo(cx - 4.5f.dp.toPx(), cy - 19.dp.toPx())
-                lineTo(cx, cy - 23.5f.dp.toPx())
-                lineTo(cx + 4.5f.dp.toPx(), cy - 19.dp.toPx())
-            },
+            path = chevronPath,
             color = chevronColor,
             style = chevronStroke
         )
         // Down
+        chevronPath.reset()
+        chevronPath.moveTo(cx - 4.5f.dp.toPx(), cy + 19.dp.toPx())
+        chevronPath.lineTo(cx, cy + 23.5f.dp.toPx())
+        chevronPath.lineTo(cx + 4.5f.dp.toPx(), cy + 19.dp.toPx())
         drawPath(
-            path = Path().apply {
-                moveTo(cx - 4.5f.dp.toPx(), cy + 19.dp.toPx())
-                lineTo(cx, cy + 23.5f.dp.toPx())
-                lineTo(cx + 4.5f.dp.toPx(), cy + 19.dp.toPx())
-            },
+            path = chevronPath,
             color = chevronColor,
             style = chevronStroke
         )
         // Left
+        chevronPath.reset()
+        chevronPath.moveTo(cx - 19.dp.toPx(), cy - 4.5f.dp.toPx())
+        chevronPath.lineTo(cx - 23.5f.dp.toPx(), cy)
+        chevronPath.lineTo(cx - 19.dp.toPx(), cy + 4.5f.dp.toPx())
         drawPath(
-            path = Path().apply {
-                moveTo(cx - 19.dp.toPx(), cy - 4.5f.dp.toPx())
-                lineTo(cx - 23.5f.dp.toPx(), cy)
-                lineTo(cx - 19.dp.toPx(), cy + 4.5f.dp.toPx())
-            },
+            path = chevronPath,
             color = chevronColor,
             style = chevronStroke
         )
         // Right
+        chevronPath.reset()
+        chevronPath.moveTo(cx + 19.dp.toPx(), cy - 4.5f.dp.toPx())
+        chevronPath.lineTo(cx + 23.5f.dp.toPx(), cy)
+        chevronPath.lineTo(cx + 19.dp.toPx(), cy + 4.5f.dp.toPx())
         drawPath(
-            path = Path().apply {
-                moveTo(cx + 19.dp.toPx(), cy - 4.5f.dp.toPx())
-                lineTo(cx + 23.5f.dp.toPx(), cy)
-                lineTo(cx + 19.dp.toPx(), cy + 4.5f.dp.toPx())
-            },
+            path = chevronPath,
             color = chevronColor,
             style = chevronStroke
         )

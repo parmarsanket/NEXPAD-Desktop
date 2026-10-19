@@ -23,6 +23,19 @@ import java.awt.Toolkit
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
 
+private fun safeCopyToClipboard(text: String): Boolean {
+    val selection = StringSelection(text)
+    for (attempt in 1..3) {
+        try {
+            Toolkit.getDefaultToolkit().systemClipboard.setContents(selection, null)
+            return true
+        } catch (_: Throwable) {
+            try { Thread.sleep(30) } catch (_: InterruptedException) {}
+        }
+    }
+    return false
+}
+
 /**
  * Interactive Layer Studio & Manager panel.
  *
@@ -412,11 +425,12 @@ fun LayerStudioPanel(
                 // Copy Layer Code Button
                 Button(
                     onClick = {
-                        Toolkit.getDefaultToolkit().systemClipboard.setContents(
-                            StringSelection(selectedDetails.codeSnippet),
-                            null
-                        )
-                        onFeedback("✓ Layer #$safeSelectedIndex decomposed code copied to clipboard!")
+                        val copied = safeCopyToClipboard(selectedDetails.codeSnippet)
+                        if (copied) {
+                            onFeedback("✓ Layer #$safeSelectedIndex decomposed code copied to clipboard!")
+                        } else {
+                            onFeedback("⚠️ Failed to access clipboard. Please retry.")
+                        }
                     },
                     shape = RoundedCornerShape(5.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
@@ -483,11 +497,12 @@ fun LayerStudioPanel(
                                 userInstruction = userAiPrompt,
                                 htmlSource = htmlSource
                             )
-                            Toolkit.getDefaultToolkit().systemClipboard.setContents(
-                                StringSelection(surgicalPrompt),
-                                null
-                            )
-                            onFeedback("✓ Surgical AI prompt for Layer #$safeSelectedIndex copied!")
+                            val copied = safeCopyToClipboard(surgicalPrompt)
+                            if (copied) {
+                                onFeedback("✓ Surgical AI prompt for Layer #$safeSelectedIndex copied!")
+                            } else {
+                                onFeedback("⚠️ Failed to access clipboard. Please retry.")
+                            }
                         },
                         shape = RoundedCornerShape(6.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),

@@ -774,7 +774,7 @@ object NxprcPresets {
 </style>
 </head>
 <body>
-  <button class="nexpad-btn" data-control="A" data-category="BUTTON" data-codename="Neo Tactile" data-name="Neo Tactile Cross" data-seed="16166">
+  <button class="nexpad-btn" data-id="rc.ps_cross_16166" data-control="A" data-category="BUTTON" data-codename="Neo Tactile" data-name="Neo Tactile Cross" data-seed="16166">
     <div class="btn-core">
       <span class="btn-label">✕</span>
     </div>
@@ -879,7 +879,7 @@ object NxprcPresets {
 </style>
 </head>
 <body>
-  <button class="nexpad-btn" data-control="B" data-category="BUTTON" data-codename="Neo Tactile" data-name="Neo Tactile Circle" data-seed="24892">
+  <button class="nexpad-btn" data-id="rc.ps_circle_24892" data-control="B" data-category="BUTTON" data-codename="Neo Tactile" data-name="Neo Tactile Circle" data-seed="24892">
     <div class="btn-core">
       <span class="btn-label">○</span>
     </div>
@@ -984,7 +984,7 @@ object NxprcPresets {
 </style>
 </head>
 <body>
-  <button class="nexpad-btn" data-control="X" data-category="BUTTON" data-codename="Neo Tactile" data-name="Neo Tactile Square" data-seed="38120">
+  <button class="nexpad-btn" data-id="rc.ps_square_38120" data-control="X" data-category="BUTTON" data-codename="Neo Tactile" data-name="Neo Tactile Square" data-seed="38120">
     <div class="btn-core">
       <span class="btn-label">□</span>
     </div>
@@ -1089,7 +1089,7 @@ object NxprcPresets {
 </style>
 </head>
 <body>
-  <button class="nexpad-btn" data-control="Y" data-category="BUTTON" data-codename="Neo Tactile" data-name="Neo Tactile Triangle" data-seed="49551">
+  <button class="nexpad-btn" data-id="rc.ps_triangle_49551" data-control="Y" data-category="BUTTON" data-codename="Neo Tactile" data-name="Neo Tactile Triangle" data-seed="49551">
     <div class="btn-core">
       <span class="btn-label">△</span>
     </div>

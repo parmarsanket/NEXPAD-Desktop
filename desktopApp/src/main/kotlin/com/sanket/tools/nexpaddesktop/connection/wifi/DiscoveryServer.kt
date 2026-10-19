@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlinx.io.readByteArray
+import java.net.BindException
 import java.net.InetAddress
 import java.nio.ByteBuffer
 
@@ -23,9 +24,23 @@ class DiscoveryServer(private val port: Int = 9998) {
     var isPaused: () -> Boolean = { false }
 
     suspend fun start() = withContext(Dispatchers.IO) {
-        selectorManager = SelectorManager(Dispatchers.IO)
-        // Bind to all interfaces on discovery port
-        serverSocket = aSocket(selectorManager!!).udp().bind(InetSocketAddress("0.0.0.0", port))
+        try {
+            selectorManager = SelectorManager(Dispatchers.IO)
+            // Bind to all interfaces on discovery port
+            serverSocket = aSocket(selectorManager!!).udp().bind(InetSocketAddress("0.0.0.0", port))
+        } catch (e: BindException) {
+            println("⚠️ Discovery Server port $port already in use (BindException): ${e.message}")
+            selectorManager?.close()
+            selectorManager = null
+            serverSocket = null
+            return@withContext
+        } catch (e: Exception) {
+            println("⚠️ Failed to bind Discovery Server on port $port: ${e.message}")
+            selectorManager?.close()
+            selectorManager = null
+            serverSocket = null
+            return@withContext
+        }
         
         println("📡 Discovery Server listening on broadcast port $port")
         

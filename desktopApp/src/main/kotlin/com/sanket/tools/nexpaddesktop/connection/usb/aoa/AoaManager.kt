@@ -139,6 +139,7 @@ class AoaManager {
                     } else {
                         onDriverNeedChanged?.invoke(false, null, null, null)
                     }
+                    delay(1000)
                     continue
                 }
 
@@ -278,6 +279,11 @@ class AoaManager {
     }
     
     fun cleanup() {
-        context?.let { LibUsb.exit(it) }
+        context?.let {
+            try {
+                LibUsb.exit(it)
+            } catch (_: Exception) {}
+            context = null
+        }
     }
 }

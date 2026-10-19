@@ -118,6 +118,10 @@ fun PluginsScreen(
 ) {
     val scope = rememberCoroutineScope()
 
+    LaunchedEffect(activeTransport) {
+        UniversalPushManager.currentTransport = activeTransport
+    }
+
     val categories = remember {
         CategoryManager.getAllCategories().map { it.id to it.title }
     }
@@ -348,6 +352,9 @@ fun PluginsScreen(
             manifest = baseDoc.manifest.copy(
                 id = componentId.ifBlank { baseDoc.manifest.id },
                 name = componentName.ifBlank { baseDoc.manifest.name }
+            ),
+            canvas = baseDoc.canvas.copy(
+                layers = baseDoc.canvas.layers.filterIndexed { idx, _ -> idx in activeLayerIndices }
             )
         )
     }
@@ -360,40 +367,50 @@ fun PluginsScreen(
         targetWidthDp = btn.defaultWidthDp
         targetHeightDp = btn.defaultHeightDp
 
-        val baseSource = btn.starterHtmlPreset ?: NxprcHtmlCssConverter.getReferenceTemplate(btn.key, btn.categoryType.id)
-        val detected = NxprcComponentDetector.detect(
-            html = baseSource,
-            fallbackCategory = btnCat,
-            fallbackControl = btn.key,
-            fallbackId = btn.defaultId,
-            fallbackName = btn.defaultName,
-            fallbackWidthDp = btn.defaultWidthDp,
-            fallbackHeightDp = btn.defaultHeightDp
-        )
+        scope.launch {
+            val baseSource = btn.starterHtmlPreset ?: withContext(Dispatchers.Default) {
+                NxprcHtmlCssConverter.getReferenceTemplate(btn.key, btn.categoryType.id)
+            }
+            val detected = withContext(Dispatchers.Default) {
+                NxprcComponentDetector.detect(
+                    html = baseSource,
+                    fallbackCategory = btnCat,
+                    fallbackControl = btn.key,
+                    fallbackId = btn.defaultId,
+                    fallbackName = btn.defaultName,
+                    fallbackWidthDp = btn.defaultWidthDp,
+                    fallbackHeightDp = btn.defaultHeightDp
+                )
+            }
 
-        val buttonSeed = detected.seed ?: NxprcSeedEngine.canonicalSeedFor(btn.key)
-        currentSeed = buttonSeed
-        htmlCodeSeed = buttonSeed
+            val buttonSeed = detected.seed ?: NxprcSeedEngine.canonicalSeedFor(btn.key)
+            currentSeed = buttonSeed
+            htmlCodeSeed = buttonSeed
 
-        val profile = NxprcSeedEngine.resolve(btn.key, btnCat, buttonSeed, detected.componentName.ifBlank { btn.defaultName })
-        componentId = if (detected.componentId.isNotBlank()) detected.componentId else profile.componentId
-        componentName = if (detected.componentName.isNotBlank()) detected.componentName else profile.skinName
+            val profile = NxprcSeedEngine.resolve(btn.key, btnCat, buttonSeed, detected.componentName.ifBlank { btn.defaultName })
+            val resolvedId = if (detected.componentId.isNotBlank()) detected.componentId else profile.componentId
+            val resolvedName = if (detected.componentName.isNotBlank()) detected.componentName else profile.skinName
+            componentId = resolvedId
+            componentName = resolvedName
 
-        htmlSource = baseSource
+            htmlSource = baseSource
 
-        try {
-            val newDoc = NxprcHtmlCssConverter.convert(
-                source = baseSource,
-                id = componentId,
-                name = componentName,
-                category = btnCat,
-                defaultControl = btn.key
-            )
-            compiledDoc = newDoc
-            compileError = null
-            resetLayersToAllEnabled(newDoc.canvas.layers.size)
-        } catch (e: Exception) {
-            compileError = e.message ?: "Compilation error"
+            try {
+                val newDoc = withContext(Dispatchers.Default) {
+                    NxprcHtmlCssConverter.convert(
+                        source = baseSource,
+                        id = resolvedId,
+                        name = resolvedName,
+                        category = btnCat,
+                        defaultControl = btn.key
+                    )
+                }
+                compiledDoc = newDoc
+                compileError = null
+                resetLayersToAllEnabled(newDoc.canvas.layers.size)
+            } catch (e: Exception) {
+                compileError = e.message ?: "Compilation error"
+            }
         }
     }
 
@@ -406,39 +423,49 @@ fun PluginsScreen(
     }
 
     val handleLoadStarter: () -> Unit = {
-        val base = NxprcHtmlCssConverter.getReferenceTemplate(defaultControl, category)
-        val detected = NxprcComponentDetector.detect(
-            html = base,
-            fallbackCategory = category,
-            fallbackControl = defaultControl,
-            fallbackId = componentId,
-            fallbackName = componentName,
-            fallbackWidthDp = targetWidthDp,
-            fallbackHeightDp = targetHeightDp
-        )
-        val starterSeed = detected.seed ?: NxprcSeedEngine.canonicalSeedFor(defaultControl)
-        currentSeed = starterSeed
-        htmlCodeSeed = starterSeed
+        scope.launch {
+            val base = withContext(Dispatchers.Default) {
+                NxprcHtmlCssConverter.getReferenceTemplate(defaultControl, category)
+            }
+            val detected = withContext(Dispatchers.Default) {
+                NxprcComponentDetector.detect(
+                    html = base,
+                    fallbackCategory = category,
+                    fallbackControl = defaultControl,
+                    fallbackId = componentId,
+                    fallbackName = componentName,
+                    fallbackWidthDp = targetWidthDp,
+                    fallbackHeightDp = targetHeightDp
+                )
+            }
+            val starterSeed = detected.seed ?: NxprcSeedEngine.canonicalSeedFor(defaultControl)
+            currentSeed = starterSeed
+            htmlCodeSeed = starterSeed
 
-        val profile = NxprcSeedEngine.resolve(defaultControl, category, starterSeed, detected.componentName.ifBlank { componentName })
-        componentId = if (detected.componentId.isNotBlank()) detected.componentId else profile.componentId
-        componentName = if (detected.componentName.isNotBlank()) detected.componentName else profile.skinName
+            val profile = NxprcSeedEngine.resolve(defaultControl, category, starterSeed, detected.componentName.ifBlank { componentName })
+            val resolvedId = if (detected.componentId.isNotBlank()) detected.componentId else profile.componentId
+            val resolvedName = if (detected.componentName.isNotBlank()) detected.componentName else profile.skinName
+            componentId = resolvedId
+            componentName = resolvedName
 
-        htmlSource = base
-        promptCopiedBanner = "✓ Loaded starter template for $defaultControl ($category) [Seed #$starterSeed]!"
-        try {
-            val newDoc = NxprcHtmlCssConverter.convert(
-                source = base,
-                id = componentId,
-                name = componentName,
-                category = category,
-                defaultControl = defaultControl
-            )
-            compiledDoc = newDoc
-            compileError = null
-            resetLayersToAllEnabled(newDoc.canvas.layers.size)
-        } catch (e: Exception) {
-            compileError = e.message ?: "Compilation error"
+            htmlSource = base
+            promptCopiedBanner = "✓ Loaded starter template for $defaultControl ($category) [Seed #$starterSeed]!"
+            try {
+                val newDoc = withContext(Dispatchers.Default) {
+                    NxprcHtmlCssConverter.convert(
+                        source = base,
+                        id = resolvedId,
+                        name = resolvedName,
+                        category = category,
+                        defaultControl = defaultControl
+                    )
+                }
+                compiledDoc = newDoc
+                compileError = null
+                resetLayersToAllEnabled(newDoc.canvas.layers.size)
+            } catch (e: Exception) {
+                compileError = e.message ?: "Compilation error"
+            }
         }
     }
 
@@ -545,7 +572,7 @@ fun PluginsScreen(
                     onExport = {
                         scope.launch {
                             isExporting = true
-                            val exportDoc = getLiveExportDoc()
+                            val exportDoc = withContext(Dispatchers.Default) { getLiveExportDoc() }
                             val res = NxprcExporter.exportToFile(exportDoc)
                             res.fold(
                                 onSuccess = { file ->
@@ -562,7 +589,7 @@ fun PluginsScreen(
                     onPush = {
                         scope.launch {
                             isExporting = true
-                            val exportDoc = getLiveExportDoc()
+                            val exportDoc = withContext(Dispatchers.Default) { getLiveExportDoc() }
                             exportStatus = "Pushing ${exportDoc.canvas.layers.size} layers to phone via ${activeTransport.displayName}..."
                             val res = UniversalPushManager.pushComponent(exportDoc)
                             res.fold(
@@ -712,7 +739,7 @@ fun PluginsScreen(
                             onExport = {
                                 scope.launch {
                                     isExporting = true
-                                    val exportDoc = getLiveExportDoc()
+                                    val exportDoc = withContext(Dispatchers.Default) { getLiveExportDoc() }
                                     val res = NxprcExporter.exportToFile(exportDoc)
                                     res.fold(
                                         onSuccess = { file ->
@@ -729,7 +756,7 @@ fun PluginsScreen(
                             onPush = {
                                 scope.launch {
                                     isExporting = true
-                                    val exportDoc = getLiveExportDoc()
+                                    val exportDoc = withContext(Dispatchers.Default) { getLiveExportDoc() }
                                     exportStatus = "Pushing ${exportDoc.canvas.layers.size} layers to phone via ${activeTransport.displayName}..."
                                     val res = UniversalPushManager.pushComponent(exportDoc)
                                     res.fold(
@@ -921,18 +948,22 @@ fun PluginsScreen(
                 onSelectedLayerChange = { selectedLayerIndex = it },
                 onSaveHtml = { newHtml ->
                     htmlSource = newHtml
-                    try {
-                        val immediateDoc = NxprcHtmlCssConverter.convert(
-                            source = newHtml,
-                            id = componentId,
-                            name = componentName,
-                            category = category,
-                            defaultControl = defaultControl
-                        )
-                        compiledDoc = immediateDoc
-                        compileError = null
-                    } catch (e: Exception) {
-                        compileError = e.message ?: "Compilation error"
+                    scope.launch {
+                        try {
+                            val immediateDoc = withContext(Dispatchers.Default) {
+                                NxprcHtmlCssConverter.convert(
+                                    source = newHtml,
+                                    id = componentId,
+                                    name = componentName,
+                                    category = category,
+                                    defaultControl = defaultControl
+                                )
+                            }
+                            compiledDoc = immediateDoc
+                            compileError = null
+                        } catch (e: Exception) {
+                            compileError = e.message ?: "Compilation error"
+                        }
                     }
                 },
                 onExportDoc = { doc ->

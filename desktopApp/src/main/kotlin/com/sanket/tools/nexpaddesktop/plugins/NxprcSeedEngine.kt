@@ -421,8 +421,9 @@ $standardSection
         } else {
             html.replaceFirst("<button", "<button data-name=\"${profile.skinName}\"")
         }
-        html = if (html.contains(Regex("""id=["'][^"']*["']"""))) {
-            html.replace(Regex("""id=["'][^"']*["']"""), "id=\"${profile.componentId}\"")
+        val buttonIdRegex = Regex("""(<button\b[^>]*\bid=)["'][^"']*["']""")
+        html = if (buttonIdRegex.containsMatchIn(html)) {
+            buttonIdRegex.replace(html) { match -> "${match.groupValues[1]}\"${profile.componentId}\"" }
         } else {
             html.replaceFirst("<button", "<button id=\"${profile.componentId}\"")
         }
@@ -498,8 +499,9 @@ $standardSection
         }
 
         // 4. Update id
-        html = if (html.contains(Regex("""id=["'][^"']*["']"""))) {
-            html.replace(Regex("""id=["'][^"']*["']"""), "id=\"${profile.componentId}\"")
+        val buttonIdRegex = Regex("""(<button\b[^>]*\bid=)["'][^"']*["']""")
+        html = if (buttonIdRegex.containsMatchIn(html)) {
+            buttonIdRegex.replace(html) { match -> "${match.groupValues[1]}\"${profile.componentId}\"" }
         } else {
             html.replaceFirst("<button", "<button id=\"${profile.componentId}\"")
         }

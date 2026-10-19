@@ -300,6 +300,7 @@ data class GyroSettings(
         get() = when (inputMode) {
             InputMode.VELOCITY -> precisionAiming.invertX
             InputMode.ABSOLUTE_TILT -> steeringWheel.invertSteering
+            InputMode.AIR_MOUSE -> flightStick.yawInvert
             InputMode.RAW_UNCALIBRATED -> rawSilicon.invertX
             else -> false
         }
@@ -308,6 +309,7 @@ data class GyroSettings(
         get() = when (inputMode) {
             InputMode.VELOCITY -> precisionAiming.invertY
             InputMode.ABSOLUTE_TILT -> steeringWheel.invertPitch
+            InputMode.AIR_MOUSE -> flightStick.pitchInvert
             InputMode.RAW_UNCALIBRATED -> rawSilicon.invertY
             else -> false
         }
@@ -315,6 +317,7 @@ data class GyroSettings(
     val invertRoll: Boolean
         get() = when (inputMode) {
             InputMode.VELOCITY -> precisionAiming.invertRoll
+            InputMode.AIR_MOUSE -> flightStick.rollInvert
             InputMode.RAW_UNCALIBRATED -> rawSilicon.invertRoll
             else -> false
         }

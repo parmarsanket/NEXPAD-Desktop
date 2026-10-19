@@ -423,7 +423,7 @@ private fun StickSensitivityGroup(
     sensY: Float,
     onUpdate: (Float, Float) -> Unit
 ) {
-    var linkAxes by remember { mutableStateOf(kotlin.math.abs(sensX - sensY) < 0.001f) }
+    var linkAxes by remember(sensX, sensY) { mutableStateOf(kotlin.math.abs(sensX - sensY) < 0.001f) }
 
     Surface(
         shape = MaterialTheme.shapes.medium,

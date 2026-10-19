@@ -7,10 +7,12 @@ import com.sanket.tools.nexpaddesktop.connection.usb.aoa.AoaFrameDecoder
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import java.io.IOException
+import java.lang.ProcessBuilder.Redirect
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -28,9 +30,10 @@ import kotlinx.coroutines.asCoroutineDispatcher
 class AdbBridgeManager(
     private val tcpPort: Int = 9999
 ) {
-    private val adbDispatcher = Executors.newFixedThreadPool(2) { runnable ->
+    private val adbExecutor = Executors.newFixedThreadPool(2) { runnable ->
         Thread(runnable, "AdbStreamThread").apply { isDaemon = true }
-    }.asCoroutineDispatcher()
+    }
+    private val adbDispatcher = adbExecutor.asCoroutineDispatcher()
     companion object {
         private const val ABSTRACT_SOCKET_NAME = "nexpad_controller"
         private const val READ_BUFFER_SIZE = 4096
@@ -189,23 +192,35 @@ class AdbBridgeManager(
     private fun broadcastAdbDeviceReady(adbPath: String, serial: String) {
         try {
             val pcName = getHostDisplayName()
-            ProcessBuilder(
+            val process = ProcessBuilder(
                 adbPath, "-s", serial,
                 "shell", "am", "broadcast",
                 "-a", "com.sanket.tools.nexpad.ADB_DEVICE_READY",
                 "--es", "pc_name", pcName
-            ).start()
+            ).redirectOutput(Redirect.DISCARD)
+             .redirectError(Redirect.DISCARD)
+             .start()
+
+            if (!process.waitFor(3, TimeUnit.SECONDS)) {
+                process.destroyForcibly()
+            }
         } catch (_: Exception) {}
     }
 
     private fun broadcastAdbDeviceDisconnected(adbPath: String?, serial: String?) {
         if (adbPath == null || serial == null) return
         try {
-            ProcessBuilder(
+            val process = ProcessBuilder(
                 adbPath, "-s", serial,
                 "shell", "am", "broadcast",
                 "-a", "com.sanket.tools.nexpad.ADB_DEVICE_DISCONNECTED"
-            ).start()
+            ).redirectOutput(Redirect.DISCARD)
+             .redirectError(Redirect.DISCARD)
+             .start()
+
+            if (!process.waitFor(3, TimeUnit.SECONDS)) {
+                process.destroyForcibly()
+            }
         } catch (_: Exception) {}
     }
 
@@ -419,5 +434,8 @@ class AdbBridgeManager(
         broadcastAdbDeviceDisconnected(adbPath, activeDeviceSerial)
         removeAdbReverse(adbPath, activeDeviceSerial)
         activeDeviceSerial = null
+
+        adbDispatcher.close()
+        adbExecutor.shutdown()
     }
 }

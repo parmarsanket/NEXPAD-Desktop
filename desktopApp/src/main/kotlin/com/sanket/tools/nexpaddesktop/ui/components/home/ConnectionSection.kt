@@ -184,11 +184,8 @@ fun ConnectionToggleItem(
     hasCustomStatus: Boolean = false,
     extraContent: @Composable () -> Unit = {}
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isHovered by interactionSource.collectIsHoveredAsState()
-
     val textColor by animateColorAsState(
-        targetValue = if (isActive || isHovered) Color.White else NeonPalette.CardIdleText,
+        targetValue = if (isActive) Color.White else NeonPalette.CardIdleText,
         animationSpec = tween(200),
         label = "text"
     )
@@ -196,20 +193,13 @@ fun ConnectionToggleItem(
     var baseModifier = Modifier
         .fillMaxWidth(2 / 3f)
         .height(52.dp)
-        .hoverable(interactionSource)
-        .clickable(interactionSource, indication = null) { /* toggle */ }
 
     if (isActive) {
         baseModifier = baseModifier.selectedGlow()
     } else {
         baseModifier = baseModifier.drawBehind {
             val cr = 12.dp.toPx()
-            val bgAlpha = if (isHovered) 0.03f else 0.0f
-            drawRoundRect(
-                color = Color.White.copy(alpha = bgAlpha),
-                cornerRadius = CornerRadius(cr)
-            )
-            val borderAlpha = if (isHovered) 0.1f else 0.05f
+            val borderAlpha = 0.05f
             drawRoundRect(
                 color = Color.White.copy(alpha = borderAlpha),
                 cornerRadius = CornerRadius(cr),
@@ -237,7 +227,7 @@ fun ConnectionToggleItem(
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                     modifier = Modifier.padding(start = 18.dp)
                 ) {
-                    val iconBg = if (isActive || isHovered) Color.White.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f)
+                    val iconBg = if (isActive) Color.White.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f)
                     Box(
                         modifier = Modifier
                             .size(34.dp)

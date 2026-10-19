@@ -27,9 +27,29 @@ object UniversalPushManager {
     @Volatile
     var currentTransport: ActiveTransport = ActiveTransport.NONE
 
+    @Volatile
     var udpServer: UdpServer? = null
+
+    @Volatile
     var aoaManager: AoaManager? = null
+
+    @Volatile
     var btServer: BluetoothRfcommServer? = null
+
+    /**
+     * Synchronizes live server references and active transport from Desktop app lifecycle.
+     */
+    fun syncServers(
+        transport: ActiveTransport = currentTransport,
+        udp: UdpServer? = udpServer,
+        aoa: AoaManager? = aoaManager,
+        bt: BluetoothRfcommServer? = btServer
+    ) {
+        currentTransport = transport
+        udpServer = udp
+        aoaManager = aoa
+        btServer = bt
+    }
 
     /**
      * True if a phone is actively connected via any transport.

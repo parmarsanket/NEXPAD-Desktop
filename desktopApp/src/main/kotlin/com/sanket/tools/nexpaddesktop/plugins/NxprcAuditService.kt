@@ -1262,15 +1262,15 @@ object NxprcAuditService {
         }
 
         // 3. Ensure strictly increasing (required by java.awt.MultipleGradientPaint: fractions[i] > fractions[i-1])
-        val epsilon = 0.0002f
-        for (i in 1 until stopsList.size) {
-            if (stopsList[i] <= stopsList[i - 1]) {
-                stopsList[i] = (stopsList[i - 1] + epsilon).coerceAtMost(1f)
-            }
-        }
-        for (i in stopsList.size - 2 downTo 0) {
-            if (stopsList[i] >= stopsList[i + 1]) {
-                stopsList[i] = (stopsList[i + 1] - epsilon).coerceAtLeast(0f)
+        val n = stopsList.size
+        if (n > 1) {
+            val epsilon = minOf(0.0002f, 1f / (n * 2f))
+            stopsList[0] = 0f
+            stopsList[n - 1] = 1f
+            for (i in 1 until n - 1) {
+                val minAllowed = stopsList[i - 1] + epsilon
+                val maxAllowed = 1f - (n - 1 - i) * epsilon
+                stopsList[i] = stopsList[i].coerceIn(minAllowed, maxAllowed)
             }
         }
 

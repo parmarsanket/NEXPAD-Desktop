@@ -126,14 +126,20 @@ object NxprcComponentDetector {
                 else -> resolvedControl.defaultId
             }
             val effCategory = if (rawCategory != null && rawCategory.isNotBlank()) {
-                val cat = CategoryType.fromIdentifier(rawCategory)
-                when (cat) {
-                    CategoryType.ABXY -> "BUTTON"
-                    CategoryType.STICKS -> "JOYSTICK"
-                    CategoryType.TRIGGERS -> "TRIGGER"
-                    CategoryType.BUMPERS -> "BUMPER"
-                    CategoryType.MACROS -> "MACRO"
-                    else -> rawCategory.uppercase()
+                val upper = rawCategory.trim().uppercase()
+                when {
+                    upper == "TOUCHPAD" || upper == "TOUCHPADS" || upper == "TRACKPAD" -> "TOUCHPAD"
+                    else -> {
+                        val cat = CategoryType.fromIdentifier(rawCategory)
+                        when (cat) {
+                            CategoryType.ABXY -> "BUTTON"
+                            CategoryType.STICKS -> "JOYSTICK"
+                            CategoryType.TRIGGERS -> "TRIGGER"
+                            CategoryType.BUMPERS -> "BUMPER"
+                            CategoryType.MACROS -> "MACRO"
+                            else -> rawCategory.uppercase()
+                        }
+                    }
                 }
             } else if (resolvedControl.categoryType == CategoryType.MACROS) {
                 "MACRO"

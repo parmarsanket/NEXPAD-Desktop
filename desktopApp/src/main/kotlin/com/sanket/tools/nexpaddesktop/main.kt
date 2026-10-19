@@ -1,13 +1,14 @@
 package com.sanket.tools.nexpaddesktop
 
 import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.toPainter
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.Tray
 import androidx.compose.ui.window.rememberTrayState
 import androidx.compose.ui.window.Notification
 import androidx.compose.ui.window.isTraySupported
-import androidx.compose.ui.res.painterResource
+import javax.imageio.ImageIO
 import com.sanket.tools.nexpaddesktop.connection.wifi.DsuServer
 import com.sanket.tools.nexpaddesktop.connection.wifi.UdpServer
 import com.sanket.tools.nexpaddesktop.driver.IGamepadDriver
@@ -227,34 +228,37 @@ fun main(args: Array<String>) {
         dsuServer.isDs4Active = (viewModel.activeController == ControllerType.DUALSHOCK_4 && viewModel.isDsuServerEnabled)
         dsuServer.start()
         
+        val inputProcessingLock = Any()
         val inputHandler: (GamepadInput) -> Unit = { input ->
-            val processedInput = com.sanket.tools.nexpaddesktop.driver.InputPipeline.processInput(
-                input = input,
-                activeController = viewModel.activeController,
-                gyroProcessor = gyroProcessor,
-                gyroSettings = viewModel.gyroSettings,
-                lsSensitivityX = viewModel.lsSensitivityX,
-                lsSensitivityY = viewModel.lsSensitivityY,
-                rsSensitivityX = viewModel.rsSensitivityX,
-                rsSensitivityY = viewModel.rsSensitivityY,
-                onProcessedAngles = { yaw, pitch ->
-                    val now = System.currentTimeMillis()
-                    if ((now - lastUiUpdateTime) > 33L) {
-                        lastUiUpdateTime = now
-                        viewModel.processedYaw = yaw
-                        viewModel.processedPitch = pitch
-                        viewModel.latestInput = input // We update latestInput here for the UI to prevent excessive recomposition
+            synchronized(inputProcessingLock) {
+                val processedInput = com.sanket.tools.nexpaddesktop.driver.InputPipeline.processInput(
+                    input = input,
+                    activeController = viewModel.activeController,
+                    gyroProcessor = gyroProcessor,
+                    gyroSettings = viewModel.gyroSettings,
+                    lsSensitivityX = viewModel.lsSensitivityX,
+                    lsSensitivityY = viewModel.lsSensitivityY,
+                    rsSensitivityX = viewModel.rsSensitivityX,
+                    rsSensitivityY = viewModel.rsSensitivityY,
+                    onProcessedAngles = { yaw, pitch ->
+                        val now = System.currentTimeMillis()
+                        if ((now - lastUiUpdateTime) > 33L) {
+                            lastUiUpdateTime = now
+                            viewModel.processedYaw = yaw
+                            viewModel.processedPitch = pitch
+                            viewModel.latestInput = input // We update latestInput here for the UI to prevent excessive recomposition
+                        }
+                    },
+                    onFlightAttitude = { pitch, roll, yaw ->
+                        viewModel.flightPitchDeg = pitch
+                        viewModel.flightRollDeg = roll
+                        viewModel.flightYawDeg = yaw
                     }
-                },
-                onFlightAttitude = { pitch, roll, yaw ->
-                    viewModel.flightPitchDeg = pitch
-                    viewModel.flightRollDeg = roll
-                    viewModel.flightYawDeg = yaw
-                }
-            )
+                )
 
-            activeDriver?.updateInput(processedInput)
-            dsuServer.updateInput(processedInput)
+                activeDriver?.updateInput(processedInput)
+                dsuServer.updateInput(processedInput)
+            }
         }
 
         server = UdpServer(
@@ -272,6 +276,11 @@ fun main(args: Array<String>) {
         ).apply {
             isExternalTransportActive = { viewModel.activeTransport != ActiveTransport.NONE && viewModel.activeTransport != ActiveTransport.WIFI && viewModel.activeTransport != ActiveTransport.USB_TETHERING }
         }
+
+        UniversalPushManager.udpServer = server
+        UniversalPushManager.aoaManager = aoaManager
+        UniversalPushManager.btServer = btServer
+        UniversalPushManager.currentTransport = viewModel.activeTransport
 
         aoaManager.onAoaConnected = { name -> 
             viewModel.updateConnectedDevice(name, ActiveTransport.USB_AOA)
@@ -333,11 +342,17 @@ fun main(args: Array<String>) {
         
         scope.launch { discoveryServer.start() }
         onDispose {
+            UniversalPushManager.udpServer = null
+            UniversalPushManager.aoaManager = null
+            UniversalPushManager.btServer = null
+            UniversalPushManager.currentTransport = ActiveTransport.NONE
+            aoaManager.cleanup()
             btServer.stop()
             adbBridgeManager.stop()
             server?.stop()
             discoveryServer.stop()
             dsuServer.stop()
+            viewModel.clearCallbacks()
         }
     }
 
@@ -351,8 +366,7 @@ fun main(args: Array<String>) {
     viewModel.onRecalibrate = {
         if (viewModel.activeController == ControllerType.DUALSHOCK_4) {
             // Reset the DS4 driver's internal calibration
-            activeDriver?.disconnect()
-            activeDriver?.connect()
+            activeDriver?.recalibrate()
         }
         gyroProcessor.recalibrateZeroAttitude()
         gyroProcessor.reset()
@@ -372,33 +386,42 @@ fun main(args: Array<String>) {
         }
     }
 
-    val appIcon = painterResource("images/nexpad_icon.png")
+    val appIcon = remember {
+        Thread.currentThread().contextClassLoader.getResourceAsStream("images/nexpad_icon.png")?.use {
+            ImageIO.read(it).toPainter()
+        } ?: error("Failed to load images/nexpad_icon.png from classpath")
+    }
 
     if (isTraySupported) {
         val trayState = rememberTrayState()
 
-        viewModel.onShowTrayNotification = { title, message ->
-            scope.launch(Dispatchers.Main) {
-                // Short 100ms delay to let the window hide and ensure Windows notification area has focus
-                kotlinx.coroutines.delay(100)
-                try {
-                    if (java.awt.SystemTray.isSupported()) {
-                        val tray = java.awt.SystemTray.getSystemTray()
-                        val icon = tray.trayIcons.firstOrNull()
-                        if (icon != null) {
-                            icon.displayMessage(title, message, java.awt.TrayIcon.MessageType.INFO)
+        DisposableEffect(trayState) {
+            viewModel.onShowTrayNotification = { title, message ->
+                scope.launch(Dispatchers.Main) {
+                    // Short 100ms delay to let the window hide and ensure Windows notification area has focus
+                    kotlinx.coroutines.delay(100)
+                    try {
+                        if (java.awt.SystemTray.isSupported()) {
+                            val tray = java.awt.SystemTray.getSystemTray()
+                            val icon = tray.trayIcons.firstOrNull()
+                            if (icon != null) {
+                                icon.displayMessage(title, message, java.awt.TrayIcon.MessageType.INFO)
+                            } else {
+                                trayState.sendNotification(Notification(title, message, Notification.Type.Info))
+                            }
                         } else {
                             trayState.sendNotification(Notification(title, message, Notification.Type.Info))
                         }
-                    } else {
-                        trayState.sendNotification(Notification(title, message, Notification.Type.Info))
+                    } catch (e: Exception) {
+                        println("Tray notification error: ${e.message}")
+                        try {
+                            trayState.sendNotification(Notification(title, message, Notification.Type.Info))
+                        } catch (_: Exception) {}
                     }
-                } catch (e: Exception) {
-                    println("Tray notification error: ${e.message}")
-                    try {
-                        trayState.sendNotification(Notification(title, message, Notification.Type.Info))
-                    } catch (_: Exception) {}
                 }
+            }
+            onDispose {
+                viewModel.onShowTrayNotification = null
             }
         }
 

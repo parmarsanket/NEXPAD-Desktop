@@ -26,6 +26,9 @@ class DesktopNav3Navigator(
     override fun navigate(key: DesktopScreenKey) {
         if (currentKey != key) {
             backStackState.add(key)
+            if (backStackState.size > 25) {
+                backStackState.removeAt(1)
+            }
         }
     }
 

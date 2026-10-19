@@ -1,6 +1,7 @@
 package com.sanket.tools.nexpaddesktop.connection.wifi
 
 import com.sanket.tools.nexpad.model.GamepadInput
+import java.net.BindException
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
@@ -56,6 +57,7 @@ class DsuServer {
     private var socket: DatagramSocket? = null
     private var isRunning = false
     private var thread: Thread? = null
+    var onError: ((Exception) -> Unit)? = null
 
     /**
      * Active controller gating: DSU server ONLY operates when DS4 mode is active.
@@ -84,11 +86,13 @@ class DsuServer {
     fun start(port: Int = DEFAULT_PORT) {
         if (isRunning) return
         
+        var createdSocket: DatagramSocket? = null
         try {
-            socket = DatagramSocket(null).apply {
-                reuseAddress = true
+            createdSocket = DatagramSocket(null).apply {
+                reuseAddress = false
                 bind(InetSocketAddress(port))
             }
+            socket = createdSocket
             isRunning = true
             thread = Thread {
                 val buffer = ByteArray(1024)
@@ -109,8 +113,18 @@ class DsuServer {
                 start()
             }
             println("🎮 DSU Motion Server started on port $port (DS4 Active: $isDs4Active)")
+        } catch (e: BindException) {
+            println("⚠️ Failed to bind DSU Server on port $port (Port Conflict): ${e.message}")
+            try { createdSocket?.close() } catch (_: Exception) {}
+            socket = null
+            isRunning = false
+            onError?.invoke(e)
         } catch (e: Exception) {
             println("⚠️ Failed to start DSU Server: ${e.message}")
+            try { createdSocket?.close() } catch (_: Exception) {}
+            socket = null
+            isRunning = false
+            onError?.invoke(e)
         }
     }
 

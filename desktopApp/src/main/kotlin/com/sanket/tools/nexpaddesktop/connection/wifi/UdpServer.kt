@@ -5,6 +5,7 @@ import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.InetSocketAddress
 import io.ktor.network.sockets.aSocket
 import io.ktor.utils.io.core.readBytes
+import java.net.BindException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
@@ -106,42 +107,69 @@ class UdpServer(
     private var totalFeedbacksSent = 0L
     private var lastNullTargetLogTime = 0L
 
+    private var isTimerOptimized = false
+
+    private fun cleanupTimerPeriod() {
+        if (isTimerOptimized && System.getProperty("os.name").lowercase().contains("win")) {
+            try {
+                WinMM.INSTANCE?.timeEndPeriod(1)
+            } catch (_: Exception) {}
+            isTimerOptimized = false
+        }
+    }
+
     @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     private val dedicatedDispatcher = kotlinx.coroutines.newSingleThreadContext("UdpServerThread")
 
     @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun start() = kotlinx.coroutines.withContext(dedicatedDispatcher) {
-        // Optimize Windows Thread Priority and Timer Resolution for minimal jitter
-        if (System.getProperty("os.name").lowercase().contains("win")) {
-            try {
-                WinMM.INSTANCE?.timeBeginPeriod(1)
-                val currentThread = Kernel32.INSTANCE.GetCurrentThread()
-                // WinBase.THREAD_PRIORITY_HIGHEST = 2
-                Kernel32.INSTANCE.SetThreadPriority(currentThread, 2)
-                println("⚡ [QoS] Windows Timer Resolution set to 1ms. Thread Priority = HIGHEST.")
-            } catch (e: Exception) {
-                println("⚠️ [QoS] Failed to set Windows specific thread optimizations: ${e.message}")
-            }
-        }
-        
-        selectorManager = SelectorManager(Dispatchers.IO)
-        serverSocket = aSocket(selectorManager!!).udp().bind(InetSocketAddress("0.0.0.0", port))
-        
-        println("🌐 [UDP SERVER] Listening on 0.0.0.0:$port (Waiting for controller handshake...)")
-
-        // 1 Hz Autonomous Keepalive Heartbeat: guarantees the mobile client watchdog never starves
-        heartbeatJob?.cancel()
-        heartbeatJob = kotlinx.coroutines.CoroutineScope(dedicatedDispatcher).launch {
-            while (isActive) {
-                kotlinx.coroutines.delay(1000)
-                val target = clientAddress
-                if (target != null) {
-                    sendFeedback(lastFeedback, echoSequenceNumber = lastSequenceNumber.coerceAtLeast(0), packetLossByte = cachedLossPctByte)
+        try {
+            // Optimize Windows Thread Priority and Timer Resolution for minimal jitter
+            if (System.getProperty("os.name").lowercase().contains("win")) {
+                try {
+                    WinMM.INSTANCE?.timeBeginPeriod(1)
+                    isTimerOptimized = true
+                    val currentThread = Kernel32.INSTANCE.GetCurrentThread()
+                    // WinBase.THREAD_PRIORITY_HIGHEST = 2
+                    Kernel32.INSTANCE.SetThreadPriority(currentThread, 2)
+                    println("⚡ [QoS] Windows Timer Resolution set to 1ms. Thread Priority = HIGHEST.")
+                } catch (e: Exception) {
+                    println("⚠️ [QoS] Failed to set Windows specific thread optimizations: ${e.message}")
                 }
             }
-        }
-        
-        while (isActive) {
+            
+            try {
+                selectorManager = SelectorManager(Dispatchers.IO)
+                serverSocket = aSocket(selectorManager!!).udp().bind(InetSocketAddress("0.0.0.0", port))
+            } catch (e: BindException) {
+                println("⚠️ [UDP SERVER] Port $port already in use (BindException): ${e.message}")
+                selectorManager?.close()
+                selectorManager = null
+                serverSocket = null
+                return@withContext
+            } catch (e: Exception) {
+                println("⚠️ [UDP SERVER] Failed to bind to 0.0.0.0:$port: ${e.message}")
+                selectorManager?.close()
+                selectorManager = null
+                serverSocket = null
+                return@withContext
+            }
+            
+            println("🌐 [UDP SERVER] Listening on 0.0.0.0:$port (Waiting for controller handshake...)")
+
+            // 1 Hz Autonomous Keepalive Heartbeat: guarantees the mobile client watchdog never starves
+            heartbeatJob?.cancel()
+            heartbeatJob = kotlinx.coroutines.CoroutineScope(dedicatedDispatcher).launch {
+                while (isActive) {
+                    kotlinx.coroutines.delay(1000)
+                    val target = clientAddress
+                    if (target != null) {
+                        sendFeedback(lastFeedback, echoSequenceNumber = lastSequenceNumber.coerceAtLeast(0), packetLossByte = cachedLossPctByte)
+                    }
+                }
+            }
+            
+            while (isActive) {
             try {
                 val socket = serverSocket ?: break
                 
@@ -312,6 +340,9 @@ class UdpServer(
                 }
             }
         }
+        } finally {
+            cleanupTimerPeriod()
+        }
     }
 
     suspend fun sendFeedback(feedback: GamepadFeedback, echoSequenceNumber: Int = 0, packetLossByte: Byte = 0) {
@@ -361,13 +392,7 @@ class UdpServer(
     fun stop() {
         heartbeatJob?.cancel()
         heartbeatJob = null
-        if (System.getProperty("os.name").lowercase().contains("win")) {
-            try {
-                WinMM.INSTANCE?.timeEndPeriod(1)
-            } catch (e: Exception) {
-                // Ignore
-            }
-        }
+        cleanupTimerPeriod()
         isLiveSessionActive = false
         liveClientAddress = ""
         serverSocket?.close()
