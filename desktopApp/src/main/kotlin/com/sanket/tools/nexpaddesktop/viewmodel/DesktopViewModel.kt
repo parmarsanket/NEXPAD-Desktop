@@ -43,6 +43,8 @@ class DesktopViewModel(
     var dsuClientCount by mutableStateOf(0)
     var isDsuServerEnabled by mutableStateOf(prefs.loadDsuEnabled())
     var isDeveloperOptionsEnabled by mutableStateOf(prefs.loadDeveloperOptionsEnabled())
+    var isWindowVisible by mutableStateOf(true)
+    var onShowTrayNotification: ((title: String, message: String) -> Unit)? = null
 
     // ── Sensitivity & Motion State ──
     var gyroSettings by mutableStateOf(prefs.loadGyroSettings())
@@ -107,6 +109,18 @@ class DesktopViewModel(
     fun updateDeveloperOptionsEnabled(enabled: Boolean) {
         isDeveloperOptionsEnabled = enabled
         prefs.saveDeveloperOptionsEnabled(enabled)
+    }
+
+    fun minimizeToTray() {
+        isWindowVisible = false
+        onShowTrayNotification?.invoke(
+            "NEXPAD Desktop",
+            "NEXPAD is running in the background. Click the tray icon to restore."
+        )
+    }
+
+    fun restoreWindow() {
+        isWindowVisible = true
     }
 
     /**

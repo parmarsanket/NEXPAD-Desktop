@@ -91,6 +91,31 @@ class DesktopNavigation3Test {
         assertFalse(vm.isAoaDriverNeeded)
         assertEquals(com.sanket.tools.nexpaddesktop.ui.ControllerType.XBOX_360, vm.activeController)
         assertFalse(vm.isDeveloperOptionsEnabled)
+        assertTrue(vm.isWindowVisible)
+    }
+
+    @Test
+    fun testMinimizeToTrayViewModel() {
+        val tempFile = java.io.File.createTempFile("test_tray_prefs", ".json").apply { deleteOnExit() }
+        val testPrefs = com.sanket.tools.nexpaddesktop.storage.DesktopSharedPreferences.getCustomInstance(tempFile)
+        val vm = com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel(testPrefs)
+
+        assertTrue(vm.isWindowVisible)
+
+        var notifiedTitle: String? = null
+        var notifiedMessage: String? = null
+        vm.onShowTrayNotification = { title, msg ->
+            notifiedTitle = title
+            notifiedMessage = msg
+        }
+
+        vm.minimizeToTray()
+        assertFalse(vm.isWindowVisible)
+        assertEquals("NEXPAD Desktop", notifiedTitle)
+        assertNotNull(notifiedMessage)
+
+        vm.restoreWindow()
+        assertTrue(vm.isWindowVisible)
     }
 
     @Test

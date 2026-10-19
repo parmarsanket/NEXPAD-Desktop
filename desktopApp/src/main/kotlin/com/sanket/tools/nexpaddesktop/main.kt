@@ -3,6 +3,11 @@ package com.sanket.tools.nexpaddesktop
 import androidx.compose.runtime.*
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import androidx.compose.ui.window.Tray
+import androidx.compose.ui.window.rememberTrayState
+import androidx.compose.ui.window.Notification
+import androidx.compose.ui.window.isTraySupported
+import androidx.compose.ui.res.painterResource
 import com.sanket.tools.nexpaddesktop.connection.wifi.DsuServer
 import com.sanket.tools.nexpaddesktop.connection.wifi.UdpServer
 import com.sanket.tools.nexpaddesktop.driver.IGamepadDriver
@@ -367,9 +372,58 @@ fun main(args: Array<String>) {
         }
     }
 
+    val appIcon = painterResource("images/nexpad_icon.png")
+
+    if (isTraySupported) {
+        val trayState = rememberTrayState()
+
+        viewModel.onShowTrayNotification = { title, message ->
+            scope.launch(Dispatchers.Main) {
+                // Short 100ms delay to let the window hide and ensure Windows notification area has focus
+                kotlinx.coroutines.delay(100)
+                try {
+                    if (java.awt.SystemTray.isSupported()) {
+                        val tray = java.awt.SystemTray.getSystemTray()
+                        val icon = tray.trayIcons.firstOrNull()
+                        if (icon != null) {
+                            icon.displayMessage(title, message, java.awt.TrayIcon.MessageType.INFO)
+                        } else {
+                            trayState.sendNotification(Notification(title, message, Notification.Type.Info))
+                        }
+                    } else {
+                        trayState.sendNotification(Notification(title, message, Notification.Type.Info))
+                    }
+                } catch (e: Exception) {
+                    println("Tray notification error: ${e.message}")
+                    try {
+                        trayState.sendNotification(Notification(title, message, Notification.Type.Info))
+                    } catch (_: Exception) {}
+                }
+            }
+        }
+
+        Tray(
+            icon = appIcon,
+            state = trayState,
+            tooltip = "NEXPAD is running in the background (Active)",
+            onAction = {
+                viewModel.restoreWindow()
+            },
+            menu = {
+                Item("Open NEXPAD", onClick = { viewModel.restoreWindow() })
+                Separator()
+                Item("Run in Background", onClick = { viewModel.minimizeToTray() })
+                Separator()
+                Item("Exit NEXPAD", onClick = ::exitApplication)
+            }
+        )
+    }
+
     Window(
         onCloseRequest = ::exitApplication,
-        title = "NEXPAD Desktop Server"
+        visible = viewModel.isWindowVisible,
+        title = "NEXPAD Desktop Server",
+        icon = appIcon
     ) {
         NexpadDesktopTheme {
             MainApplicationWindow(viewModel = viewModel)
