@@ -1417,7 +1417,7 @@ object NxprcPresets {
 <meta charset="UTF-8">
 <style>
   :root {
-    --cross-size: 140px;
+    --cross-size: 160px;
     --accent: #00F0FF;
     --accent-glow: rgba(0, 240, 255, 0.45);
     --spring-damping: 0.68;
@@ -1428,8 +1428,8 @@ object NxprcPresets {
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   html, body {
-    width: 140px;
-    height: 140px;
+    width: 160px;
+    height: 160px;
     background: transparent;
   }
 
@@ -1467,11 +1467,11 @@ object NxprcPresets {
 
   /* 2: Vertical physical cross arm bar */
   .dpad-arm-v {
-    left: 47px;
-    top: 8px;
-    width: 46px;
-    height: 124px;
-    border-radius: 10px;
+    left: 54px;
+    top: 9px;
+    width: 52px;
+    height: 142px;
+    border-radius: 12px;
     background: linear-gradient(180deg, #2c3545 0%, #1a202a 35%, #12161e 65%, #222a38 100%);
     border: 1.5px solid rgba(255, 255, 255, 0.18);
     box-shadow:
@@ -1482,11 +1482,11 @@ object NxprcPresets {
 
   /* 3: Horizontal physical cross arm bar */
   .dpad-arm-h {
-    left: 8px;
-    top: 47px;
-    width: 124px;
-    height: 46px;
-    border-radius: 10px;
+    left: 9px;
+    top: 54px;
+    width: 142px;
+    height: 52px;
+    border-radius: 12px;
     background: linear-gradient(90deg, #2c3545 0%, #1a202a 35%, #12161e 65%, #222a38 100%);
     border: 1.5px solid rgba(255, 255, 255, 0.18);
     box-shadow:
@@ -1501,48 +1501,48 @@ object NxprcPresets {
     z-index: 3;
   }
   .dpad-arm-top {
-    top: 10px;
-    left: 49px;
-    width: 42px;
-    height: 38px;
-    border-radius: 8px 8px 3px 3px;
+    top: 11px;
+    left: 56px;
+    width: 48px;
+    height: 44px;
+    border-radius: 10px 10px 4px 4px;
     background: linear-gradient(180deg, #384357 0%, #1c222c 100%);
     box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.3), inset 0 -2px 4px rgba(0, 0, 0, 0.6);
   }
   .dpad-arm-bottom {
-    bottom: 10px;
-    left: 49px;
-    width: 42px;
-    height: 38px;
-    border-radius: 3px 3px 8px 8px;
+    bottom: 11px;
+    left: 56px;
+    width: 48px;
+    height: 44px;
+    border-radius: 4px 4px 10px 10px;
     background: linear-gradient(0deg, #384357 0%, #1c222c 100%);
     box-shadow: inset 0 -2px 3px rgba(255, 255, 255, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.6);
   }
   .dpad-arm-left {
-    left: 10px;
-    top: 49px;
-    width: 38px;
-    height: 42px;
-    border-radius: 8px 3px 3px 8px;
+    left: 11px;
+    top: 56px;
+    width: 44px;
+    height: 48px;
+    border-radius: 10px 4px 4px 10px;
     background: linear-gradient(90deg, #384357 0%, #1c222c 100%);
     box-shadow: inset 2px 0 3px rgba(255, 255, 255, 0.3), inset -2px 0 4px rgba(0, 0, 0, 0.6);
   }
   .dpad-arm-right {
-    right: 10px;
-    top: 49px;
-    width: 38px;
-    height: 42px;
-    border-radius: 3px 8px 8px 3px;
+    right: 11px;
+    top: 56px;
+    width: 44px;
+    height: 48px;
+    border-radius: 4px 10px 10px 4px;
     background: linear-gradient(270deg, #384357 0%, #1c222c 100%);
     box-shadow: inset -2px 0 3px rgba(255, 255, 255, 0.3), inset 2px 0 4px rgba(0, 0, 0, 0.6);
   }
 
   /* 5: Central concave thumb rest cup / rocker pivot */
   .dpad-pivot {
-    left: 48px;
-    top: 48px;
-    width: 44px;
-    height: 44px;
+    left: 55px;
+    top: 55px;
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
     background: radial-gradient(circle at 45% 45%, #080a0e 0%, #141923 60%, #1e2531 100%);
     box-shadow:
@@ -1568,10 +1568,10 @@ object NxprcPresets {
     height: 28px;
     user-select: none;
   }
-  .dpad-up    { top: 15px; left: 56px; }
-  .dpad-down  { bottom: 15px; left: 56px; }
-  .dpad-left  { left: 15px; top: 56px; }
-  .dpad-right { right: 15px; top: 56px; }
+  .dpad-up    { top: 17px; left: 66px; }
+  .dpad-down  { bottom: 17px; left: 66px; }
+  .dpad-left  { left: 17px; top: 66px; }
+  .dpad-right { right: 17px; top: 66px; }
 
   /* In-place uniform scale kinematics (zero displacement) */
   .dpad-cross:active {
@@ -2017,7 +2017,7 @@ object NxprcPresets {
 <meta charset="UTF-8">
 <style>
   :root {
-    --stick-size: 104px;
+    --stick-size: 150px;
     --accent: #00E5FF;
     --accent-glow: rgba(0, 229, 255, 0.5);
     --spring-damping: 0.70;
@@ -2056,8 +2056,8 @@ object NxprcPresets {
   }
   .stick-cap {
     position: absolute;
-    width: 68px;
-    height: 68px;
+    width: 98px;
+    height: 98px;
     border-radius: 50%;
     background:
       radial-gradient(circle at 48% 42%, #282f3c 0%, #13161f 65%, #080a0e 100%);
@@ -2073,8 +2073,8 @@ object NxprcPresets {
   }
   .knurled-ring {
     position: absolute;
-    width: 46px;
-    height: 46px;
+    width: 66px;
+    height: 66px;
     border-radius: 50%;
     border: 2px dashed var(--accent);
     box-shadow: 0 0 8px var(--accent-glow);
@@ -2082,7 +2082,7 @@ object NxprcPresets {
     box-sizing: border-box;
   }
   .stick-label {
-    font-size: 20px;
+    font-size: 24px;
     font-weight: 900;
     color: #FFFFFF;
     text-shadow:
@@ -2115,7 +2115,7 @@ object NxprcPresets {
 <meta charset="UTF-8">
 <style>
   :root {
-    --stick-size: 104px;
+    --stick-size: 150px;
     --accent: #FF007F;
     --accent-glow: rgba(255, 0, 127, 0.5);
     --spring-damping: 0.70;
@@ -2154,8 +2154,8 @@ object NxprcPresets {
   }
   .stick-cap {
     position: absolute;
-    width: 68px;
-    height: 68px;
+    width: 98px;
+    height: 98px;
     border-radius: 50%;
     background:
       radial-gradient(circle at 48% 42%, #282f3c 0%, #13161f 65%, #080a0e 100%);
@@ -2171,8 +2171,8 @@ object NxprcPresets {
   }
   .knurled-ring {
     position: absolute;
-    width: 46px;
-    height: 46px;
+    width: 66px;
+    height: 66px;
     border-radius: 50%;
     border: 2px dashed var(--accent);
     box-shadow: 0 0 8px var(--accent-glow);
@@ -2180,7 +2180,7 @@ object NxprcPresets {
     box-sizing: border-box;
   }
   .stick-label {
-    font-size: 20px;
+    font-size: 24px;
     font-weight: 900;
     color: #FFFFFF;
     text-shadow:
