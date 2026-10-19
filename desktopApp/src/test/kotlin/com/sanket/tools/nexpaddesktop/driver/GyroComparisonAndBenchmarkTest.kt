@@ -418,5 +418,151 @@ class GyroComparisonAndBenchmarkTest {
         }
         println("============================================================================================================================")
     }
+
+    @Test
+    fun benchmarkFullSyntheticSweepYawPitchRollDs4VsXbox() {
+        println("==================================================================================================================================================")
+        println("  BENCHMARK 7: FULL 0% TO 100% SPEED SWEEP — YAW, PITCH & ROLL INDEPENDENT ANALYSIS (DS4 vs XBOX EMULATION)")
+        println("==================================================================================================================================================")
+        println("Simulating synthetic gyro inputs from 0.0% (rest) to 100.0% (200°/s max saturation) across Yaw, Pitch, and Roll independently:")
+        println()
+
+        val ds4WarmupMapper = DualShock4InputMapper()
+        for (i in 0..105) {
+            ds4WarmupMapper.map(GamepadInput(gyroX = 0.0001f, gyroY = 0.0001f, gyroZ = 0.0001f))
+        }
+
+        // Settings 1: Current Default (antiDeadzone = 0.0f, deadzoneThreshold = 0.8f)
+        val currentSettings = GyroSettings.DEFAULT.copy(
+            precisionAiming = GyroSettings.DEFAULT.precisionAiming.copy(
+                maxDpsYaw = 200f,
+                maxDpsPitch = 200f,
+                maxDpsRoll = 200f,
+                horizontalAxis = HorizontalAxis.MIX,
+                deadzoneThreshold = 0.8f,
+                antiDeadzone = 0.0f,
+                smoothingEnabled = false,
+                accelerationEnabled = false
+            )
+        )
+
+        // Settings 2: Restored Calibrated Default (antiDeadzone = 0.14f, deadzoneThreshold = 0.4f)
+        val restoredSettings = GyroSettings.DEFAULT.copy(
+            precisionAiming = GyroSettings.DEFAULT.precisionAiming.copy(
+                maxDpsYaw = 200f,
+                maxDpsPitch = 200f,
+                maxDpsRoll = 200f,
+                horizontalAxis = HorizontalAxis.MIX,
+                deadzoneThreshold = 0.4f,
+                antiDeadzone = 0.14f,
+                smoothingEnabled = false,
+                accelerationEnabled = false
+            )
+        )
+
+        val speedTable = listOf(
+            0.0f to "0.0%",
+            0.2f to "0.1%",
+            0.5f to "0.25%",
+            1.0f to "0.5%",
+            2.0f to "1.0%",
+            5.0f to "2.5%",
+            10.0f to "5.0%",
+            20.0f to "10.0%",
+            50.0f to "25.0%",
+            100.0f to "50.0%",
+            150.0f to "75.0%",
+            200.0f to "100.0%"
+        )
+
+        val gameDeadzone = 0.14f
+
+        fun runSweep(axisName: String, inputFactory: (Float) -> GamepadInput) {
+            println("--------------------------------------------------------------------------------------------------------------------------------------------------")
+            println("  AXIS: $axisName")
+            println("--------------------------------------------------------------------------------------------------------------------------------------------------")
+            println(String.format("%-6s | %-6s | %-12s | %-14s | %-14s | %-15s | %-14s | %-18s",
+                "Speed%", "°/s", "DS4 Counts", "Current Stick", "Current Game°/s", "Restored Stick", "Restored Game°/s", "Status Comparison"))
+            println("--------------------------------------------------------------------------------------------------------------------------------------------------")
+
+            for ((speed, pct) in speedTable) {
+                val rad = speed * degToRad
+                val input = inputFactory(rad)
+
+                // DS4 Native:
+                val ds4Report = ds4WarmupMapper.map(input)
+                val ds4Count = when (axisName) {
+                    "YAW (Z-Axis)" -> ds4Report.wGyroY.toInt()
+                    "PITCH (X-Axis)" -> ds4Report.wGyroX.toInt()
+                    "ROLL (Y-Axis)" -> ds4Report.wGyroZ.toInt()
+                    else -> 0
+                }
+
+                // Current Xbox (antiDeadzone = 0.0):
+                val curProcessor = GyroProcessor()
+                var curOut = input
+                for (i in 0..10) {
+                    curOut = InputPipeline.processInput(
+                        input = input,
+                        activeController = ControllerType.XBOX_360,
+                        gyroProcessor = curProcessor,
+                        gyroSettings = currentSettings,
+                        lsSensitivityX = 1f, lsSensitivityY = 1f,
+                        rsSensitivityX = 1f, rsSensitivityY = 1f,
+                        onProcessedAngles = { _, _ -> }
+                    )
+                }
+                val curStick = if (axisName == "PITCH (X-Axis)") curOut.rightStickY else curOut.rightStickX
+                val curNetStick = (abs(curStick) - gameDeadzone).coerceAtLeast(0f) / (1f - gameDeadzone)
+                val curGameDps = curNetStick * 200f
+
+                // Restored Xbox (antiDeadzone = 0.14):
+                val resProcessor = GyroProcessor()
+                var resOut = input
+                for (i in 0..10) {
+                    resOut = InputPipeline.processInput(
+                        input = input,
+                        activeController = ControllerType.XBOX_360,
+                        gyroProcessor = resProcessor,
+                        gyroSettings = restoredSettings,
+                        lsSensitivityX = 1f, lsSensitivityY = 1f,
+                        rsSensitivityX = 1f, rsSensitivityY = 1f,
+                        onProcessedAngles = { _, _ -> }
+                    )
+                }
+                val resStick = if (axisName == "PITCH (X-Axis)") resOut.rightStickY else resOut.rightStickX
+                val resNetStick = (abs(resStick) - gameDeadzone).coerceAtLeast(0f) / (1f - gameDeadzone)
+                val resGameDps = resNetStick * 200f
+
+                val status = when {
+                    speed == 0.0f -> "✅ Pure Stillness (Zero Drift)"
+                    curGameDps == 0f && resGameDps > 0f -> "❌ DEAD in current -> ✅ ALIVE in restored!"
+                    curGameDps == 0f && resGameDps == 0f -> "⏹️ Sub-threshold (< 0.3°/s noise filter)"
+                    else -> "✅ High-speed match"
+                }
+
+                println(String.format("%-6s | %-6.1f | %-12d | %-14.4f | %-14.2f | %-15.4f | %-14.2f | %s",
+                    pct, speed, ds4Count, curStick, curGameDps, resStick, resGameDps, status
+                ))
+            }
+        }
+
+        // 1. Sweep Pure Yaw (gyroZ)
+        runSweep("YAW (Z-Axis)") { rad ->
+            GamepadInput(gyroX = 0f, gyroY = 0f, gyroZ = rad, sensorFlags = NexpadProtocol.SENSOR_MODE_IMU_6AXIS)
+        }
+
+        // 2. Sweep Pure Pitch (gyroX)
+        runSweep("PITCH (X-Axis)") { rad ->
+            GamepadInput(gyroX = -rad, gyroY = 0f, gyroZ = 0f, sensorFlags = NexpadProtocol.SENSOR_MODE_IMU_6AXIS)
+        }
+
+        // 3. Sweep Pure Roll (gyroY)
+        runSweep("ROLL (Y-Axis)") { rad ->
+            GamepadInput(gyroX = 0f, gyroY = rad, gyroZ = 0f, sensorFlags = NexpadProtocol.SENSOR_MODE_IMU_6AXIS)
+        }
+        println("==================================================================================================================================================")
+    }
 }
+
 

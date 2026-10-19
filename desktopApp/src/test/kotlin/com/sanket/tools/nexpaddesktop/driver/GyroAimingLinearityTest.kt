@@ -356,14 +356,17 @@ class GyroAimingLinearityTest {
     }
 
     @Test
-    fun testDefaultZeroDeadzoneLinearPassThrough() {
-        assertEquals("Default gameDeadzoneCompensation must be 0.0f", 0.0f, GyroSettings().gameDeadzoneCompensation, 0.0001f)
-        assertEquals("GyroSettings.DEFAULT gameDeadzoneCompensation must be 0.0f", 0.0f, GyroSettings.DEFAULT.gameDeadzoneCompensation, 0.0001f)
-        assertEquals("FPS_PRESET gameDeadzoneCompensation must be 0.0f", 0.0f, GyroSettings.FPS_PRESET.gameDeadzoneCompensation, 0.0001f)
+    fun testDefaultAimingDeadzoneCompensation() {
+        assertEquals("Default gameDeadzoneCompensation must be 0.14f for instant in-game deadzone penetration", 0.14f, GyroSettings().gameDeadzoneCompensation, 0.0001f)
+        assertEquals("GyroSettings.DEFAULT gameDeadzoneCompensation must be 0.14f", 0.14f, GyroSettings.DEFAULT.gameDeadzoneCompensation, 0.0001f)
+        assertEquals("FPS_PRESET gameDeadzoneCompensation must be 0.14f", 0.14f, GyroSettings.FPS_PRESET.gameDeadzoneCompensation, 0.0001f)
+    }
 
-        // Micro-aiming at 1.0°/s with default settings yields 1/200 = 0.005 without jumping to 0.14
+    @Test
+    fun testConfiguredZeroDeadzoneLinearPassThrough() {
+        // Micro-aiming at 1.0°/s with explicitly configured 0.00 deadzone yields 1/200 = 0.005 without jumping to 0.14
         val processor = GyroProcessor()
-        val defaultSettings = GyroSettings(
+        val zeroSettings = GyroSettings(
             enabled = true,
             inputMode = InputMode.VELOCITY,
             precisionAiming = PrecisionAimingSettings(
@@ -371,7 +374,8 @@ class GyroAimingLinearityTest {
                 maxDpsYaw = 200.0f,
                 accelerationEnabled = false,
                 smoothingEnabled = false,
-                deadzoneThreshold = 0f
+                deadzoneThreshold = 0f,
+                antiDeadzone = 0.0f
             )
         )
         val rad1 = 1.0f / GyroProcessor.RAD_TO_DEG
@@ -383,7 +387,7 @@ class GyroAimingLinearityTest {
             input = inputSlow,
             activeController = ControllerType.XBOX_360,
             gyroProcessor = processor,
-            gyroSettings = defaultSettings,
+            gyroSettings = zeroSettings,
             lsSensitivityX = 1f, lsSensitivityY = 1f,
             rsSensitivityX = 1f, rsSensitivityY = 1f,
             onProcessedAngles = { _, _ -> }
