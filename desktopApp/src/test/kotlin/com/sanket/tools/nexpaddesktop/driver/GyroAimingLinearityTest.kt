@@ -472,4 +472,63 @@ class GyroAimingLinearityTest {
         assertTrue("Diagonal components must be < 0.12 (actual: ${outDiag.rightStickY})",
             outDiag.rightStickY in 0.08f..0.12f)
     }
+
+    @Test
+    fun testActivationTriggerAimDownSightsGating() {
+        val processor = GyroProcessor()
+        val settings = GyroSettings(
+            enabled = true,
+            inputMode = InputMode.VELOCITY,
+            precisionAiming = PrecisionAimingSettings(
+                horizontalAxis = HorizontalAxis.YAW,
+                maxDpsYaw = 200.0f,
+                activationButtons = setOf("LT"),
+                accelerationEnabled = false,
+                smoothingEnabled = false,
+                deadzoneThreshold = 0f
+            )
+        )
+
+        val moveRad = 100.0f / GyroProcessor.RAD_TO_DEG
+        val movingInput = GamepadInput(
+            gyroZ = moveRad,
+            sensorFlags = NexpadProtocol.SENSOR_MODE_IMU_6AXIS,
+            triggerL2 = 0.0f // LT NOT held
+        )
+
+        // 1. When LT is NOT held (running around): Gyro output is ZERO
+        val outIdle = InputPipeline.processInput(
+            input = movingInput,
+            activeController = ControllerType.XBOX_360,
+            gyroProcessor = processor,
+            gyroSettings = settings,
+            onProcessedAngles = { _, _ -> }
+        )
+        assertEquals("When LT is not held, right stick X should be 0.0 (gyro asleep)", 0.0f, outIdle.rightStickX, 0.001f)
+        assertEquals("When LT is not held, right stick Y should be 0.0 (gyro asleep)", 0.0f, outIdle.rightStickY, 0.001f)
+        assertEquals("When LT is not held, output gyroZ should be 0.0 (gated)", 0.0f, outIdle.gyroZ, 0.001f)
+
+        // 2. When LT IS held (aiming down sights): Gyro output is ACTIVE
+        val aimingInput = movingInput.copy(triggerL2 = 1.0f)
+        val outAiming = InputPipeline.processInput(
+            input = aimingInput,
+            activeController = ControllerType.XBOX_360,
+            gyroProcessor = processor,
+            gyroSettings = settings,
+            onProcessedAngles = { _, _ -> }
+        )
+        assertTrue("When holding LT, right stick X should be actively deflected by gyro", abs(outAiming.rightStickX) > 0.1f)
+        assertEquals("When holding LT, output gyroZ should pass through", moveRad, outAiming.gyroZ, 0.001f)
+
+        // 3. When LT is released: Gyro output returns to ZERO immediately
+        val outReleased = InputPipeline.processInput(
+            input = movingInput,
+            activeController = ControllerType.XBOX_360,
+            gyroProcessor = processor,
+            gyroSettings = settings,
+            onProcessedAngles = { _, _ -> }
+        )
+        assertEquals("When releasing LT, right stick X returns to 0.0", 0.0f, outReleased.rightStickX, 0.001f)
+        assertEquals("When releasing LT, right stick Y returns to 0.0", 0.0f, outReleased.rightStickY, 0.001f)
+    }
 }

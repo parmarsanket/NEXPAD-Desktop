@@ -23,21 +23,23 @@ object InputPipeline {
         onFlightAttitude: (pitchDeg: Float, rollDeg: Float, yawDeg: Float) -> Unit = { _, _, _ -> }
     ): GamepadInput {
         
-        // 1. Check gyro activation buttons (Xbox only — PS4 games handle this)
+        // 1. Check gyro activation buttons (Aim-Down-Sights / Button Hold)
         val isActivationButtonPressed = if (gyroSettings.activationButtons.isEmpty()) {
             true
         } else {
             gyroSettings.activationButtons.any { btn ->
-                when (btn) {
-                    NexpadKeys.LT -> input.triggerL2 > 0.1f
-                    NexpadKeys.RT -> input.triggerR2 > 0.1f
-                    NexpadKeys.LB -> input.btnL1
-                    NexpadKeys.RB -> input.btnR1
-                    NexpadKeys.A  -> input.btnA
-                    NexpadKeys.B  -> input.btnB
-                    NexpadKeys.X  -> input.btnX
-                    NexpadKeys.Y  -> input.btnY
-                    else          -> false
+                when (btn.trim().uppercase()) {
+                    NexpadKeys.LT, "L2", "LEFT_TRIGGER" -> input.triggerL2 > 0.1f
+                    NexpadKeys.RT, "R2", "RIGHT_TRIGGER" -> input.triggerR2 > 0.1f
+                    NexpadKeys.LB, "L1", "LEFT_BUMPER" -> input.btnL1
+                    NexpadKeys.RB, "R1", "RIGHT_BUMPER" -> input.btnR1
+                    NexpadKeys.A, "CROSS" -> input.btnA
+                    NexpadKeys.B, "CIRCLE" -> input.btnB
+                    NexpadKeys.X, "SQUARE" -> input.btnX
+                    NexpadKeys.Y, "TRIANGLE" -> input.btnY
+                    "LS", "LSB", "L3" -> input.btnL3
+                    "RS", "RSB", "R3" -> input.btnR3
+                    else -> false
                 }
             }
         }
@@ -277,6 +279,11 @@ object InputPipeline {
             if (processed.gesturePulseA) finalBtnA = true
         }
         
+        val isGated = gyroSettings.activationButtons.isNotEmpty() && !isActivationButtonPressed
+        val finalGyroX = if (isGated) 0f else input.gyroX
+        val finalGyroY = if (isGated) 0f else input.gyroY
+        val finalGyroZ = if (isGated) 0f else input.gyroZ
+
         return input.copy(
             leftStickX = finalLeftX.coerceIn(-1.0f, 1.0f),
             leftStickY = finalLeftY.coerceIn(-1.0f, 1.0f),
@@ -295,7 +302,10 @@ object InputPipeline {
             dpadUp = input.dpadUp || finalDpadUp,
             dpadDown = input.dpadDown || finalDpadDown,
             dpadLeft = input.dpadLeft || finalDpadLeft,
-            dpadRight = input.dpadRight || finalDpadRight
+            dpadRight = input.dpadRight || finalDpadRight,
+            gyroX = finalGyroX,
+            gyroY = finalGyroY,
+            gyroZ = finalGyroZ
         )
     }
 }

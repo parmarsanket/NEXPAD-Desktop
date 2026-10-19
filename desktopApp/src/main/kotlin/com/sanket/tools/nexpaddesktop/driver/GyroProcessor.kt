@@ -846,6 +846,18 @@ class GyroProcessor {
     }
 
     private fun isGyroActive(settings: GyroSettings, isButtonPressed: Boolean): Boolean {
+        if (settings.activationButtons.isNotEmpty()) {
+            return when (settings.activationMode) {
+                ActivationMode.TOGGLE -> {
+                    if (isButtonPressed && !toggleButtonWasPressed) {
+                        toggleActive = !toggleActive
+                    }
+                    toggleButtonWasPressed = isButtonPressed
+                    toggleActive
+                }
+                else -> isButtonPressed
+            }
+        }
         return when (settings.activationMode) {
             ActivationMode.ALWAYS_ON -> true
             ActivationMode.BUTTON_HOLD -> isButtonPressed

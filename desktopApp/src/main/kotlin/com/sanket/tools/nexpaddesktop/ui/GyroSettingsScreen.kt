@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,6 +39,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpaddesktop.model.*
 import com.sanket.tools.nexpaddesktop.ui.theme.ModeAccentPair
 import com.sanket.tools.nexpaddesktop.ui.theme.NexpadTheme
@@ -649,6 +651,51 @@ private fun PrecisionAimingPanel(
                 accentColor = palette.accent,
                 onSelect = { onUpdate(config.copy(blendMode = it)) }
             )
+
+            ExpandableFeatureBlock(
+                title = "Soft Tightening Deadzone",
+                subtitle = "Smooth quadratic dampening curve for microscopic adjustments below threshold.",
+                checked = config.tighteningEnabled,
+                accentColor = palette.accent,
+                onCheckedChange = { onUpdate(config.copy(tighteningEnabled = it)) }
+            ) {
+                ExpressiveSlider(
+                    label = "Tightening Threshold",
+                    value = config.tighteningThreshold,
+                    valueRange = 1.0f..25.0f,
+                    format = "%.1f",
+                    unit = "°/s",
+                    accentColor = palette.accent,
+                    onValueChange = { onUpdate(config.copy(tighteningThreshold = it)) }
+                )
+            }
+
+            ExpandableFeatureBlock(
+                title = "Anti-Deadzone Low-Speed Boost",
+                subtitle = "Amplifies slow tracking movements to overcome sticky in-game deadzones.",
+                checked = config.lowSpeedAmplifierEnabled,
+                accentColor = palette.accent,
+                onCheckedChange = { onUpdate(config.copy(lowSpeedAmplifierEnabled = it)) }
+            ) {
+                ExpressiveSlider(
+                    label = "Amplifier Multiplier",
+                    value = config.lowSpeedAmplifierAmount,
+                    valueRange = 1.0f..5.0f,
+                    format = "%.1f",
+                    unit = "×",
+                    accentColor = palette.accent,
+                    onValueChange = { onUpdate(config.copy(lowSpeedAmplifierAmount = it)) }
+                )
+                ExpressiveSlider(
+                    label = "Amplifier Cutoff Speed",
+                    value = config.lowSpeedAmplifierThreshold,
+                    valueRange = 5.0f..40.0f,
+                    format = "%.0f",
+                    unit = "°/s",
+                    accentColor = palette.accent,
+                    onValueChange = { onUpdate(config.copy(lowSpeedAmplifierThreshold = it)) }
+                )
+            }
         }
 
         // Group C: Progressive Disclosure for Smoothing & Acceleration
@@ -710,6 +757,20 @@ private fun PrecisionAimingPanel(
                 )
             }
         }
+
+        // Group D: Activation Trigger (Aim-Down-Sights)
+        ActivationTriggerCard(
+            activationButtons = config.activationButtons,
+            accentColor = palette.accent,
+            onButtonsChange = { buttons ->
+                onUpdate(
+                    config.copy(
+                        activationButtons = buttons,
+                        activationMode = if (buttons.isNotEmpty()) ActivationMode.BUTTON_HOLD else ActivationMode.ALWAYS_ON
+                    )
+                )
+            }
+        )
     }
 }
 
@@ -773,6 +834,47 @@ private fun SteeringWheelPanel(
             accentColor = palette.accent,
             onValueChange = { onUpdate(config.copy(deadzoneThreshold = it)) }
         )
+
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f, fill = false)) {
+                Text(
+                    text = "Invert Steering Direction",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = if (config.invertSteering) "Inverted (Tilt right steers left)" else "Normal (Tilt right steers right)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Switch(
+                checked = config.invertSteering,
+                onCheckedChange = { onUpdate(config.copy(invertSteering = it)) },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = palette.accent
+                )
+            )
+        }
+
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+        EnumChipSelector(
+            label = "Physical Stick + Steering Wheel Blending",
+            options = XboxBlendMode.entries,
+            selected = config.blendMode,
+            optionLabel = { it.displayName },
+            accentColor = palette.accent,
+            onSelect = { onUpdate(config.copy(blendMode = it)) }
+        )
     }
 }
 
@@ -805,6 +907,33 @@ private fun FlightStickPanel(
             accentColor = palette.accent,
             onValueChange = { onUpdate(config.copy(maxPitchAngle = it)) }
         )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f, fill = false)) {
+                Text(
+                    text = "Invert Pitch Axis",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = if (config.pitchInvert) "Inverted (Pull back for nose up / push forward to dive)" else "Normal (Push forward for nose up)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Switch(
+                checked = config.pitchInvert,
+                onCheckedChange = { onUpdate(config.copy(pitchInvert = it)) },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = palette.accent
+                )
+            )
+        }
 
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
@@ -824,6 +953,33 @@ private fun FlightStickPanel(
             accentColor = palette.accent,
             onValueChange = { onUpdate(config.copy(maxRollAngle = it)) }
         )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f, fill = false)) {
+                Text(
+                    text = "Invert Roll Axis",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = if (config.rollInvert) "Inverted (Reversed wing banking)" else "Normal (Direct wing banking)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Switch(
+                checked = config.rollInvert,
+                onCheckedChange = { onUpdate(config.copy(rollInvert = it)) },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = palette.accent
+                )
+            )
+        }
 
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
@@ -896,6 +1052,17 @@ private fun FlightStickPanel(
             unit = "exp",
             accentColor = palette.accent,
             onValueChange = { onUpdate(config.copy(curveExponent = it)) }
+        )
+
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+        EnumChipSelector(
+            label = "Physical Stick + Flight Attitude Blending",
+            options = XboxBlendMode.entries,
+            selected = config.blendMode,
+            optionLabel = { it.displayName },
+            accentColor = palette.accent,
+            onSelect = { onUpdate(config.copy(blendMode = it)) }
         )
     }
 }
@@ -1150,58 +1317,198 @@ private fun RawSiliconPanel(
     palette: ModeAccentPair,
     onUpdate: (RawSiliconSettings) -> Unit
 ) {
-    ExpressiveSectionCard(
-        title = "Esports Direct Raw MEMS Stream",
-        subtitle = "Zero OS calibration, zero smoothing filters — direct silicon angular velocity to stick output.",
-        icon = Icons.Default.Memory,
-        accentColor = palette.accent,
-        onReset = { onUpdate(RawSiliconSettings()) }
-    ) {
-        EnumChipSelector(
-            label = "Target Stick",
-            options = XboxTargetStick.entries,
-            selected = config.targetStick,
-            optionLabel = { it.displayName },
-            accentColor = palette.accent,
-            onSelect = { onUpdate(config.copy(targetStick = it)) }
-        )
+    var linkYawPitch by remember { mutableStateOf(config.maxDpsYaw == config.maxDpsPitch) }
 
-        ExpressiveSlider(
-            label = "Raw Yaw Sensitivity (100% Stick Rate)",
-            value = config.maxDpsYaw,
-            valueRange = 40f..500f,
-            unit = "°/s",
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        // Card 1: Esports Direct Raw MEMS Stream & Sensitivity
+        ExpressiveSectionCard(
+            title = "Esports Direct Raw MEMS Stream",
+            subtitle = "Zero OS calibration, zero smoothing filters — direct silicon angular velocity to stick output.",
+            icon = Icons.Default.Memory,
             accentColor = palette.accent,
-            onValueChange = { onUpdate(config.copy(maxDpsYaw = it)) }
-        )
+            onReset = { onUpdate(RawSiliconSettings()) }
+        ) {
+            EnumChipSelector(
+                label = "Target Stick",
+                options = XboxTargetStick.entries,
+                selected = config.targetStick,
+                optionLabel = { it.displayName },
+                accentColor = palette.accent,
+                onSelect = { onUpdate(config.copy(targetStick = it)) }
+            )
 
-        ExpressiveSlider(
-            label = "Raw Pitch Sensitivity (100% Stick Rate)",
-            value = config.maxDpsPitch,
-            valueRange = 40f..500f,
-            unit = "°/s",
-            accentColor = palette.accent,
-            onValueChange = { onUpdate(config.copy(maxDpsPitch = it)) }
-        )
+            EnumChipSelector(
+                label = "Horizontal Camera Axis",
+                options = HorizontalAxis.entries,
+                selected = config.horizontalAxis,
+                optionLabel = { it.displayName },
+                accentColor = palette.accent,
+                onSelect = { onUpdate(config.copy(horizontalAxis = it)) }
+            )
 
-        ExpressiveSlider(
-            label = "Hardware Noise Gate (Deadzone)",
-            value = config.deadzoneThreshold,
-            valueRange = 0.0f..5.0f,
-            format = "%.1f",
-            unit = "°/s",
-            accentColor = palette.accent,
-            onValueChange = { onUpdate(config.copy(deadzoneThreshold = it)) }
-        )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Raw Velocity Sensitivity (°/s for 100% Stick)",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                FilterChip(
+                    selected = linkYawPitch,
+                    onClick = {
+                        linkYawPitch = !linkYawPitch
+                        if (linkYawPitch) onUpdate(config.copy(maxDpsPitch = config.maxDpsYaw))
+                    },
+                    label = { Text("Link Yaw & Pitch", style = MaterialTheme.typography.labelSmall, maxLines = 1, softWrap = false) }
+                )
+            }
 
-        ExpressiveSlider(
-            label = "In-Game Anti-Deadzone",
-            value = config.antiDeadzone * 100f,
-            valueRange = 0f..35f,
-            format = "%.0f",
-            unit = "%",
+            if (linkYawPitch) {
+                ExpressiveSlider(
+                    label = "Unified Raw Speed (Yaw & Pitch)",
+                    value = config.maxDpsYaw,
+                    valueRange = 40f..500f,
+                    unit = "°/s",
+                    accentColor = palette.accent,
+                    onValueChange = { onUpdate(config.copy(maxDpsYaw = it, maxDpsPitch = it)) }
+                )
+            } else {
+                ExpressiveSlider(
+                    label = "Raw Yaw Sensitivity (100% Stick Rate)",
+                    value = config.maxDpsYaw,
+                    valueRange = 40f..500f,
+                    unit = "°/s",
+                    accentColor = palette.accent,
+                    onValueChange = { onUpdate(config.copy(maxDpsYaw = it)) }
+                )
+                ExpressiveSlider(
+                    label = "Raw Pitch Sensitivity (100% Stick Rate)",
+                    value = config.maxDpsPitch,
+                    valueRange = 40f..500f,
+                    unit = "°/s",
+                    accentColor = palette.accent,
+                    onValueChange = { onUpdate(config.copy(maxDpsPitch = it)) }
+                )
+            }
+
+            AxisInvertRow(
+                invertX = config.invertX,
+                invertY = config.invertY,
+                invertRoll = config.invertRoll,
+                onInvertX = { onUpdate(config.copy(invertX = it)) },
+                onInvertY = { onUpdate(config.copy(invertY = it)) },
+                onInvertRoll = { onUpdate(config.copy(invertRoll = it)) }
+            )
+        }
+
+        // Card 2: Deadzone Compensation, Response Curve & Blending
+        ExpressiveSectionCard(
+            title = "Hardware Deadzone & Response Curve",
+            subtitle = "Direct silicon noise gate, anti-deadzone bridge, and stick blending.",
+            icon = Icons.Default.Tune,
+            accentColor = palette.accent
+        ) {
+            ExpressiveSlider(
+                label = "Hardware Noise Gate (Sensor Deadzone)",
+                value = config.deadzoneThreshold,
+                valueRange = 0.0f..10.0f,
+                format = "%.1f",
+                unit = "°/s",
+                accentColor = palette.accent,
+                onValueChange = { onUpdate(config.copy(deadzoneThreshold = it)) }
+            )
+
+            ExpressiveSlider(
+                label = "In-Game Deadzone Bridge (Anti-Deadzone)",
+                value = config.antiDeadzone * 100f,
+                valueRange = 0f..35f,
+                format = "%.0f",
+                unit = "%",
+                accentColor = palette.accent,
+                onValueChange = { onUpdate(config.copy(antiDeadzone = it / 100f)) }
+            )
+
+            EnumChipSelector(
+                label = "Stick Response Curve",
+                options = StickResponseCurve.entries,
+                selected = config.stickResponseCurve,
+                optionLabel = { it.displayName },
+                accentColor = palette.accent,
+                onSelect = { onUpdate(config.copy(stickResponseCurve = it)) }
+            )
+
+            EnumChipSelector(
+                label = "Thumbstick + Gyro Blending",
+                options = XboxBlendMode.entries,
+                selected = config.blendMode,
+                optionLabel = { it.displayName },
+                accentColor = palette.accent,
+                onSelect = { onUpdate(config.copy(blendMode = it)) }
+            )
+
+            ExpandableFeatureBlock(
+                title = "Soft Tightening Deadzone",
+                subtitle = "Smooth quadratic dampening curve for microscopic adjustments below threshold.",
+                checked = config.tighteningEnabled,
+                accentColor = palette.accent,
+                onCheckedChange = { onUpdate(config.copy(tighteningEnabled = it)) }
+            ) {
+                ExpressiveSlider(
+                    label = "Tightening Threshold",
+                    value = config.tighteningThreshold,
+                    valueRange = 1.0f..25.0f,
+                    format = "%.1f",
+                    unit = "°/s",
+                    accentColor = palette.accent,
+                    onValueChange = { onUpdate(config.copy(tighteningThreshold = it)) }
+                )
+            }
+
+            ExpandableFeatureBlock(
+                title = "Anti-Deadzone Low-Speed Boost",
+                subtitle = "Amplifies slow tracking movements to overcome sticky in-game deadzones.",
+                checked = config.lowSpeedAmplifierEnabled,
+                accentColor = palette.accent,
+                onCheckedChange = { onUpdate(config.copy(lowSpeedAmplifierEnabled = it)) }
+            ) {
+                ExpressiveSlider(
+                    label = "Amplifier Multiplier",
+                    value = config.lowSpeedAmplifierAmount,
+                    valueRange = 1.0f..5.0f,
+                    format = "%.1f",
+                    unit = "×",
+                    accentColor = palette.accent,
+                    onValueChange = { onUpdate(config.copy(lowSpeedAmplifierAmount = it)) }
+                )
+                ExpressiveSlider(
+                    label = "Amplifier Cutoff Speed",
+                    value = config.lowSpeedAmplifierThreshold,
+                    valueRange = 5.0f..40.0f,
+                    format = "%.0f",
+                    unit = "°/s",
+                    accentColor = palette.accent,
+                    onValueChange = { onUpdate(config.copy(lowSpeedAmplifierThreshold = it)) }
+                )
+            }
+        }
+
+        // Card 3: Activation Trigger (Aim-Down-Sights)
+        ActivationTriggerCard(
+            activationButtons = config.activationButtons,
             accentColor = palette.accent,
-            onValueChange = { onUpdate(config.copy(antiDeadzone = it / 100f)) }
+            onButtonsChange = { buttons ->
+                onUpdate(
+                    config.copy(
+                        activationButtons = buttons,
+                        activationMode = if (buttons.isNotEmpty()) ActivationMode.BUTTON_HOLD else ActivationMode.ALWAYS_ON
+                    )
+                )
+            }
         )
     }
 }
@@ -1558,6 +1865,154 @@ private fun AxisInvertRow(
             onClick = { onInvertRoll(!invertRoll) },
             label = { Text("Tilt (Roll)", style = MaterialTheme.typography.labelSmall) }
         )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ActivationTriggerCard(
+    activationButtons: Set<String>,
+    accentColor: Color = MaterialTheme.colorScheme.primary,
+    onButtonsChange: (Set<String>) -> Unit
+) {
+    ExpressiveSectionCard(
+        title = "Activation Trigger (Aim-Down-Sights)",
+        subtitle = "Hold an aim trigger or button to dynamically activate gyro controls (Always active if disabled).",
+        icon = Icons.Default.SportsEsports,
+        accentColor = accentColor,
+        onReset = { onButtonsChange(emptySet()) }
+    ) {
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val isCompact = maxWidth < 560.dp
+            if (isCompact) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Require Button Hold",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        Switch(
+                            checked = activationButtons.isNotEmpty(),
+                            onCheckedChange = { checked ->
+                                if (checked) onButtonsChange(setOf(NexpadKeys.LT))
+                                else onButtonsChange(emptySet())
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                checkedTrackColor = accentColor
+                            )
+                        )
+                    }
+                    Text(
+                        text = "Gyro is only active while pressing down the selected controller button(s).",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f, fill = false)) {
+                        Text(
+                            text = "Require Button Hold",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Gyro is only active while pressing down the selected controller button(s).",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Switch(
+                        checked = activationButtons.isNotEmpty(),
+                        onCheckedChange = { checked ->
+                            if (checked) onButtonsChange(setOf(NexpadKeys.LT))
+                            else onButtonsChange(emptySet())
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                            checkedTrackColor = accentColor
+                        )
+                    )
+                }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = activationButtons.isNotEmpty(),
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Column(
+                modifier = Modifier.padding(top = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Bound Trigger / Hold Buttons (Multi-Select):",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                val buttons = listOf(
+                    NexpadKeys.LT, NexpadKeys.RT,
+                    NexpadKeys.LB, NexpadKeys.RB,
+                    NexpadKeys.A, NexpadKeys.B,
+                    NexpadKeys.X, NexpadKeys.Y
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    buttons.forEach { btn ->
+                        val isSelected = activationButtons.contains(btn)
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = {
+                                val current = activationButtons.toMutableSet()
+                                if (current.contains(btn)) current.remove(btn) else current.add(btn)
+                                onButtonsChange(current)
+                            },
+                            label = {
+                                Text(
+                                    text = when (btn) {
+                                        NexpadKeys.LT -> "LT (Left Trigger)"
+                                        NexpadKeys.RT -> "RT (Right Trigger)"
+                                        NexpadKeys.LB -> "LB (Left Bumper)"
+                                        NexpadKeys.RB -> "RB (Right Bumper)"
+                                        else -> btn
+                                    },
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = accentColor.copy(alpha = 0.18f),
+                                selectedLabelColor = accentColor,
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = isSelected,
+                                borderColor = Color.Transparent,
+                                selectedBorderColor = accentColor.copy(alpha = 0.6f)
+                            )
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

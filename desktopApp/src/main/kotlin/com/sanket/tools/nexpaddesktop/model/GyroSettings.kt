@@ -283,8 +283,16 @@ data class GyroSettings(
 
     val activationMode: ActivationMode
         get() = when (inputMode) {
-            InputMode.VELOCITY -> precisionAiming.activationMode
-            InputMode.RAW_UNCALIBRATED -> rawSilicon.activationMode
+            InputMode.VELOCITY -> if (precisionAiming.activationButtons.isNotEmpty() && precisionAiming.activationMode == ActivationMode.ALWAYS_ON) {
+                ActivationMode.BUTTON_HOLD
+            } else {
+                precisionAiming.activationMode
+            }
+            InputMode.RAW_UNCALIBRATED -> if (rawSilicon.activationButtons.isNotEmpty() && rawSilicon.activationMode == ActivationMode.ALWAYS_ON) {
+                ActivationMode.BUTTON_HOLD
+            } else {
+                rawSilicon.activationMode
+            }
             else -> ActivationMode.ALWAYS_ON
         }
 
