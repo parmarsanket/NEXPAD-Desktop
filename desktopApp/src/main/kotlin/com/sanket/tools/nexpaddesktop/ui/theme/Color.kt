@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.ui.theme
+package com.sanket.tools.nexpaddesktop.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
@@ -35,14 +35,33 @@ val md_theme_dark_scrim = Color(0xFF000000)
 
 object NeonPalette {
     val Cyan = Color(0xFF00E5FF)
-    val Purple = Color(0xFFB400FF)
     val Green = Color(0xFF39FF14)
+    val Purple = Color(0xFFB400FF)
+    val Red = Color(0xFFFF3366)
+    val Amber = Color(0xFFFFB300)
+    val Blue = Color(0xFF007FFF)
+    val Magenta = Color(0xFFFF007F)
+    val LightBlue = Color(0xFF00B4FF)
+    val PureWhite = Color(0xFFFFFFFF)
+    val MutedText = Color(0xFF859398)
+
+    // Background & Card surfaces (1:1 parity with Android NeonPalette)
+    val DarkCard = Color(0xFF141923)
+    val BorderDark = Color(0x3300E5FF)
     val PanelBgTop = Color(0xFF0E1524)
-    val PanelBgBottom = Color(0xFF0A0E1A)
+    val PanelBgBottom = Color(0xFF070B14)
     val CardIdleBg = Color(0xFF111111)
     val CardIdleBorder = Color(0xFF333333)
     val CardIdleText = Color(0xFF888888)
     val ConnectedDot = Color(0xFF34D399)
+
+    // Signature NEXPAD Brand Gradient Tokens (PureWhite -> Cyan -> LightBlue -> Purple)
+    val BrandGradient = listOf(
+        PureWhite,
+        Cyan,
+        LightBlue,
+        Purple
+    )
 
     /** Cyan→Purple gradient used for all "selected" borders */
     val GradientBorder = listOf(Cyan, Purple)

@@ -11,13 +11,13 @@ import com.sanket.tools.nexpaddesktop.model.InputMode
  * Every surface step is slightly lighter and cooler to create natural depth without borders.
  */
 object NexpadTokens {
-    // Tonal Surface Steps (Darkest -> Lightest)
-    val SurfaceLowest   = Color(0xFF070A12) // 3D Viewport wells, Recessed HUDs, Track backgrounds
-    val SurfaceDim      = Color(0xFF0B0F19) // Root Window / App Scaffold Background
-    val SurfaceLow      = Color(0xFF101624) // Unselected Profile Cards, Secondary Sections
-    val Surface         = Color(0xFF151C2E) // Standard Section Cards (ModernSectionCard)
-    val SurfaceHigh     = Color(0xFF1C253B) // Hovered Cards, Telemetry Sub-rows, Metric Chips
-    val SurfaceHighest  = Color(0xFF25304C) // Active Toggles, Sliders, Pressed States
+    // Tonal Surface Steps (Darkest -> Lightest, 1:1 Parity with Android AMOLED Cyber Palette)
+    val SurfaceLowest   = Color(0xFF070B14) // 3D Viewport wells, Recessed HUDs, Track backgrounds
+    val SurfaceDim      = Color(0xFF070B14) // Root Window / App Scaffold Background (Android md_theme_dark_background)
+    val SurfaceLow      = Color(0xFF0E1524) // Unselected Profile Cards, Secondary Sections (Android PanelBgTop)
+    val Surface         = Color(0xFF141923) // Standard Section Cards (Android DarkCard)
+    val SurfaceHigh     = Color(0xFF1A2135) // Hovered Cards, Telemetry Sub-rows, Metric Chips (Android surfaceVariant)
+    val SurfaceHighest  = Color(0xFF242F46) // Active Toggles, Sliders, Pressed States
 
     // Brand & Accent Primaries
     val ElectricCyan        = Color(0xFF00E5FF)
@@ -25,7 +25,7 @@ object NexpadTokens {
     val ElectricCyanContainer = Color(0xFF004F58)
     val OnCyanContainer     = Color(0xFF97F0FF)
 
-    val HyperPurple         = Color(0xFFD500F9)
+    val HyperPurple         = Color(0xFFB400FF) // Android Signature Purple
     val OnHyperPurple       = Color(0xFF3B0047)
     val HyperPurpleContainer = Color(0xFF550065)
     val OnPurpleContainer   = Color(0xFFFAD7FF)

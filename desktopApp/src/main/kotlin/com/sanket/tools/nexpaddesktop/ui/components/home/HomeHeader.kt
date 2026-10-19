@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpaddesktop.ui.components.statusPillGlow
 import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
+import com.sanket.tools.nexpaddesktop.ui.theme.PlusJakartaSans
 
 /**
  * Header component for the desktop Home screen.
@@ -51,7 +52,7 @@ fun HomeHeader(
 
     val titleBrush = remember {
         Brush.linearGradient(
-            colors = listOf(Color.White, NeonPalette.Cyan, NeonPalette.Purple)
+            colors = NeonPalette.BrandGradient
         )
     }
 
@@ -63,9 +64,10 @@ fun HomeHeader(
         Text(
             text = title,
             style = TextStyle(
+                fontFamily = PlusJakartaSans,
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Black,
-                letterSpacing = 1.sp,
+                letterSpacing = 1.2.sp,
                 brush = titleBrush
             )
         )
@@ -89,6 +91,7 @@ fun HomeHeader(
                 Text(
                     text = "Server Active",
                     color = NeonPalette.Green,
+                    fontFamily = PlusJakartaSans,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )

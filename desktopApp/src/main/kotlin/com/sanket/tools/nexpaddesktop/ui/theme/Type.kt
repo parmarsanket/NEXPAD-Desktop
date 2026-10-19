@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.ui.theme
+package com.sanket.tools.nexpaddesktop.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
@@ -13,7 +13,8 @@ val PlusJakartaSans = FontFamily(
     Font(resource = "fonts/PlusJakartaSans-Medium.ttf", weight = FontWeight.Medium, style = FontStyle.Normal),
     Font(resource = "fonts/PlusJakartaSans-SemiBold.ttf", weight = FontWeight.SemiBold, style = FontStyle.Normal),
     Font(resource = "fonts/PlusJakartaSans-Bold.ttf", weight = FontWeight.Bold, style = FontStyle.Normal),
-    Font(resource = "fonts/PlusJakartaSans-ExtraBold.ttf", weight = FontWeight.ExtraBold, style = FontStyle.Normal)
+    Font(resource = "fonts/PlusJakartaSans-ExtraBold.ttf", weight = FontWeight.ExtraBold, style = FontStyle.Normal),
+    Font(resource = "fonts/PlusJakartaSans-ExtraBold.ttf", weight = FontWeight.Black, style = FontStyle.Normal)
 )
 
 val SpaceGrotesk = FontFamily(
