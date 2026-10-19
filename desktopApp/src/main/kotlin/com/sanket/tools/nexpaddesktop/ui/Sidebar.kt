@@ -3,6 +3,7 @@ package com.sanket.tools.nexpaddesktop.ui
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
@@ -13,6 +14,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.toPainter
+import javax.imageio.ImageIO
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
@@ -94,6 +98,15 @@ fun Sidebar(
             colors = listOf(NeonPalette.Cyan, NeonPalette.Purple)
         )
     }
+    val logoPainter = remember {
+        try {
+            Thread.currentThread().contextClassLoader.getResourceAsStream("images/nexpad_icon.png")?.use {
+                ImageIO.read(it)?.toPainter()
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -118,7 +131,7 @@ fun Sidebar(
             item {
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Logo Area — gradient-filled circle (#4)
+                // Logo Area — Official NEXPAD Logo
                 Box(
                     modifier = Modifier
                         .size(60.dp)
@@ -128,20 +141,25 @@ fun Sidebar(
                                 brush = logoGlowBrush,
                                 radius = 28.dp.toPx()
                             )
-                            // Gradient ring
-                            drawCircle(
-                                brush = logoRingBrush,
-                                style = Stroke(width = 1.5.dp.toPx())
-                            )
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(20.dp)
-                            .clip(CircleShape)
-                            .background(logoInnerBrush)
-                    )
+                    if (logoPainter != null) {
+                        Image(
+                            painter = logoPainter,
+                            contentDescription = "NEXPAD Logo",
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clip(CircleShape)
+                                .background(logoInnerBrush)
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))

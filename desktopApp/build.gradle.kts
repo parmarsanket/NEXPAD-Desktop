@@ -51,6 +51,10 @@ compose.desktop {
             packageVersion = "1.0.0"
             licenseFile.set(rootProject.file("LICENSE"))
 
+            windows {
+                iconFile.set(project.file("src/main/resources/images/nexpad_icon.ico"))
+            }
+
             buildTypes.release.proguard {
                 isEnabled.set(false)
             }
