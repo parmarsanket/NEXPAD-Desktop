@@ -475,7 +475,7 @@ fun main(args: Array<String>) {
     Window(
         onCloseRequest = ::exitApplication,
         visible = viewModel.isWindowVisible,
-        title = "NEXPAD Desktop Server",
+        title = "NEXPAD Desktop",
         icon = appIcon
     ) {
         NexpadDesktopTheme {
