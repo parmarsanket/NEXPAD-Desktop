@@ -97,6 +97,14 @@ private enum class DebugLayoutMode(val label: String, val icon: String) {
  */
 @Composable
 fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
+    DisposableEffect(Unit) {
+        AppLogger.isScreenActive = true
+        UdpServer.refreshLiveTelemetry()
+        onDispose {
+            AppLogger.isScreenActive = false
+        }
+    }
+
     val listState = rememberLazyListState()
     val outerScrollState = rememberScrollState()
     val trigger = AppLogger.updateTrigger.value

@@ -32,6 +32,7 @@ import com.sun.jna.win32.StdCallLibrary
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.io.readByteArray
 import kotlin.time.Duration.Companion.milliseconds
+import com.sanket.tools.nexpaddesktop.utils.AppLogger
 
 private fun formatAddress(addr: SocketAddress?): String {
     if (addr == null) return "null"
@@ -64,6 +65,8 @@ class UdpServer(
     private val onInputReceived: (GamepadInput) -> Unit
 ) {
     companion object {
+        @Volatile internal var activeInstance: UdpServer? = null
+
         var liveTotalRxPackets: Long by mutableStateOf(0L)
             internal set
         var liveTotalTxFeedbacks: Long by mutableStateOf(0L)
@@ -78,6 +81,13 @@ class UdpServer(
             internal set
         var isLiveSessionActive: Boolean by mutableStateOf(false)
             internal set
+
+        fun refreshLiveTelemetry() {
+            val instance = activeInstance ?: return
+            liveTotalRxPackets = instance.totalPackets
+            liveTotalTxFeedbacks = instance.totalFeedbacksSent
+            livePacketLossPct = instance.cachedLossPctByte.toInt() and 0xFF
+        }
     }
 
     @Volatile private var isRunning = false
@@ -173,6 +183,7 @@ class UdpServer(
             }
             
             isRunning = true
+            activeInstance = this@UdpServer
             while (isActive && isRunning) {
             try {
                 val socket = serverSocket ?: break
@@ -217,7 +228,7 @@ class UdpServer(
                 
                 totalPackets++
                 val nowMs = System.currentTimeMillis()
-                if (nowMs - lastTelemetryUiUpdateMs >= 250L) {
+                if (AppLogger.isEnabled && AppLogger.isScreenActive && nowMs - lastTelemetryUiUpdateMs >= 250L) {
                     lastTelemetryUiUpdateMs = nowMs
                     liveTotalRxPackets = totalPackets
                     livePacketLossPct = cachedLossPctByte.toInt() and 0xFF
@@ -390,7 +401,7 @@ class UdpServer(
             }
             totalFeedbacksSent++
             val nowFeedbackMs = System.currentTimeMillis()
-            if (nowFeedbackMs - lastFeedbackUiUpdateMs >= 250L) {
+            if (AppLogger.isEnabled && AppLogger.isScreenActive && nowFeedbackMs - lastFeedbackUiUpdateMs >= 250L) {
                 lastFeedbackUiUpdateMs = nowFeedbackMs
                 liveTotalTxFeedbacks = totalFeedbacksSent
             }
@@ -406,6 +417,9 @@ class UdpServer(
     @OptIn(ExperimentalCoroutinesApi::class)
     fun stop() {
         isRunning = false
+        if (activeInstance == this) {
+            activeInstance = null
+        }
         heartbeatJob?.cancel()
         heartbeatJob = null
         cleanupTimerPeriod()

@@ -53,6 +53,10 @@ class DesktopViewModel(
     var dsuClientCount by mutableStateOf(0)
     var isDsuServerEnabled by mutableStateOf(prefs.loadDsuEnabled())
     var isDeveloperOptionsEnabled by mutableStateOf(prefs.loadDeveloperOptionsEnabled())
+
+    init {
+        com.sanket.tools.nexpaddesktop.utils.AppLogger.isEnabled = isDeveloperOptionsEnabled
+    }
     var streamingPort by mutableStateOf(prefs.getStreamingPort())
         private set
 
@@ -133,6 +137,10 @@ class DesktopViewModel(
 
     fun updateDeveloperOptionsEnabled(enabled: Boolean) {
         isDeveloperOptionsEnabled = enabled
+        com.sanket.tools.nexpaddesktop.utils.AppLogger.isEnabled = enabled
+        if (!enabled) {
+            com.sanket.tools.nexpaddesktop.utils.AppLogger.clearLogs()
+        }
         prefs.saveDeveloperOptionsEnabled(enabled)
     }
 

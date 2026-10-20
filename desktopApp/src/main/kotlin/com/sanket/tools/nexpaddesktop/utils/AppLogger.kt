@@ -56,16 +56,22 @@ object AppLogger {
     private var nextId = 1L
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
 
+    @Volatile var isEnabled: Boolean = false
+    @Volatile var isScreenActive: Boolean = false
+
     private val loggerScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default + kotlinx.coroutines.SupervisorJob())
     private val pendingUiNotification = java.util.concurrent.atomic.AtomicBoolean(false)
 
     private fun requestUiNotification() {
+        if (!isEnabled || !isScreenActive) return
         if (pendingUiNotification.compareAndSet(false, true)) {
             loggerScope.launch {
                 kotlinx.coroutines.delay(100L) // 100ms batch coalesce window (max 10 UI ticks/sec)
                 pendingUiNotification.set(false)
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    updateTrigger.value++
+                if (isScreenActive) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        updateTrigger.value++
+                    }
                 }
             }
         }
@@ -136,6 +142,7 @@ object AppLogger {
     }
 
     private fun addLog(message: String, isErrStream: Boolean = false) {
+        if (!isEnabled || !isScreenActive) return
         val trimmed = message.trimEnd()
         if (trimmed.isEmpty()) return
 
