@@ -299,7 +299,7 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
             val isSessionActive = UdpServer.isLiveSessionActive || (viewModel.activeTransport != com.sanket.tools.nexpaddesktop.connection.ActiveTransport.NONE)
             val deviceName = UdpServer.liveDeviceName.ifBlank { viewModel.connectedDeviceName ?: "No Controller" }
             val transport = UdpServer.liveTransportType.ifBlank { viewModel.activeTransport.displayName }
-            val socketStr = UdpServer.liveClientAddress.ifBlank { "Port 9999 Standby" }
+            val socketStr = UdpServer.liveClientAddress.ifBlank { "Port ${viewModel.streamingPort} Standby" }
             val rxPackets = UdpServer.liveTotalRxPackets
             val txFeedbacks = UdpServer.liveTotalTxFeedbacks
             val lossPct = UdpServer.livePacketLossPct
@@ -314,7 +314,7 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
                 HudGlassCard(
                     title = "NETWORK SESSION",
                     primaryText = if (isSessionActive) deviceName else "Awaiting Client",
-                    secondaryText = if (isSessionActive) "$transport • $socketStr" else "Wi-Fi UDP: 0.0.0.0:9999",
+                    secondaryText = if (isSessionActive) "$transport • $socketStr" else "Wi-Fi UDP: 0.0.0.0:${viewModel.streamingPort}",
                     statusColor = if (isSessionActive) NeonPalette.Green else Color(0xFF64748B),
                     icon = "📡"
                 )

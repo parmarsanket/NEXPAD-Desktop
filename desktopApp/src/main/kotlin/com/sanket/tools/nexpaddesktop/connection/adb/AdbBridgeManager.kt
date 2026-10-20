@@ -36,7 +36,13 @@ class AdbBridgeManager(
     private val adbDispatcher = adbExecutor.asCoroutineDispatcher()
     
     fun updatePort(newPort: Int) {
-        tcpPort = newPort
+        if (tcpPort != newPort) {
+            tcpPort = newPort
+            try {
+                serverSocket?.close()
+                serverSocket = null
+            } catch (_: Exception) {}
+        }
     }
 
     companion object {

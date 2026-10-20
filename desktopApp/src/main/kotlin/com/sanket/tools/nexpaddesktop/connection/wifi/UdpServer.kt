@@ -80,6 +80,7 @@ class UdpServer(
             internal set
     }
 
+    @Volatile private var isRunning = false
     @Volatile private var clientAddress: SocketAddress? = null
     private var selectorManager: SelectorManager? = null
     private var lastSequenceNumber = Int.MIN_VALUE
@@ -169,9 +170,11 @@ class UdpServer(
                 }
             }
             
-            while (isActive) {
+            isRunning = true
+            while (isActive && isRunning) {
             try {
                 val socket = serverSocket ?: break
+                if (!isRunning) break
                 
                 // Wait for a packet, timeout after 5 seconds to detect true disconnects (resilient to Wi-Fi jitter)
                 val datagram = kotlinx.coroutines.withTimeoutOrNull(5000L.milliseconds) {
@@ -334,6 +337,7 @@ class UdpServer(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e // Preserve structured concurrency
             } catch (e: Exception) {
+                if (!isRunning) break
                 if (packetCount % 10 == 0) {
                     println("⚠️ [UDP ERROR] Exception in receive loop: ${e.message}")
                     e.printStackTrace()
@@ -390,14 +394,17 @@ class UdpServer(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun stop() {
+        isRunning = false
         heartbeatJob?.cancel()
         heartbeatJob = null
         cleanupTimerPeriod()
         isLiveSessionActive = false
         liveClientAddress = ""
-        serverSocket?.close()
-        selectorManager?.close()
-        dedicatedDispatcher.close()
+        try { serverSocket?.close() } catch (_: Exception) {}
+        serverSocket = null
+        try { selectorManager?.close() } catch (_: Exception) {}
+        selectorManager = null
+        try { dedicatedDispatcher.close() } catch (_: Exception) {}
         println("🛑 [UDP SERVER] Server stopped on port $port.")
     }
 }

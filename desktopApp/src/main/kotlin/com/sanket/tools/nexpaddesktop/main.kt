@@ -82,7 +82,7 @@ fun main(args: Array<String>) {
             isDs4Active = (viewModel.activeController == ControllerType.DUALSHOCK_4 && viewModel.isDsuServerEnabled) 
         } 
     }
-    val discoveryServer = remember { com.sanket.tools.nexpaddesktop.connection.wifi.DiscoveryServer() }
+    val discoveryServer = remember { com.sanket.tools.nexpaddesktop.connection.wifi.DiscoveryServer(streamingPort = { viewModel.streamingPort }) }
     
     // Motion Smoothing State
     val gyroProcessor = remember { com.sanket.tools.nexpaddesktop.driver.GyroProcessor() }
