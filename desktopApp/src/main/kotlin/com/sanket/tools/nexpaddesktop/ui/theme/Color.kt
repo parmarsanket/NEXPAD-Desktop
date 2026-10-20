@@ -45,6 +45,12 @@ object NeonPalette {
     val PureWhite = Color(0xFFFFFFFF)
     val MutedText = Color(0xFF859398)
 
+    // Make in India Tricolor & Lion Tokens (1:1 parity with Android)
+    val TricolorSaffron = Color(0xFFFF9933)
+    val TricolorGreen = Color(0xFF138808)
+    val LionBodyTop = Color(0xFF131D31)
+    val LionBodyBottom = Color(0xFF090E1A)
+
     // Background & Card surfaces (1:1 parity with Android NeonPalette)
     val DarkCard = Color(0xFF141923)
     val BorderDark = Color(0x3300E5FF)

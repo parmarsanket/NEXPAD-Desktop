@@ -479,7 +479,19 @@ fun main(args: Array<String>) {
         icon = appIcon
     ) {
         NexpadDesktopTheme {
-            MainApplicationWindow(viewModel = viewModel)
+            var showSplash by remember { mutableStateOf(true) }
+            androidx.compose.animation.Crossfade(
+                targetState = showSplash,
+                animationSpec = androidx.compose.animation.core.tween(400)
+            ) { isSplash ->
+                if (isSplash) {
+                    com.sanket.tools.nexpaddesktop.ui.SplashScreen(
+                        onSplashFinished = { showSplash = false }
+                    )
+                } else {
+                    MainApplicationWindow(viewModel = viewModel)
+                }
+            }
         }
     }
     }
