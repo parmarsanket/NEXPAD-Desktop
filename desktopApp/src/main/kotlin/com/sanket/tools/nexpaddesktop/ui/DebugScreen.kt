@@ -322,7 +322,7 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
                 HudGlassCard(
                     title = "TRAFFIC TELEMETRY",
                     primaryText = "RX: ${String.format("%,d", rxPackets)} pkts",
-                    secondaryText = "TX: ${String.format("%,d", txFeedbacks)} feedbacks (60Hz)",
+                    secondaryText = "TX: ${String.format("%,d", txFeedbacks)} feedbacks (200Hz Sync)",
                     statusColor = if (rxPackets > 0) NeonPalette.Cyan else Color(0xFF64748B),
                     icon = "📥"
                 )

@@ -215,7 +215,7 @@ class UdpServer(
                 
                 totalPackets++
                 liveTotalRxPackets = totalPackets
-                packetCount = (packetCount % 60) + 1  // Wraps 1→60, never grows unbounded
+                packetCount = (packetCount % 200) + 1  // Wraps 1→200, matching 200Hz polling rate
                 if (!hasLoggedFirstPacket) {
                     hasLoggedFirstPacket = true
                     println("🎮 [INPUT STREAM] Active binary telemetry stream established with ${formatAddress(clientAddress)}: 16 Buttons, 2 Sticks, 2 Triggers, 6-Axis Gyro/Accel")
@@ -260,7 +260,7 @@ class UdpServer(
                     isLiveSessionActive = true
 
                     println("🤝 [HANDSHAKE] Connected to '$deviceName' via $transportName [$clientAddrStr]")
-                    println("   ↳ Session: 60Hz Binary Input Stream + 6-Axis IMU Forwarding | Host ACK sent ($pcName)")
+                    println("   ↳ Session: 200Hz Binary Input Stream + 6-Axis IMU Forwarding | Host ACK sent ($pcName)")
                     
                     onClientConnected?.invoke(deviceName, connType)
 
@@ -305,8 +305,8 @@ class UdpServer(
                         lastSequenceNumber = input.sequenceNumber
                         onInputReceived(input)
                         
-                        // Calculate packet loss over a 1-second window (approx 60 packets)
-                        if (packetCount % 60 == 0) {
+                        // Calculate packet loss over a 1-second window (200 packets at 200Hz)
+                        if (packetCount % 200 == 0) {
                             val total = lostInWindow + receivedInWindow
                             val currentLossPct = if (total > 0) (255 * lostInWindow / total).coerceIn(0, 255) else 0
                             cachedLossPctByte = currentLossPct.toByte()
@@ -318,8 +318,8 @@ class UdpServer(
                             receivedInWindow = 0
                         }
                         
-                        // RTT Jitter Measurement & Feedback Heartbeat (Every 2 packets / 33ms)
-                        if (packetCount % 2 == 0) {
+                        // RTT Jitter Measurement & Feedback Heartbeat (Every 4 packets / 20ms at 200Hz)
+                        if (packetCount % 4 == 0) {
                             sendFeedback(lastFeedback, echoSequenceNumber = input.sequenceNumber, packetLossByte = cachedLossPctByte)
                         }
                     } else {
