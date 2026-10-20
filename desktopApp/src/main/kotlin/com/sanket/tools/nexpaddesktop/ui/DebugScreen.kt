@@ -1103,7 +1103,7 @@ private fun HardwareStreamInspector(viewModel: DesktopViewModel) {
                     )
                 }
                 Text(
-                    text = "Sequence #${input.sequenceNumber} • Stream: 200Hz • Display Budget: ~16.6ms (60 FPS)",
+                    text = "Sequence #${input.sequenceNumber} • Phone Stream: 200Hz (5ms Low-Latency)",
                     color = Color.White.copy(alpha = 0.45f),
                     fontSize = 9.5.sp,
                     fontFamily = FontFamily.Monospace
