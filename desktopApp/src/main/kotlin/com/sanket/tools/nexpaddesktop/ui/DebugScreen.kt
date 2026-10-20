@@ -311,6 +311,7 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
             val rxPackets = UdpServer.liveTotalRxPackets
             val txFeedbacks = UdpServer.liveTotalTxFeedbacks
             val lossPct = UdpServer.livePacketLossPct
+            val pollingHz = if (transport.contains("Bluetooth", ignoreCase = true)) "125 Hz" else "200 Hz"
 
             Row(
                 modifier = Modifier
@@ -330,7 +331,7 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
                 HudGlassCard(
                     title = "TRAFFIC TELEMETRY",
                     primaryText = "RX: ${String.format("%,d", rxPackets)} pkts",
-                    secondaryText = "TX: ${String.format("%,d", txFeedbacks)} feedbacks (200Hz Sync)",
+                    secondaryText = "TX: ${String.format("%,d", txFeedbacks)} feedbacks ($pollingHz Sync)",
                     statusColor = if (rxPackets > 0) NeonPalette.Cyan else Color(0xFF64748B),
                     icon = "📥"
                 )
@@ -338,7 +339,7 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
                 HudGlassCard(
                     title = "LINK QUALITY",
                     primaryText = if (lossPct == 0) "0.0% Loss (Pristine)" else "$lossPct% Packet Loss",
-                    secondaryText = if (isSessionActive) "60 Hz Polling • RTT Echo" else "Watchdog Standby",
+                    secondaryText = if (isSessionActive) "$pollingHz Polling • RTT Echo" else "Watchdog Standby",
                     statusColor = if (lossPct == 0) Color(0xFF10B981) else Color(0xFFF59E0B),
                     icon = "📶"
                 )
@@ -364,7 +365,7 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
                 val maxMemMb = runtime.maxMemory() / (1024 * 1024)
                 HudGlassCard(
                     title = "SYSTEM MEMORY",
-                    primaryText = "${usedMemMb} MB / ${maxMemMb} MB",
+                    primaryText = "${usedMemMb} MB Used (${maxMemMb} MB Max)",
                     secondaryText = "Ring Buffer: ${allLogs.size} logs (Bounded)",
                     statusColor = if (usedMemMb < maxMemMb * 0.8) NeonPalette.Green else Color(0xFFF59E0B),
                     icon = "🧠"
@@ -1102,7 +1103,7 @@ private fun HardwareStreamInspector(viewModel: DesktopViewModel) {
                     )
                 }
                 Text(
-                    text = "Sequence #${input.sequenceNumber} • Frame Budget: ~16.6ms (60Hz)",
+                    text = "Sequence #${input.sequenceNumber} • Stream: 200Hz • Display Budget: ~16.6ms (60 FPS)",
                     color = Color.White.copy(alpha = 0.45f),
                     fontSize = 9.5.sp,
                     fontFamily = FontFamily.Monospace
