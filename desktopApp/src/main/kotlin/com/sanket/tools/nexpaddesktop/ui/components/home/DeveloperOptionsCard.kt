@@ -41,16 +41,19 @@ import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 fun DeveloperOptionsCard(
     isDeveloperOptionsEnabled: Boolean,
     onDeveloperOptionsChange: (Boolean) -> Unit,
+    showSectionHeader: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        Text(
-            text = "System Preferences",
-            color = NeonPalette.CardIdleText,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium
-        )
-        Spacer(modifier = Modifier.height(10.dp))
+        if (showSectionHeader) {
+            Text(
+                text = "System Preferences",
+                color = NeonPalette.CardIdleText,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+        }
 
         Box(
             modifier = Modifier

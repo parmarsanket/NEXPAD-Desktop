@@ -21,10 +21,15 @@ import com.sanket.tools.nexpaddesktop.ui.components.GradientDivider
 import com.sanket.tools.nexpaddesktop.ui.components.home.BackgroundGamingCard
 import com.sanket.tools.nexpaddesktop.ui.components.home.ConnectionSection
 import com.sanket.tools.nexpaddesktop.ui.components.home.DeveloperOptionsCard
+import com.sanket.tools.nexpaddesktop.ui.components.home.PortConfigurationCard
 import com.sanket.tools.nexpaddesktop.ui.components.home.DeviceSection
 import com.sanket.tools.nexpaddesktop.ui.components.home.DriverWarningBanner
 import com.sanket.tools.nexpaddesktop.ui.components.home.HomeHeader
 import com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel
+import androidx.compose.material3.Text
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 
 /**
  * NEXPAD Desktop Home Screen.
@@ -43,6 +48,8 @@ fun HomeScreen(
         onInstallAoaDriver = viewModel.onInstallAoaDriver,
         isDeveloperOptionsEnabled = viewModel.isDeveloperOptionsEnabled,
         onDeveloperOptionsChange = { viewModel.updateDeveloperOptionsEnabled(it) },
+        streamingPort = viewModel.streamingPort,
+        onStreamingPortChange = { viewModel.updateStreamingPort(it) },
         onMinimizeToTray = { viewModel.minimizeToTray() }
     )
 }
@@ -57,6 +64,8 @@ fun HomeScreen(
     onInstallAoaDriver: () -> Unit = {},
     isDeveloperOptionsEnabled: Boolean = false,
     onDeveloperOptionsChange: (Boolean) -> Unit = {},
+    streamingPort: Int = 9999,
+    onStreamingPortChange: (Int) -> Unit = {},
     onMinimizeToTray: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
@@ -122,10 +131,26 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // ── System Preferences / Developer Options ──
+            // ── System Preferences Section ──
+            Text(
+                text = "System Preferences",
+                color = NeonPalette.CardIdleText,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+
             DeveloperOptionsCard(
                 isDeveloperOptionsEnabled = isDeveloperOptionsEnabled,
-                onDeveloperOptionsChange = onDeveloperOptionsChange
+                onDeveloperOptionsChange = onDeveloperOptionsChange,
+                showSectionHeader = false
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            PortConfigurationCard(
+                currentPort = streamingPort,
+                onPortChange = onStreamingPortChange
             )
         }
 

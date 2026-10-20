@@ -53,6 +53,10 @@ class DesktopViewModel(
     var dsuClientCount by mutableStateOf(0)
     var isDsuServerEnabled by mutableStateOf(prefs.loadDsuEnabled())
     var isDeveloperOptionsEnabled by mutableStateOf(prefs.loadDeveloperOptionsEnabled())
+    var streamingPort by mutableStateOf(prefs.getStreamingPort())
+        private set
+
+    var onStreamingPortChanged: ((Int) -> Unit)? = null
     var isWindowVisible by mutableStateOf(true)
     var onShowTrayNotification: ((title: String, message: String) -> Unit)? = null
 
@@ -130,6 +134,14 @@ class DesktopViewModel(
     fun updateDeveloperOptionsEnabled(enabled: Boolean) {
         isDeveloperOptionsEnabled = enabled
         prefs.saveDeveloperOptionsEnabled(enabled)
+    }
+
+    fun updateStreamingPort(newPort: Int) {
+        if (newPort in 1024..65535) {
+            streamingPort = newPort
+            prefs.saveStreamingPort(newPort)
+            onStreamingPortChanged?.invoke(newPort)
+        }
     }
 
     fun minimizeToTray() {

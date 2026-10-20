@@ -293,6 +293,8 @@ class DesktopSharedPreferences private constructor(
         const val KEY_RS_SENS_Y = "nexpad_rs_sensitivity_y"
         const val KEY_DSU_ENABLED = "nexpad_dsu_server_enabled"
         const val KEY_DEVELOPER_OPTIONS_ENABLED = "nexpad_developer_options_enabled"
+        const val KEY_STREAMING_PORT = "nexpad_streaming_port"
+        const val DEFAULT_STREAMING_PORT = 9999
 
         @Volatile
         private var instance: DesktopSharedPreferences? = null
@@ -426,5 +428,19 @@ class DesktopSharedPreferences private constructor(
      */
     fun loadDeveloperOptionsEnabled(): Boolean {
         return getBoolean(KEY_DEVELOPER_OPTIONS_ENABLED, false)
+    }
+
+    /**
+     * Saves the network streaming port (default: 9999).
+     */
+    fun saveStreamingPort(port: Int) {
+        putInt(KEY_STREAMING_PORT, port)
+    }
+
+    /**
+     * Loads the configured network streaming port (defaults to 9999).
+     */
+    fun getStreamingPort(): Int {
+        return getInt(KEY_STREAMING_PORT, DEFAULT_STREAMING_PORT)
     }
 }

@@ -70,7 +70,7 @@ fun main(args: Array<String>) {
     val viewModel = remember { DesktopViewModel() }
     var server by remember { mutableStateOf<UdpServer?>(null) }
     val aoaManager = remember { com.sanket.tools.nexpaddesktop.connection.usb.aoa.AoaManager() }
-    val adbBridgeManager = remember { com.sanket.tools.nexpaddesktop.connection.adb.AdbBridgeManager() }
+    val adbBridgeManager = remember { com.sanket.tools.nexpaddesktop.connection.adb.AdbBridgeManager(tcpPort = viewModel.streamingPort) }
     val btServer = remember { com.sanket.tools.nexpaddesktop.connection.bt.BluetoothRfcommServer() }
     
     // The active ViGEm driver (Xbox 360 or DualShock 4). Updated when controller type changes.
@@ -262,7 +262,7 @@ fun main(args: Array<String>) {
         }
 
         server = UdpServer(
-            port = 9999,
+            port = viewModel.streamingPort,
             onClientConnected = { name, connType -> 
                 val transport = if (connType == 2) ActiveTransport.USB_TETHERING else ActiveTransport.WIFI
                 viewModel.updateConnectedDevice(name, transport)
@@ -281,6 +281,36 @@ fun main(args: Array<String>) {
         UniversalPushManager.aoaManager = aoaManager
         UniversalPushManager.btServer = btServer
         UniversalPushManager.currentTransport = viewModel.activeTransport
+
+        viewModel.onStreamingPortChanged = { newPort ->
+            adbBridgeManager.updatePort(newPort)
+            scope.launch {
+                try {
+                    server?.stop()
+                    val newServer = UdpServer(
+                        port = newPort,
+                        onClientConnected = { name, connType -> 
+                            val transport = if (connType == 2) ActiveTransport.USB_TETHERING else ActiveTransport.WIFI
+                            viewModel.updateConnectedDevice(name, transport)
+                            btServer.pause()
+                        },
+                        onClientDisconnected = { 
+                            viewModel.updateDisconnectedDevice(ActiveTransport.WIFI)
+                            viewModel.updateDisconnectedDevice(ActiveTransport.USB_TETHERING)
+                        },
+                        onInputReceived = inputHandler
+                    ).apply {
+                        isExternalTransportActive = { viewModel.activeTransport != ActiveTransport.NONE && viewModel.activeTransport != ActiveTransport.WIFI && viewModel.activeTransport != ActiveTransport.USB_TETHERING }
+                    }
+                    server = newServer
+                    UniversalPushManager.udpServer = newServer
+                    newServer.start()
+                    println("📡 [UDP Server] Rebound and listening on new port $newPort")
+                } catch (e: Exception) {
+                    println("⚠️ [UDP Server] Failed to restart on port $newPort: ${e.message}")
+                }
+            }
+        }
 
         aoaManager.onAoaConnected = { name -> 
             viewModel.updateConnectedDevice(name, ActiveTransport.USB_AOA)

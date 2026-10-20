@@ -28,12 +28,17 @@ import kotlinx.coroutines.asCoroutineDispatcher
  * 4. Dedicated high-priority dispatcher and instant inline RTT echo with zero thread hops.
  */
 class AdbBridgeManager(
-    private val tcpPort: Int = 9999
+    private var tcpPort: Int = 9999
 ) {
     private val adbExecutor = Executors.newFixedThreadPool(2) { runnable ->
         Thread(runnable, "AdbStreamThread").apply { isDaemon = true }
     }
     private val adbDispatcher = adbExecutor.asCoroutineDispatcher()
+    
+    fun updatePort(newPort: Int) {
+        tcpPort = newPort
+    }
+
     companion object {
         private const val ABSTRACT_SOCKET_NAME = "nexpad_controller"
         private const val READ_BUFFER_SIZE = 4096
