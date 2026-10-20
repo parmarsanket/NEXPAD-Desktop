@@ -312,7 +312,11 @@ class UdpServer(
                 
                 if (input != null) {
                     // Sequence Validation (Wraparound-Safe Modular Math)
-                    val delta = input.sequenceNumber - lastSequenceNumber
+                    val delta = if (lastSequenceNumber != Int.MIN_VALUE && lastSequenceNumber > 2_000_000_000 && input.sequenceNumber < 100_000) {
+                        (Int.MAX_VALUE - lastSequenceNumber) + input.sequenceNumber
+                    } else {
+                        input.sequenceNumber - lastSequenceNumber
+                    }
                     if (delta > 0 || lastSequenceNumber == Int.MIN_VALUE) {
                         
                         if (lastSequenceNumber != Int.MIN_VALUE && delta > 1) {
@@ -328,7 +332,9 @@ class UdpServer(
                             val total = lostInWindow + receivedInWindow
                             val currentLossPct = if (total > 0) (255 * lostInWindow / total).coerceIn(0, 255) else 0
                             cachedLossPctByte = currentLossPct.toByte()
-                            livePacketLossPct = currentLossPct
+                            if (AppLogger.isEnabled && AppLogger.isScreenActive) {
+                                livePacketLossPct = currentLossPct
+                            }
                             if (lostInWindow > 0) {
                                 println("⚠️ [PACKET LOSS] Dropped $lostInWindow packets in 1s window ($currentLossPct% loss) from ${formatAddress(clientAddress)}")
                             }

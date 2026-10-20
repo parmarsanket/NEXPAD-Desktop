@@ -308,9 +308,9 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
             val deviceName = UdpServer.liveDeviceName.ifBlank { viewModel.connectedDeviceName ?: "No Controller" }
             val transport = UdpServer.liveTransportType.ifBlank { viewModel.activeTransport.displayName }
             val socketStr = UdpServer.liveClientAddress.ifBlank { "Port ${viewModel.streamingPort} Standby" }
-            val rxPackets = UdpServer.liveTotalRxPackets
-            val txFeedbacks = UdpServer.liveTotalTxFeedbacks
-            val lossPct = UdpServer.livePacketLossPct
+            val rxPackets = UdpServer.liveTotalRxPackets.coerceAtLeast(0L)
+            val txFeedbacks = UdpServer.liveTotalTxFeedbacks.coerceAtLeast(0L)
+            val lossPct = UdpServer.livePacketLossPct.coerceIn(0, 100)
             val pollingHz = if (transport.contains("Bluetooth", ignoreCase = true)) "125 Hz" else "200 Hz"
 
             Row(
@@ -330,8 +330,8 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
 
                 HudGlassCard(
                     title = "TRAFFIC TELEMETRY",
-                    primaryText = "RX: ${String.format("%,d", rxPackets)} pkts",
-                    secondaryText = "TX: ${String.format("%,d", txFeedbacks)} feedbacks ($pollingHz Sync)",
+                    primaryText = "RX: ${String.format(java.util.Locale.US, "%,d", rxPackets)} pkts",
+                    secondaryText = "TX: ${String.format(java.util.Locale.US, "%,d", txFeedbacks)} feedbacks ($pollingHz Sync)",
                     statusColor = if (rxPackets > 0) NeonPalette.Cyan else Color(0xFF64748B),
                     icon = "📥"
                 )
@@ -1158,10 +1158,21 @@ private fun HardwareStreamInspector(viewModel: DesktopViewModel) {
 
                 // 4. 6-Axis Motion / IMU Telemetry (Audit: X = Pitch, Y = Roll, Z = Yaw)
                 val radToDeg = (180.0 / PI).toFloat()
-                val gyroPitchDeg = input.gyroX * radToDeg
-                val gyroRollDeg = input.gyroY * radToDeg
-                val gyroYawDeg = input.gyroZ * radToDeg
-                val totalG = sqrt(input.accelX * input.accelX + input.accelY * input.accelY + input.accelZ * input.accelZ) / 9.80665f
+                val safeGyroX = if (input.gyroX.isFinite()) input.gyroX else 0f
+                val safeGyroY = if (input.gyroY.isFinite()) input.gyroY else 0f
+                val safeGyroZ = if (input.gyroZ.isFinite()) input.gyroZ else 0f
+                val gyroPitchDeg = safeGyroX * radToDeg
+                val gyroRollDeg = safeGyroY * radToDeg
+                val gyroYawDeg = safeGyroZ * radToDeg
+
+                val safeAccelX = if (input.accelX.isFinite()) input.accelX else 0f
+                val safeAccelY = if (input.accelY.isFinite()) input.accelY else 0f
+                val safeAccelZ = if (input.accelZ.isFinite()) input.accelZ else 0f
+                val sumSq = safeAccelX * safeAccelX + safeAccelY * safeAccelY + safeAccelZ * safeAccelZ
+                val totalG = (sqrt(sumSq) / 9.80665f).coerceIn(0f, 99f)
+
+                val safeYaw = if (viewModel.processedYaw.isFinite()) viewModel.processedYaw else 0f
+                val safePitch = if (viewModel.processedPitch.isFinite()) viewModel.processedPitch else 0f
 
                 Column(
                     modifier = Modifier.widthIn(min = 220.dp),
@@ -1169,7 +1180,7 @@ private fun HardwareStreamInspector(viewModel: DesktopViewModel) {
                 ) {
                     Text("6-AXIS IMU SENSORS", color = Color.White.copy(alpha = 0.6f), fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
                     Text(
-                        text = "Gyro: P:${String.format("%+.1f", gyroPitchDeg)}° Y:${String.format("%+.1f", gyroYawDeg)}° R:${String.format("%+.1f", gyroRollDeg)}°/s",
+                        text = "Gyro: P:${String.format(java.util.Locale.US, "%+.1f", gyroPitchDeg)}° Y:${String.format(java.util.Locale.US, "%+.1f", gyroYawDeg)}° R:${String.format(java.util.Locale.US, "%+.1f", gyroRollDeg)}°/s",
                         color = NeonPalette.Cyan,
                         fontSize = 9.5.sp,
                         fontFamily = FontFamily.Monospace,
@@ -1177,7 +1188,7 @@ private fun HardwareStreamInspector(viewModel: DesktopViewModel) {
                         softWrap = false
                     )
                     Text(
-                        text = "Accel: ${String.format("%.2f", totalG)}G (X:${String.format("%+.1f", input.accelX)} Y:${String.format("%+.1f", input.accelY)} Z:${String.format("%+.1f", input.accelZ)})",
+                        text = "Accel: ${String.format(java.util.Locale.US, "%.2f", totalG)}G (X:${String.format(java.util.Locale.US, "%+.1f", safeAccelX)} Y:${String.format(java.util.Locale.US, "%+.1f", safeAccelY)} Z:${String.format(java.util.Locale.US, "%+.1f", safeAccelZ)})",
                         color = Color(0xFFA5F3FC),
                         fontSize = 9.5.sp,
                         fontFamily = FontFamily.Monospace,
@@ -1185,7 +1196,7 @@ private fun HardwareStreamInspector(viewModel: DesktopViewModel) {
                         softWrap = false
                     )
                     Text(
-                        text = "Fused Aim: Yaw ${String.format("%+.1f°", viewModel.processedYaw)} | Pitch ${String.format("%+.1f°", viewModel.processedPitch)}",
+                        text = "Fused Aim: Yaw ${String.format(java.util.Locale.US, "%+.1f°", safeYaw)} | Pitch ${String.format(java.util.Locale.US, "%+.1f°", safePitch)}",
                         color = NeonPalette.Green,
                         fontSize = 9.5.sp,
                         fontFamily = FontFamily.Monospace,
@@ -1264,11 +1275,11 @@ private fun StickVisualizer(
                 )
 
                 // Moving puck
-                val clampedX = x.coerceIn(-1f, 1f)
-                val clampedY = y.coerceIn(-1f, 1f)
+                val safeX = if (x.isFinite()) x.coerceIn(-1f, 1f) else 0f
+                val safeY = if (y.isFinite()) y.coerceIn(-1f, 1f) else 0f
                 val puckOffset = Offset(
-                    center.x + clampedX * (radius - 5f),
-                    center.y - clampedY * (radius - 5f)
+                    center.x + safeX * (radius - 5f),
+                    center.y - safeY * (radius - 5f)
                 )
                 drawCircle(
                     color = NeonPalette.Cyan.copy(alpha = 0.4f),
@@ -1283,8 +1294,10 @@ private fun StickVisualizer(
             }
         }
         Spacer(modifier = Modifier.height(2.dp))
+        val safeX = if (x.isFinite()) x.coerceIn(-1f, 1f) else 0f
+        val safeY = if (y.isFinite()) y.coerceIn(-1f, 1f) else 0f
         Text(
-            text = "X:${String.format("%+.2f", x)} Y:${String.format("%+.2f", y)}",
+            text = "X:${String.format(java.util.Locale.US, "%+.2f", safeX)} Y:${String.format(java.util.Locale.US, "%+.2f", safeY)}",
             color = NeonPalette.Cyan,
             fontSize = 9.sp,
             fontFamily = FontFamily.Monospace,
@@ -1302,8 +1315,8 @@ private fun TriggerBar(
     value: Float,
     modifier: Modifier = Modifier
 ) {
-    val clamped = value.coerceIn(0f, 1f)
-    val percent = (clamped * 100).toInt()
+    val safeValue = if (value.isFinite()) value.coerceIn(0f, 1f) else 0f
+    val percent = (safeValue * 100).toInt()
     Column(modifier = modifier) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1324,7 +1337,7 @@ private fun TriggerBar(
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .fillMaxWidth(clamped)
+                    .fillMaxWidth(safeValue)
                     .clip(RoundedCornerShape(3.dp))
                     .background(if (percent > 50) NeonPalette.Green else NeonPalette.Cyan)
             )
