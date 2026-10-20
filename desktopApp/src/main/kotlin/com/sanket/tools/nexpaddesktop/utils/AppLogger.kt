@@ -5,6 +5,12 @@ import java.io.PrintStream
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Collections
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 enum class LogCategory(val displayName: String, val badge: String) {
     ALL("All", "ALL"),
@@ -44,10 +50,26 @@ data class LogEntry(
 }
 
 object AppLogger {
-    private val rawLogs = Collections.synchronizedList(ArrayList<LogEntry>())
+    private const val MAX_LOGS = 2000
+    private val rawLogs = ArrayDeque<LogEntry>(MAX_LOGS)
     val updateTrigger = mutableStateOf(0)
     private var nextId = 1L
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
+
+    private val loggerScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default + kotlinx.coroutines.SupervisorJob())
+    private val pendingUiNotification = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    private fun requestUiNotification() {
+        if (pendingUiNotification.compareAndSet(false, true)) {
+            loggerScope.launch {
+                kotlinx.coroutines.delay(100L) // 100ms batch coalesce window (max 10 UI ticks/sec)
+                pendingUiNotification.set(false)
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    updateTrigger.value++
+                }
+            }
+        }
+    }
     
     fun getLogsCopy(): List<String> {
         synchronized(rawLogs) {
@@ -126,10 +148,10 @@ object AppLogger {
             if (lastLog != null && lastLog.message == trimmed) {
                 lastLog.count++
             } else {
-                if (rawLogs.size > 2500) {
-                    rawLogs.subList(0, 600).clear()
+                while (rawLogs.size >= MAX_LOGS) {
+                    rawLogs.removeFirst()
                 }
-                rawLogs.add(
+                rawLogs.addLast(
                     LogEntry(
                         id = nextId++,
                         timestamp = now,
@@ -140,15 +162,17 @@ object AppLogger {
                 )
             }
         }
-        // Increment trigger to notify UI to re-read getLogsCopy() / getLogEntriesCopy()
-        updateTrigger.value++
+        // Throttled notification: batches high-throughput logs to max 10Hz UI updates on Main dispatcher
+        requestUiNotification()
     }
 
     fun clearLogs() {
         synchronized(rawLogs) {
             rawLogs.clear()
         }
-        updateTrigger.value++
+        loggerScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+            updateTrigger.value++
+        }
     }
 
     fun exportLogsToFile(): java.io.File {

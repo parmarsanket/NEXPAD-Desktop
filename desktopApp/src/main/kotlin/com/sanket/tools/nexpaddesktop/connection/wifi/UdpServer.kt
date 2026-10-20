@@ -88,6 +88,8 @@ class UdpServer(
     private var packetCount = 0
     private var hasLoggedFirstPacket = false
     private var totalPackets = 0L
+    private var lastTelemetryUiUpdateMs = 0L
+    private var lastFeedbackUiUpdateMs = 0L
     @Volatile private var lastFeedback = GamepadFeedback(0, 0)
     @Volatile private var lastLoggedRumbleFeedback: GamepadFeedback? = null
     @Volatile private var cachedLossPctByte: Byte = 0 // Cache last rumble state for Ping Echoes
@@ -214,7 +216,12 @@ class UdpServer(
                 }
                 
                 totalPackets++
-                liveTotalRxPackets = totalPackets
+                val nowMs = System.currentTimeMillis()
+                if (nowMs - lastTelemetryUiUpdateMs >= 250L) {
+                    lastTelemetryUiUpdateMs = nowMs
+                    liveTotalRxPackets = totalPackets
+                    livePacketLossPct = cachedLossPctByte.toInt() and 0xFF
+                }
                 packetCount = (packetCount % 200) + 1  // Wraps 1→200, matching 200Hz polling rate
                 if (!hasLoggedFirstPacket) {
                     hasLoggedFirstPacket = true
@@ -382,7 +389,11 @@ class UdpServer(
                 socket.send(packet)
             }
             totalFeedbacksSent++
-            liveTotalTxFeedbacks = totalFeedbacksSent
+            val nowFeedbackMs = System.currentTimeMillis()
+            if (nowFeedbackMs - lastFeedbackUiUpdateMs >= 250L) {
+                lastFeedbackUiUpdateMs = nowFeedbackMs
+                liveTotalTxFeedbacks = totalFeedbacksSent
+            }
             if (totalFeedbacksSent > 0 && totalFeedbacksSent % 10000L == 0L) {
                 println("📡 [FEEDBACK HEARTBEAT] Checkpoint: $totalFeedbacksSent feedback frames sent to ${formatAddress(target)}")
             }

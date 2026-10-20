@@ -118,7 +118,9 @@ class AdbBridgeManager(
                 .start()
 
             val lines = process.inputStream.bufferedReader().readLines()
-            process.waitFor()
+            if (!process.waitFor(5, TimeUnit.SECONDS)) {
+                process.destroyForcibly()
+            }
 
             var foundAnyDevice = false
             var readyDevice: AdbDeviceInfo? = null
@@ -207,7 +209,8 @@ class AdbBridgeManager(
                 adbPath, "-s", serial,
                 "shell", "am", "broadcast",
                 "-a", "com.sanket.tools.nexpad.ADB_DEVICE_READY",
-                "--es", "pc_name", pcName
+                "--es", "pc_name", pcName,
+                "--ei", "port", tcpPort.toString()
             ).redirectOutput(Redirect.DISCARD)
              .redirectError(Redirect.DISCARD)
              .start()
@@ -243,12 +246,16 @@ class AdbBridgeManager(
             ).redirectErrorStream(true).start()
 
             val output = process.inputStream.bufferedReader().readText()
-            val exitCode = process.waitFor()
-            if (exitCode == 0) {
+            val finished = process.waitFor(5, TimeUnit.SECONDS)
+            if (!finished) {
+                process.destroyForcibly()
+                println("[ADB/Bridge] adb reverse timed out after 5s")
+                false
+            } else if (process.exitValue() == 0) {
                 println("[ADB/Bridge] adb reverse configured: localabstract:$ABSTRACT_SOCKET_NAME -> tcp:$tcpPort")
                 true
             } else {
-                println("[ADB/Bridge] adb reverse failed (exit $exitCode): $output")
+                println("[ADB/Bridge] adb reverse failed (exit ${process.exitValue()}): $output")
                 false
             }
         } catch (e: Exception) {
@@ -260,10 +267,13 @@ class AdbBridgeManager(
     private fun removeAdbReverse(adbPath: String?, serial: String?) {
         if (adbPath == null || serial == null) return
         try {
-            ProcessBuilder(
+            val p = ProcessBuilder(
                 adbPath, "-s", serial,
                 "reverse", "--remove", "localabstract:$ABSTRACT_SOCKET_NAME"
-            ).start().waitFor()
+            ).start()
+            if (!p.waitFor(5, TimeUnit.SECONDS)) {
+                p.destroyForcibly()
+            }
             println("[ADB/Bridge] Removed adb reverse rule for $serial")
         } catch (_: Exception) {}
     }

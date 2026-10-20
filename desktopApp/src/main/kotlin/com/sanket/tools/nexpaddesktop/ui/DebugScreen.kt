@@ -149,7 +149,7 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
 
     LaunchedEffect(filteredLogs.size, autoScrollEnabled, isStreamPaused) {
         if (autoScrollEnabled && !isStreamPaused && filteredLogs.isNotEmpty()) {
-            listState.animateScrollToItem(filteredLogs.size - 1)
+            listState.scrollToItem(filteredLogs.size - 1)
         }
     }
 
@@ -349,6 +349,17 @@ fun DebugScreen(viewModel: DesktopViewModel = remember { DesktopViewModel() }) {
                     secondaryText = "${viewModel.dsuClientCount} Emulator Client(s)",
                     statusColor = if (viewModel.isDsuServerEnabled) Color(0xFF38BDF8) else Color(0xFF64748B),
                     icon = "🎯"
+                )
+
+                val runtime = Runtime.getRuntime()
+                val usedMemMb = (runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024)
+                val maxMemMb = runtime.maxMemory() / (1024 * 1024)
+                HudGlassCard(
+                    title = "SYSTEM MEMORY",
+                    primaryText = "${usedMemMb} MB / ${maxMemMb} MB",
+                    secondaryText = "Ring Buffer: ${allLogs.size} logs (Bounded)",
+                    statusColor = if (usedMemMb < maxMemMb * 0.8) NeonPalette.Green else Color(0xFFF59E0B),
+                    icon = "🧠"
                 )
             }
 
@@ -1462,12 +1473,14 @@ private fun LogTerminalRow(
             )
         }
 
-        // Highlighted Log Message
-        val annotatedMessage = buildHighlightedText(
-            text = log.message,
-            query = searchQuery,
-            defaultColor = messageColor
-        )
+        // Highlighted Log Message (memoized per entry/query)
+        val annotatedMessage = remember(log.id, log.count, searchQuery) {
+            buildHighlightedText(
+                text = log.message,
+                query = searchQuery,
+                defaultColor = messageColor
+            )
+        }
 
         Text(
             text = annotatedMessage,
