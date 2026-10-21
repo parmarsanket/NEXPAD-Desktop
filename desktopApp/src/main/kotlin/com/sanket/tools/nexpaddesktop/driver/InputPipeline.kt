@@ -24,25 +24,7 @@ object InputPipeline {
     ): GamepadInput {
         
         // 1. Check gyro activation buttons (Aim-Down-Sights / Button Hold)
-        val isActivationButtonPressed = if (gyroSettings.activationButtons.isEmpty()) {
-            true
-        } else {
-            gyroSettings.activationButtons.any { btn ->
-                when (btn.trim().uppercase()) {
-                    NexpadKeys.LT, "L2", "LEFT_TRIGGER" -> input.triggerL2 > 0.1f
-                    NexpadKeys.RT, "R2", "RIGHT_TRIGGER" -> input.triggerR2 > 0.1f
-                    NexpadKeys.LB, "L1", "LEFT_BUMPER" -> input.btnL1
-                    NexpadKeys.RB, "R1", "RIGHT_BUMPER" -> input.btnR1
-                    NexpadKeys.A, "CROSS" -> input.btnA
-                    NexpadKeys.B, "CIRCLE" -> input.btnB
-                    NexpadKeys.X, "SQUARE" -> input.btnX
-                    NexpadKeys.Y, "TRIANGLE" -> input.btnY
-                    "LS", "LSB", "L3" -> input.btnL3
-                    "RS", "RSB", "R3" -> input.btnR3
-                    else -> false
-                }
-            }
-        }
+        val isActivationButtonPressed = GamepadControlClassifier.isActivationButtonPressed(gyroSettings.activationButtons, input)
 
         // Run gyro through the processing pipeline
         val processed = gyroProcessor.process(
@@ -309,3 +291,4 @@ object InputPipeline {
         )
     }
 }
+

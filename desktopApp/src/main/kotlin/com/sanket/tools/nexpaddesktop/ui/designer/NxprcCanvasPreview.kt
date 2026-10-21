@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.draw.drawBehind
 import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpaddesktop.model.ControllerTouchClassifier
 import kotlinx.coroutines.launch
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -222,21 +223,9 @@ fun NxprcCanvasPreview(
     var isPressed by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    val isStick = document.manifest.category.equals("JOYSTICK", ignoreCase = true) ||
-            document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
-            document.manifest.defaultControl.uppercase() in listOf(
-                com.sanket.tools.nexpad.category.ControlKey.LS.key,
-                com.sanket.tools.nexpad.category.ControlKey.RS.key,
-                com.sanket.tools.nexpad.category.ControlKey.LTP.key,
-                com.sanket.tools.nexpad.category.ControlKey.RTP.key
-            )
-    val isCameraMode = document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
-            document.manifest.defaultControl.equals(com.sanket.tools.nexpad.category.ControlKey.RTP.key, ignoreCase = true) ||
-            document.manifest.defaultControl.equals(com.sanket.tools.nexpad.category.ControlKey.LTP.key, ignoreCase = true) ||
-            document.manifest.defaultControl.equals(com.sanket.tools.nexpad.category.ControlKey.RS.key, ignoreCase = true)
-    val isTouchpad = document.manifest.category.equals("TOUCHPAD", ignoreCase = true) ||
-            document.manifest.defaultControl.equals(com.sanket.tools.nexpad.category.ControlKey.LTP.key, ignoreCase = true) ||
-            document.manifest.defaultControl.equals(com.sanket.tools.nexpad.category.ControlKey.RTP.key, ignoreCase = true)
+    val isStick = ControllerTouchClassifier.isJoystick(document.manifest.defaultControl, document.manifest.id) || ControllerTouchClassifier.isTouchpad(document.manifest.defaultControl, document.manifest.id) || document.manifest.category.equals("JOYSTICK", ignoreCase = true) || document.manifest.category.equals("TOUCHPAD", ignoreCase = true)
+    val isCameraMode = ControllerTouchClassifier.isTouchpad(document.manifest.defaultControl, document.manifest.id) || ControllerTouchClassifier.isRightStickOrTouchpad(document.manifest.defaultControl, document.manifest.id) || document.manifest.category.equals("TOUCHPAD", ignoreCase = true)
+    val isTouchpad = ControllerTouchClassifier.isTouchpad(document.manifest.defaultControl, document.manifest.id) || document.manifest.category.equals("TOUCHPAD", ignoreCase = true)
 
     val thumbOffsetX = remember { Animatable(0f) }
     val thumbOffsetY = remember { Animatable(0f) }
@@ -1720,3 +1709,5 @@ internal fun buildRegularPolygonPath(sides: Int, targetRect: Rect): Path {
     path.close()
     return path
 }
+
+

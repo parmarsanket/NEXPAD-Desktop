@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpad.category.CategoryType
 import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpaddesktop.model.ControllerTouchClassifier
 import com.sanket.tools.nexpad.nxprc.NxprcDocument
 import com.sanket.tools.nexpad.model.NexpadKeys
 import com.sanket.tools.nexpaddesktop.connection.ActiveTransport
@@ -1769,14 +1770,7 @@ private fun LiveSandboxPane(
         }
 
         // Live Animation & Physics Stats Strip
-        val isStick = effCategory.equals("JOYSTICK", ignoreCase = true) ||
-                effCategory.equals("TOUCHPAD", ignoreCase = true) ||
-                effControl.uppercase() in listOf(
-                    com.sanket.tools.nexpad.category.ControlKey.LS.key,
-                    com.sanket.tools.nexpad.category.ControlKey.RS.key,
-                    com.sanket.tools.nexpad.category.ControlKey.LTP.key,
-                    com.sanket.tools.nexpad.category.ControlKey.RTP.key
-                )
+        val isStick = ControllerTouchClassifier.isJoystick(effControl, compiledDoc.manifest.id) || ControllerTouchClassifier.isTouchpad(effControl, compiledDoc.manifest.id) || effCategory.equals("JOYSTICK", ignoreCase = true) || effCategory.equals("TOUCHPAD", ignoreCase = true)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1794,10 +1788,7 @@ private fun LiveSandboxPane(
                 val dy = stickDeflection.second
                 val xStr = if (dx >= 0f) "+${"%.2f".format(dx)}" else "%.2f".format(dx)
                 val yStr = if (dy >= 0f) "+${"%.2f".format(dy)}" else "%.2f".format(dy)
-                val isRightStick = effControl.uppercase() in listOf(
-                    com.sanket.tools.nexpad.category.ControlKey.RS.key,
-                    com.sanket.tools.nexpad.category.ControlKey.RTP.key
-                ) || compiledDoc.manifest.id.contains("rtp", ignoreCase = true)
+                val isRightStick = ControllerTouchClassifier.isRightStickOrTouchpad(effControl, compiledDoc.manifest.id)
                 val stickName = if (isRightStick) "RS Stick" else "LS Stick"
                 Text(
                     "$stickName: X:$xStr Y:$yStr",
@@ -2156,3 +2147,4 @@ private fun LiveSandboxPane(
         }
     }
 }
+

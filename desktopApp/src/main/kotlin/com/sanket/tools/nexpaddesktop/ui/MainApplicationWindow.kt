@@ -24,12 +24,8 @@ import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 import com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel
 import kotlinx.serialization.Serializable
 
-enum class Screen { HOME, CONTROLLER, PLUGINS, NODE, CONVERTER, OUTPUT, KBM, DEBUG }
-@Serializable
-enum class ControllerType(val displayName: String) { 
-    XBOX_360("Standard Gamepad (XInput)"), 
-    DUALSHOCK_4("Motion Gamepad (DS4)") 
-}
+typealias Screen = com.sanket.tools.nexpaddesktop.model.Screen
+typealias ControllerType = com.sanket.tools.nexpaddesktop.model.ControllerType
 
 @Composable
 fun MainApplicationWindow(
@@ -142,3 +138,4 @@ fun MainApplicationWindow(
 
     MainApplicationWindow(viewModel = viewModel)
 }
+

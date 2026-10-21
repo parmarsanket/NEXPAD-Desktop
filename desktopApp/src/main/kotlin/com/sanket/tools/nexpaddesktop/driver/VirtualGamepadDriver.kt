@@ -31,6 +31,7 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
      * C++ library to crash when it tries to invoke the callback pointer. 
      */
     private var notificationCallback: ViGEmClientLibrary.PVIGEM_X360_NOTIFICATION? = null
+    private val cachedReport = XUSBReport()
 
     override fun connect() = synchronized(this) {
         // Prevent memory leaks during retry loops: completely clear old state before attempting
@@ -127,7 +128,7 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
             if (!isConnected || client == null || target == null) return
 
             // 1. Pack data into native 12-byte struct
-            val report = ViGEmInputMapper.map(input)
+            val report = ViGEmInputMapper.map(input, cachedReport)
 
             try {
                 // 2. Submit C-Struct to Windows Kernel
@@ -151,3 +152,4 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
         return isConnected
     }
 }
+

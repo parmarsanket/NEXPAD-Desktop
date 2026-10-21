@@ -24,6 +24,7 @@ class DualShock4InputMapper {
     private var calibrationSamples = 0
     private var stillnessFrames = 0
     private var startTimeNanos = System.nanoTime()
+    private val cachedReport = ViGEmClientLibrary.DS4_REPORT_EX.ByValue()
 
     companion object {
         private const val CALIBRATION_COUNT = 100
@@ -54,8 +55,7 @@ class DualShock4InputMapper {
     /**
      * Translates a generic network payload into a native C memory block.
      */
-    fun map(input: GamepadInput): ViGEmClientLibrary.DS4_REPORT_EX.ByValue {
-        val report = ViGEmClientLibrary.DS4_REPORT_EX.ByValue()
+    fun map(input: GamepadInput, destination: ViGEmClientLibrary.DS4_REPORT_EX.ByValue = cachedReport): ViGEmClientLibrary.DS4_REPORT_EX.ByValue { val report = destination
 
         // 1. Analog Sticks
         report.bThumbLX = stickToByte(input.leftStickX)
@@ -194,3 +194,4 @@ class DualShock4InputMapper {
         return Triple(calX, calY, calZ)
     }
 }
+

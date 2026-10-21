@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.driver
+package com.sanket.tools.nexpaddesktop.driver
 
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpaddesktop.driver.jna.XUSBReport
@@ -26,8 +26,7 @@ object ViGEmInputMapper {
      * @param input The deserialized network payload from the Android controller.
      * @return An [XUSBReport] fully populated and ready for [ViGEmClientLibrary.vigem_target_x360_update].
      */
-    fun map(input: GamepadInput): XUSBReport {
-        val report = XUSBReport()
+    fun map(input: GamepadInput, destination: XUSBReport = XUSBReport()): XUSBReport { val report = destination
         var buttons: Short = 0
         
         // ---------------------------------------------------------------------
@@ -72,3 +71,4 @@ object ViGEmInputMapper {
         return report
     }
 }
+
