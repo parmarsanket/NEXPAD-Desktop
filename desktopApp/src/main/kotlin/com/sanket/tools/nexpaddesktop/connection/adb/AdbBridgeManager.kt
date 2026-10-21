@@ -104,7 +104,8 @@ class AdbBridgeManager(
                         }
                     }
                 }
-                delay(1500)
+                val sleepMs = if (isAdbDevicePresent.get()) 1500L else 2500L
+                delay(sleepMs)
             }
         }
     }
@@ -117,9 +118,15 @@ class AdbBridgeManager(
                 .redirectErrorStream(true)
                 .start()
 
-            val lines = process.inputStream.bufferedReader().readLines()
-            if (!process.waitFor(5, TimeUnit.SECONDS)) {
-                process.destroyForcibly()
+            try { process.outputStream.close() } catch (_: Throwable) {}
+            val lines = try {
+                process.inputStream.bufferedReader().use { it.readLines() }
+            } finally {
+                if (!process.waitFor(5, TimeUnit.SECONDS)) {
+                    process.destroyForcibly()
+                } else {
+                    process.destroy()
+                }
             }
 
             var foundAnyDevice = false
@@ -215,8 +222,11 @@ class AdbBridgeManager(
              .redirectError(Redirect.DISCARD)
              .start()
 
+            try { process.outputStream.close() } catch (_: Throwable) {}
             if (!process.waitFor(3, TimeUnit.SECONDS)) {
                 process.destroyForcibly()
+            } else {
+                process.destroy()
             }
         } catch (_: Exception) {}
     }
@@ -232,8 +242,11 @@ class AdbBridgeManager(
              .redirectError(Redirect.DISCARD)
              .start()
 
+            try { process.outputStream.close() } catch (_: Throwable) {}
             if (!process.waitFor(3, TimeUnit.SECONDS)) {
                 process.destroyForcibly()
+            } else {
+                process.destroy()
             }
         } catch (_: Exception) {}
     }
@@ -245,10 +258,19 @@ class AdbBridgeManager(
                 "reverse", "localabstract:$ABSTRACT_SOCKET_NAME", "tcp:$tcpPort"
             ).redirectErrorStream(true).start()
 
-            val output = process.inputStream.bufferedReader().readText()
-            val finished = process.waitFor(5, TimeUnit.SECONDS)
+            try { process.outputStream.close() } catch (_: Throwable) {}
+            var output = ""
+            val finished = try {
+                output = process.inputStream.bufferedReader().use { it.readText() }
+                process.waitFor(5, TimeUnit.SECONDS)
+            } finally {
+                if (!process.isAlive) {
+                    process.destroy()
+                } else {
+                    process.destroyForcibly()
+                }
+            }
             if (!finished) {
-                process.destroyForcibly()
                 println("[ADB/Bridge] adb reverse timed out after 5s")
                 false
             } else if (process.exitValue() == 0) {
@@ -271,8 +293,16 @@ class AdbBridgeManager(
                 adbPath, "-s", serial,
                 "reverse", "--remove", "localabstract:$ABSTRACT_SOCKET_NAME"
             ).start()
-            if (!p.waitFor(5, TimeUnit.SECONDS)) {
-                p.destroyForcibly()
+            try { p.outputStream.close() } catch (_: Throwable) {}
+            try {
+                if (!p.waitFor(5, TimeUnit.SECONDS)) {
+                    p.destroyForcibly()
+                } else {
+                    p.destroy()
+                }
+            } finally {
+                try { p.inputStream.close() } catch (_: Throwable) {}
+                try { p.errorStream.close() } catch (_: Throwable) {}
             }
             println("[ADB/Bridge] Removed adb reverse rule for $serial")
         } catch (_: Exception) {}

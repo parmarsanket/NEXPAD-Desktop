@@ -250,12 +250,15 @@ object DesktopPluginManager {
                 .redirectOutput(ProcessBuilder.Redirect.DISCARD)
                 .redirectError(ProcessBuilder.Redirect.DISCARD)
                 .start()
+            try { process.outputStream.close() } catch (_: Throwable) {}
             val finished = process.waitFor(timeoutSec, TimeUnit.SECONDS)
             if (!finished) {
                 process.destroyForcibly()
                 false
             } else {
-                process.exitValue() == 0
+                val ok = process.exitValue() == 0
+                process.destroy()
+                ok
             }
         } catch (_: Exception) {
             false
@@ -272,10 +275,15 @@ object DesktopPluginManager {
         try {
             // Check connected ADB devices
             val devicesProcess = ProcessBuilder(adbPath, "devices").redirectErrorStream(true).start()
-            val output = devicesProcess.inputStream.bufferedReader().readText()
-            val devicesFinished = devicesProcess.waitFor(15, TimeUnit.SECONDS)
+            try { devicesProcess.outputStream.close() } catch (_: Throwable) {}
+            var output = ""
+            val devicesFinished = try {
+                output = devicesProcess.inputStream.bufferedReader().use { it.readText() }
+                devicesProcess.waitFor(15, TimeUnit.SECONDS)
+            } finally {
+                if (!devicesProcess.isAlive) devicesProcess.destroy() else devicesProcess.destroyForcibly()
+            }
             if (!devicesFinished) {
-                devicesProcess.destroyForcibly()
                 return@withContext Result.failure(IllegalStateException("ADB devices check timed out."))
             }
             if (devicesProcess.exitValue() != 0) {
@@ -301,9 +309,13 @@ object DesktopPluginManager {
                 .redirectOutput(ProcessBuilder.Redirect.DISCARD)
                 .redirectError(ProcessBuilder.Redirect.DISCARD)
                 .start()
-            val pushFinished = pushProcess.waitFor(15, TimeUnit.SECONDS)
+            try { pushProcess.outputStream.close() } catch (_: Throwable) {}
+            val pushFinished = try {
+                pushProcess.waitFor(15, TimeUnit.SECONDS)
+            } finally {
+                if (!pushProcess.isAlive) pushProcess.destroy() else pushProcess.destroyForcibly()
+            }
             if (!pushFinished) {
-                pushProcess.destroyForcibly()
                 tempFile.delete()
                 return@withContext Result.failure(IllegalStateException("ADB push timed out."))
             }
@@ -344,10 +356,15 @@ object DesktopPluginManager {
         try {
             // Check connected ADB devices
             val devicesProcess = ProcessBuilder(adbPath, "devices").redirectErrorStream(true).start()
-            val output = devicesProcess.inputStream.bufferedReader().readText()
-            val devicesFinished = devicesProcess.waitFor(15, TimeUnit.SECONDS)
+            try { devicesProcess.outputStream.close() } catch (_: Throwable) {}
+            var output = ""
+            val devicesFinished = try {
+                output = devicesProcess.inputStream.bufferedReader().use { it.readText() }
+                devicesProcess.waitFor(15, TimeUnit.SECONDS)
+            } finally {
+                if (!devicesProcess.isAlive) devicesProcess.destroy() else devicesProcess.destroyForcibly()
+            }
             if (!devicesFinished) {
-                devicesProcess.destroyForcibly()
                 return@withContext Result.failure(IllegalStateException("ADB devices check timed out."))
             }
             if (devicesProcess.exitValue() != 0) {
@@ -374,9 +391,13 @@ object DesktopPluginManager {
                 .redirectOutput(ProcessBuilder.Redirect.DISCARD)
                 .redirectError(ProcessBuilder.Redirect.DISCARD)
                 .start()
-            val pushFinished = pushProcess.waitFor(15, TimeUnit.SECONDS)
+            try { pushProcess.outputStream.close() } catch (_: Throwable) {}
+            val pushFinished = try {
+                pushProcess.waitFor(15, TimeUnit.SECONDS)
+            } finally {
+                if (!pushProcess.isAlive) pushProcess.destroy() else pushProcess.destroyForcibly()
+            }
             if (!pushFinished) {
-                pushProcess.destroyForcibly()
                 tempFile.delete()
                 return@withContext Result.failure(IllegalStateException("ADB push timed out."))
             }

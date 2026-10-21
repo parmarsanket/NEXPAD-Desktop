@@ -125,8 +125,16 @@ object WinUsbDriverManager {
             val proc = ProcessBuilder("pnputil.exe", "/enum-drivers")
                 .redirectErrorStream(true)
                 .start()
-            val text = proc.inputStream.bufferedReader().readText()
-            proc.waitFor(3, java.util.concurrent.TimeUnit.SECONDS)
+            try { proc.outputStream.close() } catch (_: Throwable) {}
+            val text = try {
+                proc.inputStream.bufferedReader().use { it.readText() }
+            } finally {
+                if (!proc.waitFor(3, java.util.concurrent.TimeUnit.SECONDS)) {
+                    proc.destroyForcibly()
+                } else {
+                    proc.destroy()
+                }
+            }
             text.contains("18D1&PID_2D00", ignoreCase = true)
         } catch (_: Exception) {
             false
@@ -152,8 +160,16 @@ object WinUsbDriverManager {
             val proc = ProcessBuilder("pnputil.exe", "/enum-drivers")
                 .redirectErrorStream(true)
                 .start()
-            val text = proc.inputStream.bufferedReader().readText()
-            proc.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)
+            try { proc.outputStream.close() } catch (_: Throwable) {}
+            val text = try {
+                proc.inputStream.bufferedReader().use { it.readText() }
+            } finally {
+                if (!proc.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                    proc.destroyForcibly()
+                } else {
+                    proc.destroy()
+                }
+            }
 
             val blocks = text.split("Published Name:")
             for (block in blocks) {
@@ -166,8 +182,16 @@ object WinUsbDriverManager {
                         val delProc = ProcessBuilder("pnputil.exe", "/delete-driver", publishedName, "/uninstall", "/force")
                             .redirectErrorStream(true)
                             .start()
-                        val delOutput = delProc.inputStream.bufferedReader().readText()
-                        delProc.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)
+                        try { delProc.outputStream.close() } catch (_: Throwable) {}
+                        val delOutput = try {
+                            delProc.inputStream.bufferedReader().use { it.readText() }
+                        } finally {
+                            if (!delProc.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                                delProc.destroyForcibly()
+                            } else {
+                                delProc.destroy()
+                            }
+                        }
                         println("[WinUSB/Driver] Delete result for $publishedName: ${delOutput.trim()}")
                         uninstalledCount++
                     }
@@ -176,7 +200,16 @@ object WinUsbDriverManager {
 
             println("[WinUSB/Driver] Triggering PnP hardware re-enumeration...")
             try {
-                ProcessBuilder("pnputil.exe", "/scan-devices").start().waitFor(3, java.util.concurrent.TimeUnit.SECONDS)
+                val scanP = ProcessBuilder("pnputil.exe", "/scan-devices")
+                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                    .redirectError(ProcessBuilder.Redirect.DISCARD)
+                    .start()
+                try { scanP.outputStream.close() } catch (_: Throwable) {}
+                if (!scanP.waitFor(3, java.util.concurrent.TimeUnit.SECONDS)) {
+                    scanP.destroyForcibly()
+                } else {
+                    scanP.destroy()
+                }
             } catch (_: Exception) {}
 
             println("[WinUSB/Driver] Rollback completed. (Uninstalled $uninstalledCount driver packages). Default Windows driver will bind.")

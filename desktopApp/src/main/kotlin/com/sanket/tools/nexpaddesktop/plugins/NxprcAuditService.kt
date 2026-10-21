@@ -68,10 +68,16 @@ object NxprcAuditService {
                 fileUrl
             )
 
-            val proc = ProcessBuilder(*cmd).start()
+            val proc = ProcessBuilder(*cmd)
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                .redirectError(ProcessBuilder.Redirect.DISCARD)
+                .start()
+            try { proc.outputStream.close() } catch (_: Throwable) {}
             val completed = proc.waitFor(10, java.util.concurrent.TimeUnit.SECONDS)
             if (!completed) {
                 proc.destroyForcibly()
+            } else {
+                proc.destroy()
             }
 
             val resultImg = if (outFile.exists() && outFile.length() > 0) {

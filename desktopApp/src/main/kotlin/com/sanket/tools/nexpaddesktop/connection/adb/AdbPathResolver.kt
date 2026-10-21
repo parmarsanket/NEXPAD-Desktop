@@ -130,10 +130,19 @@ object AdbPathResolver {
     private fun canExecute(command: String): Boolean {
         return try {
             val process = ProcessBuilder(command, "version")
-                .redirectErrorStream(true)
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                .redirectError(ProcessBuilder.Redirect.DISCARD)
                 .start()
-            val exitCode = process.waitFor()
-            exitCode == 0
+            try { process.outputStream.close() } catch (_: Throwable) {}
+            val finished = process.waitFor(3, java.util.concurrent.TimeUnit.SECONDS)
+            if (!finished) {
+                process.destroyForcibly()
+                false
+            } else {
+                val ok = process.exitValue() == 0
+                process.destroy()
+                ok
+            }
         } catch (_: Exception) {
             false
         }

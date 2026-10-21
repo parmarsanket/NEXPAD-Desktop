@@ -61,8 +61,16 @@ object UsbDeviceDetector {
             val proc = ProcessBuilder("pnputil.exe", "/enum-devices", "/connected")
                 .redirectErrorStream(true)
                 .start()
-            val text = proc.inputStream.bufferedReader().readText()
-            proc.waitFor()
+            try { proc.outputStream.close() } catch (_: Throwable) {}
+            val text = try {
+                proc.inputStream.bufferedReader().use { it.readText() }
+            } finally {
+                if (!proc.waitFor(3, java.util.concurrent.TimeUnit.SECONDS)) {
+                    proc.destroyForcibly()
+                } else {
+                    proc.destroy()
+                }
+            }
 
             dynamicPnpAndroidDevices.clear()
             dynamicPnpAdbDevices.clear()

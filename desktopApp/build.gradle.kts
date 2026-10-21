@@ -44,6 +44,15 @@ compose.desktop {
     application {
         mainClass = "com.sanket.tools.nexpaddesktop.MainKt"
 
+        jvmArgs += listOf(
+            "-Xms128m",
+            "-Xmx384m",
+            "-XX:+UseG1GC",
+            "-XX:MaxGCPauseMillis=16",
+            "-XX:G1PeriodicGCInterval=3000",
+            "-XX:+ShrinkHeapInSteps"
+        )
+
         nativeDistributions {
 
             targetFormats(TargetFormat.Msi, TargetFormat.Exe, TargetFormat.AppImage)
