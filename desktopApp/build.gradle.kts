@@ -58,12 +58,19 @@ compose.desktop {
         nativeDistributions {
 
             targetFormats(TargetFormat.Msi, TargetFormat.Exe, TargetFormat.AppImage)
-            packageName = "com.sanket.tools.nexpaddesktop"
+            packageName = "NEXPAD"
             packageVersion = "1.0.0"
+            description = "Next-Generation Low-Latency Mobile-to-PC Gamepad & Motion Aiming System"
+            copyright = "© 2026 NEXPAD. All rights reserved."
+            vendor = "NEXPAD"
             licenseFile.set(rootProject.file("LICENSE"))
 
             windows {
                 iconFile.set(project.file("src/main/resources/images/nexpad_icon.ico"))
+                menu = true
+                shortcut = true
+                dirChooser = true
+                upgradeUuid = "68c5b058-ec37-4d92-9112-9c3db6f80e01"
             }
 
             buildTypes.release.proguard {
