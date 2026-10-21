@@ -58,7 +58,7 @@ compose.desktop {
         nativeDistributions {
 
             targetFormats(TargetFormat.Msi, TargetFormat.Exe, TargetFormat.AppImage)
-            packageName = "NEXPAD"
+            packageName = "NEXPAD Desktop"
             packageVersion = "1.0.0"
             description = "Next-Generation Low-Latency Mobile-to-PC Gamepad & Motion Aiming System"
             copyright = "© 2026 NEXPAD. All rights reserved."
