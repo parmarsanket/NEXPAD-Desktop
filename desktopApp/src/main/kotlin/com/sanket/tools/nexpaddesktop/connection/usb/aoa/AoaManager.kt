@@ -172,7 +172,6 @@ class AoaManager {
                 candidates.forEach { it.unref() }
             }
         }
-        cleanup()
     }
 
     private suspend fun processAndroidDevice(candidate: CandidateUsbDevice.AndroidDevice): Boolean {
@@ -285,11 +284,6 @@ class AoaManager {
     }
     
     fun cleanup() {
-        context?.let {
-            try {
-                LibUsb.exit(it)
-            } catch (_: Exception) {}
-            context = null
-        }
+        context = null
     }
 }
