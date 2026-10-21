@@ -112,7 +112,8 @@ class AoaManager {
                 continue
             }
 
-            val candidates = UsbDeviceDetector.findCandidates(context!!)
+            val ctx = context ?: break
+            val candidates = UsbDeviceDetector.findCandidates(ctx)
             
             try {
                 // If handshake was recently sent, wait for phone to complete re-enumeration as 0x18D1
