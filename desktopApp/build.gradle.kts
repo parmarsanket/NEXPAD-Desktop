@@ -45,9 +45,11 @@ compose.desktop {
         mainClass = "com.sanket.tools.nexpaddesktop.MainKt"
 
         jvmArgs += listOf(
-            "-Xms128m",
-            "-Xmx384m",
+            "-Xms32m",
+            "-Xmx256m",
             "-XX:+UseG1GC",
+            "-XX:ParallelGCThreads=2",
+            "-XX:ConcGCThreads=1",
             "-XX:MaxGCPauseMillis=16",
             "-XX:G1PeriodicGCInterval=3000",
             "-XX:+ShrinkHeapInSteps"
