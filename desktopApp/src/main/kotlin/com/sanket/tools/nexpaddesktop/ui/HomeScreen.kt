@@ -1,5 +1,10 @@
 package com.sanket.tools.nexpaddesktop.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -24,6 +29,8 @@ import com.sanket.tools.nexpaddesktop.ui.components.home.DeveloperOptionsCard
 import com.sanket.tools.nexpaddesktop.ui.components.home.PortConfigurationCard
 import com.sanket.tools.nexpaddesktop.ui.components.home.DeviceSection
 import com.sanket.tools.nexpaddesktop.ui.components.home.DriverWarningBanner
+import com.sanket.tools.nexpaddesktop.ui.components.home.DriverSuccessBanner
+import com.sanket.tools.nexpaddesktop.ui.components.home.DriverSuccessDialog
 import com.sanket.tools.nexpaddesktop.ui.components.home.HomeHeader
 import com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel
 import androidx.compose.material3.Text
@@ -45,6 +52,13 @@ fun HomeScreen(
         activeTransport = viewModel.activeTransport,
         isAoaDriverNeeded = viewModel.isAoaDriverNeeded,
         driverInstallState = viewModel.driverInstallState,
+        driverInstallProgress = viewModel.driverInstallProgress,
+        driverInstallStatusText = viewModel.driverInstallStatusText,
+        showDriverSuccessToast = viewModel.showDriverSuccessToast,
+        driverSuccessToastMessage = viewModel.driverSuccessToastMessage,
+        onDismissDriverSuccessToast = { viewModel.dismissDriverSuccessToast() },
+        showDriverSuccessDialog = viewModel.showDriverSuccessDialog,
+        onDismissDriverSuccessDialog = { viewModel.dismissDriverSuccessDialog() },
         onInstallAoaDriver = viewModel.onInstallAoaDriver,
         isDeveloperOptionsEnabled = viewModel.isDeveloperOptionsEnabled,
         onDeveloperOptionsChange = { viewModel.updateDeveloperOptionsEnabled(it) },
@@ -61,6 +75,13 @@ fun HomeScreen(
     activeTransport: ActiveTransport = ActiveTransport.NONE,
     isAoaDriverNeeded: Boolean = false,
     driverInstallState: DriverInstallState = DriverInstallState.IDLE,
+    driverInstallProgress: Float = 0f,
+    driverInstallStatusText: String = "",
+    showDriverSuccessToast: Boolean = false,
+    driverSuccessToastMessage: String = "",
+    onDismissDriverSuccessToast: () -> Unit = {},
+    showDriverSuccessDialog: Boolean = false,
+    onDismissDriverSuccessDialog: () -> Unit = {},
     onInstallAoaDriver: () -> Unit = {},
     isDeveloperOptionsEnabled: Boolean = false,
     onDeveloperOptionsChange: (Boolean) -> Unit = {},
@@ -83,6 +104,21 @@ fun HomeScreen(
             HomeHeader()
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            // ── Driver Success Toast / Banner ──
+            AnimatedVisibility(
+                visible = showDriverSuccessToast,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { -20 }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { -20 })
+            ) {
+                Column {
+                    DriverSuccessBanner(
+                        message = driverSuccessToastMessage,
+                        onDismiss = onDismissDriverSuccessToast
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
 
             // ── ViGEmBus Driver Warning Banner ──
             if (!isDriverConnected) {
@@ -121,6 +157,8 @@ fun HomeScreen(
                 isDeviceConnected = connectedDeviceName != null,
                 isAoaDriverNeeded = isAoaDriverNeeded,
                 driverInstallState = driverInstallState,
+                driverInstallProgress = driverInstallProgress,
+                driverInstallStatusText = driverInstallStatusText,
                 onInstallAoaDriver = onInstallAoaDriver
             )
 
@@ -164,6 +202,12 @@ fun HomeScreen(
             thickness = 10.dp,
             trackWidth = 14.dp,
             showTrackGutter = true
+        )
+
+        // ── High-Visibility Driver Success Popup Alert Dialog ──
+        DriverSuccessDialog(
+            isOpen = showDriverSuccessDialog,
+            onDismiss = onDismissDriverSuccessDialog
         )
     }
 }

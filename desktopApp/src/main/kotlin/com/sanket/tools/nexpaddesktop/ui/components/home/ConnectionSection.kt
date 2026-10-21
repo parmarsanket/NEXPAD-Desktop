@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -38,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -60,6 +62,8 @@ fun ConnectionSection(
     isAoaDriverNeeded: Boolean,
     driverInstallState: DriverInstallState,
     onInstallAoaDriver: () -> Unit,
+    driverInstallProgress: Float = 0f,
+    driverInstallStatusText: String = "",
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -122,16 +126,52 @@ fun ConnectionSection(
                                 }
                             }
                             DriverInstallState.INSTALLING -> {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
+                                    targetValue = driverInstallProgress.coerceIn(0f, 1f),
+                                    animationSpec = androidx.compose.animation.core.tween(300)
+                                )
+                                val pct = (animatedProgress * 100).toInt()
+                                Column(
+                                    horizontalAlignment = Alignment.End,
+                                    verticalArrangement = Arrangement.spacedBy(3.dp)
                                 ) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(14.dp),
-                                        strokeWidth = 2.dp,
-                                        color = NeonPalette.Cyan
-                                    )
-                                    Text("Installing...", color = NeonPalette.Cyan, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = "$pct%",
+                                            color = NeonPalette.Cyan,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .width(72.dp)
+                                                .height(6.dp)
+                                                .clip(RoundedCornerShape(3.dp))
+                                                .background(Color.White.copy(alpha = 0.12f))
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxHeight()
+                                                    .fillMaxWidth(animatedProgress.coerceAtLeast(0.06f))
+                                                    .background(
+                                                        Brush.horizontalGradient(
+                                                            colors = listOf(NeonPalette.Cyan, NeonPalette.Purple)
+                                                        )
+                                                    )
+                                            )
+                                        }
+                                    }
+                                    if (driverInstallStatusText.isNotBlank()) {
+                                        Text(
+                                            text = driverInstallStatusText,
+                                            color = Color.White.copy(alpha = 0.65f),
+                                            fontSize = 9.sp,
+                                            maxLines = 1
+                                        )
+                                    }
                                 }
                             }
                             DriverInstallState.FINISHED -> {
@@ -145,7 +185,7 @@ fun ConnectionSection(
                                         tint = NeonPalette.Green,
                                         modifier = Modifier.size(14.dp)
                                     )
-                                    Text("Finished", color = NeonPalette.Green, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    Text("Installed (100%)", color = NeonPalette.Green, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }

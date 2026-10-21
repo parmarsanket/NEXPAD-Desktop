@@ -161,8 +161,13 @@ object AoaTransport {
                 outTransferred.clear()
 
                 val result = LibUsb.bulkTransfer(handle, bulkOutEndpoint, outBuffer, outTransferred, WRITE_TIMEOUT_MS)
-                if (result < 0 && result != LibUsb.ERROR_TIMEOUT) {
-                    // Suppress timeout spam, break on actual fatal pipe/disconnect errors
+                if (result == LibUsb.ERROR_PIPE) {
+                    // Endpoint stall (device not ready yet): clear halt and yield
+                    LibUsb.clearHalt(handle, bulkOutEndpoint)
+                    kotlinx.coroutines.delay(200)
+                    continue
+                } else if (result < 0 && result != LibUsb.ERROR_TIMEOUT) {
+                    // Suppress timeout spam, break on actual fatal disconnect errors
                     break
                 }
             }
@@ -171,7 +176,7 @@ object AoaTransport {
         }
     }
 
-    private fun CoroutineScope.runInLoop(
+    private suspend fun CoroutineScope.runInLoop(
         handle: DeviceHandle,
         bulkInEndpoint: Byte,
         triggerOutChannel: Channel<Unit>,
@@ -194,6 +199,7 @@ object AoaTransport {
         var lostInWindow = 0
         var receivedInWindow = 0
         var packetCount = 0
+        var pipeRetryCount = 0
 
         try {
             while (isActive) {
@@ -245,14 +251,27 @@ object AoaTransport {
                         onInputReceived(input)
                     }
                 } else if (result == LibUsb.ERROR_TIMEOUT) {
-                    // Normal timeout during read; check if active session timed out (5s resilient threshold)
-                    if (isSessionActive && (System.currentTimeMillis() - lastPacketReceivedTime > 5000L)) {
-                        println("[AOA/Transport] AOA stream idle (no packets for 5.0s). Ending active session.")
+                    // Normal timeout during read; check if active session timed out (45s resilient threshold)
+                    if (isSessionActive && (System.currentTimeMillis() - lastPacketReceivedTime > 45_000L)) {
+                        println("[AOA/Transport] AOA stream idle (no packets for 45s). Ending active session.")
                         isSessionActive = false
                         onSessionEnded()
                     }
-                } else if (result == LibUsb.ERROR_PIPE || result == LibUsb.ERROR_NO_DEVICE) {
+                } else if (result == LibUsb.ERROR_PIPE) {
+                    // Pipe stall: phone OS is either showing permission prompt or launching app
+                    if (!isSessionActive && pipeRetryCount < 25) {
+                        pipeRetryCount++
+                        if (pipeRetryCount % 5 == 1) {
+                            println("[AOA/Transport] Waiting for Android app to open accessory ($pipeRetryCount/25)...")
+                        }
+                        LibUsb.clearHalt(handle, bulkInEndpoint)
+                        kotlinx.coroutines.delay(200)
+                        continue
+                    }
                     println("[AOA/Transport] Device disconnected (${LibUsb.errorName(result)}).")
+                    break
+                } else if (result == LibUsb.ERROR_NO_DEVICE) {
+                    println("[AOA/Transport] Device physically disconnected (${LibUsb.errorName(result)}).")
                     break
                 } else if (result < 0) {
                     println("[AOA/Transport] Bulk read error: ${LibUsb.errorName(result)}")

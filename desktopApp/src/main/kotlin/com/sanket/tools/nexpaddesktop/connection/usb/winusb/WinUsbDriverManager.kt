@@ -1,34 +1,39 @@
 package com.sanket.tools.nexpaddesktop.connection.usb.winusb
 
 import java.io.File
-import kotlin.system.exitProcess
 
 object WinUsbDriverManager {
     
     private fun installForDevice(vidHex: String, pidHex: String, miStr: String): Int {
         try {
-            val isComposite = miStr != "none"
+            val cleanVid = vidHex.trim().uppercase()
+            val cleanPid = pidHex.trim().uppercase()
+            val isComposite = miStr.isNotBlank() && !miStr.equals("none", ignoreCase = true)
+            val formattedMi = if (isComposite) {
+                miStr.trim().toIntOrNull()?.let { String.format("%02X", it) } ?: miStr.trim()
+            } else ""
+
             val deviceId = if (isComposite) {
-                "USB\\VID_$vidHex&PID_$pidHex&MI_$miStr"
+                "USB\\VID_$cleanVid&PID_$cleanPid&MI_$formattedMi"
             } else {
-                "USB\\VID_$vidHex&PID_$pidHex"
+                "USB\\VID_$cleanVid&PID_$cleanPid"
             }
             
             val safeId = deviceId.replace("\\", "_").replace("&", "_")
-            val infPath = System.getProperty("java.io.tmpdir") + "nexpad_usb_$safeId" + "_" + System.nanoTime()
-            val infFile = File(infPath, "nexpad.inf")
-            infFile.parentFile.mkdirs()
+            val tmpDir = File(System.getProperty("java.io.tmpdir"))
+            val infFolder = File(tmpDir, "nexpad_usb_${safeId}_${System.nanoTime()}")
+            val infPath = infFolder.absolutePath
+            infFolder.mkdirs()
             
             val targetDevice = LibWdiBinding.wdi_device_info().apply {
-                this.vid = vidHex.toShort(16)
-                this.pid = pidHex.toShort(16)
+                this.vid = cleanVid.toInt(16).toShort()
+                this.pid = cleanPid.toInt(16).toShort()
                 this.device_id = deviceId
                 this.hardware_id = deviceId
                 this.desc = "NEXPAD USB Device"
                 this.is_composite = if (isComposite) 1 else 0
-                this.mi = if (isComposite) miStr.toByte() else 0
+                this.mi = if (isComposite) (miStr.trim().toIntOrNull()?.toByte() ?: 0) else 0
             }
-            
             println("[WinUSB/Driver] Forged Target Hardware ID: ${targetDevice.hardware_id}")
             
             try {
@@ -67,7 +72,7 @@ object WinUsbDriverManager {
                 return 1
             } finally {
                 try {
-                    infFile.parentFile.deleteRecursively()
+                    infFolder.deleteRecursively()
                 } catch (_: Exception) {}
             }
         } catch (e: Exception) {
@@ -76,18 +81,109 @@ object WinUsbDriverManager {
         }
     }
 
+    /**
+     * Installs the WinUSB driver dynamically for any target phone.
+     * Works with standard and custom vendor IDs.
+     * - Scopes composite devices to the specific MTP interface (MI_00)
+     * - Automatically pre-installs WinUSB for standard Google AOA Accessory (18D1:2D00)
+     */
     fun installWinUsb(vidHex: String, pidHex: String, miStr: String): Int {
-        println("[WinUSB/Driver] Elevating to install WinUSB for VID:$vidHex PID:$pidHex MI:$miStr...")
-        val res = installForDevice(vidHex, pidHex, miStr)
+        val cleanVid = vidHex.trim().uppercase()
+        val cleanPid = pidHex.trim().uppercase()
+        if (cleanVid.isBlank() || cleanPid.isBlank()) {
+            println("[WinUSB/Driver] ERROR: Cannot install WinUSB: VID or PID is empty.")
+            return 1
+        }
+
+        try {
+            cleanVid.toInt(16).toShort()
+        } catch (e: Exception) {
+            println("[WinUSB/Driver] ERROR: Malformed VID '$cleanVid': ${e.message}")
+            return 1
+        }
+
+        println("[WinUSB/Driver] Elevating to install WinUSB for VID:$cleanVid PID:$cleanPid MI:$miStr...")
+        val res = installForDevice(cleanVid, cleanPid, miStr)
         if (res != 0) return res
 
-        // Pre-install WinUSB for Google AOA Accessory (18D1:2D00 and 18D1:2D01)
+        // Pre-install WinUSB for Google AOA Accessory (18D1:2D00)
         // so Phase 2 AOA accessory re-enumeration succeeds without requiring a second elevation prompt!
-        if (!vidHex.equals("18D1", ignoreCase = true)) {
-            println("[WinUSB/Driver] Pre-installing WinUSB for AOA Accessory (VID:18D1 PID:2D00)...")
-            try { installForDevice("18D1", "2D00", "none") } catch (_: Exception) {}
-            try { installForDevice("18D1", "2D01", "none") } catch (_: Exception) {}
+        if (!cleanVid.equals("18D1", ignoreCase = true)) {
+            val isAoaDriverPresent = isAoaDriverStorePresent()
+            if (!isAoaDriverPresent) {
+                println("[WinUSB/Driver] Pre-installing WinUSB for Google AOA Accessory (VID:18D1 PID:2D00)...")
+                try { installForDevice("18D1", "2D00", "none") } catch (_: Exception) {}
+            } else {
+                println("[WinUSB/Driver] WinUSB for Google AOA Accessory (18D1:2D00) is already present in Windows driver store.")
+            }
         }
         return 0
+    }
+
+    private fun isAoaDriverStorePresent(): Boolean {
+        return try {
+            val proc = ProcessBuilder("pnputil.exe", "/enum-drivers")
+                .redirectErrorStream(true)
+                .start()
+            val text = proc.inputStream.bufferedReader().readText()
+            proc.waitFor(3, java.util.concurrent.TimeUnit.SECONDS)
+            text.contains("18D1&PID_2D00", ignoreCase = true)
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Reverts third-party WinUSB driver packages installed by NEXPAD for a device,
+     * restoring the default Microsoft Windows driver (e.g. MTP USB Device / WPD).
+     */
+    fun revertWinUsb(vidHex: String, pidHex: String): Int {
+        val cleanVid = vidHex.trim().uppercase()
+        val cleanPid = pidHex.trim().uppercase()
+        if (cleanVid.isBlank() || cleanPid.isBlank()) {
+            println("[WinUSB/Driver] ERROR: Cannot revert driver: VID or PID is empty.")
+            return 1
+        }
+
+        println("[WinUSB/Driver] Rollback: Reverting WinUSB driver for VID:$cleanVid PID:$cleanPid...")
+        var uninstalledCount = 0
+
+        try {
+            val proc = ProcessBuilder("pnputil.exe", "/enum-drivers")
+                .redirectErrorStream(true)
+                .start()
+            val text = proc.inputStream.bufferedReader().readText()
+            proc.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)
+
+            val blocks = text.split("Published Name:")
+            for (block in blocks) {
+                val lower = block.lowercase()
+                val isNexpadDriver = lower.contains("nexpad")
+                if (isNexpadDriver) {
+                    val publishedName = block.lines().firstOrNull()?.trim()
+                    if (!publishedName.isNullOrBlank() && publishedName.endsWith(".inf", ignoreCase = true)) {
+                        println("[WinUSB/Driver] Found NEXPAD driver package: $publishedName. Deleting and uninstalling...")
+                        val delProc = ProcessBuilder("pnputil.exe", "/delete-driver", publishedName, "/uninstall", "/force")
+                            .redirectErrorStream(true)
+                            .start()
+                        val delOutput = delProc.inputStream.bufferedReader().readText()
+                        delProc.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)
+                        println("[WinUSB/Driver] Delete result for $publishedName: ${delOutput.trim()}")
+                        uninstalledCount++
+                    }
+                }
+            }
+
+            println("[WinUSB/Driver] Triggering PnP hardware re-enumeration...")
+            try {
+                ProcessBuilder("pnputil.exe", "/scan-devices").start().waitFor(3, java.util.concurrent.TimeUnit.SECONDS)
+            } catch (_: Exception) {}
+
+            println("[WinUSB/Driver] Rollback completed. (Uninstalled $uninstalledCount driver packages). Default Windows driver will bind.")
+            return 0
+        } catch (e: Exception) {
+            println("[WinUSB/Driver] ERROR during driver rollback: ${e.message}")
+            return 1
+        }
     }
 }

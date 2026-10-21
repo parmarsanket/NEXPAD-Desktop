@@ -52,8 +52,9 @@ object AoaHandshake {
         
         // If we failed to dynamically claim a WinUSB bound interface, try falling back to interface 0
         if (claimedInterface == -1) {
-            LibUsb.claimInterface(handle, 0)
-            claimedInterface = 0
+            if (LibUsb.claimInterface(handle, 0) == LibUsb.SUCCESS) {
+                claimedInterface = 0
+            }
         }
 
         try {
@@ -130,7 +131,9 @@ object AoaHandshake {
             println("AoaHandshake: START(53) sent successfully! Phone should re-enumerate now.")
             return true
         } finally {
-            LibUsb.releaseInterface(handle, claimedInterface)
+            if (claimedInterface != -1) {
+                LibUsb.releaseInterface(handle, claimedInterface)
+            }
         }
     }
     

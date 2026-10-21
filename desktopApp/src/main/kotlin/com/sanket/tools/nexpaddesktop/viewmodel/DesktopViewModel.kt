@@ -44,7 +44,20 @@ class DesktopViewModel(
     var activeTransport by mutableStateOf(ActiveTransport.NONE)
     var isAoaDriverNeeded by mutableStateOf(false)
     var driverInstallState by mutableStateOf(DriverInstallState.IDLE)
+    var driverInstallProgress by mutableStateOf(0f)
+    var driverInstallStatusText by mutableStateOf("")
+    var showDriverSuccessToast by mutableStateOf(false)
+    var driverSuccessToastMessage by mutableStateOf("")
+    var showDriverSuccessDialog by mutableStateOf(false)
     var onInstallAoaDriver: () -> Unit = {}
+
+    fun dismissDriverSuccessToast() {
+        showDriverSuccessToast = false
+    }
+
+    fun dismissDriverSuccessDialog() {
+        showDriverSuccessDialog = false
+    }
 
     // ── Virtual Gamepad & Controller State ──
     var activeController by mutableStateOf(prefs.loadControllerType())

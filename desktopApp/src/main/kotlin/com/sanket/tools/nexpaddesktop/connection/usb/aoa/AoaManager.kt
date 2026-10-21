@@ -49,6 +49,12 @@ class AoaManager {
     private var context: Context? = null
     private var currentState: AoaState = AoaState.Idle
 
+    fun onDriverInstallStarted() {
+        println("[AOA/Manager] Driver installation started.")
+        userDismissedElevation = false
+        currentState = AoaState.InstallingDriver(System.currentTimeMillis())
+    }
+
     fun onDriverInstallCompleted(success: Boolean) {
         println("[AOA/Manager] Driver installation finished (success=$success).")
         currentState = AoaState.Idle
@@ -98,7 +104,7 @@ class AoaManager {
             // Probing device descriptors during driver installation causes PNP_VetoOutstandingOpen (-11 error)!
             if (currentState is AoaState.InstallingDriver) {
                 val state = currentState as AoaState.InstallingDriver
-                if (System.currentTimeMillis() - state.startTime > 30_000) {
+                if (System.currentTimeMillis() - state.startTime > 90_000) {
                     println("[AOA/Manager] WinUSB installation timed out or user cancelled. Resetting to Idle state.")
                     currentState = AoaState.Idle
                 }

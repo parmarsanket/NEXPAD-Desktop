@@ -42,13 +42,67 @@ fun main(args: Array<String>) {
     // 1. Check for headless driver installation mode
     val installDriverIndex = args.indexOf("--install-driver")
     if (installDriverIndex != -1) {
-        val vidHex = if (installDriverIndex + 1 < args.size) args[installDriverIndex + 1] else ""
-        val pidHex = if (installDriverIndex + 2 < args.size) args[installDriverIndex + 2] else ""
-        val rawMi = if (installDriverIndex + 3 < args.size) args[installDriverIndex + 3] else "none"
+        // Guarantee file logging even in packaged GUI EXE mode (where no console is attached)
+        try {
+            val logFile = java.io.File("C:\\Users\\Public\\nexpad_driver_install.log")
+            val fileOut = java.io.PrintStream(java.io.FileOutputStream(logFile, false), true, "UTF-8")
+            val origOut = System.out
+            val origErr = System.err
+            System.setOut(java.io.PrintStream(object : java.io.OutputStream() {
+                override fun write(b: Int) { origOut.write(b); fileOut.write(b) }
+                override fun write(b: ByteArray, off: Int, len: Int) { origOut.write(b, off, len); fileOut.write(b, off, len) }
+                override fun flush() { origOut.flush(); fileOut.flush() }
+            }, true, "UTF-8"))
+            System.setErr(java.io.PrintStream(object : java.io.OutputStream() {
+                override fun write(b: Int) { origErr.write(b); fileOut.write(b) }
+                override fun write(b: ByteArray, off: Int, len: Int) { origErr.write(b, off, len); fileOut.write(b, off, len) }
+                override fun flush() { origErr.flush(); fileOut.flush() }
+            }, true, "UTF-8"))
+        } catch (_: Exception) {}
+
+        val vidHex = if (installDriverIndex + 1 < args.size) args[installDriverIndex + 1].trim() else ""
+        val pidHex = if (installDriverIndex + 2 < args.size) args[installDriverIndex + 2].trim() else ""
+        val rawMi = if (installDriverIndex + 3 < args.size) args[installDriverIndex + 3].trim() else "none"
         val miParam = if (rawMi.all { it.isDigit() }) rawMi else "none"
         
+        if (vidHex.isBlank() || pidHex.isBlank()) {
+            System.err.println("Main: Invalid arguments for --install-driver. VID or PID is missing.")
+            kotlin.system.exitProcess(1)
+        }
+
         println("Main: Running in headless driver installation mode for VID: $vidHex PID: $pidHex MI: $miParam")
         val exitCode = com.sanket.tools.nexpaddesktop.connection.usb.winusb.WinUsbDriverManager.installWinUsb(vidHex, pidHex, miParam)
+        kotlin.system.exitProcess(exitCode)
+    }
+
+    // 2. Check for headless driver rollback / uninstall mode
+    val revertDriverIndex = args.indexOfFirst { it == "--revert-driver" || it == "--uninstall-driver" }
+    if (revertDriverIndex != -1) {
+        try {
+            val logFile = java.io.File("C:\\Users\\Public\\nexpad_driver_install.log")
+            val fileOut = java.io.PrintStream(java.io.FileOutputStream(logFile, false), true, "UTF-8")
+            val origOut = System.out
+            val origErr = System.err
+            System.setOut(java.io.PrintStream(object : java.io.OutputStream() {
+                override fun write(b: Int) { origOut.write(b); fileOut.write(b) }
+                override fun write(b: ByteArray, off: Int, len: Int) { origOut.write(b, off, len); fileOut.write(b, off, len) }
+                override fun flush() { origOut.flush(); fileOut.flush() }
+            }, true, "UTF-8"))
+            System.setErr(java.io.PrintStream(object : java.io.OutputStream() {
+                override fun write(b: Int) { origErr.write(b); fileOut.write(b) }
+                override fun write(b: ByteArray, off: Int, len: Int) { origErr.write(b, off, len); fileOut.write(b, off, len) }
+                override fun flush() { origErr.flush(); fileOut.flush() }
+            }, true, "UTF-8"))
+        } catch (_: Exception) {}
+
+        val vidHex = if (revertDriverIndex + 1 < args.size) args[revertDriverIndex + 1].trim() else ""
+        val pidHex = if (revertDriverIndex + 2 < args.size) args[revertDriverIndex + 2].trim() else ""
+        if (vidHex.isBlank() || pidHex.isBlank()) {
+            System.err.println("Main: Invalid arguments for --revert-driver. VID or PID is missing.")
+            kotlin.system.exitProcess(1)
+        }
+        println("Main: Running in headless driver rollback mode for VID: $vidHex PID: $pidHex")
+        val exitCode = com.sanket.tools.nexpaddesktop.connection.usb.winusb.WinUsbDriverManager.revertWinUsb(vidHex, pidHex)
         kotlin.system.exitProcess(exitCode)
     }
 
@@ -95,8 +149,16 @@ fun main(args: Array<String>) {
     var requiredPidHex by remember { mutableStateOf("") }
     var requiredMi by remember { mutableStateOf("") }
     
-    val onInstallAoaDriver: () -> Unit = {
+    val onInstallAoaDriver: () -> Unit = onInstall@ {
+        if (requiredVidHex.isBlank() || requiredPidHex.isBlank()) {
+            println("Main: Cannot install AOA driver: VID/PID is empty.")
+            viewModel.driverInstallState = DriverInstallState.IDLE
+            return@onInstall
+        }
+        aoaManager.onDriverInstallStarted()
         viewModel.driverInstallState = DriverInstallState.INSTALLING
+        viewModel.driverInstallProgress = 0.05f
+        viewModel.driverInstallStatusText = "Requesting Administrator approval..."
         scope.launch {
             println("Main: Requesting UAC elevation via native ShellExecuteEx...")
             
@@ -108,7 +170,10 @@ fun main(args: Array<String>) {
             
             val target = com.sanket.tools.nexpaddesktop.utils.ElevationTargetResolver.resolveHelper(args)
             
-            when (val result = com.sanket.tools.nexpaddesktop.utils.WindowsElevation.runElevated(target)) {
+            when (val result = com.sanket.tools.nexpaddesktop.utils.WindowsElevation.runElevated(target, onProgress = { progress, status ->
+                viewModel.driverInstallProgress = progress
+                viewModel.driverInstallStatusText = status
+            })) {
                 is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.Success -> {
                     println("Main: Background driver install finished with exit code ${result.exitCode}")
                     
@@ -125,20 +190,40 @@ fun main(args: Array<String>) {
                     if (success) {
                         println("Main: WinUSB driver installed successfully. Scanner loop will retry handshake.")
                         viewModel.isAoaDriverNeeded = false
+                        viewModel.driverInstallProgress = 1.0f
+                        viewModel.driverInstallStatusText = "Driver Installed Successfully!"
                         viewModel.driverInstallState = DriverInstallState.FINISHED
-                        kotlinx.coroutines.delay(2000)
+                        viewModel.showDriverSuccessToast = true
+                        viewModel.showDriverSuccessDialog = true
+                        viewModel.driverSuccessToastMessage = "WinUSB driver installed successfully! Please open or restart the NEXPAD app on your phone to connect."
+                        viewModel.onShowTrayNotification?.invoke(
+                            "NEXPAD Driver Installed",
+                            "WinUSB driver installed! Please restart or open NEXPAD on your phone."
+                        )
+                        kotlinx.coroutines.delay(4000)
                         viewModel.driverInstallState = DriverInstallState.IDLE
+                        kotlinx.coroutines.delay(8000)
+                        viewModel.showDriverSuccessToast = false
                     } else {
                         println("Main: Driver installation failed (Code ${result.exitCode}).")
+                        viewModel.driverInstallProgress = 0f
+                        viewModel.driverInstallStatusText = ""
                         viewModel.driverInstallState = DriverInstallState.IDLE
                     }
                 }
                 is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.UserCancelled -> {
                     println("Main: User cancelled UAC prompt.")
+                    aoaManager.onDriverInstallCompleted(false)
+                    aoaManager.userDismissedElevation = true
+                    viewModel.driverInstallProgress = 0f
+                    viewModel.driverInstallStatusText = ""
                     viewModel.driverInstallState = DriverInstallState.IDLE
                 }
                 is com.sanket.tools.nexpaddesktop.utils.WindowsElevation.Result.Error -> {
                     println("Main: Failed to launch elevated process. Win32 Error: ${result.errorCode} - ${result.message}")
+                    aoaManager.onDriverInstallCompleted(false)
+                    viewModel.driverInstallProgress = 0f
+                    viewModel.driverInstallStatusText = ""
                     viewModel.driverInstallState = DriverInstallState.IDLE
                 }
             }
