@@ -256,8 +256,8 @@ class StickSensitivityDecouplingTest {
         )
 
         // Verify steeringWheel settings are 100% UNTOUCHED
-        assertEquals("Steering wheel target stick must remain its own default (LEFT_STICK)",
-            XboxTargetStick.LEFT_STICK, customAiming.steeringWheel.targetStick)
+        assertEquals("Steering wheel target stick must remain its own default (RIGHT_STICK)",
+            XboxTargetStick.RIGHT_STICK, customAiming.steeringWheel.targetStick)
         assertEquals("Steering wheel sensitivityX must remain untouched at 1.0f",
             1.0f, customAiming.steeringWheel.sensitivityX, 0.001f)
         assertEquals("Steering wheel maxTiltAngle must remain untouched at 35.0f",
@@ -266,10 +266,10 @@ class StickSensitivityDecouplingTest {
             XboxBlendMode.JOYSTICK_SUPREME, customAiming.steeringWheel.blendMode)
 
         // 2. Now customize Steering Wheel:
-        // Set target stick to RIGHT_STICK, sensitivityX to 2.5f, maxTiltAngle to 60f, blendMode to MUTE_ON_STICK
+        // Set target stick to LEFT_STICK, sensitivityX to 2.5f, maxTiltAngle to 60f, blendMode to MUTE_ON_STICK
         val customBoth = customAiming.copy(
             steeringWheel = customAiming.steeringWheel.copy(
-                targetStick = XboxTargetStick.RIGHT_STICK,
+                targetStick = XboxTargetStick.LEFT_STICK,
                 sensitivityX = 2.5f,
                 maxTiltAngle = 60.0f,
                 blendMode = XboxBlendMode.MUTE_ON_STICK
@@ -294,8 +294,8 @@ class StickSensitivityDecouplingTest {
             XboxBlendMode.ADDITIVE, velocityMode.xboxBlendMode)
 
         val tiltMode = customBoth.copy(inputMode = InputMode.ABSOLUTE_TILT)
-        assertEquals("In ABSOLUTE_TILT mode, xboxTargetStick must resolve to steeringWheel (RIGHT_STICK)",
-            XboxTargetStick.RIGHT_STICK, tiltMode.xboxTargetStick)
+        assertEquals("In ABSOLUTE_TILT mode, xboxTargetStick must resolve to steeringWheel (LEFT_STICK)",
+            XboxTargetStick.LEFT_STICK, tiltMode.xboxTargetStick)
         assertEquals("In ABSOLUTE_TILT mode, xboxBlendMode must resolve to steeringWheel (MUTE_ON_STICK)",
             XboxBlendMode.MUTE_ON_STICK, tiltMode.xboxBlendMode)
     }

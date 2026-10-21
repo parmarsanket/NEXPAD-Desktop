@@ -82,14 +82,14 @@ data class PrecisionAimingSettings(
  */
 @Serializable
 data class SteeringWheelSettings(
-    val targetStick: XboxTargetStick = XboxTargetStick.LEFT_STICK,
+    val targetStick: XboxTargetStick = XboxTargetStick.RIGHT_STICK,
     val maxTiltAngle: Float = 35.0f,
     val sensitivityX: Float = 1.0f,
     val sensitivityY: Float = 1.0f,
     val responseCurve: Float = 1.0f,
     val invertSteering: Boolean = false,
     val invertPitch: Boolean = false,
-    val deadzoneThreshold: Float = 2.0f,
+    val deadzoneThreshold: Float = 0.0f,
     val blendMode: XboxBlendMode = XboxBlendMode.JOYSTICK_SUPREME,
     val enableHorizontal: Boolean = true,
     val enableVertical: Boolean = true,
@@ -526,12 +526,12 @@ data class GyroSettings(
             enabled = true,
             inputMode = InputMode.ABSOLUTE_TILT,
             steeringWheel = SteeringWheelSettings(
-                targetStick = XboxTargetStick.LEFT_STICK,
+                targetStick = XboxTargetStick.RIGHT_STICK,
                 maxTiltAngle = 35.0f,
                 sensitivityX = 1.2f,
                 sensitivityY = 1.0f,
                 responseCurve = 1.5f,
-                deadzoneThreshold = 3.0f,
+                deadzoneThreshold = 0.0f,
                 blendMode = XboxBlendMode.JOYSTICK_SUPREME,
                 enableHorizontal = true,
                 enableVertical = false,
