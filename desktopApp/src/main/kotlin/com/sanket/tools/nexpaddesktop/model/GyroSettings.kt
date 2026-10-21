@@ -501,6 +501,7 @@ data class GyroSettings(
 
         /** Best defaults for FPS / aiming games (high sensitivity, responsive adaptive smoothing, pure linear 1:1 aiming). */
         val FPS_PRESET = GyroSettings(
+            enabled = true,
             inputMode = InputMode.VELOCITY,
             precisionAiming = PrecisionAimingSettings(
                 maxDpsYaw = 160f,
@@ -520,6 +521,7 @@ data class GyroSettings(
 
         /** Best defaults for racing / steering games (switches to Steering Wheel mode). */
         val RACING_PRESET = GyroSettings(
+            enabled = true,
             inputMode = InputMode.ABSOLUTE_TILT,
             steeringWheel = SteeringWheelSettings(
                 targetStick = XboxTargetStick.LEFT_STICK,
@@ -534,6 +536,7 @@ data class GyroSettings(
 
         /** Best defaults for flight simulators & space combat (3D Flight Yoke / Attitude Stick). */
         val FLIGHT_SIM_PRESET = GyroSettings(
+            enabled = true,
             inputMode = InputMode.AIR_MOUSE,
             flightStick = FlightStickSettings(
                 pitchTarget = FlightStickAxisTarget.LS_Y,
@@ -553,6 +556,7 @@ data class GyroSettings(
 
         /** Best defaults for action / combat games (kinetic weapon swings, directional flicks & 180° snap turns). */
         val ACTION_COMBAT_PRESET = GyroSettings(
+            enabled = true,
             inputMode = InputMode.GESTURE,
             combatGestures = CombatGesturesSettings(
                 flicksEnabled = true,
@@ -569,6 +573,7 @@ data class GyroSettings(
 
         /** High-precision preset for slow, accurate aiming (sniping / bow games). */
         val PRECISION_PRESET = GyroSettings(
+            enabled = true,
             inputMode = InputMode.VELOCITY,
             precisionAiming = PrecisionAimingSettings(
                 maxDpsYaw = 250f,
@@ -587,7 +592,7 @@ data class GyroSettings(
         )
 
         /** Factory defaults — all settings at their neutral/default values. */
-        val DEFAULT = GyroSettings()
+        val DEFAULT = GyroSettings(enabled = true)
     }
 }
 

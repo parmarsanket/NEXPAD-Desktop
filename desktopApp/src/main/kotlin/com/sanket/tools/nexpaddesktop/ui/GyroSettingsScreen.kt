@@ -235,7 +235,7 @@ private fun MotionMasterControlBar(
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "Real-time 60Hz Xbox 360 sensor translation",
+                                    text = "Real-time 200Hz sensor translation",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -293,7 +293,7 @@ private fun MotionMasterControlBar(
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "Real-time 60Hz sensor translation into virtual Xbox 360 inputs",
+                                    text = "Real-time 200Hz sensor translation into virtual Xbox 360 inputs",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

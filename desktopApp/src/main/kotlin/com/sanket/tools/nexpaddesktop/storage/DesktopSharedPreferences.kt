@@ -346,7 +346,7 @@ class DesktopSharedPreferences private constructor(
                 println("⚠️ [Preferences] Failed to decode saved GyroSettings: ${e.message}. Using factory defaults.")
             }
         }
-        return GyroSettings()
+        return GyroSettings(enabled = false)
     }
 
     /**

@@ -191,7 +191,7 @@ class DesktopSharedPreferencesTest {
         assertEquals("default_val", safePrefs.getString("unknown_key", "default_val"))
         assertEquals(ControllerType.XBOX_360, safePrefs.loadControllerType())
         val defaultGyro = safePrefs.loadGyroSettings()
-        assertEquals(GyroSettings(), defaultGyro)
+        assertEquals(GyroSettings(enabled = false), defaultGyro)
     }
 
     @Test
