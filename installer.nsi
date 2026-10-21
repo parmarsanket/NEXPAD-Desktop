@@ -18,10 +18,36 @@ RequestExecutionLevel admin
 ; Variables
 Var DriverUninstalled
 
-; Interface Configurations
+; Windows File Properties / Version Info
+VIProductVersion "1.0.0.0"
+VIAddVersionKey "ProductName" "NEXPAD Desktop"
+VIAddVersionKey "Comments" "Official Windows Companion for NEXPAD Virtual Gamepad"
+VIAddVersionKey "CompanyName" "Sanket Tools"
+VIAddVersionKey "LegalCopyright" "Copyright 2026 Sanket Tools"
+VIAddVersionKey "FileDescription" "NEXPAD Desktop Setup"
+VIAddVersionKey "FileVersion" "1.0.0.0"
+VIAddVersionKey "ProductVersion" "1.0.0.0"
+
+; Interface Configurations & Branding
 !define MUI_ABORTWARNING
-!define MUI_WELCOMEPAGE_TITLE "Welcome to NEXPAD"
-!define MUI_WELCOMEPAGE_TEXT "This will install NEXPAD Desktop and configure the required virtual controller drivers on your computer.$\r$\n$\r$\nClick Next to continue."
+!define MUI_ICON "installer_icon.ico"
+!define MUI_UNICON "installer_icon.ico"
+!define MUI_HEADERIMAGE
+!define MUI_HEADERIMAGE_BITMAP "installer_header.bmp"
+!define MUI_HEADERIMAGE_RIGHT
+!define MUI_WELCOMEFINISHPAGE_BITMAP "installer_wizard.bmp"
+!define MUI_UNWELCOMEFINISHPAGE_BITMAP "installer_wizard.bmp"
+
+; Welcome Page Setup
+!define MUI_WELCOMEPAGE_TITLE "Welcome to NEXPAD Desktop Setup"
+!define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through installing NEXPAD Desktop and configuring the required ViGEmBus virtual controller drivers on your system.$\r$\n$\r$\nPlease review the End User License Agreement on the next screen before continuing.$\r$\n$\r$\nClick Next to continue."
+
+; License Agreement Setup with Mandatory Radio Button Acceptance
+!define MUI_LICENSEPAGE_TEXT_TOP "Please review the license terms before installing NEXPAD Desktop."
+!define MUI_LICENSEPAGE_TEXT_BOTTOM "If you accept the terms of the agreement, select the first option below. You must accept the agreement to install NEXPAD Desktop."
+!define MUI_LICENSEPAGE_RADIOBUTTONS
+!define MUI_LICENSEPAGE_RADIOBUTTONS_TEXT_ACCEPT "I accept the terms in the License Agreement"
+!define MUI_LICENSEPAGE_RADIOBUTTONS_TEXT_DECLINE "I do not accept the terms in the License Agreement"
 
 ; Pages
 !insertmacro MUI_PAGE_WELCOME
@@ -51,7 +77,7 @@ Section "Install"
   nsExec::ExecToLog 'taskkill /F /IM com.sanket.tools.nexpaddesktop.exe'
 
   ; Bundle all pre-compiled files from the packageApp task
-  File /r "desktopApp\build\compose\binaries\main\app\com.sanket.tools.nexpaddesktop\*"
+  File /r "desktopApp\build\compose\binaries\main-release\app\com.sanket.tools.nexpaddesktop\*"
         
   ; Bundle standalone ADB tools and dependencies for non-developer end users
   SetOutPath "$INSTDIR\tools\adb"
