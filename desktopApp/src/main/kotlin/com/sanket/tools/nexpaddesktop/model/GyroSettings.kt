@@ -91,6 +91,8 @@ data class SteeringWheelSettings(
     val invertPitch: Boolean = false,
     val deadzoneThreshold: Float = 2.0f,
     val blendMode: XboxBlendMode = XboxBlendMode.JOYSTICK_SUPREME,
+    val enableHorizontal: Boolean = true,
+    val enableVertical: Boolean = true,
     val lsSensitivityX: Float = 1.0f,
     val lsSensitivityY: Float = 1.0f,
     val rsSensitivityX: Float = 1.0f,
@@ -531,6 +533,8 @@ data class GyroSettings(
                 responseCurve = 1.5f,
                 deadzoneThreshold = 3.0f,
                 blendMode = XboxBlendMode.JOYSTICK_SUPREME,
+                enableHorizontal = true,
+                enableVertical = false,
             )
         )
 

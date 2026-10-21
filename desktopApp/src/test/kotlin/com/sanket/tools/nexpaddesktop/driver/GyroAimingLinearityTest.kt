@@ -314,6 +314,100 @@ class GyroAimingLinearityTest {
     }
 
     @Test
+    fun testSteeringWheelIndependentAxisToggles() {
+        val processor = GyroProcessor()
+        val baseWheel = SteeringWheelSettings(
+            targetStick = XboxTargetStick.LEFT_STICK,
+            maxTiltAngle = 35.0f,
+            sensitivityX = 1.0f,
+            sensitivityY = 1.0f,
+            responseCurve = 1.0f,
+            deadzoneThreshold = 0.0f
+        )
+
+        // 35° steering lock on gravity: 9.8 * sin(35°) ≈ 5.62 m/s²
+        val gravityX = 5.62f
+        val gravityY = 5.62f
+        val diagonalInput = GamepadInput(
+            gravityX = gravityX,
+            gravityY = gravityY,
+            sensorFlags = NexpadProtocol.SENSOR_MODE_GRAVITY
+        )
+
+        // Case 1: Both Horizontal and Vertical Enabled
+        val bothEnabledSettings = GyroSettings(
+            enabled = true,
+            inputMode = InputMode.ABSOLUTE_TILT,
+            steeringWheel = baseWheel.copy(enableHorizontal = true, enableVertical = true)
+        )
+        val outBoth = InputPipeline.processInput(
+            input = diagonalInput,
+            activeController = ControllerType.XBOX_360,
+            gyroProcessor = processor,
+            gyroSettings = bothEnabledSettings,
+            lsSensitivityX = 1f, lsSensitivityY = 1f,
+            rsSensitivityX = 1f, rsSensitivityY = 1f,
+            onProcessedAngles = { _, _ -> }
+        )
+        assertEquals("Horizontal must be 1.0f when enabled", 1.0f, outBoth.leftStickX, 0.01f)
+        assertEquals("Vertical must be 1.0f when enabled", 1.0f, outBoth.leftStickY, 0.01f)
+
+        // Case 2: Horizontal Enabled, Vertical Disabled (Pure Racing Wheel Mode)
+        val horizontalOnlySettings = GyroSettings(
+            enabled = true,
+            inputMode = InputMode.ABSOLUTE_TILT,
+            steeringWheel = baseWheel.copy(enableHorizontal = true, enableVertical = false)
+        )
+        val outHOnly = InputPipeline.processInput(
+            input = diagonalInput,
+            activeController = ControllerType.XBOX_360,
+            gyroProcessor = processor,
+            gyroSettings = horizontalOnlySettings,
+            lsSensitivityX = 1f, lsSensitivityY = 1f,
+            rsSensitivityX = 1f, rsSensitivityY = 1f,
+            onProcessedAngles = { _, _ -> }
+        )
+        assertEquals("Horizontal steering must still reach 1.0f", 1.0f, outHOnly.leftStickX, 0.01f)
+        assertEquals("Vertical pitch must be zeroed (0.0f) when vertical is disabled", 0.0f, outHOnly.leftStickY, 0.001f)
+
+        // Case 3: Horizontal Disabled, Vertical Enabled (Pitch-Only Mode)
+        val verticalOnlySettings = GyroSettings(
+            enabled = true,
+            inputMode = InputMode.ABSOLUTE_TILT,
+            steeringWheel = baseWheel.copy(enableHorizontal = false, enableVertical = true)
+        )
+        val outVOnly = InputPipeline.processInput(
+            input = diagonalInput,
+            activeController = ControllerType.XBOX_360,
+            gyroProcessor = processor,
+            gyroSettings = verticalOnlySettings,
+            lsSensitivityX = 1f, lsSensitivityY = 1f,
+            rsSensitivityX = 1f, rsSensitivityY = 1f,
+            onProcessedAngles = { _, _ -> }
+        )
+        assertEquals("Horizontal steering must be zeroed (0.0f) when horizontal is disabled", 0.0f, outVOnly.leftStickX, 0.001f)
+        assertEquals("Vertical pitch must still reach 1.0f", 1.0f, outVOnly.leftStickY, 0.01f)
+
+        // Case 4: Both Disabled
+        val bothDisabledSettings = GyroSettings(
+            enabled = true,
+            inputMode = InputMode.ABSOLUTE_TILT,
+            steeringWheel = baseWheel.copy(enableHorizontal = false, enableVertical = false)
+        )
+        val outBothDisabled = InputPipeline.processInput(
+            input = diagonalInput,
+            activeController = ControllerType.XBOX_360,
+            gyroProcessor = processor,
+            gyroSettings = bothDisabledSettings,
+            lsSensitivityX = 1f, lsSensitivityY = 1f,
+            rsSensitivityX = 1f, rsSensitivityY = 1f,
+            onProcessedAngles = { _, _ -> }
+        )
+        assertEquals("Horizontal must be 0.0f when disabled", 0.0f, outBothDisabled.leftStickX, 0.001f)
+        assertEquals("Vertical must be 0.0f when disabled", 0.0f, outBothDisabled.leftStickY, 0.001f)
+    }
+
+    @Test
     fun testDiagonalTiltFullSaturationFreeAxes() {
         val processor = GyroProcessor()
         val settings = GyroSettings(

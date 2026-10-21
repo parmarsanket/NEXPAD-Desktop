@@ -188,6 +188,15 @@ class GyroProcessor {
             hVal *= cfg.sensitivityX
             vVal *= cfg.sensitivityY
 
+            if (!cfg.enableHorizontal) {
+                hVal = 0f
+                mappedH = 0f
+            }
+            if (!cfg.enableVertical) {
+                vVal = 0f
+                mappedV = 0f
+            }
+
             return ProcessedGyro(
                 yawDps = hVal,
                 pitchDps = vVal,
