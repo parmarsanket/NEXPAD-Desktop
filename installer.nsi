@@ -11,7 +11,7 @@ Unicode true
 
 ; Define Basic Package Info
 Name "NEXPAD Desktop"
-OutFile "installer_build\NEXPAD_Setup.exe"
+OutFile "installer_build\NEXPAD_Desktop_Setup.exe"
 InstallDir "$PROGRAMFILES64\NEXPAD"
 RequestExecutionLevel admin
 
@@ -72,9 +72,17 @@ Section "Install"
   ; Set output path to installation directory
   SetOutPath "$INSTDIR"
   
-  ; Close running instance if user is updating/re-installing
-  DetailPrint "Ensuring NEXPAD is closed before updating..."
-  nsExec::ExecToLog 'taskkill /F /IM com.sanket.tools.nexpaddesktop.exe'
+  ; Close running instance and background processes if user is updating/re-installing
+  DetailPrint "Ensuring NEXPAD and background tools are closed before updating..."
+  IfFileExists "$INSTDIR\tools\adb\adb.exe" 0 +2
+    nsExec::ExecToLog '"$INSTDIR\tools\adb\adb.exe" kill-server'
+  nsExec::ExecToLog 'taskkill /F /T /IM com.sanket.tools.nexpaddesktop.exe'
+  nsExec::ExecToLog 'taskkill /F /T /IM "NEXPAD Desktop.exe"'
+  nsExec::ExecToLog 'taskkill /F /T /IM adb.exe'
+  nsExec::ExecToLog 'taskkill /F /T /IM nexpad-service.exe'
+  Sleep 1500
+
+  SetOverwrite on
 
   ; Bundle all pre-compiled files from the packageApp task
   File /r "desktopApp\build\compose\binaries\main-release\app\com.sanket.tools.nexpaddesktop\*"
@@ -153,9 +161,15 @@ SectionEnd
 Section "un.NEXPAD Desktop" SEC_UN_APP
   SectionIn RO ; Read Only: The main app must always be uninstalled
 
-  ; Close running instance before uninstalling
-  DetailPrint "Closing any running instances of NEXPAD Desktop..."
-  nsExec::ExecToLog 'taskkill /F /IM com.sanket.tools.nexpaddesktop.exe'
+  ; Close running instance and background processes before uninstalling
+  DetailPrint "Closing any running instances of NEXPAD Desktop and background tools..."
+  IfFileExists "$INSTDIR\tools\adb\adb.exe" 0 +2
+    nsExec::ExecToLog '"$INSTDIR\tools\adb\adb.exe" kill-server'
+  nsExec::ExecToLog 'taskkill /F /T /IM com.sanket.tools.nexpaddesktop.exe'
+  nsExec::ExecToLog 'taskkill /F /T /IM "NEXPAD Desktop.exe"'
+  nsExec::ExecToLog 'taskkill /F /T /IM adb.exe'
+  nsExec::ExecToLog 'taskkill /F /T /IM nexpad-service.exe'
+  Sleep 1500
 
   ; Remove shortcuts
   Delete "$SMPROGRAMS\NEXPAD\NEXPAD.lnk"
