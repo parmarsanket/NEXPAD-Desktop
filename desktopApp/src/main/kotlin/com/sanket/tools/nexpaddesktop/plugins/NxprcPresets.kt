@@ -605,14 +605,83 @@ private fun facePreset(
     NxprcPresetStyle.SATIN -> facePresetSatin(control, label, accent, glow, name, seed)
 }
 
-private fun triggerPreset(control: String): String {
+
+private data class StyleTheme(
+    val chassisBg: String,
+    val chassisShadow: String,
+    val facePlateBg: String,
+    val facePlateShadow: String,
+    val textColor: String,
+    val textShadow: String,
+    val accentBorder: String = "none",
+    val fontFam: String = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    val barColor: String = "#ffffff",
+    val barShadow: String = "none"
+)
+
+private fun resolveStyleTheme(style: NxprcPresetStyle, accent: String, glow: String): StyleTheme = when (style) {
+    NxprcPresetStyle.XBOX_ELITE -> StyleTheme(
+        chassisBg = "radial-gradient(circle at 45% 40%, #20242b 0%, #101217 70%, #06080a 100%)",
+        chassisShadow = "0 8px 22px rgba(0, 0, 0, 0.85), 0 0 22px $glow, inset 0 2px 3px rgba(255, 255, 255, 0.15), inset 0 -6px 12px rgba(0, 0, 0, 0.95)",
+        facePlateBg = "linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, transparent 35%), linear-gradient(160deg, #1c232d 0%, #11151c 55%, #080a0e 100%)",
+        facePlateShadow = "inset 0 1.5px 3px rgba(255, 255, 255, 0.25), inset 0 -6px 10px rgba(0, 0, 0, 0.80)",
+        textColor = accent,
+        textShadow = "0 2px 8px rgba(0, 0, 0, 0.95), 0 0 14px $glow",
+        accentBorder = "none",
+        fontFam = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        barColor = accent,
+        barShadow = "0 0 8px $glow"
+    )
+    NxprcPresetStyle.ARCADE -> StyleTheme(
+        chassisBg = "linear-gradient(180deg, #2c2c2c 0%, #181818 50%, #0d0d0d 100%)",
+        chassisShadow = "0 8px 22px rgba(0, 0, 0, 0.80), 0 0 20px $glow, inset 0 2px 2px rgba(255, 255, 255, 0.30), inset 0 -5px 10px rgba(0, 0, 0, 0.90)",
+        facePlateBg = "radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.50) 0%, $accent 48%, #064e3b 100%)",
+        facePlateShadow = "0 4px 12px rgba(0, 0, 0, 0.65), inset 0 3px 4px rgba(255, 255, 255, 0.55), inset 0 -5px 10px rgba(0, 0, 0, 0.65)",
+        textColor = "#ffffff",
+        textShadow = "0 2px 4px rgba(0, 0, 0, 0.70), 0 -1px 1px rgba(0, 0, 0, 0.50)",
+        accentBorder = "none",
+        fontFam = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        barColor = "#ffffff",
+        barShadow = "0 1px 3px rgba(0, 0, 0, 0.70)"
+    )
+    NxprcPresetStyle.CYBERPUNK -> StyleTheme(
+        chassisBg = "linear-gradient(145deg, #1b2028 0%, #0e1117 60%, #07090c 100%)",
+        chassisShadow = "0 8px 24px rgba(0, 0, 0, 0.90), 0 0 25px $glow, inset 0 1px 2px rgba(255, 255, 255, 0.15), inset 0 -4px 8px rgba(0, 0, 0, 0.80)",
+        facePlateBg = "linear-gradient(180deg, rgba(6, 182, 212, 0.12) 0%, transparent 60%), linear-gradient(145deg, #151922 0%, #0b0d13 100%)",
+        facePlateShadow = "inset 0 1px 1px rgba(255, 255, 255, 0.18), inset 0 -4px 8px rgba(0, 0, 0, 0.85)",
+        textColor = accent,
+        textShadow = "0 0 10px $accent, 0 0 24px $glow, 0 0 42px $glow",
+        accentBorder = "1.5px solid $glow",
+        fontFam = "'Courier New', Courier, monospace",
+        barColor = accent,
+        barShadow = "0 0 10px $accent"
+    )
+    NxprcPresetStyle.SATIN -> StyleTheme(
+        chassisBg = "linear-gradient(160deg, #242831 0%, #15181f 60%, #0d0f14 100%)",
+        chassisShadow = "0 8px 22px rgba(0, 0, 0, 0.75), 0 0 18px rgba(148, 163, 184, 0.20), inset 0 1.5px 2px rgba(255, 255, 255, 0.18), inset 0 -5px 10px rgba(0, 0, 0, 0.85)",
+        facePlateBg = "radial-gradient(circle at 40% 30%, #353b49 0%, #20242e 60%, #13161c 100%)",
+        facePlateShadow = "0 4px 10px rgba(0, 0, 0, 0.50), inset 0 1.5px 2px rgba(255, 255, 255, 0.25), inset 0 -4px 8px rgba(0, 0, 0, 0.65)",
+        textColor = "#e2e8f0",
+        textShadow = "0 2px 4px rgba(0, 0, 0, 0.65), 0 -1px 1px rgba(255, 255, 255, 0.25)",
+        accentBorder = "none",
+        fontFam = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        barColor = "#e2e8f0",
+        barShadow = "0 1px 2px rgba(0, 0, 0, 0.50)"
+    )
+}
+
+private fun triggerPreset(
+    control: String,
+    style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE
+): String {
     val right = control.uppercase() == "RT"
-    val accent = if (right) "#DC2626" else "#F97316"
-    val glow = if (right) "rgba(220, 38, 38, 0.65)" else "rgba(249, 115, 22, 0.65)"
+    val accent = if (right) "#DC2626" else "#10B981"
+    val glow = if (right) "rgba(220, 38, 38, 0.55)" else "rgba(16, 185, 129, 0.55)"
     val seed = if (right) 63400 else 62900
-    val name = "Tactile Trigger $control #$seed"
+    val name = "${style.displayName} Trigger $control #$seed"
     val motion = retroMotion("0.68", "440", "0.95")
     val active = centeredPress(".trigger-btn")
+    val theme = resolveStyleTheme(style, accent, glow)
 
     val css = """
 $motion
@@ -625,17 +694,13 @@ $motion
   width: 110px;
   height: 140px;
   padding: 0;
-  border: none;
+  border: ${theme.accentBorder};
   outline: none;
   border-radius: 22px;
-  background: linear-gradient(160deg, #4a2a14 0%, #2a1408 55%, #140803 100%);
-  box-shadow:
-    0 8px 20px rgba(0, 0, 0, 0.65),
-    0 0 26px var(--accent-glow),
-    inset 0 2px 3px rgba(255, 200, 140, 0.25),
-    inset 0 -4px 8px rgba(0, 0, 0, 0.7);
+  background: ${theme.chassisBg};
+  box-shadow: ${theme.chassisShadow};
   transform-origin: 50% 50%;
-  font-family: "Courier New", Courier, monospace;
+  font-family: ${theme.fontFam};
   cursor: pointer;
   overflow: visible;
 }
@@ -657,14 +722,8 @@ $motion
   width: 94px;
   height: 124px;
   border-radius: 16px 16px 24px 24px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 30%),
-    linear-gradient(160deg, #f3e9cd 0%, var(--cream) 45%, var(--cream-dark) 100%);
-  box-shadow:
-    inset 0 2px 2px rgba(255, 255, 255, 0.7),
-    inset 0 -6px 10px rgba(90, 55, 20, 0.45),
-    inset 3px 0 5px rgba(90, 55, 20, 0.2),
-    inset -3px 0 5px rgba(90, 55, 20, 0.2);
+  background: ${theme.facePlateBg};
+  box-shadow: ${theme.facePlateShadow};
 }
 .grip-ribs {
   position: absolute;
@@ -749,14 +808,14 @@ $motion
   font-size: 28px;
   font-weight: 900;
   letter-spacing: 1px;
-  color: var(--ink);
-  text-shadow: 2px 2px 0 var(--accent);
+  color: ${theme.textColor};
+  text-shadow: ${theme.textShadow};
 }
 $active
 """.trimIndent()
 
     val body = """
-  <button class="trigger-btn" data-control="$control" data-category="TRIGGER" data-codename="Tactile Trigger" data-name="$name" data-seed="$seed">
+  <button class="trigger-btn" data-control="$control" data-category="TRIGGER" data-codename="${style.displayName}" data-name="$name" data-seed="$seed" id="rc.${control.lowercase()}_$seed">
     <div class="glow-ring"></div>
     <div class="face-plate" data-layer-role="base"></div>
     <div class="grip-ribs" data-layer-role="detail"></div>
@@ -798,12 +857,16 @@ $active
     return htmlDocument(css, body)
 }
 
-private fun bumperPreset(control: String): String {
+private fun bumperPreset(
+    control: String,
+    style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE
+): String {
     val right = control.uppercase() == "RB"
-    val accent = if (right) "#DC2626" else "#F97316"
-    val glow = if (right) "rgba(220, 38, 38, 0.45)" else "rgba(249, 115, 22, 0.45)"
+    val accent = if (right) "#DC2626" else "#10B981"
+    val glow = if (right) "rgba(220, 38, 38, 0.45)" else "rgba(16, 185, 129, 0.45)"
     val motion = retroMotion("0.72", "480", "0.95")
     val active = centeredPress(".bumper-btn")
+    val theme = resolveStyleTheme(style, accent, glow)
 
     val css = """
 $motion
@@ -816,17 +879,13 @@ $motion
   width: 120px;
   height: 52px;
   padding: 0;
-  border: none;
+  border: ${theme.accentBorder};
   outline: none;
   border-radius: 17px;
-  background: linear-gradient(160deg, #4a2a14 0%, #2a1408 55%, #140803 100%);
-  box-shadow:
-    0 6px 16px rgba(0, 0, 0, 0.65),
-    0 0 18px var(--accent-glow),
-    inset 0 2px 2px rgba(255, 200, 140, 0.30),
-    inset 0 -4px 6px rgba(0, 0, 0, 0.75);
+  background: ${theme.chassisBg};
+  box-shadow: ${theme.chassisShadow};
   transform-origin: 50% 50%;
-  font-family: "Courier New", Courier, monospace;
+  font-family: ${theme.fontFam};
   cursor: pointer;
   overflow: visible;
   display: flex;
@@ -852,14 +911,14 @@ $motion
   font-size: 24px;
   font-weight: 900;
   letter-spacing: 2px;
-  color: var(--cream);
-  text-shadow: 1px 1px 0 $accent;
+  color: ${theme.textColor};
+  text-shadow: ${theme.textShadow};
 }
 $active
 """.trimIndent()
 
     val body = """
-  <button class="bumper-btn" data-control="$control" data-category="BUMPER" data-codename="Tactile Bumper" data-name="Tactile Bumper $control" data-seed="48200">
+  <button class="bumper-btn" data-control="$control" data-category="BUMPER" data-codename="${style.displayName}" data-name="${style.displayName} Bumper $control" data-seed="48200" id="rc.${control.lowercase()}_48200">
     <span class="bumper-label">$control</span>
   </button>
     """.trimIndent()
@@ -867,37 +926,38 @@ $active
     return htmlDocument(css, body)
 }
 
-private fun dpadDirectionPreset(control: String): String {
+private fun dpadDirectionPreset(
+    control: String,
+    style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE
+): String {
     val glyph = dpadGlyph(control)
     val motion = retroMotion("0.68", "460", "0.94")
     val active = centeredPress(".dpad-btn")
     val accent = when (control.uppercase()) {
         "DOWN", "RIGHT" -> "#DC2626"
-        else -> "#F97316"
+        else -> "#10B981"
     }
+    val glow = "rgba(16, 185, 129, 0.45)"
+    val theme = resolveStyleTheme(style, accent, glow)
 
     val css = """
 $motion
 :root {
   --accent: $accent;
-  --accent-glow: rgba(249, 115, 22, 0.45);
+  --accent-glow: $glow;
 }
 .dpad-btn {
   position: relative;
   width: 88px;
   height: 88px;
   padding: 0;
-  border: none;
+  border: ${theme.accentBorder};
   outline: none;
   border-radius: 18px;
-  background: linear-gradient(160deg, #4a2a14 0%, #2a1408 55%, #140803 100%);
-  box-shadow:
-    0 7px 18px rgba(0, 0, 0, 0.70),
-    0 0 16px var(--accent-glow),
-    inset 0 2px 2px rgba(255, 200, 140, 0.30),
-    inset 0 -5px 8px rgba(0, 0, 0, 0.80);
+  background: ${theme.chassisBg};
+  box-shadow: ${theme.chassisShadow};
   transform-origin: 50% 50%;
-  font-family: "Courier New", Courier, monospace;
+  font-family: ${theme.fontFam};
   cursor: pointer;
   overflow: visible;
   display: flex;
@@ -922,12 +982,8 @@ $motion
   width: 74px;
   height: 74px;
   border-radius: 14px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 35%),
-    linear-gradient(160deg, #f3e9cd 0%, var(--cream) 45%, var(--cream-dark) 100%);
-  box-shadow:
-    inset 0 2px 2px rgba(255, 255, 255, 0.70),
-    inset 0 -5px 8px rgba(90, 55, 20, 0.45);
+  background: ${theme.facePlateBg};
+  box-shadow: ${theme.facePlateShadow};
 }
 .grip-ribs {
   position: absolute;
@@ -950,14 +1006,14 @@ $motion
   position: relative;
   z-index: 5;
   font-size: 34px;
-  color: var(--ink);
-  text-shadow: 1px 1px 0 $accent, 0 2px 4px rgba(0, 0, 0, 0.40);
+  color: ${theme.textColor};
+  text-shadow: ${theme.textShadow};
 }
 $active
 """.trimIndent()
 
     val body = """
-  <button class="dpad-btn" data-control="$control" data-category="DPAD" data-codename="Tactile D-Pad" data-name="Tactile D-Pad $control" data-seed="33100">
+  <button class="dpad-btn" data-control="$control" data-category="DPAD" data-codename="${style.displayName}" data-name="${style.displayName} D-Pad $control" data-seed="33100" id="rc.dpad_${control.lowercase()}">
     <div class="glow-ring"></div>
     <div class="face-plate" data-layer-role="base"></div>
     <div class="grip-ribs" data-layer-role="detail"></div>
@@ -978,92 +1034,67 @@ $active
     return htmlDocument(css, body)
 }
 
-private fun dpadCrossPreset(): String {
+private fun dpadCrossPreset(
+    style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE
+): String {
     val motion = retroMotion("0.68", "460", "0.95")
     val active = centeredPress(".dpad-cross")
+    val accent = "#10B981"
+    val glow = "rgba(16, 185, 129, 0.45)"
+    val theme = resolveStyleTheme(style, accent, glow)
 
     val css = """
 $motion
 :root {
-  --accent: #F97316;
-  --accent-glow: rgba(249, 115, 22, 0.45);
+  --accent: $accent;
+  --accent-glow: $glow;
 }
 .dpad-cross {
   position: relative;
   width: 160px;
   height: 160px;
-  box-sizing: border-box;
   padding: 0;
-  border: none;
+  border: ${theme.accentBorder};
   outline: none;
-  border-radius: 50%;
-  background: linear-gradient(160deg, #4a2a14 0%, #2a1408 55%, #140803 100%);
-  box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.80),
-    0 0 24px var(--accent-glow),
-    inset 0 3px 3px rgba(255, 200, 140, 0.30),
-    inset 0 -6px 12px rgba(0, 0, 0, 0.85);
+  border-radius: 36px;
+  background: ${theme.chassisBg};
+  box-shadow: ${theme.chassisShadow};
   transform-origin: 50% 50%;
-  font-family: "Courier New", Courier, monospace;
+  font-family: ${theme.fontFam};
   cursor: pointer;
   overflow: visible;
 }
-.dpad-socket-trim {
+.glow-ring {
   position: absolute;
-  left: 8px;
-  top: 8px;
-  width: 144px;
-  height: 144px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 45% 40%, #2b1f16 0%, #160e08 65%, #0a0603 100%);
-  box-shadow:
-    inset 0 5px 10px rgba(0, 0, 0, 0.92),
-    inset 0 -2px 3px rgba(255, 255, 255, 0.12);
+  left: 6px;
+  top: 6px;
+  width: 148px;
+  height: 148px;
+  border-radius: 32px;
+  box-shadow: 0 0 24px var(--accent-glow);
+  animation: pulse-aura 2.4s ease-in-out infinite;
   pointer-events: none;
 }
-.dpad-arm-v, .dpad-arm-h {
+.face-plate {
   position: absolute;
-  border-radius: 12px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 30%),
-    linear-gradient(160deg, #f3e9cd 0%, var(--cream) 45%, var(--cream-dark) 100%);
-  box-shadow:
-    inset 0 2px 2px rgba(255, 255, 255, 0.70),
-    inset 0 -4px 6px rgba(90, 55, 20, 0.45),
-    0 4px 8px rgba(0, 0, 0, 0.50);
+  left: 10px;
+  top: 10px;
+  width: 140px;
+  height: 140px;
+  border-radius: 28px;
+  background: ${theme.facePlateBg};
+  box-shadow: ${theme.facePlateShadow};
 }
-.dpad-arm-v { left: 56px; top: 12px; width: 48px; height: 136px; }
-.dpad-arm-h { left: 12px; top: 56px; width: 136px; height: 48px; }
-.dpad-pivot {
+.cross-center {
   position: absolute;
-  left: 58px;
-  top: 58px;
-  width: 44px;
-  height: 44px;
+  left: 56px;
+  top: 56px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: radial-gradient(circle at 45% 40%, #2a1408 0%, #140803 70%, #050201 100%);
-  box-shadow:
-    inset 0 4px 8px rgba(0, 0, 0, 0.90),
-    0 2px 4px rgba(255, 255, 255, 0.20);
-  z-index: 4;
+  background: radial-gradient(circle at 45% 40%, #15191f 0%, #080a0e 100%);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.90);
 }
-.dpad-arrow {
-  position: absolute;
-  z-index: 5;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  font-weight: 900;
-  color: var(--ink);
-  text-shadow: 1px 1px 0 var(--accent);
-}
-.dpad-up { left: 66px; top: 18px; }
-.dpad-right { left: 116px; top: 66px; }
-.dpad-down { left: 66px; top: 114px; }
-.dpad-left { left: 16px; top: 66px; }
 .button-emblem {
   position: absolute;
   left: 0;
@@ -1071,19 +1102,28 @@ $motion
   width: 160px;
   height: 160px;
   pointer-events: none;
-  z-index: 2;
 }
+.dpad-arrow {
+  position: absolute;
+  font-size: 22px;
+  font-weight: 900;
+  color: ${theme.textColor};
+  text-shadow: ${theme.textShadow};
+  z-index: 5;
+}
+.dpad-up    { left: 69px; top: 18px; }
+.dpad-right { right: 18px; top: 69px; }
+.dpad-down  { left: 69px; bottom: 18px; }
+.dpad-left  { left: 18px; top: 69px; }
 $active
 """.trimIndent()
 
     val body = """
-  <button class="dpad-btn dpad-cross" data-control="DPAD" data-category="DPAD" data-codename="Tactile D-Pad Cross" data-name="Tactile D-Pad Cross" data-seed="33500">
-    <div class="dpad-socket-trim"></div>
-    <div class="dpad-arm-v" data-layer-role="base"></div>
-    <div class="dpad-arm-h" data-layer-role="base"></div>
-    <div class="dpad-pivot" data-layer-role="detail"></div>
+  <button class="dpad-cross" data-control="DPAD" data-category="DPAD" data-codename="${style.displayName}" data-name="${style.displayName} D-Pad Cross" data-seed="31000" id="rc.dpad_cross">
+    <div class="glow-ring"></div>
+    <div class="face-plate" data-layer-role="base"></div>
+    <div class="cross-center" data-layer-role="detail"></div>
     <svg class="button-emblem" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
-      <!-- brass corner screws in 4 quadrant wells -->
       <circle cx="24" cy="24" r="3" fill="#8a7448"/>
       <line x1="22" y1="24" x2="26" y2="24" stroke="#261307" stroke-width="1"/>
       <circle cx="136" cy="24" r="3" fill="#8a7448"/>
@@ -1103,12 +1143,16 @@ $active
     return htmlDocument(css, body)
 }
 
-private fun joystickPreset(control: String): String {
+private fun joystickPreset(
+    control: String,
+    style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE
+): String {
     val right = control.uppercase() == "RS"
-    val accent = if (right) "#DC2626" else "#F97316"
-    val glow = if (right) "rgba(220, 38, 38, 0.45)" else "rgba(249, 115, 22, 0.45)"
+    val accent = if (right) "#DC2626" else "#10B981"
+    val glow = if (right) "rgba(220, 38, 38, 0.45)" else "rgba(16, 185, 129, 0.45)"
     val motion = retroMotion("0.68", "440", "0.94")
     val active = centeredPress(".stick-btn")
+    val theme = resolveStyleTheme(style, accent, glow)
 
     val css = """
 $motion
@@ -1124,7 +1168,7 @@ $motion
   border: none;
   background: transparent;
   transform-origin: 50% 50%;
-  font-family: "Courier New", Courier, monospace;
+  font-family: ${theme.fontFam};
   cursor: pointer;
   overflow: visible;
 }
@@ -1135,12 +1179,9 @@ $motion
   width: 150px;
   height: 150px;
   border-radius: 50%;
-  background: linear-gradient(160deg, #4a2a14 0%, #2a1408 55%, #140803 100%);
-  box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.80),
-    0 0 20px var(--accent-glow),
-    inset 0 3px 4px rgba(255, 200, 140, 0.25),
-    inset 0 -8px 14px rgba(0, 0, 0, 0.85);
+  border: ${theme.accentBorder};
+  background: ${theme.chassisBg};
+  box-shadow: ${theme.chassisShadow};
   z-index: 1;
 }
 .socket-well {
@@ -1150,7 +1191,7 @@ $motion
   width: 126px;
   height: 126px;
   border-radius: 50%;
-  background: radial-gradient(circle at 45% 40%, #2a1408 0%, #150903 65%, #060201 100%);
+  background: radial-gradient(circle at 45% 40%, #15191f 0%, #0b0d11 65%, #050608 100%);
   box-shadow:
     inset 0 6px 12px rgba(0, 0, 0, 0.95),
     inset 0 -2px 3px rgba(255, 255, 255, 0.12);
@@ -1171,13 +1212,8 @@ $motion
   width: 98px;
   height: 98px;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.35) 0%, transparent 40%),
-    linear-gradient(160deg, #f3e9cd 0%, var(--cream) 45%, var(--cream-dark) 100%);
-  box-shadow:
-    inset 0 2px 2px rgba(255, 255, 255, 0.70),
-    inset 0 -6px 10px rgba(90, 55, 20, 0.50),
-    0 6px 14px rgba(0, 0, 0, 0.70);
+  background: ${theme.facePlateBg};
+  box-shadow: ${theme.facePlateShadow};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1191,7 +1227,7 @@ $motion
   height: 64px;
   border-radius: 50%;
   border: 2px dashed $accent;
-  opacity: 0.55;
+  opacity: 0.65;
 }
 .cap-gloss {
   position: absolute;
@@ -1217,14 +1253,14 @@ $motion
   font-size: 24px;
   font-weight: 900;
   letter-spacing: 1px;
-  color: var(--ink);
-  text-shadow: 1px 1px 0 $accent;
+  color: ${theme.textColor};
+  text-shadow: ${theme.textShadow};
 }
 $active
 """.trimIndent()
 
     val body = """
-  <button class="stick-btn" data-control="$control" data-category="JOYSTICK" data-codename="Tactile Stick" data-name="Tactile Analog Stick $control" data-seed="51200">
+  <button class="stick-btn" data-control="$control" data-category="JOYSTICK" data-codename="${style.displayName}" data-name="${style.displayName} Analog Stick $control" data-seed="51200" id="rc.stick_${control.lowercase()}">
     <div class="stick-base" data-layer-role="base">
       <div class="socket-well" data-layer-role="base"></div>
       <div class="axis-ring" data-layer-role="base"></div>
@@ -1250,12 +1286,16 @@ $active
     return htmlDocument(css, body)
 }
 
-private fun stickButtonPreset(control: String): String {
+private fun stickButtonPreset(
+    control: String,
+    style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE
+): String {
     val right = control.uppercase() == "RSB"
-    val accent = if (right) "#DC2626" else "#F97316"
-    val glow = if (right) "rgba(220, 38, 38, 0.45)" else "rgba(249, 115, 22, 0.45)"
+    val accent = if (right) "#DC2626" else "#10B981"
+    val glow = if (right) "rgba(220, 38, 38, 0.45)" else "rgba(16, 185, 129, 0.45)"
     val motion = retroMotion("0.68", "460", "0.93")
     val active = centeredPress(".stick-btn-ctl")
+    val theme = resolveStyleTheme(style, accent, glow)
 
     val css = """
 $motion
@@ -1268,17 +1308,13 @@ $motion
   width: 70px;
   height: 70px;
   padding: 0;
-  border: none;
+  border: ${theme.accentBorder};
   outline: none;
   border-radius: 50%;
-  background: linear-gradient(160deg, #4a2a14 0%, #2a1408 55%, #140803 100%);
-  box-shadow:
-    0 6px 14px rgba(0, 0, 0, 0.70),
-    0 0 16px var(--accent-glow),
-    inset 0 2px 2px rgba(255, 200, 140, 0.30),
-    inset 0 -4px 7px rgba(0, 0, 0, 0.80);
+  background: ${theme.chassisBg};
+  box-shadow: ${theme.chassisShadow};
   transform-origin: 50% 50%;
-  font-family: "Courier New", Courier, monospace;
+  font-family: ${theme.fontFam};
   cursor: pointer;
   overflow: visible;
   display: flex;
@@ -1290,12 +1326,8 @@ $motion
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.35) 0%, transparent 40%),
-    linear-gradient(160deg, #f3e9cd 0%, var(--cream) 45%, var(--cream-dark) 100%);
-  box-shadow:
-    inset 0 2px 2px rgba(255, 255, 255, 0.70),
-    inset 0 -4px 6px rgba(90, 55, 20, 0.50);
+  background: ${theme.facePlateBg};
+  box-shadow: ${theme.facePlateShadow};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1316,14 +1348,14 @@ $motion
   font-size: 15px;
   font-weight: 900;
   letter-spacing: 1px;
-  color: var(--ink);
-  text-shadow: 1px 1px 0 $accent;
+  color: ${theme.textColor};
+  text-shadow: ${theme.textShadow};
 }
 $active
 """.trimIndent()
 
     val body = """
-  <button class="stick-btn-ctl" data-control="$control" data-category="BUTTON" data-codename="Tactile Click" data-name="Tactile Click $control" data-seed="21900">
+  <button class="stick-btn-ctl" data-control="$control" data-category="BUTTON" data-codename="${style.displayName}" data-name="${style.displayName} Click $control" data-seed="21900" id="rc.click_${control.lowercase()}">
     <div class="face-plate" data-layer-role="base">
       <div class="grip-ribs" data-layer-role="detail"></div>
       <span class="stick-btn-label">$control</span>
@@ -1334,14 +1366,18 @@ $active
     return htmlDocument(css, body)
 }
 
-private fun touchpadPreset(control: String): String {
+private fun touchpadPreset(
+    control: String,
+    style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE
+): String {
     val right = control.uppercase() == "RTP"
-    val accent = if (right) "#DC2626" else "#F97316"
-    val glow = if (right) "rgba(220, 38, 38, 0.40)" else "rgba(249, 115, 22, 0.40)"
+    val accent = if (right) "#DC2626" else "#10B981"
+    val glow = if (right) "rgba(220, 38, 38, 0.40)" else "rgba(16, 185, 129, 0.40)"
     val title = if (right) "Touch Look • RTP" else "Touch Move • LTP"
     val touchId = "touch_" + control.lowercase()
     val motion = retroMotion("0.75", "500", "0.98")
     val active = centeredPress(".touchpad-ctl")
+    val theme = resolveStyleTheme(style, accent, glow)
 
     val css = """
 $motion
@@ -1355,17 +1391,13 @@ $motion
   height: 180px;
   padding: 12px;
   box-sizing: border-box;
-  border: none;
+  border: ${theme.accentBorder};
   outline: none;
   border-radius: 22px;
-  background: linear-gradient(160deg, #4a2a14 0%, #2a1408 55%, #140803 100%);
-  box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.75),
-    0 0 20px var(--accent-glow),
-    inset 0 3px 3px rgba(255, 200, 140, 0.25),
-    inset 0 -6px 10px rgba(0, 0, 0, 0.85);
+  background: ${theme.chassisBg};
+  box-shadow: ${theme.chassisShadow};
   transform-origin: 50% 50%;
-  font-family: "Courier New", Courier, monospace;
+  font-family: ${theme.fontFam};
   cursor: pointer;
   overflow: visible;
   display: flex;
@@ -1380,12 +1412,8 @@ $motion
   width: 156px;
   height: 156px;
   border-radius: 16px;
-  background:
-    radial-gradient(circle at 45% 30%, rgba(255, 255, 255, 0.20) 0%, transparent 45%),
-    linear-gradient(160deg, #2b1d14 0%, #160e09 55%, #0d0704 100%);
-  box-shadow:
-    inset 0 3px 6px rgba(0, 0, 0, 0.90),
-    inset 0 -1px 2px rgba(255, 255, 255, 0.15);
+  background: ${theme.facePlateBg};
+  box-shadow: ${theme.facePlateShadow};
   z-index: 1;
 }
 .touchpad-scanline {
@@ -1410,8 +1438,8 @@ $motion
 .touchpad-title, .touchpad-sub {
   position: relative;
   z-index: 5;
-  color: var(--cream);
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.80);
+  color: ${theme.textColor};
+  text-shadow: ${theme.textShadow};
 }
 .touchpad-title {
   margin-top: 6px;
@@ -1430,11 +1458,11 @@ $active
 """.trimIndent()
 
     val body = """
-  <button class="touchpad-ctl" data-id="$touchId" data-control="$control" data-category="TOUCHPAD" data-name="Tactile Touchpad $control" data-seed="71500">
+  <button class="touchpad-ctl" data-id="$touchId" data-control="$control" data-category="TOUCHPAD" data-name="${style.displayName} Touchpad $control" data-seed="71500" id="rc.touch_${control.lowercase()}">
     <div class="touchpad-surface" data-layer-role="base"></div>
     <div class="touchpad-scanline" data-layer-role="detail"></div>
     <svg class="button-emblem" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
-      <!-- 4 corner brass machine screws -->
+      <!-- 4 corner machine screws -->
       <circle cx="20" cy="20" r="3" fill="#8a7448"/>
       <line x1="18" y1="20" x2="22" y2="20" stroke="#261307" stroke-width="1"/>
       <circle cx="160" cy="20" r="3" fill="#8a7448"/>
@@ -1452,9 +1480,16 @@ $active
     return htmlDocument(css, body)
 }
 
-private fun systemMenuPreset(): String {
+private fun systemPreset(
+    control: String,
+    label: String,
+    style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE
+): String {
     val motion = retroMotion("0.75", "500", "0.93")
     val active = centeredPress(".system-btn")
+    val accent = "#10B981"
+    val glow = "rgba(16, 185, 129, 0.40)"
+    val theme = resolveStyleTheme(style, accent, glow)
 
     val css = """
 $motion
@@ -1463,15 +1498,74 @@ $motion
   width: 64px;
   height: 42px;
   padding: 0;
-  border: none;
+  border: ${theme.accentBorder};
   outline: none;
   border-radius: 12px;
-  background: linear-gradient(160deg, #4a2a14 0%, #2a1408 55%, #140803 100%);
-  box-shadow:
-    0 5px 12px rgba(0, 0, 0, 0.70),
-    0 0 12px rgba(249, 115, 22, 0.40),
-    inset 0 2px 2px rgba(255, 200, 140, 0.25),
-    inset 0 -3px 6px rgba(0, 0, 0, 0.80);
+  background: ${theme.chassisBg};
+  box-shadow: ${theme.chassisShadow};
+  transform-origin: 50% 50%;
+  font-family: ${theme.fontFam};
+  cursor: pointer;
+  overflow: visible;
+  display: block;
+}
+.face-plate {
+  position: absolute;
+  left: 5px;
+  top: 5px;
+  width: 54px;
+  height: 32px;
+  border-radius: 8px;
+  background: ${theme.facePlateBg};
+  box-shadow: ${theme.facePlateShadow};
+}
+.btn-label {
+  position: absolute;
+  left: 0;
+  top: 6px;
+  width: 64px;
+  height: 30px;
+  line-height: 30px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: ${theme.textColor};
+  text-shadow: ${theme.textShadow};
+}
+$active
+""".trimIndent()
+
+    val body = """
+  <button class="system-btn" data-control="$control" data-category="SYSTEM" data-codename="${style.displayName}" data-name="${style.displayName} $control" data-seed="11400" id="rc.sys_${control.lowercase()}">
+    <div class="face-plate" data-layer-role="base"></div>
+    <span class="btn-label">$label</span>
+  </button>
+    """.trimIndent()
+
+    return htmlDocument(css, body)
+}
+
+private fun systemMenuPreset(
+    style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE
+): String {
+    val motion = retroMotion("0.75", "500", "0.93")
+    val active = centeredPress(".system-btn")
+    val accent = "#10B981"
+    val glow = "rgba(16, 185, 129, 0.40)"
+    val theme = resolveStyleTheme(style, accent, glow)
+
+    val css = """
+$motion
+.system-btn {
+  position: relative;
+  width: 64px;
+  height: 42px;
+  padding: 0;
+  border: ${theme.accentBorder};
+  outline: none;
+  border-radius: 12px;
+  background: ${theme.chassisBg};
+  box-shadow: ${theme.chassisShadow};
   transform-origin: 50% 50%;
   cursor: pointer;
   overflow: visible;
@@ -1484,12 +1578,8 @@ $motion
   width: 54px;
   height: 32px;
   border-radius: 8px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.30) 0%, transparent 40%),
-    linear-gradient(160deg, #f3e9cd 0%, var(--cream) 45%, var(--cream-dark) 100%);
-  box-shadow:
-    inset 0 1px 2px rgba(255, 255, 255, 0.70),
-    inset 0 -3px 5px rgba(90, 55, 20, 0.45);
+  background: ${theme.facePlateBg};
+  box-shadow: ${theme.facePlateShadow};
 }
 .burger-bar {
   position: absolute;
@@ -1497,8 +1587,8 @@ $motion
   width: 20px;
   height: 3px;
   border-radius: 2px;
-  background: #3b1d0a;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.40);
+  background: ${theme.barColor};
+  box-shadow: ${theme.barShadow};
   z-index: 4;
 }
 .burger-bar-1 { top: 7px; }
@@ -1508,7 +1598,7 @@ $active
 """.trimIndent()
 
     val body = """
-  <button class="system-btn" data-control="MENU" data-category="SYSTEM" data-codename="Tactile Menu" data-name="Tactile Menu" data-seed="11400">
+  <button class="system-btn" data-control="MENU" data-category="SYSTEM" data-codename="${style.displayName}" data-name="${style.displayName} Menu" data-seed="11400" id="rc.sys_menu">
     <div class="face-plate" data-layer-role="base">
       <div class="burger-bar burger-bar-1" data-layer-role="detail"></div>
       <div class="burger-bar burger-bar-2" data-layer-role="detail"></div>
@@ -1520,33 +1610,39 @@ $active
     return htmlDocument(css, body)
 }
 
-private fun macroPreset(control: String): String {
+private fun systemViewPreset(style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE): String = systemPreset("BACK", "⧉", style)
+private fun systemHomePreset(style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE): String = systemPreset("GUIDE", "⌂", style)
+private fun systemSharePreset(style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE): String = systemPreset("SHARE", "⇪", style)
+
+private fun macroPreset(
+    control: String,
+    style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE
+): String {
     val safeControl = control.trim().ifBlank { "M1" }.uppercase()
     val motion = retroMotion("0.70", "460", "0.94")
     val active = centeredPress(".macro-paddle")
+    val accent = "#10B981"
+    val glow = "rgba(16, 185, 129, 0.45)"
+    val theme = resolveStyleTheme(style, accent, glow)
 
     val css = """
 $motion
 :root {
-  --accent: #F97316;
-  --accent-glow: rgba(249, 115, 22, 0.45);
+  --accent: $accent;
+  --accent-glow: $glow;
 }
 .macro-paddle {
   position: relative;
   width: 72px;
   height: 72px;
   padding: 0;
-  border: none;
+  border: ${theme.accentBorder};
   outline: none;
   border-radius: 16px;
-  background: linear-gradient(160deg, #4a2a14 0%, #2a1408 55%, #140803 100%);
-  box-shadow:
-    0 6px 14px rgba(0, 0, 0, 0.70),
-    0 0 16px var(--accent-glow),
-    inset 0 2px 2px rgba(255, 200, 140, 0.30),
-    inset 0 -4px 7px rgba(0, 0, 0, 0.80);
+  background: ${theme.chassisBg};
+  box-shadow: ${theme.chassisShadow};
   transform-origin: 50% 50%;
-  font-family: "Courier New", Courier, monospace;
+  font-family: ${theme.fontFam};
   cursor: pointer;
   overflow: visible;
   display: flex;
@@ -1560,12 +1656,8 @@ $motion
   width: 60px;
   height: 60px;
   border-radius: 12px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 35%),
-    linear-gradient(160deg, #f3e9cd 0%, var(--cream) 45%, var(--cream-dark) 100%);
-  box-shadow:
-    inset 0 2px 2px rgba(255, 255, 255, 0.70),
-    inset 0 -4px 6px rgba(90, 55, 20, 0.45);
+  background: ${theme.facePlateBg};
+  box-shadow: ${theme.facePlateShadow};
 }
 .macro-bolt {
   position: absolute;
@@ -1573,8 +1665,8 @@ $motion
   top: 18px;
   z-index: 5;
   font-size: 18px;
-  color: var(--accent);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.60);
+  color: ${theme.textColor};
+  text-shadow: ${theme.textShadow};
 }
 .macro-label {
   position: relative;
@@ -1583,8 +1675,8 @@ $motion
   font-size: 20px;
   font-weight: 900;
   letter-spacing: 1px;
-  color: var(--ink);
-  text-shadow: 1px 1px 0 var(--accent);
+  color: ${theme.textColor};
+  text-shadow: ${theme.textShadow};
 }
 .button-emblem {
   position: absolute;
@@ -1599,7 +1691,7 @@ $active
 """.trimIndent()
 
     val body = """
-  <button class="macro-paddle" data-control="$safeControl" data-category="MACRO" data-codename="Tactile Macro" data-name="Tactile Macro $safeControl">
+  <button class="macro-paddle" data-control="$safeControl" data-category="MACRO" data-codename="${style.displayName}" data-name="${style.displayName} Macro $safeControl" id="rc.macro_${safeControl.lowercase()}">
     <div class="face-plate" data-layer-role="base"></div>
     <svg class="button-emblem" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">
       <circle cx="10" cy="10" r="2" fill="#8a7448"/>
@@ -2147,37 +2239,37 @@ ${centeredPress(".system-btn")}
         if (catType != null && catType != CategoryType.ABXY) {
             return when (catType) {
                 CategoryType.DPAD -> when (ctrl) {
-                    ControlKey.DOWN -> PRESET_DPAD_DOWN
-                    ControlKey.LEFT -> PRESET_DPAD_LEFT
-                    ControlKey.RIGHT -> PRESET_DPAD_RIGHT
-                    ControlKey.DPAD -> PRESET_DPAD_CROSS
-                    else -> PRESET_DPAD_UP
+                    ControlKey.DOWN -> dpadDirectionPreset("DOWN", style)
+                    ControlKey.LEFT -> dpadDirectionPreset("LEFT", style)
+                    ControlKey.RIGHT -> dpadDirectionPreset("RIGHT", style)
+                    ControlKey.DPAD -> dpadCrossPreset(style)
+                    else -> dpadDirectionPreset("UP", style)
                 }
                 CategoryType.TRIGGERS ->
-                    if (ctrl == ControlKey.LT) PRESET_TRIGGER_LT else PRESET_TRIGGER_RT
+                    if (ctrl == ControlKey.LT) triggerPreset("LT", style) else triggerPreset("RT", style)
                 CategoryType.BUMPERS ->
-                    if (ctrl == ControlKey.LB) PRESET_BUMPER_LB else PRESET_BUMPER_RB
+                    if (ctrl == ControlKey.LB) bumperPreset("LB", style) else bumperPreset("RB", style)
                 CategoryType.STICKS -> when (ctrl) {
-                    ControlKey.RS -> PRESET_THUMBSTICK_RS
-                    ControlKey.LSB -> PRESET_STICK_BUTTON_LSB
-                    ControlKey.RSB -> PRESET_STICK_BUTTON_RSB
-                    ControlKey.LTP -> PRESET_TOUCHPAD_LTP
-                    ControlKey.RTP -> PRESET_TOUCHPAD_RTP
-                    else -> PRESET_THUMBSTICK_LS
+                    ControlKey.RS -> joystickPreset("RS", style)
+                    ControlKey.LSB -> stickButtonPreset("LSB", style)
+                    ControlKey.RSB -> stickButtonPreset("RSB", style)
+                    ControlKey.LTP -> touchpadPreset("LTP", style)
+                    ControlKey.RTP -> touchpadPreset("RTP", style)
+                    else -> joystickPreset("LS", style)
                 }
                 CategoryType.SYSTEM -> when (ctrl) {
-                    ControlKey.BACK -> PRESET_SYSTEM_VIEW
-                    ControlKey.GUIDE -> PRESET_SYSTEM_HOME
-                    ControlKey.SHARE -> PRESET_SYSTEM_SHARE
-                    else -> PRESET_SYSTEM_MENU
+                    ControlKey.BACK -> systemViewPreset(style)
+                    ControlKey.GUIDE -> systemHomePreset(style)
+                    ControlKey.SHARE -> systemSharePreset(style)
+                    else -> systemMenuPreset(style)
                 }
                 CategoryType.MACROS -> when (ctrl) {
-                    ControlKey.M2 -> createPresetMacroPaddle("M2")
-                    ControlKey.M3 -> createPresetMacroPaddle("M3")
-                    ControlKey.M4 -> createPresetMacroPaddle("M4")
-                    else -> createPresetMacroPaddle(ctrl?.key ?: "M1")
+                    ControlKey.M2 -> macroPreset("M2", style)
+                    ControlKey.M3 -> macroPreset("M3", style)
+                    ControlKey.M4 -> macroPreset("M4", style)
+                    else -> macroPreset(ctrl?.key ?: "M1", style)
                 }
-                CategoryType.ABXY -> getReferenceTemplateInternal(control, "BUTTON", consoleMode)
+                CategoryType.ABXY -> getReferenceTemplateInternal(control, "BUTTON", consoleMode, style)
             }
         }
 
