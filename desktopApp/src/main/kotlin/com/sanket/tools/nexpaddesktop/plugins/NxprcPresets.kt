@@ -1100,16 +1100,20 @@ $motion
 }
 .dpad-arrow {
   position: absolute;
+  width: 28px;
+  height: 28px;
+  line-height: 28px;
+  text-align: center;
   font-size: 22px;
   font-weight: 900;
   color: ${theme.textColor};
   text-shadow: ${theme.textShadow};
   z-index: 5;
 }
-.dpad-up    { left: 69px; top: 18px; }
-.dpad-right { right: 18px; top: 69px; }
-.dpad-down  { left: 69px; bottom: 18px; }
-.dpad-left  { left: 18px; top: 69px; }
+.dpad-up    { left: 66px; top: 16px; }
+.dpad-right { left: 116px; top: 66px; }
+.dpad-down  { left: 66px; top: 116px; }
+.dpad-left  { left: 16px; top: 66px; }
 $active
 """.trimIndent()
 
