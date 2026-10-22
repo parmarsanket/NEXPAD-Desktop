@@ -81,10 +81,6 @@ private fun retroMotion(
   0%, 100% { opacity: 0.55; }
   50% { opacity: 1; }
 }
-@keyframes spin-dial {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
 """.trimIndent()
 
 private fun centeredPress(selector: String): String = """
@@ -795,7 +791,6 @@ $motion
   width: 18px;
   height: 18px;
   transform-origin: 50% 50%;
-  animation: spin-dial 6s linear infinite;
 }
 .btn-label {
   position: absolute;
