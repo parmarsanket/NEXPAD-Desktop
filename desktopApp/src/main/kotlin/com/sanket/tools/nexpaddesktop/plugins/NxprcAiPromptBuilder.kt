@@ -895,6 +895,13 @@ ${paramsSection}### PREVIOUS CODE:
 $previousHtml
 ```
 
+### NXPRC RUNTIME REPAIR CHECK:
+- Preserve one root button with explicit px bounds; this is compiled into a normalized NXPRC viewBox and then resized by both native renderers.
+- Preserve the root `:active` spring contract (`--spring-damping`, `--spring-stiffness`, `--press-scale`) and keep the default press stationary and centered.
+- Preserve a single intentional root idle animation when present. Root `@keyframes` using `transform`, `opacity`, or `hue-rotate()` can be compiled; child-only animation is not a reliable per-layer contract.
+- For a joystick, preserve `data-layer-role="base"` and `data-layer-role="thumb-cap"` so `capLayerIndices` keep the housing stationary and move only the cap.
+- Prefer `box-shadow` for glow and depth. Do not replace a valid SVG emblem with browser-only filter graphs, JavaScript, CSS drag logic, or layout animation.
+
 ### SURGICAL REPAIR CONTRACT:
 1. **Preserve Visual Design**: Do NOT redesign the component or alter its requested theme, artistic concept, color palette, or vector artwork.
 2. **Fix Compiler Diagnostics**: Resolve ONLY the specific errors and warnings reported above (e.g., ensure single root `<button>`, valid explicit px bounds, valid SVG viewBox, remove unsupported CSS like `@media`/`mix-blend-mode`/`backdrop-filter`). Note: Standard CSS `@keyframes` on transform/opacity properties ARE supported for ambient animations; do NOT remove valid keyframes unless the compiler diagnostic specifically identifies them as invalid.
@@ -928,11 +935,82 @@ $previousHtml
         heightDp: Int = 96,
         options: AiDesignOptions = AiDesignOptions()
     ): String {
-        return when (options.modelCapability) {
+        val tierContract = when (options.modelCapability) {
             ModelCapability.COMPACT -> compactEngineBoundaries(rootClass, widthDp, heightDp)
-            ModelCapability.FRONTIER -> standardEngineBoundaries(rootClass, widthDp, heightDp) + "\n\n" + frontierEngineBoundaries(rootClass, widthDp, heightDp)
+            ModelCapability.FRONTIER -> standardEngineBoundaries(rootClass, widthDp, heightDp) +
+                "\n\n" + frontierEngineBoundaries(rootClass, widthDp, heightDp)
             else -> standardEngineBoundaries(rootClass, widthDp, heightDp)
         }
+
+        // Keep this after the tier contract. The older, intentionally detailed sections
+        // above are useful background, while this short contract is the authoritative
+        // implementation recipe shared by Android and desktop renderers.
+        return tierContract + "\n\n" + nxprcRuntimePlaybook(rootClass, widthDp, heightDp, options.modelCapability)
+    }
+
+    /**
+     * The prompt used to describe NXPRC as if it were a browser. That encouraged models
+     * to spend their budget on web-only behavior (child animations, CSS filters, and
+     * movable press transforms) which the native renderers cannot reproduce consistently.
+     * This playbook is deliberately placed after each tier's broad engine guidance so it
+     * wins over browser-oriented examples without duplicating the full prompt contract.
+     */
+    private fun nxprcRuntimePlaybook(
+        rootClass: String,
+        widthDp: Int,
+        heightDp: Int,
+        capability: ModelCapability
+    ): String {
+        val categoryHint = when (rootClass) {
+            "stick-btn" -> "JOYSTICK"
+            "touchpad-ctl" -> "TOUCHPAD"
+            "trigger-btn" -> "TRIGGER"
+            "bumper-btn" -> "BUMPER"
+            "dpad-btn" -> "DPAD"
+            else -> "BUTTON/SYSTEM"
+        }
+
+        if (capability == ModelCapability.COMPACT) {
+            return """
+                ### NXPRC RUNTIME PLAYBOOK — COMPACT, AUTHORITATIVE
+                Treat the output as a small scene description for a native renderer, not as a browser page.
+                - **Canvas**: emit exactly one root `<button class="$rootClass" ...>` with `position: relative; width: ${widthDp}px; height: ${heightDp}px;`. Children use explicit px `position:absolute; left; top; width; height` or simple Flexbox. These px values become the NXPRC viewBox and are scaled later.
+                - **Reliable visual recipe**: gradients + borders + `border-radius`/`clip-path` + `box-shadow` become native `BoxLayer` geometry. Use an embedded SVG (`viewBox="0 0 100 100"`, path/circle/polygon/rect) for intricate artwork. Keep DOM text in an unrotated span.
+                - **Glow and depth**: use colored outset/inset `box-shadow`; use a root glow shadow only when a visible ambient halo is intended. Avoid huge shadows and `overflow:hidden` because Android and desktop fit the canvas using compiled outsets.
+                - **Press**: put `--spring-damping`, `--spring-stiffness`, and `--press-scale` in `:root`; define `.$rootClass:active { transform: scale(var(--press-scale)); transform-origin: 50% 50%; }`. The two native renderers read this into a spring. Do not use CSS transitions or child press transforms by default.
+                - **Idle animation**: put one `animation: ... infinite` declaration on the root, not on a decorative child. Use a single `@keyframes` channel with `transform: scale()`/`rotate()`, `opacity`, or `filter: hue-rotate()`. Name it `pulse/glow/breathe`, `spin/rotate`, or `rgb/chroma/hue` for the native idle mode. Never animate layout (`width`, `left`, `top`, `margin`) or use `scaleX/scaleY` for portable motion.
+                - **${categoryHint}**: for `stick-btn`, mark the stationary housing `data-layer-role="base"` and the centered movable cap `data-layer-role="thumb-cap"`; keep every cap detail inside that cap. The runtime supplies drag translation and spring return. A `touchpad-ctl` is stationary and must not contain a movable cap.
+                Return only the complete HTML/CSS code block.
+            """.trimIndent()
+        }
+
+        return """
+            ### NXPRC RUNTIME PLAYBOOK — AUTHORITATIVE IMPLEMENTATION CONTRACT
+            NXPRC compiles HTML/CSS/SVG into `NxprcDocument`; Android and desktop draw it. No browser behavior or JavaScript.
+
+            #### 1) Canvas and sizing
+            - Root `${widthDp}px × ${heightDp}px` is the source viewBox, not final device size. Children are normalized and both renderers center the same document with `min(width/viewBoxWidth, height/viewBoxHeight)`.
+            - Android uses nominal sizing for sticks/D-pad/touchpads and about `0.82x` for ordinary buttons. Desktop uses a normally 140dp tile and reduces fit for large `canvasOutsets`; keep outsets modest.
+            - Use one relative root, explicit px child bounds, and `overflow: visible` unless intentional. No viewport units, CSS Grid, external assets, or responsive page layout.
+
+            #### 2) Compiler-to-layer recipe
+            - Backgrounds, gradients, borders, radii, clip paths, opacity, transforms, and normal shadows → `BoxLayer` (legacy `GradientShape` may occur in fallback documents).
+            - A qualifying colored **root** outset shadow → `GlowRing`; explicit root `data-bezel="true"`/bezel/socket geometry → `BezelSocket`.
+            - Inset shadows stay on `BoxLayer`; `InnerShadow` and `GlossReflection` are explicit document primitives, not guaranteed conversions from generic HTML or pseudo-elements.
+            - Supported SVG → `VectorPath`; one short text leaf → `CenterGlyph`; multiple text leaves → `TextLayer`. Use DOM order, small `z-index`, and `data-layer-role` to make structure clear.
+
+            #### 3) Portable visual language
+            Prefer gradients, borders, rounded/oval/polygon geometry, SVG paths/paint servers, and layered `box-shadow`. `box-shadow` is reliable glow; `filter: blur()` is only a hint. Small `brightness()`/`saturate()` accents are safe; use `hue-rotate()` through root animation. Avoid SVG filters, backdrop filters, blend modes, masks, perspective, 3D, and layout animation.
+
+            #### 4) Press and idle motion
+            - Put spring variables in `:root` and one root rule: `.$rootClass:active { transform: scale(var(--press-scale)); transform-origin: 50% 50%; }`. Android and desktop read it into `NxprcAnimations` and animate it with native spring physics.
+            - Default press is stationary centered scale. Only use `translateY(...)` when the user explicitly asks for travel; it becomes a whole-component offset. Trigger input is press/release (`0 → 1 → 0`), not guaranteed pointer-distance depth.
+            - Put one `animation: ... infinite` on the root. Name `pulse/glow/breathe` → `PULSE`, `spin/rotate` → `ROTATE`, and `rgb/chroma/rainbow/hue` → `RGB_CYCLE`. Animate only uniform `scale()`/`rotate()`, `opacity`, or `hue-rotate()`; never layout. Android gates generic tracks; named modes are cross-platform, but keep static artwork complete. Desktop previews tracks continuously.
+
+            #### 5) Interaction structure
+            - **Joystick**: mark stationary housing `data-layer-role="base"` and centered movable cap `data-layer-role="thumb-cap"`; keep cap artwork inside it. `capLayerIndices` make both renderers move only the cap; keep it about 55–65% of the socket. Never implement drag in CSS/JS.
+            - **Touchpad**: stationary surface only; no joystick cap, center button, or CSS drag.
+        """.trimIndent()
     }
 
     private fun compactEngineBoundaries(rootClass: String, widthDp: Int = 96, heightDp: Int = 96): String {
@@ -948,9 +1026,9 @@ $previousHtml
 1. **Single Button Root [GLOBAL-REQUIRED]**: `<body>` must contain exactly one root `<button class="$rootClass" data-control="..." data-category="..." data-name="...">`. Keep every visual child inside it.
 2. **Explicit Dimensions [GLOBAL-REQUIRED]**: Root component dimensions MUST use explicit `px` bounds (`position: relative; width: ${widthDp}px; height: ${heightDp}px;`). Set `position: absolute`, `left`, `top`, `width`, and `height` on decorative layered children, or use Flexbox (`display: flex; gap; justify-content; align-items`). Dynamic `calc()` and `aspect-ratio` are supported on children.
 3. **Portable Self-Contained Document [GLOBAL-REQUIRED]**: Include exactly one `<style>` block, system fonts, zero external URLs, zero JavaScript, no `@import`, no `<link>`.
-4. **Stable CSS Only [GLOBAL-REQUIRED]**: Gradients (`radial-gradient`, `linear-gradient`, `conic-gradient`), `box-shadow`, `border-radius`, `clip-path: polygon(...)`, GPU `filter: blur()`. Do not use `@media`, `@supports`, `:hover`, `:focus`, `mix-blend-mode`, `backdrop-filter`, or CSS transitions. Standard CSS `@keyframes` on transform/opacity are supported for ambient loops.
+4. **Stable CSS Only [GLOBAL-REQUIRED]**: Gradients (`radial-gradient`, `linear-gradient`, `conic-gradient`), `box-shadow`, `border-radius`, `clip-path: polygon(...)`, and modest filter accents. `filter: blur()` may be retained as a compatibility hint, but `box-shadow` is the reliable cross-renderer glow primitive. Do not use `@media`, `@supports`, `:hover`, `:focus`, `mix-blend-mode`, `backdrop-filter`, or CSS transitions. Standard CSS `@keyframes` on transform/opacity are supported for ambient loops.
 5. **Real DOM Text [GLOBAL-REQUIRED]**: Labels and markings in straight, unrotated `<span>` (Text must be real DOM text without rotation).
-6. **Vector Graphics & Dual-Engine Architecture**: Complex graphics/emblems MUST use embedded `<svg class="button-emblem" viewBox="0 0 100 100"><path d="..."/></svg>`. Do NOT use SVG `<filter>` graphs (`feGaussianBlur`); place an underlying HTML/CSS `<span class="emblem-ambient">` with `box-shadow` or `filter: blur()` underneath for glow!
+6. **Vector Graphics & Dual-Engine Architecture**: Complex graphics/emblems MUST use embedded `<svg class="button-emblem" viewBox="0 0 100 100"><path d="..."/></svg>`. Do NOT use SVG `<filter>` graphs (`feGaussianBlur`); place an underlying HTML/CSS `<span class="emblem-ambient">` with a colored `box-shadow` underneath for reliable glow. A small `filter: blur()` hint is optional, not the primary effect.
 7. **Tactile Spring Micro-Physics [COMPONENT-REQUIRED]**: Declare in `:root`:
    `--spring-damping: ${physics.damping}; --spring-stiffness: ${physics.stiffness.toInt()}; --press-scale: ${physics.pressScaleFormatted};`
    Define active press: `.$rootClass:active { transform: scale(var(--press-scale)); }` (strictly in-place centered uniform scale; keep `transform-origin: 50% 50%`; NEVER use `translateY` or directional translation; zero mobile displacement by default, unless user explicitly demands mobility per Universal Law of User Supremacy).
@@ -1011,7 +1089,7 @@ Output Format:        STRICT  (Single ```html ... ``` block, zero markdown conve
    ⚠️ The Hard Requirement: Opaque surface plates MUST sit underneath vector artwork and typography. In HTML DOM, declare face plate FIRST, embedded `<svg>` SECOND, and label `<span>` THIRD. Opaque surfaces must not unintentionally occlude required artwork or text.
 6. **Text must be real DOM text without rotation [GLOBAL-REQUIRED]**: Labels and markings in unrotated `<span>` (`NO TEXT ROTATION`). When iconography is needed, use SVG/vector graphics; do not add text only because the component is a button.
 7. **Stable CSS only [GLOBAL-REQUIRED]**: Do not use `@media`, `@supports`, `:hover`, or `:focus`. CSS transitions and layout animations are prohibited. For idle/ambient animation loops (pulsing, subtle rotation, shimmer), standard CSS `@keyframes` on transform/opacity properties are supported by the engine. Press feedback uses `.$rootClass:active` with spring micro-physics.
-8. **Optical filters [GLOBAL-REQUIRED]**: GPU `filter: blur()`, `brightness()`, `contrast()`, `saturate()`, `hue-rotate()`. Do not use `backdrop-filter` or `mix-blend-mode`.
+8. **Optical filters [GLOBAL-REQUIRED]**: Prefer gradients and `box-shadow` for paint. Small `filter: brightness()` and `saturate()` accents are portable; use `hue-rotate()` through a supported root animation/`RGB_CYCLE` channel. `filter: blur()` and `contrast()` are not reliable cross-renderer contracts. Do not use `backdrop-filter` or `mix-blend-mode`.
 9. **Tactile active interaction & Zero-Displacement Mandate [COMPONENT-REQUIRED]**: Always define `.$rootClass:active { transform: scale(var(--press-scale)); }` (centered in-place uniform scale; keep `transform-origin: 50% 50%`). ⚠️ **STRICT MOBILE ZERO-MOBILITY / ZERO-DISPLACEMENT MANDATE**: By default, NEVER use `translateY(...)`, `translateX(...)`, downward displacement, sliding, or position shifting on press (`:active`) on the root button OR on any child layers. Mobile gamepad screens have strictly bounded, compact layout slots. Shifting or movable button animations cause layout jitter, clip adjacent controls, detach from touch hitboxes, and look terrible. All tactile depth and travel must be 100% stationary in place (via internal shaders, gauge fills, lighting, or scale) — UNLESS the user explicitly demands mobility/translation, in which case the Universal Law of User Supremacy strictly overrides default restrictions and you must fulfill the user's demand!
 10. **Tactile spring micro-physics [COMPONENT-REQUIRED]**: Component MUST declare spring variables in `:root`:
     `--spring-damping: <number>;`, `--spring-stiffness: <number>;`, `--press-scale: <number>;`
@@ -1025,9 +1103,9 @@ Output Format:        STRICT  (Single ```html ... ``` block, zero markdown conve
 - `box-shadow`: Outset socket shadows, inset bevel rims, recessed well depths.
 - `border-radius`: Circles, capsules, squircles, rounded rects.
 - `clip-path: polygon(...)`: Stars, hexagons, diamonds, shields, custom silhouettes.
-- `filter: blur(Npx)`, `filter: brightness(N)`, `filter: contrast(N)`: Single-function GPU filters.
+- `filter: brightness(N)`, `filter: saturate(N)`, `filter: hue-rotate(Ndeg)`: Small native color accents. `filter: blur(Npx)` remains a compatibility hint, but use `box-shadow` for reliable glow and do not require blur for the design to read correctly.
 - Embedded `<svg>` & Vector Nodes: `<path d="...">`, `<circle>`, `<polygon>`, `<g>`. Supports `<defs>` gradient paint servers (`linearGradient`, `radialGradient`).
-- Vector Emblem Glow Rule: Vector layers compile into GPU Skia paths; do NOT rely on SVG `<filter>` graphs (`feGaussianBlur`, `feDropShadow`) on vector paths for glow. Place an underlying HTML/CSS `<span class="emblem-ambient">` with `filter: blur(4px)` or `box-shadow` underneath the `<svg>` to cast a luminous ambient aura!
+- Vector Emblem Glow Rule: Vector layers compile into GPU Skia paths; do NOT rely on SVG `<filter>` graphs (`feGaussianBlur`, `feDropShadow`) on vector paths for glow. Place an underlying HTML/CSS `<span class="emblem-ambient">` with a colored `box-shadow` underneath the `<svg>`; `filter: blur(4px)` is optional and must not be the only glow path.
 - SVG Transforms & Group Matrices: Native support for `<g transform="translate(x, y) rotate(deg)">` and direct `<path transform="...">`.
 - `calc()` and `aspect-ratio`: Dynamic child dimensions.
 - Flexbox: Flow and alignment (`display: flex`, `gap`, `justify-content`, `align-items`).
@@ -1049,24 +1127,24 @@ When the user requests a character, hero, creature, vehicle, weapon, insignia, o
    - Uses clean SVG vector paths (`<path d="...">`, `<polygon points="...">`, `<circle>`, `<ellipse>`, `<line>`) to draw the exact character, emblem, or insignia.
    - Sized appropriately to sit centered or docked on the button face (e.g., `width: 50px; height: 50px; position: absolute;` or flexbox child).
    - Supports `<defs>` gradient paint servers (`<linearGradient id="...">`, `<radialGradient id="...">` with `<stop>`) or solid vector fills and strokes.
-   - ⚠️ **VECTOR GLOW PATTERN**: Do NOT rely on SVG `<filter>` graphs (`<feGaussianBlur>`, `<feColorMatrix>`) on vector paths for glow. Instead, place an underlying HTML/CSS `<span class="emblem-ambient">` with `filter: blur(4px)` or `box-shadow: 0 0 16px var(--accent-glow)` underneath the `<svg>` to cast a luminous ambient aura!
+   - ⚠️ **VECTOR GLOW PATTERN**: Do NOT rely on SVG `<filter>` graphs (`<feGaussianBlur>`, `<feColorMatrix>`) on vector paths for glow. Instead, place an underlying HTML/CSS `<span class="emblem-ambient">` with `box-shadow: 0 0 16px var(--accent-glow)` underneath the `<svg>`. `filter: blur(4px)` is optional, not a portability guarantee.
    - ✅ **SVG TRANSFORMS & ROTATIONS**: You can freely use `<g transform="translate(x,y) rotate(deg)">` or direct `<path transform="...">` to distribute or rotate shapes (such as radial petals, emblems, gear teeth, or insignia rays) around a center point, or bake coordinates directly. Both are fully compiled.
 3. The High-Contrast Control Typography (<span class="btn-label">):
    - Real DOM text for the gamepad key ensuring instantaneous legibility during high-speed gaming.
    - ⚠️ **NO TEXT ROTATION**: Keep labels, sub-labels, and hardware text markings in straight, unrotated `<span>` elements (avoid `transform: rotate(...)` on text nodes to ensure 100% crisp subpixel font rasterization on mobile displays).
 
 ### SECTION 7B — ATMOSPHERIC AURA & RGB SOCKET LIGHTING ENGINE
-NEXPAD features a high-performance atmospheric lighting engine (`.drawBehind` / `CanvasLayer.GlowRing`) that projects an unclipped, luminous ambient aura behind the button socket onto the gamepad surface:
+NEXPAD features a native atmospheric lighting path (`.drawBehind` / `CanvasLayer.GlowRing`) that projects an unclipped ambient aura behind the button socket onto the gamepad surface:
 
 1. **Automatic Aura Color Detection**:
-   - If the user specifies an explicit accent color or neon theme (e.g. via `--accent`, `box-shadow: 0 0 24px <color>`, or a `.glow-ring` element), that exact color is automatically sampled for the atmospheric aura.
-   - If no custom aura color or style is specified, NEXPAD's engine automatically detects and harmonizes the aura based on the button's hardware identity and active color profile (e.g., A = Emerald Green `#4ADE80`, B = Crimson `#F87171`, X = Sapphire `#60A5FA`, Y = Solar Gold `#FBBF24`, LS = Neon Cyan `#00E5FF`, RS = Neon Magenta `#FF007F`).
-   - Custom colors are honored, while unstyled buttons automatically gain rich, native atmospheric lighting.
+   - If the root document has an explicit `GlowRing` or a visible colored outset `box-shadow` such as `box-shadow: 0 0 24px <color>`, that color is sampled for the atmospheric aura. A CSS custom property by itself is not enough; use it in a compiled shadow/stroke.
+   - If no compiled colored shadow/stroke is specified, NEXPAD falls back to the button identity and active color profile (e.g., A = Emerald Green `#4ADE80`, B = Crimson `#F87171`, X = Sapphire `#60A5FA`, Y = Solar Gold `#FBBF24`, LS = Neon Cyan `#00E5FF`, RS = Neon Magenta `#FF007F`).
+   - Custom colors are honored when they survive into a root shadow/stroke/GlowRing; unstyled buttons still receive the native fallback aura.
 
 2. **How to Express Aura in HTML/CSS**:
-   - Explicit Glow Ring Layer: Add a dedicated ambient element: `<div class="glow-ring"></div>` with `position: absolute; border-radius: 50%; box-shadow: 0 0 28px var(--accent-glow);` or `background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);`.
+   - Explicit Glow Ring Layer: Express the aura on the root or a compiled structural layer with `box-shadow: 0 0 28px var(--accent-glow);`. A dedicated `<div class="glow-ring">` is still a `BoxLayer`; its color is not guaranteed to become a separate `GlowRing`.
    - Outset Box Shadows: Include radiant socket glow in the root button's `box-shadow`: e.g., `box-shadow: 0 8px 24px rgba(0,0,0,0.65), 0 0 28px var(--accent-glow);`.
-   - Kinematic Spring Reactivity: During button depression (`:active`), the engine dynamically intensifies the atmospheric aura bloom alpha from idle (0.40) to actuation peak (0.90) with physical spring damping.
+   - Kinematic Spring Reactivity: During button depression (`:active`), both native renderers animate the aura bloom from roughly 0.40 idle toward 0.90 with the runtime spring. This is renderer-owned behavior, not a reason to add a child CSS animation.
 
 ### SECTION 8 — DESIGN QUALITY CRITERIA & CONDITIONAL RESTRAINT
 **DESIGN QUALITY CRITERIA**:
@@ -1100,7 +1178,7 @@ Self-check before output:
 - [ ] Visual Stacking & Occlusion: Foreground vector artwork and labels have higher z-index (or appear after) opaque background/surface plates.
 - [ ] Tactile Physics: Valid active state `.$rootClass:active { transform: scale(var(--press-scale)); }` with spring micro-physics (`--spring-damping`, `--spring-stiffness`, `--press-scale`) in `:root`.
 - [ ] Clean Engine Profile: No forbidden properties (no `@media`, no external fonts, no external scripts, no `mix-blend-mode`, no `backdrop-filter`, no CSS Grid).
-- [ ] Complex Graphics Architecture: If a character, emblem, or complex graphic is requested, uses an embedded `<svg class="button-emblem" viewBox="...">` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks. For vector glow, use an underlying CSS `<span>` with `filter: blur()` or `box-shadow` (no SVG `<filter>` graphs).
+- [ ] Complex Graphics Architecture: If a character, emblem, or complex graphic is requested, uses an embedded `<svg class="button-emblem" viewBox="...">` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks. For vector glow, use an underlying CSS `<span>` with `box-shadow` (optional `filter: blur()`; no SVG `<filter>` graphs).
 
 ### SECTION 11 — AUTHORITATIVE OUTPUT CONTRACT
 To ensure reliable programmatic compilation, return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text outside it.
@@ -1123,7 +1201,7 @@ When authoring components for `data-category="JOYSTICK"`, the compiler and runti
    - Slotted into elevated z-order zone `+20,000` (`LayerStack.ZONE_THUMB_CAP`).
    - The Android runtime automatically extracts this layer hierarchy and binds it to touch drag kinematics:
      - 2D offset translation dynamically tracking thumb drag vectors.
-     - Travel limit clamping (`maxDeflection = min(width, height) * 0.35`).
+      - Input travel is clamped by the native pointer handler to roughly `min(width, height) * 0.28`; keep the visible cap and socket clearance generous (the aura may extend toward ~0.35 of the tile).
      - Circular radial deadzone filtering.
      - 12-sample `VelocityRingBuffer` tracking flick velocity.
      - Damped spring return to center on touch release (`waitForUpOrCancellation`).
@@ -1137,11 +1215,11 @@ When authoring components for `data-category="JOYSTICK"`, the compiler and runti
 When authoring components for `data-category="TRIGGER"`, the compiler and runtime enforce mobile-safe ergonomics:
 1. **Stationary Housing Cavity**:
    - The root `<button class="trigger-btn" data-category="TRIGGER" ...>` defines the fixed controller cavity (${widthDp}px x ${heightDp}px).
-   - Recessed cavity gradient and contact shadows provide progressive travel depth receding into the controller shell.
+    - Recessed cavity gradient and contact shadows communicate the idea of progressive travel depth receding into the controller shell. The current native pointer path exposes a press/release value (`0 → 1 → 0`), not a guaranteed continuous CSS finger-distance signal.
 2. **Zero-Mobility In-Place Actuation Kinematics**:
    - On `:active` touch depression, use strictly centered uniform scaling (`transform: scale(var(--press-scale));`) with `transform-origin: 50% 50%;`.
    - ⚠️ **MOBILE ZERO-DISPLACEMENT CONTRACT & ZERO-MOBILITY MANDATE**: By default, the root `<button>` and ALL child elements MUST NOT use `translateY(...)`, `translateX(...)`, or any animation that moves, shifts, or plunges downward on press. In compact mobile controller HUDs, shifting or moving buttons causes layout jitter, clips against neighbor controls, and detaches touch hitboxes. (EXCEPTION: Under the **Universal Law of User Supremacy ("User is Sovereign / User is God")**, if the user explicitly demands mobility, displacement, sliding, or plunge, the AI must strictly waive this restriction and faithfully fulfill the user's demand!).
-   - **Internal Stationary Depth Expression**: Analog progressive travel must be communicated purely through stationary visual depth changes: progressive gauge meter fill (`.trigger-fill`), internal shadow deepening, specular shifts, and dynamic LED glow bloom — with 0px physical movement (unless mobile displacement is explicitly demanded by the user per the Universal Law of User Supremacy).
+    - **Internal Stationary Depth Expression**: Represent the press/release state with stationary visual depth changes: an optional gauge/fill (`.trigger-fill`), internal shadow, specular shift, or LED glow. Do not claim continuous CSS-driven finger-distance travel; the native handler currently supplies the press/release state (unless a future analog input path is explicitly provided).
 3. **Calibrated Trigger Spring Physics**:
    - Damping: `${SpringPhysics.TRIGGER.damping}` (optimal harmonic damping ratio without erratic overshoot)
    - Stiffness: `${SpringPhysics.TRIGGER.stiffness.toInt()}` (natural progressive trigger resistance)
@@ -1174,10 +1252,10 @@ When authoring components for `data-category="DPAD"`, the compiler and runtime e
 
         return """
 ### SECTION F0 — UNLIMITED ARCHITECTURAL EXPRESSION & ZERO COMPLEXITY CAPS
-Frontier reasoning models possess unconstrained token capacity and deep structural synthesis intelligence. There is NO artificial aesthetic cap on layer count, SVG geometry complexity, or mechanical detailing:
-- **Adaptive Architectural Expression**: No artificial aesthetic cap. Scale geometry, layering, and mechanical linework freely to faithfully realize the user's concept, while ensuring every layer serves a clear visual purpose (avoid redundant stacking or decorative bloat).
-- **Unlimited Layering**: There is NO upper limit on DOM layer count or structural depth. Stack as many background, bevel, texture, shadow, gloss, emblem, and mechanical plates as necessary to build an ultra-complex, authentic physical component.
-- **Unlimited SVG Vector Detail**: You have complete freedom to author intricate multi-path SVG geometry, complex engravings, mechanical linework, and high-fidelity emblems without fear of complexity limits.
+Frontier reasoning models have more budget for structural synthesis, but the result still passes through the real NXPRC input and renderer budgets. There is no artificial aesthetic cap on purposeful layer count, SVG geometry complexity, or mechanical detailing; there is a concrete 2 MiB HTML input limit and excessive nodes still hurt compile time and preview performance:
+- **Adaptive Architectural Expression**: Scale geometry, layering, and mechanical linework freely to faithfully realize the user's concept, while ensuring every layer serves a clear visual purpose (avoid redundant stacking or decorative bloat).
+- **Unlimited Layering**: Treat layering as creatively open, not as a browser-only promise. Stack as many background, bevel, texture, shadow, gloss, emblem, and mechanical plates as the concept needs while staying inside the input/performance budget.
+- **Unlimited SVG Vector Detail**: You may author intricate multi-path SVG geometry, engravings, mechanical linework, and high-fidelity emblems, but keep paths compact and inside the declared viewBox so both Android and desktop can rasterize them reliably.
 - **Uncompromising Craftsmanship**: When asked for complex, high-end, or intricate designs, realize every nuance with full expressive power.
 
 ### SECTION F1 — COMPILATION PIPELINE TRANSPARENCY (FRONTIER DEPTH)
@@ -1191,20 +1269,20 @@ The NXPRC compiler processes your HTML+CSS through this exact pipeline:
 7. **Output**: `NxprcDocument` containing `manifest` (physics, dimensions), `canvas.layers[]` (display list), and `animations` (tracks, idle, press).
 
 ### SECTION F2 — LAYER TYPE MAPPING (WHAT CSS PRODUCES WHAT LAYER)
-Your CSS patterns map to exactly these 9 compiled layer types:
+These are the important NXPRC layer types and the conditions that can produce them; generic HTML does not synthesize every native primitive automatically:
 | CSS / HTML Pattern | Compiled Layer Type | Purpose |
 |---|---|---|
-| `<div>` with `background-color` or gradient | `BoxLayer` or `GradientShape` | Multi-purpose shape with radii, shadows, transforms |
-| Heavy outer `box-shadow` (large spread/blur) | `GlowRing` | Ambient glow rendered BEHIND the button surface |
-| Outer shadow on `data-category="JOYSTICK"` | `BezelSocket` | Socket housing for analog stick components |
-| `box-shadow: inset ...` (substantial inset) | `InnerShadow` | Depth/concavity overlay creating recessed surface |
-| `::after` + semi-transparent gradient fill | `GlossReflection` | Surface sheen highlight for specular effect |
+| `<div>` with `background-color` or gradient | `BoxLayer` (a legacy `GradientShape` may appear in fallback documents) | Multi-purpose shape with radii, shadows, transforms |
+| Qualifying colored **root** outset `box-shadow` | `GlowRing` | Ambient glow rendered behind the button surface |
+| Explicit root `data-bezel="true"` or qualifying root bezel/socket geometry | `BezelSocket` | Socket housing for analog stick components |
+| `box-shadow: inset ...` | `BoxLayer.boxShadows` (native inset data) | Depth/concavity on the normal HTML path; `InnerShadow` is an explicit document primitive, not guaranteed from generic CSS |
+| `::before`/`::after` + semi-transparent gradient fill | `BoxLayer` | Surface sheen/highlight; `GlossReflection` is an explicit document primitive, not a guaranteed CSS conversion |
 | `<svg>` shapes (`<path>`, `<circle>`, `<polygon>`) | `VectorPath` | Pre-baked SVG with AffineMatrix2D applied to pathData |
 | Single-character `<span>` | `CenterGlyph` | Simplified label rendering centered on button |
 | Multi-character text or `<text>` element | `TextLayer` | Full text with shadows, font sizing, alignment |
 
 **Z-Order Zones** (1000-unit deterministic slots):
-`GlowRing(~1000)` → `BezelSocket(~2000)` → `Surface(~3000)` → `InnerShadow(~4000)` → `Content(~5000+)` → `Text(~7000)` → `ThumbCap(+20000)`
+`GlowRing(~1000)` → `BezelSocket(~2000)` → `Surface(~3000)` → `InnerShadow(~3100 when explicitly present)` → `Content(~5000+)` → `Text(~7000)` → `ThumbCap(+20000)`
 
 ### SECTION F3 — SVG PATH PRE-BAKING PIPELINE
 SVG paths are compiled with **zero runtime transform overhead**:
@@ -1232,16 +1310,16 @@ TransformDef {
   isRotating: Boolean        // true if continuous rotation animation detected
 }
 ```
-**Constraint**: Only 2D affine transforms (6 DOF) are supported. `perspective`, `rotateX`, `rotateY`, `rotate3d`, and all 3D transforms are silently DROPPED by the compiler.
+**Constraint**: The portable path is 2D affine transforms: `translate`, uniform `scale`, and `rotate` (6 DOF). `perspective`, `rotateX`, `rotateY`, `rotate3d`, and all 3D transforms are silently DROPPED by the compiler. Treat skew and non-uniform `scaleX`/`scaleY` as lower-priority approximations rather than requirements for a cross-platform design.
 
 ### SECTION F5 — SPRING PHYSICS KINEMATICS
-The engine runs a **damped harmonic oscillator** at 120 FPS for press feedback:
+The native renderers implement press feedback with a Compose spring. A **damped harmonic oscillator** is a useful physical model, but the HTML author supplies spring parameters and the Android/desktop renderers own the frame timing:
 `x(t) = A · e^(-ζωₙt) · cos(ωd·t + φ)`
 Where:
-- `ζ` = `--spring-damping` (damping ratio). Tested range: `0.62 – 0.78`. Values < 0.6 produce bouncy overshoot; > 0.8 feel sluggish.
-- `ωₙ` = `√(--spring-stiffness / mass)` (natural frequency). Tested range: `380 – 520`. Values < 300 = slow return; > 600 = very snappy.
-- `ωd` = `ωₙ · √(1 - ζ²)` (damped frequency).
-- `A` = determined by `--press-scale` (amplitude). Tested range: `0.92 – 0.96`.
+- `ζ` = `--spring-damping` (damping ratio). Use the category defaults unless the user requests a different feel.
+- `ωₙ` = `√(--spring-stiffness / mass)` (conceptual natural frequency); `--spring-stiffness` is passed to the native spring.
+- `ωd` = `ωₙ · √(1 - ζ²)` (conceptual damped frequency).
+- `A` = determined by `--press-scale` (amplitude).
 - `.$rootClass:active { transform: scale(var(--press-scale)); }` maps to the spring trajectory target (strictly in-place centered uniform scale; NEVER use `translateY` or displacement on press by default, unless explicitly requested by the user per the Universal Law of User Supremacy).
 
 ### SECTION F6 — CLASSIFIER INTELLIGENCE
@@ -1267,7 +1345,7 @@ The compiler uses two classifiers to interpret your DOM structure:
 ### SECTION F7 — MANDATORY 5-STEP REASONING PROTOCOL
 Before writing ANY HTML/CSS code, internally execute this 5-step validation chain (INTERNAL THINKING ONLY — DO NOT OUTPUT VISIBLY IN MARKDOWN). Produce ONLY the final self-contained ```html ... ``` block:
 
-**Step 1 — LAYER PLAN**: List every visual layer you intend to create and map each to its expected `CanvasLayer` type (BoxLayer, VectorPath, GradientShape, GlowRing, InnerShadow, GlossReflection, CenterGlyph, TextLayer).
+**Step 1 — LAYER PLAN**: List every visual layer you intend to create and map each to its expected `CanvasLayer` type (BoxLayer, VectorPath, GradientShape, GlowRing, BezelSocket, InnerShadow, GlossReflection, CenterGlyph, TextLayer). Remember that generic HTML most reliably produces BoxLayer/VectorPath/TextLayer; InnerShadow and GlossReflection are explicit model primitives, not guaranteed CSS conversions.
 
 **Step 2 — Z-ORDER VERIFY**: Confirm your HTML DOM order matches the expected `LayerStack` zone progression: ambient glow → bezel/socket → primary surface → inner shadows → decorative content → vector emblem → text label.
 
@@ -1278,26 +1356,26 @@ Before writing ANY HTML/CSS code, internally execute this 5-step validation chai
 
 **Step 4 — TRANSFORM CHECK**: Verify ALL transforms are 2D affine only. No `perspective`, `rotateX`, `rotateY`, or `rotate3d`. Confirm `transform-origin` is set explicitly when using rotate/scale.
 
-**Step 5 — BUDGET CHECK**: Count total DOM nodes. For Frontier tier, there is NO artificial layer or SVG cap — you have complete architectural freedom to produce ultra-complex, high-density designs with unconstrained layering and SVG paths as requested by the user, while keeping structural intent clean and purposeful. Verify spring physics variables are in `:root`.
+**Step 5 — BUDGET CHECK**: Count total DOM nodes and keep the HTML under the compiler's 2 MiB input limit. Frontier has open creative scope, not unlimited runtime resources: every layer and SVG path must serve the requested concept and remain practical for Android and desktop preview. Verify spring physics variables are in `:root`.
 
 ### SECTION F8 — NATIVE HARDWARE AMBIENT ANIMATION ENGINES (IDLE LOOPS)
-The NEXPAD native runtime features hardware-accelerated continuous idle animation loops running on Compose's `rememberInfiniteTransition` at 60/120 FPS. The compiler recognizes standard CSS `@keyframes` declarations and compiles them into typed runtime animation drivers:
+The NXPRC document stores named idle modes plus optional typed animation tracks. The Android and desktop renderers animate the compiled document natively; they do not execute browser CSS or JavaScript. Root `@keyframes` declarations are recognized only for supported properties and are the most portable source for those tracks:
 1. **Continuous GPU Rotation (`ROTATE`)**:
    - Trigger: Any `@keyframes` rule whose name contains `rotate` or `spin` (e.g. `@keyframes spin-core { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`), applied via `animation: spin-core 4s linear infinite;`.
-   - Engine Mapping: Sets `document.animations.idleType = "ROTATE"`.
-   - Runtime: Continuously rotates the target layer around its `transform-origin` (defaults to pivot `0.5, 0.5`).
+   - Engine Mapping: Sets `document.animations.idleType = "ROTATE"` when the root animation name is recognized.
+   - Runtime: Continuously rotates the compiled document around its `transform-origin` (defaults to pivot `0.5, 0.5`); child-only targeting is not a reliable portable contract.
    - Use Cases: Rotating reactor cores, turbine fans, sci-fi HUD reticles, mystical runes, radar sweeps, or tech gears.
 2. **Harmonic Alpha/Glow Pulsing (`PULSE`)**:
    - Trigger: Any `@keyframes` rule whose name contains `pulse`, `glow`, or `breathe` (e.g. `@keyframes pulse-aura { 0%, 100% { opacity: 0.4; } 50% { opacity: 1.0; } }`), applied via `animation: pulse-aura 2s ease-in-out infinite;`.
-   - Engine Mapping: Sets `document.animations.idleType = "PULSE"`.
-   - Runtime: Smoothly oscillates layer alpha or `GlowRing` atmospheric intensity between minimum and maximum bounds using `RepeatMode.Reverse`.
+   - Engine Mapping: Sets `document.animations.idleType = "PULSE"` when the root animation name is recognized.
+   - Runtime: Smoothly oscillates the compiled document's alpha/scale using a native infinite transition; it is not a promise that a particular child `GlowRing` is independently targeted.
    - Use Cases: Bioluminescent glows, breathing power LEDs, pulsating energy crystals, and neon halo under-glow.
 3. **Hardware 360° Chromatic Cycle (`RGB_CYCLE`)**:
    - Trigger: Any `@keyframes` rule or property whose name contains `rgb`, `rainbow`, `chroma`, or `hue` (e.g. `@keyframes rgb-chroma { from { filter: hue-rotate(0deg); } to { filter: hue-rotate(360deg); } }`).
-   - Engine Mapping: Sets `document.animations.idleType = "RGB_CYCLE"`.
-   - Runtime: Drives a real-time GPU trigonometric `ColorMatrix` through the full 360° chromatic spectrum at 60/120 FPS.
+   - Engine Mapping: Sets `document.animations.idleType = "RGB_CYCLE"` when the root animation name or hue channel is recognized.
+   - Runtime: Applies the renderer's native hue/color treatment to the compiled document; keep the requested color cycle subtle enough for small HUD tiles.
    - Use Cases: Cyberpunk RGB gamer peripherals, chromatic energy barriers, and iridescent metallic sheen rings.
-- **Rules & Constraints**: Only animate `transform: rotate(...)`, `opacity`, or `filter: hue-rotate(...)`. Layout property animations (`width`, `height`, `left`, `top`, `margin`) are dropped by the compiler to guarantee 120 FPS rendering without layout thrashing.
+- **Rules & Constraints**: Put one animation declaration on the root. Animate only uniform `transform: scale()`/`rotate()`, `opacity`, or `filter: hue-rotate(...)`. Layout property animations (`width`, `height`, `left`, `top`, `margin`) are dropped. Android gates generic tracks; named modes are cross-platform, but keep static artwork complete. Desktop previews tracks continuously.
 $joystickSection$triggerSection$dpadSection
 ### SECTION F10 — NATIVE HARDWARE SHADER & SKIA COMPILATION
 CSS paint declarations are parsed by `GradientParser`, `ShadowParser`, and `BoxLayerBuilder` into direct hardware-accelerated Skia / Compose graphics shaders:
@@ -1314,24 +1392,24 @@ CSS paint declarations are parsed by `GradientParser`, `ShadowParser`, and `BoxL
    - Rotational sweeps around the center point.
    - Ideal for anisotropic brushed-metal bezels, segmented dial ticks, and radial gauge meters.
 4. **Physically Accurate Inset Shadows (`box-shadow: inset ...`)**:
-   - Compiled to `CanvasLayer.InnerShadow`.
-   - Rendered natively via Skia inverted path clipping (`clipPath` with inverse drop-shadow), producing authentic recessed keycap wells and sunken socket depth.
+   - Stored as inset shadow data on the normal `CanvasLayer.BoxLayer` HTML path and rendered natively.
+   - `CanvasLayer.InnerShadow` is available for explicit document layers, but do not assume ordinary HTML `box-shadow: inset` will synthesize that separate layer type.
 5. **Embedded SVG Vector Paint Servers (`<defs>`)**:
    - Embedded `<svg>` supports `<defs>` blocks containing `<linearGradient id="...">` or `<radialGradient id="...">`.
    - Referenced via `fill="url(#id)"` or `stroke="url(#id)"` on vector `<path>` elements, pre-compiled into native hardware vector shaders.
 
 ### SECTION F11 — ATMOSPHERIC AURA & RGB SOCKET LIGHTING ENGINE
-NEXPAD features a high-performance atmospheric lighting engine (`.drawBehind` / `CanvasLayer.GlowRing`) that projects an unclipped, luminous ambient aura behind the button socket onto the gamepad surface:
+NEXPAD features a native atmospheric lighting path (`.drawBehind` / `CanvasLayer.GlowRing`) that can project an unclipped ambient aura behind the button socket. A qualifying root shadow or the renderer's control-identity fallback supplies the aura; a decorative child is not automatically a separate `GlowRing`:
 
 1. **Automatic Aura Color Detection**:
-   - If an explicit accent color or neon theme is defined (via `--accent`, `box-shadow: 0 0 24px <color>`, or a `.glow-ring` element), that exact color is automatically sampled for the atmospheric aura.
-   - If no custom aura color or style is specified, NEXPAD's engine automatically detects and harmonizes the aura based on the button's hardware identity and active color profile (e.g., A = Emerald Green `#4ADE80`, B = Crimson `#F87171`, X = Sapphire `#60A5FA`, Y = Solar Gold `#FBBF24`, LS = Neon Cyan `#00E5FF`, RS = Neon Magenta `#FF007F`).
-   - Custom colors are honored, while unstyled buttons automatically gain rich, native atmospheric lighting.
+   - If the compiled document has an explicit `GlowRing` or a visible colored outset `box-shadow` such as `box-shadow: 0 0 24px <color>`, that color is sampled for the atmospheric aura. A CSS custom property by itself is not enough; use it in a compiled shadow or stroke.
+   - If no compiled colored shadow/stroke is specified, NEXPAD falls back to the button identity and active color profile (e.g., A = Emerald Green `#4ADE80`, B = Crimson `#F87171`, X = Sapphire `#60A5FA`, Y = Solar Gold `#FBBF24`, LS = Neon Cyan `#00E5FF`, RS = Neon Magenta `#FF007F`).
+   - Custom colors are honored when they survive into a root shadow/stroke/GlowRing; unstyled buttons still receive the native fallback aura.
 
 2. **How to Express Aura in HTML/CSS**:
-   - Explicit Glow Ring Layer: Add a dedicated ambient element: `<div class="glow-ring"></div>` with `position: absolute; border-radius: 50%; box-shadow: 0 0 28px var(--accent-glow);` or `background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);`.
+   - Explicit Glow Ring Layer: Express the aura on the root or a compiled structural layer with `box-shadow: 0 0 28px var(--accent-glow);`. A dedicated `<div class="glow-ring">` is still a `BoxLayer`; its color is not guaranteed to become a separate `GlowRing`.
    - Outset Box Shadows: Include radiant socket glow in the root button's `box-shadow`: e.g., `box-shadow: 0 8px 24px rgba(0,0,0,0.65), 0 0 28px var(--accent-glow);`.
-   - Kinematic Spring Reactivity: During button depression (`:active`), the engine dynamically intensifies the atmospheric aura bloom alpha from idle (0.40) to actuation peak (0.90) with physical spring damping.
+    - Kinematic Spring Reactivity: Both native renderers animate the aura bloom from roughly `0.40` idle toward `0.90` while pressed using the runtime spring. This is renderer-owned aura behavior, not a reason to add a child CSS animation.
 """.trimIndent()
     }
 

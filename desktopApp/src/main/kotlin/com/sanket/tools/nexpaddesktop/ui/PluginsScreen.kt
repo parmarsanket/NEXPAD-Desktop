@@ -612,61 +612,79 @@ fun PluginsScreen(
                     .padding(layout.horizontalPadding),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Sleek Segmented Switcher Strip (Cyber HUD Glass)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF090E18))
-                        .border(1.dp, Color(0xFF1E293B), RoundedCornerShape(8.dp))
-                        .padding(3.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                // Material 3 Expressive Segmented Tab Switcher (Pill Container)
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                 ) {
-                    val activeTabBrush = remember {
-                        Brush.horizontalGradient(
-                            listOf(
-                                NeonPalette.Cyan.copy(alpha = 0.22f),
-                                Color(0xFF7C3AED).copy(alpha = 0.15f)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        val activeTabBrush = remember {
+                            Brush.horizontalGradient(
+                                listOf(
+                                    NeonPalette.Cyan.copy(alpha = 0.22f),
+                                    Color(0xFF7C3AED).copy(alpha = 0.18f)
+                                )
                             )
-                        )
-                    }
+                        }
 
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(34.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .then(if (singlePaneTab == 0) Modifier.background(activeTabBrush).border(1.dp, NeonPalette.Cyan, RoundedCornerShape(6.dp)) else Modifier)
-                            .clickable { singlePaneTab = 0 },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (availableWidth < 460.dp) "💻 Editor" else "💻 Code Editor & Mapping",
-                            color = if (singlePaneTab == 0) NeonPalette.Cyan else Color.White.copy(alpha = 0.65f),
-                            fontWeight = if (singlePaneTab == 0) FontWeight.Bold else FontWeight.Medium,
-                            fontSize = 11.5.sp,
-                            maxLines = 1,
-                            softWrap = false
-                        )
-                    }
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(38.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (singlePaneTab == 0) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent,
+                            border = if (singlePaneTab == 0) BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.6f)) else null,
+                            onClick = { singlePaneTab = 0 }
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .then(if (singlePaneTab == 0) Modifier.background(activeTabBrush) else Modifier),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (availableWidth < 460.dp) "💻 Editor" else "💻 Code Editor & Mapping",
+                                    color = if (singlePaneTab == 0) NeonPalette.Cyan else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = if (singlePaneTab == 0) FontWeight.Bold else FontWeight.Medium,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
 
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(34.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .then(if (singlePaneTab == 1) Modifier.background(activeTabBrush).border(1.dp, NeonPalette.Cyan, RoundedCornerShape(6.dp)) else Modifier)
-                            .clickable { singlePaneTab = 1 },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (availableWidth < 460.dp) "🎮 Sandbox" else "🎮 Live Sandbox & Export",
-                            color = if (singlePaneTab == 1) NeonPalette.Cyan else Color.White.copy(alpha = 0.65f),
-                            fontWeight = if (singlePaneTab == 1) FontWeight.Bold else FontWeight.Medium,
-                            fontSize = 11.5.sp,
-                            maxLines = 1,
-                            softWrap = false
-                        )
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(38.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (singlePaneTab == 1) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent,
+                            border = if (singlePaneTab == 1) BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.6f)) else null,
+                            onClick = { singlePaneTab = 1 }
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .then(if (singlePaneTab == 1) Modifier.background(activeTabBrush) else Modifier),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (availableWidth < 460.dp) "🎮 Sandbox" else "🎮 Live Sandbox & Export",
+                                    color = if (singlePaneTab == 1) NeonPalette.Cyan else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = if (singlePaneTab == 1) FontWeight.Bold else FontWeight.Medium,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -798,19 +816,20 @@ fun PluginsScreen(
                     .background(Color.Black.copy(alpha = 0.75f)),
                 contentAlignment = Alignment.Center
             ) {
-                Card(
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth(0.85f)
-                        .fillMaxHeight(0.85f)
-                        .border(1.5.dp, Color(0xFF7C3AED), RoundedCornerShape(14.dp)),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0D111A))
+                        .fillMaxHeight(0.85f),
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f)),
+                    shadowElevation = 24.dp
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                            .padding(22.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -821,7 +840,7 @@ fun PluginsScreen(
                                 Text(
                                     "🤖 AI Prompt Instructor ($defaultControl • $category)",
                                     color = Color.White,
-                                    fontSize = 16.sp,
+                                    fontSize = 17.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
@@ -842,61 +861,72 @@ fun PluginsScreen(
                                         promptCopiedBanner = if (ok) "✓ ${modalTier.icon} ${modalTier.displayName} AI Prompt for $defaultControl copied to clipboard!" else "⚠️ Clipboard busy — please try again"
                                         showAiPromptModal = false
                                     },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
-                                    shape = RoundedCornerShape(8.dp)
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                                 ) {
-                                    Text("Copy to Clipboard", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    Text("Copy to Clipboard", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
                                 }
 
                                 OutlinedButton(
                                     onClick = { showAiPromptModal = false },
-                                    shape = RoundedCornerShape(8.dp)
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                                 ) {
                                     Text("Close", color = Color.White, fontSize = 12.sp)
                                 }
                             }
                         }
 
-                        // Tier Tab Switcher
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color(0xFF090E18))
-                                .border(1.dp, Color(0xFF1E293B), RoundedCornerShape(8.dp))
-                                .padding(3.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        // Tier Tab Switcher (Material 3 Expressive Pills)
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerLow,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                         ) {
-                            PromptTier.entries.forEach { tier ->
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(30.dp)
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(if (modalTier == tier) Color(0xFF7C3AED) else Color.Transparent)
-                                        .clickable { modalTier = tier },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "${tier.icon} ${tier.displayName}",
-                                        color = if (modalTier == tier) Color.White else Color.White.copy(alpha = 0.6f),
-                                        fontWeight = if (modalTier == tier) FontWeight.Bold else FontWeight.Normal,
-                                        fontSize = 11.5.sp
-                                    )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                PromptTier.entries.forEach { tier ->
+                                    val isSelected = modalTier == tier
+                                    Surface(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(34.dp),
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = if (isSelected) MaterialTheme.colorScheme.secondary else Color.Transparent,
+                                        border = if (isSelected) null else BorderStroke(1.dp, Color.Transparent),
+                                        onClick = { modalTier = tier }
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(
+                                                text = "${tier.icon} ${tier.displayName}",
+                                                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                fontSize = 12.sp
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
 
-                        // Scrollable Prompt Text Display
+                        // Scrollable Prompt Text Display (Expressive Code Well)
                         val promptScrollState = rememberScrollState()
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color(0xFF06090F))
-                                .border(1.dp, Color(0xFF1E2638), RoundedCornerShape(8.dp))
-                                .padding(12.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
+                                .padding(14.dp)
                         ) {
                             Text(
                                 text = generatedPrompt,
@@ -1012,17 +1042,17 @@ fun PluginsScreen(
  */
 object SplitButtonDefaults {
     val TrailingIconSize = 16.dp
-    val Spacing = 2.dp
-    val LeadingShape = RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp, topEnd = 2.dp, bottomEnd = 2.dp)
-    val TrailingShape = RoundedCornerShape(topStart = 2.dp, bottomStart = 2.dp, topEnd = 6.dp, bottomEnd = 6.dp)
+    val Spacing = 3.dp
+    val LeadingShape = RoundedCornerShape(topStart = 10.dp, bottomStart = 10.dp, topEnd = 3.dp, bottomEnd = 3.dp)
+    val TrailingShape = RoundedCornerShape(topStart = 3.dp, bottomStart = 3.dp, topEnd = 10.dp, bottomEnd = 10.dp)
 
     @Composable
     fun LeadingButton(
         onClick: () -> Unit,
         modifier: Modifier = Modifier,
         enabled: Boolean = true,
-        colors: ButtonColors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
-        contentPadding: PaddingValues = PaddingValues(horizontal = 10.dp, vertical = 3.dp),
+        colors: ButtonColors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+        contentPadding: PaddingValues = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
         content: @Composable RowScope.() -> Unit
     ) {
         Button(
@@ -1043,9 +1073,9 @@ object SplitButtonDefaults {
         modifier: Modifier = Modifier,
         enabled: Boolean = true,
         colors: ButtonColors = ButtonDefaults.buttonColors(
-            containerColor = if (checked) Color(0xFF6D28D9) else Color(0xFF7C3AED)
+            containerColor = if (checked) MaterialTheme.colorScheme.secondary.copy(alpha = 0.85f) else MaterialTheme.colorScheme.secondary
         ),
-        contentPadding: PaddingValues = PaddingValues(horizontal = 6.dp, vertical = 3.dp),
+        contentPadding: PaddingValues = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
         content: @Composable RowScope.() -> Unit
     ) {
         Button(
@@ -1082,11 +1112,11 @@ fun SplitButtonLayout(
  * Follows SingleSelectConnectedButtonGroupSample specification.
  */
 object ButtonGroupDefaults {
-    val ConnectedSpaceBetween: androidx.compose.ui.unit.Dp = 2.dp
+    val ConnectedSpaceBetween: androidx.compose.ui.unit.Dp = 3.dp
 
     fun connectedLeadingButtonShapes(
-        outerRadius: androidx.compose.ui.unit.Dp = 8.dp,
-        innerRadius: androidx.compose.ui.unit.Dp = 2.dp
+        outerRadius: androidx.compose.ui.unit.Dp = 10.dp,
+        innerRadius: androidx.compose.ui.unit.Dp = 3.dp
     ): Shape =
         RoundedCornerShape(
             topStart = outerRadius,
@@ -1096,13 +1126,13 @@ object ButtonGroupDefaults {
         )
 
     fun connectedMiddleButtonShapes(
-        innerRadius: androidx.compose.ui.unit.Dp = 2.dp
+        innerRadius: androidx.compose.ui.unit.Dp = 3.dp
     ): Shape =
         RoundedCornerShape(innerRadius)
 
     fun connectedTrailingButtonShapes(
-        outerRadius: androidx.compose.ui.unit.Dp = 8.dp,
-        innerRadius: androidx.compose.ui.unit.Dp = 2.dp
+        outerRadius: androidx.compose.ui.unit.Dp = 10.dp,
+        innerRadius: androidx.compose.ui.unit.Dp = 3.dp
     ): Shape =
         RoundedCornerShape(
             topStart = innerRadius,
@@ -1112,7 +1142,7 @@ object ButtonGroupDefaults {
         )
 
     fun connectedSingleButtonShapes(
-        outerRadius: androidx.compose.ui.unit.Dp = 8.dp
+        outerRadius: androidx.compose.ui.unit.Dp = 10.dp
     ): Shape =
         RoundedCornerShape(outerRadius)
 }
@@ -1128,9 +1158,9 @@ fun ToggleButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     accentColor: Color = NeonPalette.Cyan,
-    containerColor: Color = Color(0xFF090E18),
-    unselectedBorderColor: Color = Color(0xFF1E293B),
-    contentPadding: PaddingValues = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
+    unselectedBorderColor: Color = MaterialTheme.colorScheme.outlineVariant,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 11.dp, vertical = 5.dp),
     content: @Composable RowScope.() -> Unit
 ) {
     OutlinedButton(
@@ -1142,10 +1172,10 @@ fun ToggleButton(
         ),
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = if (checked) accentColor.copy(alpha = 0.18f) else containerColor,
-            contentColor = if (checked) accentColor else Color.White.copy(alpha = 0.7f)
+            contentColor = if (checked) accentColor else MaterialTheme.colorScheme.onSurfaceVariant
         ),
         contentPadding = contentPadding,
-        modifier = modifier.height(28.dp),
+        modifier = modifier.height(30.dp),
         enabled = enabled,
         content = content
     )
@@ -1438,12 +1468,12 @@ private fun ComponentEditorPane(
 
                         OutlinedButton(
                             onClick = onOpenPromptModal,
-                            shape = RoundedCornerShape(6.dp),
+                            shape = RoundedCornerShape(10.dp),
                             border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f)),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 containerColor = NeonPalette.Cyan.copy(alpha = 0.08f)
                             ),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                             modifier = Modifier.height(30.dp)
                         ) {
                             Text("View Prompt", fontSize = 11.sp, color = NeonPalette.Cyan, maxLines = 1, softWrap = false)
@@ -1451,12 +1481,12 @@ private fun ComponentEditorPane(
 
                         OutlinedButton(
                             onClick = onLoadStarter,
-                            shape = RoundedCornerShape(6.dp),
+                            shape = RoundedCornerShape(10.dp),
                             border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f)),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 containerColor = NeonPalette.Cyan.copy(alpha = 0.08f)
                             ),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                             modifier = Modifier.height(30.dp)
                         ) {
                             Text("Load Starter Code", fontSize = 11.sp, color = NeonPalette.Cyan, maxLines = 1, softWrap = false)
@@ -1466,21 +1496,22 @@ private fun ComponentEditorPane(
             }
         }
 
-        // 2. Copy Feedback Banner
+        // 2. Copy Feedback Banner (Material 3 Expressive Tonal Pill)
         if (promptCopiedBanner != null) {
-            Card(
+            Surface(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1B4B)),
-                shape = RoundedCornerShape(6.dp)
+                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.16f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.45f)),
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         promptCopiedBanner,
                         color = Color(0xFFC4B5FD),
-                        fontSize = 11.sp,
+                        fontSize = 11.5.sp,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -1573,7 +1604,7 @@ private fun ComponentEditorPane(
             Text("Native GPU Skia Compiler", color = Color.White.copy(alpha = 0.5f), fontSize = 10.sp)
         }
 
-        // 6. Monospace Code Editor (Cyber IDE Styling with High-Visibility Desktop Scrollbar)
+        // 6. Monospace Code Editor (Material 3 Expressive Code Well with High-Visibility Desktop Scrollbar)
         val codeScrollState = rememberTextFieldVerticalScrollState()
 
         Box(
@@ -1581,9 +1612,9 @@ private fun ComponentEditorPane(
                 .fillMaxWidth()
                 .weight(1f)
                 .defaultMinSize(minHeight = 160.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF070B14))
-                .border(1.dp, Color(0xFF1E293B), RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp))
         ) {
             BasicTextField(
                 value = htmlSource,
@@ -1687,26 +1718,26 @@ private fun LiveSandboxPane(
                 }
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Button(
                     onClick = onOpenLayerStudio,
-                    shape = RoundedCornerShape(6.dp),
-                    contentPadding = PaddingValues(horizontal = if (isNarrow) 6.dp else 10.dp, vertical = 3.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
-                    modifier = Modifier.height(28.dp)
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = if (isNarrow) 8.dp else 12.dp, vertical = 4.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                    modifier = Modifier.height(30.dp)
                 ) {
-                    Text(if (isNarrow) "🎛️ Layers" else "🎛️ Layer Studio", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 10.5.sp, maxLines = 1, softWrap = false)
+                    Text(if (isNarrow) "🎛️ Layers" else "🎛️ Layer Studio", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp, maxLines = 1, softWrap = false)
                 }
 
-                Button(
+                OutlinedButton(
                     onClick = onOpenFullAudit,
-                    shape = RoundedCornerShape(6.dp),
-                    contentPadding = PaddingValues(horizontal = if (isNarrow) 6.dp else 10.dp, vertical = 3.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F, 0x24, 0x36)),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = if (isNarrow) 8.dp else 12.dp, vertical = 4.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(containerColor = NeonPalette.Cyan.copy(alpha = 0.08f)),
                     border = BorderStroke(1.dp, NeonPalette.Cyan),
-                    modifier = Modifier.height(28.dp)
+                    modifier = Modifier.height(30.dp)
                 ) {
-                    Text(if (isNarrow) "🔍 Audit" else "🔍 Full Audit", color = NeonPalette.Cyan, fontWeight = FontWeight.Bold, fontSize = 10.5.sp, maxLines = 1, softWrap = false)
+                    Text(if (isNarrow) "🔍 Audit" else "🔍 Full Audit", color = NeonPalette.Cyan, fontWeight = FontWeight.Bold, fontSize = 11.sp, maxLines = 1, softWrap = false)
                 }
             }
         }
@@ -1736,13 +1767,13 @@ private fun LiveSandboxPane(
             Box(
                 modifier = Modifier
                     .size(width = boxW, height = boxH)
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(20.dp))
                     .background(
                         Brush.radialGradient(
-                            listOf(Color(0xFF0C1322), Color(0xFF030712))
+                            listOf(MaterialTheme.colorScheme.surfaceContainer, MaterialTheme.colorScheme.surfaceContainerLowest)
                         )
                     )
-                    .border(1.5.dp, NeonPalette.Cyan.copy(alpha = 0.35f), RoundedCornerShape(16.dp)),
+                    .border(1.5.dp, NeonPalette.Cyan.copy(alpha = 0.45f), RoundedCornerShape(20.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 val previewDp = (minOf(boxW.value, boxH.value) * 0.95f).toInt().coerceAtLeast(60)
@@ -1805,18 +1836,18 @@ private fun LiveSandboxPane(
         // Procedural Seed & Theme Control Bar in Live Sandbox
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF0D1527)),
-            shape = RoundedCornerShape(8.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            shape = RoundedCornerShape(14.dp),
             border = androidx.compose.foundation.BorderStroke(
                 1.dp,
-                if (htmlCodeSeed != null && currentSeed != htmlCodeSeed) Color(0xFFF59E0B).copy(alpha = 0.6f) else Color(0xFF1E293B)
+                if (htmlCodeSeed != null && currentSeed != htmlCodeSeed) Color(0xFFF59E0B).copy(alpha = 0.6f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
             )
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = if (isShort) 5.dp else 7.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                    .padding(horizontal = 12.dp, vertical = if (isShort) 8.dp else 10.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1826,13 +1857,13 @@ private fun LiveSandboxPane(
                     // Seed Input Area: Clear label + obvious editable text field with '#' prefix and pencil '✏️'
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
                             text = "🎲 Seed:",
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 11.5.sp
+                            fontSize = 12.sp
                         )
 
                         var seedInputText by remember(currentSeed) { mutableStateOf(currentSeed.toString()) }
@@ -1840,19 +1871,19 @@ private fun LiveSandboxPane(
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(Color(0xFF060B14))
-                                .border(1.2.dp, NeonPalette.Cyan.copy(alpha = 0.75f), RoundedCornerShape(6.dp))
-                                .padding(horizontal = 7.dp, vertical = 3.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                                .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.7f), RoundedCornerShape(10.dp))
+                                .padding(horizontal = 9.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 text = "#",
                                 color = NeonPalette.Cyan,
-                                fontSize = 11.5.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 fontFamily = FontFamily.Monospace
                             )
-                            Spacer(Modifier.width(2.dp))
+                            Spacer(Modifier.width(3.dp))
                             BasicTextField(
                                 value = seedInputText,
                                 onValueChange = { newVal ->
@@ -1864,8 +1895,8 @@ private fun LiveSandboxPane(
                                     }
                                 },
                                 textStyle = TextStyle(
-                                    color = Color.White,
-                                    fontSize = 11.5.sp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = FontFamily.Monospace
                                 ),
@@ -1873,38 +1904,38 @@ private fun LiveSandboxPane(
                                 cursorBrush = SolidColor(NeonPalette.Cyan),
                                 modifier = Modifier
                                     .width(IntrinsicSize.Min)
-                                    .widthIn(min = 50.dp, max = 85.dp)
+                                    .widthIn(min = 52.dp, max = 88.dp)
                             )
-                            Spacer(Modifier.width(3.dp))
+                            Spacer(Modifier.width(4.dp))
                             Text(
                                 text = "✏️",
-                                fontSize = 9.sp,
-                                color = Color.White.copy(alpha = 0.5f)
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
                         }
                     }
 
                     // Action Controls: Reroll, Reset, Apply
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // 🎲 Reroll Button
                         OutlinedButton(
                             onClick = onRerollSeed,
-                            shape = RoundedCornerShape(6.dp),
+                            shape = RoundedCornerShape(10.dp),
                             border = BorderStroke(1.dp, Color(0xFFF59E0B)),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 containerColor = Color(0xFFF59E0B).copy(alpha = 0.15f)
                             ),
-                            contentPadding = PaddingValues(horizontal = if (isNarrow) 6.dp else 9.dp, vertical = 2.dp),
-                            modifier = Modifier.height(26.dp)
+                            contentPadding = PaddingValues(horizontal = if (isNarrow) 8.dp else 12.dp, vertical = 2.dp),
+                            modifier = Modifier.height(28.dp)
                         ) {
                             Text(
                                 text = "🎲 Reroll",
                                 color = Color(0xFFFCD34D),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 10.5.sp,
+                                fontSize = 11.sp,
                                 maxLines = 1,
                                 softWrap = false
                             )
@@ -1915,23 +1946,23 @@ private fun LiveSandboxPane(
                         OutlinedButton(
                             onClick = onResetSeed,
                             enabled = isModifiedFromCode,
-                            shape = RoundedCornerShape(6.dp),
+                            shape = RoundedCornerShape(10.dp),
                             border = BorderStroke(
                                 1.dp,
-                                if (isModifiedFromCode) Color(0xFF64748B) else Color(0xFF334155).copy(alpha = 0.4f)
+                                if (isModifiedFromCode) MaterialTheme.colorScheme.outlineVariant else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
                             ),
                             colors = ButtonDefaults.outlinedButtonColors(
-                                containerColor = if (isModifiedFromCode) Color(0xFF1E293B) else Color.Transparent,
+                                containerColor = if (isModifiedFromCode) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent,
                                 disabledContainerColor = Color.Transparent
                             ),
-                            contentPadding = PaddingValues(horizontal = if (isNarrow) 6.dp else 10.dp, vertical = 2.dp),
-                            modifier = Modifier.height(26.dp)
+                            contentPadding = PaddingValues(horizontal = if (isNarrow) 8.dp else 12.dp, vertical = 2.dp),
+                            modifier = Modifier.height(28.dp)
                         ) {
                             Text(
                                 text = "↺ Reset",
-                                color = if (isModifiedFromCode) Color(0xFFE2E8F0) else Color(0xFF64748B),
+                                color = if (isModifiedFromCode) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                                 fontWeight = FontWeight.SemiBold,
-                                fontSize = 10.5.sp,
+                                fontSize = 11.sp,
                                 maxLines = 1,
                                 softWrap = false
                             )
@@ -1956,14 +1987,14 @@ private fun LiveSandboxPane(
                             "✓ Matches HTML Code Seed (#${currentSeed})"
                         },
                         color = if (isModifiedFromCode) Color(0xFFF59E0B) else Color(0xFF10B981),
-                        fontSize = 10.sp,
+                        fontSize = 10.5.sp,
                         fontWeight = FontWeight.Medium
                     )
 
                     Text(
                         text = "Theme: ${profile.palette.name} (${profile.skinName})",
-                        color = Color.White.copy(alpha = 0.65f),
-                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 10.5.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1975,31 +2006,31 @@ private fun LiveSandboxPane(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF090E18))
-                .border(1.dp, Color(0xFF1E293B), RoundedCornerShape(8.dp))
-                .padding(horizontal = 8.dp, vertical = 5.dp),
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                .padding(horizontal = 10.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.weight(1f, fill = false)
             ) {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Color(0xFF131D30))
-                        .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(NeonPalette.Cyan.copy(alpha = 0.12f))
+                        .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
-                    Text(text = effId, color = NeonPalette.Cyan, fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                    Text(text = effId, color = NeonPalette.Cyan, fontSize = 10.5.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
                 }
                 Text(
                     text = effName,
-                    color = Color.White,
-                    fontSize = 10.5.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -2007,12 +2038,12 @@ private fun LiveSandboxPane(
             }
 
             Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "Key: $effControl", color = Color(0xFF4ADE80), fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
-                Text(text = "•", color = Color.White.copy(alpha = 0.3f), fontSize = 10.sp)
-                Text(text = effCategory, color = Color.White.copy(alpha = 0.7f), fontSize = 10.sp)
+                Text(text = "Key: $effControl", color = Color(0xFF4ADE80), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(text = "•", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), fontSize = 10.sp)
+                Text(text = effCategory, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.5.sp)
             }
         }
 
@@ -2020,13 +2051,14 @@ private fun LiveSandboxPane(
         if (compileError != null) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF3B121A)),
-                shape = RoundedCornerShape(6.dp)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)),
+                shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
             ) {
                 Text(
                     text = "Warning: $compileError (showing last valid preview)",
-                    color = Color(0xFFFF8080),
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                     fontSize = 11.sp
                 )
             }
@@ -2034,17 +2066,19 @@ private fun LiveSandboxPane(
 
         // Export Status
         if (exportStatus != null) {
+            val isError = exportStatus.contains("Error") || exportStatus.contains("canceled")
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (exportStatus.contains("Error") || exportStatus.contains("canceled")) Color(0xFF3B121A) else Color(0xFF0F2C24)
+                    containerColor = if (isError) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f) else Color(0xFF0F2C24)
                 ),
-                shape = RoundedCornerShape(6.dp)
+                shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(1.dp, if (isError) MaterialTheme.colorScheme.error.copy(alpha = 0.5f) else Color(0xFF10B981).copy(alpha = 0.5f))
             ) {
                 Text(
                     text = exportStatus,
-                    color = if (exportStatus.contains("Error") || exportStatus.contains("canceled")) Color(0xFFFF6B6B) else Color(0xFF00FF99),
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    color = if (isError) MaterialTheme.colorScheme.error else Color(0xFF34D399),
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                     fontSize = 11.sp
                 )
             }
@@ -2095,13 +2129,16 @@ private fun LiveSandboxPane(
                 enabled = !isExporting,
                 modifier = Modifier
                     .weight(1f)
-                    .height(if (isShort) 36.dp else 40.dp),
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
-                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                    .height(if (isShort) 38.dp else 42.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = NeonPalette.Cyan,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                ),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)
             ) {
-                Icon(Icons.Default.Download, contentDescription = null, tint = Color.Black, modifier = Modifier.size(15.dp))
-                Spacer(Modifier.width(4.dp))
+                Icon(Icons.Default.Download, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
                 Text(
                     text = exportText,
                     color = Color.Black,
@@ -2119,24 +2156,24 @@ private fun LiveSandboxPane(
                 enabled = !isExporting && isConnected,
                 modifier = Modifier
                     .weight(1f)
-                    .height(if (isShort) 36.dp else 40.dp),
-                shape = RoundedCornerShape(8.dp),
+                    .height(if (isShort) 38.dp else 42.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF00FF99),
-                    disabledContainerColor = Color(0xFF1E293B)
+                    containerColor = Color(0xFF10B981),
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                 ),
-                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)
             ) {
                 Icon(
                     Icons.Default.Send,
                     contentDescription = null,
-                    tint = if (isConnected) Color.Black else Color.White.copy(alpha = 0.35f),
-                    modifier = Modifier.size(15.dp)
+                    tint = if (isConnected) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                    modifier = Modifier.size(16.dp)
                 )
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(6.dp))
                 Text(
                     text = pushText,
-                    color = if (isConnected) Color.Black else Color.White.copy(alpha = 0.35f),
+                    color = if (isConnected) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp,
                     maxLines = 1,

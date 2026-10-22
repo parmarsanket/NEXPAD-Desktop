@@ -162,7 +162,7 @@ fun LayerStudioFullScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF060910))
+            .background(MaterialTheme.colorScheme.surfaceContainerLowest)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
@@ -172,15 +172,19 @@ fun LayerStudioFullScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(3.dp)
-                    .background(NeonPalette.Cyan)
+                    .height(2.5.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(NeonPalette.Cyan, Color(0xFF8B5CF6), Color(0xFF10B981))
+                        )
+                    )
             )
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF0A0F1D))
-                    .border(BorderStroke(1.dp, Color(0xFF1B2438)))
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)))
                     .padding(horizontal = 20.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -193,32 +197,33 @@ fun LayerStudioFullScreen(
                 ) {
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFF142036))
-                            .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(NeonPalette.Cyan.copy(alpha = 0.12f))
+                            .border(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                            .padding(horizontal = 9.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = currentDoc.manifest.defaultControl,
                             color = NeonPalette.Cyan,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp
+                            fontSize = 13.sp,
+                            fontFamily = FontFamily.Monospace
                         )
                     }
 
                     Column(modifier = Modifier.weight(1f, fill = false)) {
                         Text(
                             text = "${currentDoc.manifest.name.uppercase()} — LAYER STUDIO",
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
+                            fontSize = 14.5.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = "Category: ${currentDoc.manifest.category} • Canvas: ${currentDoc.manifest.widthDp}x${currentDoc.manifest.heightDp}dp • Skia GPU Vector Engine",
-                            color = Color.White.copy(alpha = 0.55f),
-                            fontSize = 10.5.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 11.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -234,10 +239,10 @@ fun LayerStudioFullScreen(
                     if (hasUnsavedChanges) {
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(Color(0xFF451A03))
-                                .border(1.dp, Color(0xFFF59E0B), RoundedCornerShape(6.dp))
-                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color(0xFFF59E0B).copy(alpha = 0.15f))
+                                .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                                .padding(horizontal = 9.dp, vertical = 3.5.dp)
                         ) {
                             Text(
                                 text = "● Staged Unsaved Edits",
@@ -251,10 +256,10 @@ fun LayerStudioFullScreen(
                     // Active Count Pill
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFF06352A))
-                            .border(1.dp, Color(0xFF10B981), RoundedCornerShape(6.dp))
-                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF10B981).copy(alpha = 0.15f))
+                            .border(1.dp, Color(0xFF10B981).copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                            .padding(horizontal = 9.dp, vertical = 3.5.dp)
                     ) {
                         Text(
                             text = "● ${activeLayerIndices.size}/$totalLayers Active",
@@ -269,14 +274,14 @@ fun LayerStudioFullScreen(
                     if (mutedCount > 0) {
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(Color(0xFF3B151A))
-                                .border(1.dp, Color(0xFFEF4444), RoundedCornerShape(6.dp))
-                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f))
+                                .border(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                                .padding(horizontal = 9.dp, vertical = 3.5.dp)
                         ) {
                             Text(
                                 text = "🚫 $mutedCount Muted",
-                                color = Color(0xFFFCA5A5),
+                                color = MaterialTheme.colorScheme.error,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -287,11 +292,11 @@ fun LayerStudioFullScreen(
                     if (soloLayerIndex != null) {
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(Color(0xFF451A03))
-                                .border(1.dp, Color(0xFFF59E0B), RoundedCornerShape(6.dp))
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color(0xFFF59E0B).copy(alpha = 0.15f))
+                                .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.5f), RoundedCornerShape(10.dp))
                                 .clickable { onSoloLayerChange(null) }
-                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                                .padding(horizontal = 9.dp, vertical = 3.5.dp)
                         ) {
                             Text(
                                 text = "🎯 Solo: Layer #$soloLayerIndex ✕",
@@ -314,11 +319,14 @@ fun LayerStudioFullScreen(
                             onActiveLayersChange((0 until totalLayers).toSet())
                             onFeedback("✓ Activated all $totalLayers layers")
                         },
-                        shape = RoundedCornerShape(6.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                        border = BorderStroke(1.dp, Color(0xFF2E3D5C)),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                        modifier = Modifier.height(30.dp)
+                        modifier = Modifier.height(32.dp)
                     ) {
                         Text("✓ Activate All", fontSize = 11.sp)
                     }
@@ -330,11 +338,14 @@ fun LayerStudioFullScreen(
                             onActiveLayersChange(inverted)
                             onFeedback("✓ Inverted layer selection (${inverted.size} active)")
                         },
-                        shape = RoundedCornerShape(6.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                        border = BorderStroke(1.dp, Color(0xFF2E3D5C)),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                        modifier = Modifier.height(30.dp)
+                        modifier = Modifier.height(32.dp)
                     ) {
                         Text("🔄 Invert", fontSize = 11.sp)
                     }
@@ -347,14 +358,14 @@ fun LayerStudioFullScreen(
                             }
                             onClose()
                         },
-                        shape = RoundedCornerShape(6.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                        modifier = Modifier.height(30.dp)
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        modifier = Modifier.height(32.dp)
                     ) {
-                        Icon(Icons.Default.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(13.dp))
+                        Icon(Icons.Default.Close, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Close", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("Close", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -377,8 +388,11 @@ fun LayerStudioFullScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                                .padding(4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             val tabs = listOf(
                                 Triple(0, "🗂️ Layers Stack", "${totalLayers}L"),
@@ -390,11 +404,10 @@ fun LayerStudioFullScreen(
                                 Box(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(if (isSelected) NeonPalette.Cyan else Color(0xFF141C2E))
-                                        .border(1.dp, if (isSelected) NeonPalette.Cyan else Color(0xFF28354E), RoundedCornerShape(6.dp))
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(if (isSelected) NeonPalette.Cyan else Color.Transparent)
                                         .clickable { activeCompactTab = tabIdx }
-                                        .padding(vertical = 6.dp),
+                                        .padding(vertical = 7.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Row(
@@ -403,21 +416,21 @@ fun LayerStudioFullScreen(
                                     ) {
                                         Text(
                                             text = tabTitle,
-                                            color = if (isSelected) Color.Black else Color.White,
+                                            color = if (isSelected) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 11.sp
                                         )
                                         if (badge.isNotBlank()) {
                                             Box(
                                                 modifier = Modifier
-                                                    .clip(RoundedCornerShape(3.dp))
-                                                    .background(if (isSelected) Color.Black.copy(alpha = 0.2f) else Color(0xFF222F46))
-                                                    .padding(horizontal = 4.dp, vertical = 1.dp)
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .background(if (isSelected) Color.Black.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceContainerHigh)
+                                                    .padding(horizontal = 5.dp, vertical = 1.dp)
                                             ) {
                                                 Text(
                                                     text = badge,
                                                     fontSize = 9.sp,
-                                                    color = if (isSelected) Color.Black else Color.White.copy(alpha = 0.8f),
+                                                    color = if (isSelected) Color.Black else MaterialTheme.colorScheme.onSurface,
                                                     fontWeight = FontWeight.Bold
                                                 )
                                             }
@@ -443,10 +456,10 @@ fun LayerStudioFullScreen(
                                 modifier = Modifier
                                     .then(if (isCompact) Modifier.weight(1f) else Modifier.width(if (isMedium) 270.dp else 320.dp))
                                     .fillMaxHeight()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(Color(0xFF090D18))
-                                    .border(1.dp, Color(0xFF1B2438), RoundedCornerShape(10.dp))
-                                    .padding(10.dp),
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
+                                    .padding(12.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                     // Header & Order Toggle
@@ -457,14 +470,15 @@ fun LayerStudioFullScreen(
                     ) {
                         Text(
                             text = "📚 LAYER ORGANIZER",
-                            color = Color(0xFF94A3B8),
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
+                            fontSize = 11.5.sp
                         )
                         Text(
                             text = if (reverseStackOrder) "Order: Foreground First" else "Order: Stacking 0..N",
-                            color = NeonPalette.Cyan.copy(alpha = 0.8f),
+                            color = NeonPalette.Cyan,
                             fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.clickable { reverseStackOrder = !reverseStackOrder }
                         )
                     }
@@ -475,22 +489,22 @@ fun LayerStudioFullScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         categories.forEach { cat ->
                             val isSelected = selectedCategoryFilter == cat
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(if (isSelected) NeonPalette.Cyan else Color(0xFF121828))
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) NeonPalette.Cyan else MaterialTheme.colorScheme.surfaceContainerHigh)
                                     .clickable { selectedCategoryFilter = cat }
-                                    .padding(horizontal = 7.dp, vertical = 3.dp)
+                                    .padding(horizontal = 8.dp, vertical = 3.5.dp)
                             ) {
                                 Text(
                                     text = cat,
-                                    color = if (isSelected) Color.Black else Color.White.copy(alpha = 0.7f),
+                                    color = if (isSelected) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontSize = 9.5.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                                 )
                             }
                         }
@@ -577,22 +591,22 @@ fun LayerStudioFullScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Color(0xFF1E293B).copy(alpha = 0.6f))
-                                .padding(horizontal = 6.dp, vertical = 3.dp),
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = "ℹ️ Drag-reorder paused during filter • Switch to ALL",
-                                color = Color(0xFF94A3B8),
-                                fontSize = 9.sp
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 9.5.sp
                             )
                         }
                     } else {
                         Text(
                             text = "💡 Drag ⠿ grip or long-press layer to reorder",
-                            color = Color(0xFF64748B),
-                            fontSize = 9.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            fontSize = 9.5.sp,
                             modifier = Modifier.padding(horizontal = 2.dp)
                         )
                     }
@@ -639,14 +653,14 @@ fun LayerStudioFullScreen(
                                                 scaleY = dragScale
                                                 shadowElevation = if (isDragging) 12f else 0f
                                             }
-                                            .clip(RoundedCornerShape(8.dp))
+                                            .clip(RoundedCornerShape(12.dp))
                                             .background(
                                                 when {
-                                                    isDragging -> Color(0xFF162D4A)
-                                                    isSelected -> Color(0xFF13223A)
-                                                    isSolo -> Color(0xFF281D10)
-                                                    !isActive -> Color(0xFF0C0F16)
-                                                    else -> Color(0xFF0F1524)
+                                                    isDragging -> NeonPalette.Cyan.copy(alpha = 0.20f)
+                                                    isSelected -> MaterialTheme.colorScheme.surfaceContainerHighest
+                                                    isSolo -> Color(0xFFF59E0B).copy(alpha = 0.18f)
+                                                    !isActive -> MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.4f)
+                                                    else -> MaterialTheme.colorScheme.surfaceContainer
                                                 }
                                             )
                                             .border(
@@ -655,10 +669,10 @@ fun LayerStudioFullScreen(
                                                     isDragging -> NeonPalette.Cyan
                                                     isSelected -> NeonPalette.Cyan
                                                     isSolo -> Color(0xFFF59E0B)
-                                                    !isActive -> Color(0xFF1B1E28)
-                                                    else -> Color(0xFF1E283E)
+                                                    !isActive -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+                                                    else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
                                                 },
-                                                shape = RoundedCornerShape(8.dp)
+                                                shape = RoundedCornerShape(12.dp)
                                             )
                                             .then(
                                                 if (canReorder) {
@@ -666,8 +680,8 @@ fun LayerStudioFullScreen(
                                                 } else Modifier
                                             )
                                             .clickable { onSelectedLayerChange(idx) }
-                                            .padding(horizontal = 6.dp, vertical = 6.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            .padding(horizontal = 8.dp, vertical = 7.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         // 0. Drag Grip Handle
@@ -675,19 +689,19 @@ fun LayerStudioFullScreen(
                                             Box(
                                                 modifier = Modifier
                                                     .draggableHandle()
-                                                    .size(22.dp)
-                                                    .clip(RoundedCornerShape(4.dp))
-                                                    .background(if (isDragging) NeonPalette.Cyan.copy(alpha = 0.2f) else Color(0xFF141A29))
+                                                    .size(24.dp)
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .background(if (isDragging) NeonPalette.Cyan.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainerHigh)
                                                     .border(
                                                         0.5.dp,
-                                                        if (isDragging) NeonPalette.Cyan else Color(0xFF2A364E),
-                                                        RoundedCornerShape(4.dp)
+                                                        if (isDragging) NeonPalette.Cyan else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                                                        RoundedCornerShape(6.dp)
                                                     ),
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 Text(
                                                     text = "⠿",
-                                                    color = if (isDragging) NeonPalette.Cyan else Color(0xFF64748B),
+                                                    color = if (isDragging) NeonPalette.Cyan else MaterialTheme.colorScheme.onSurfaceVariant,
                                                     fontSize = 13.sp,
                                                     fontWeight = FontWeight.Bold
                                                 )
@@ -697,10 +711,10 @@ fun LayerStudioFullScreen(
                                         // 1. Mute Toggle Button
                                         Box(
                                             modifier = Modifier
-                                                .size(24.dp)
-                                                .clip(RoundedCornerShape(4.dp))
-                                                .background(if (isActive) Color(0xFF0B2F25) else Color(0xFF2A1215))
-                                                .border(1.dp, if (isActive) Color(0xFF10B981) else Color(0xFF7F1D1D), RoundedCornerShape(4.dp))
+                                                .size(26.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(if (isActive) Color(0xFF10B981).copy(alpha = 0.16f) else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f))
+                                                .border(1.dp, if (isActive) Color(0xFF10B981).copy(alpha = 0.5f) else MaterialTheme.colorScheme.error.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
                                                 .clickable {
                                                     val newSet = if (isActive) activeLayerIndices - idx else activeLayerIndices + idx
                                                     onActiveLayersChange(newSet)
@@ -708,16 +722,16 @@ fun LayerStudioFullScreen(
                                                 },
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            Text(text = if (isActive) "👁️" else "🚫", fontSize = 10.sp)
+                                            Text(text = if (isActive) "👁️" else "🚫", fontSize = 11.sp)
                                         }
 
                                         // 2. Visual Isolated Skia Thumbnail
                                         Box(
                                             modifier = Modifier
                                                 .size(44.dp)
-                                                .clip(RoundedCornerShape(6.dp))
-                                                .background(Color(0xFF05070C))
-                                                .border(1.dp, Color(0xFF1E273A), RoundedCornerShape(6.dp))
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
                                                 .alpha(if (isActive) 1f else 0.4f),
                                             contentAlignment = Alignment.Center
                                         ) {
@@ -736,7 +750,7 @@ fun LayerStudioFullScreen(
                                             ) {
                                                 Text(
                                                     text = "#$idx",
-                                                    color = Color.White.copy(alpha = 0.5f),
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                     fontFamily = FontFamily.Monospace,
                                                     fontWeight = FontWeight.Bold,
                                                     fontSize = 10.sp
@@ -745,27 +759,27 @@ fun LayerStudioFullScreen(
                                                 // Z-index indicator badge
                                                 Box(
                                                     modifier = Modifier
-                                                        .clip(RoundedCornerShape(3.dp))
+                                                        .clip(RoundedCornerShape(6.dp))
                                                         .background(NeonPalette.Cyan.copy(alpha = 0.12f))
-                                                        .border(0.5.dp, NeonPalette.Cyan.copy(alpha = 0.4f), RoundedCornerShape(3.dp))
-                                                        .padding(horizontal = 3.dp, vertical = 0.5.dp)
+                                                        .border(0.5.dp, NeonPalette.Cyan.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                                                        .padding(horizontal = 4.dp, vertical = 1.dp)
                                                 ) {
                                                     Text(
                                                         text = "Z:$idx",
                                                         color = NeonPalette.Cyan,
                                                         fontFamily = FontFamily.Monospace,
                                                         fontWeight = FontWeight.Bold,
-                                                        fontSize = 8.sp
+                                                        fontSize = 8.5.sp
                                                     )
                                                 }
 
                                                 val badgeCol = Color(details.badgeColor)
                                                 Box(
                                                     modifier = Modifier
-                                                        .clip(RoundedCornerShape(3.dp))
+                                                        .clip(RoundedCornerShape(6.dp))
                                                         .background(badgeCol.copy(alpha = if (isActive) 0.2f else 0.08f))
-                                                        .border(1.dp, badgeCol.copy(alpha = if (isActive) 0.8f else 0.3f), RoundedCornerShape(3.dp))
-                                                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                                                        .border(1.dp, badgeCol.copy(alpha = if (isActive) 0.8f else 0.3f), RoundedCornerShape(6.dp))
+                                                        .padding(horizontal = 5.dp, vertical = 1.dp)
                                                 ) {
                                                     Text(
                                                         text = details.categoryBadge,
@@ -776,14 +790,14 @@ fun LayerStudioFullScreen(
                                                 }
 
                                                 if (!isActive) {
-                                                    Text("(MUTED)", color = Color(0xFFEF4444), fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
+                                                    Text("(MUTED)", color = MaterialTheme.colorScheme.error, fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
                                                 }
                                             }
 
                                             Text(
                                                 text = details.title,
-                                                color = if (isActive) Color.White else Color.White.copy(alpha = 0.4f),
-                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                color = if (isActive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                                 fontSize = 10.5.sp,
                                                 maxLines = 1
                                             )
@@ -792,10 +806,10 @@ fun LayerStudioFullScreen(
                                         // 4. Solo Button
                                         Box(
                                             modifier = Modifier
-                                                .size(24.dp)
-                                                .clip(RoundedCornerShape(4.dp))
-                                                .background(if (isSolo) Color(0xFFD97706) else Color(0xFF182030))
-                                                .border(1.dp, if (isSolo) Color(0xFFFBBF24) else Color(0xFF2A364E), RoundedCornerShape(4.dp))
+                                                .size(26.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(if (isSolo) Color(0xFFF59E0B).copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceContainerHigh)
+                                                .border(1.dp, if (isSolo) Color(0xFFF59E0B) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
                                                 .clickable {
                                                     val newSolo = if (isSolo) null else idx
                                                     onSoloLayerChange(newSolo)
@@ -803,7 +817,7 @@ fun LayerStudioFullScreen(
                                                 },
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            Text("🎯", fontSize = 10.sp)
+                                            Text("🎯", fontSize = 11.sp)
                                         }
                                     }
                                 }
@@ -837,10 +851,10 @@ fun LayerStudioFullScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFF090D18))
-                            .border(1.dp, Color(0xFF1B2438), RoundedCornerShape(8.dp))
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -849,30 +863,31 @@ fun LayerStudioFullScreen(
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Text("CANVAS WORKSPACE", color = NeonPalette.Cyan, fontWeight = FontWeight.Bold, fontSize = 11.5.sp)
-                            Text("• Interactive Spring Physics", color = Color.White.copy(alpha = 0.5f), fontSize = 10.5.sp)
+                            Text("• Interactive Spring Physics", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.5.sp)
                         }
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             OutlinedButton(
                                 onClick = {
                                     isAutoFit = false
                                     zoomScale = (zoomScale - 0.25f).coerceAtLeast(0.5f)
                                 },
-                                shape = RoundedCornerShape(4.dp),
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                                modifier = Modifier.height(24.dp)
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                modifier = Modifier.height(26.dp)
                             ) {
-                                Text("-", fontSize = 11.sp, color = Color.White)
+                                Text("-", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
                             }
 
                             Text(
                                 text = if (isAutoFit) "AUTO" else "${(zoomScale * 100).toInt()}%",
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = 10.5.sp
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.SemiBold
                             )
 
                             OutlinedButton(
@@ -880,11 +895,11 @@ fun LayerStudioFullScreen(
                                     isAutoFit = false
                                     zoomScale = (zoomScale + 0.25f).coerceAtMost(2.0f)
                                 },
-                                shape = RoundedCornerShape(4.dp),
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                                modifier = Modifier.height(24.dp)
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                modifier = Modifier.height(26.dp)
                             ) {
-                                Text("+", fontSize = 11.sp, color = Color.White)
+                                Text("+", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
                             }
 
                             OutlinedButton(
@@ -892,20 +907,20 @@ fun LayerStudioFullScreen(
                                     isAutoFit = true
                                     zoomScale = 1.0f
                                 },
-                                shape = RoundedCornerShape(4.dp),
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                                modifier = Modifier.height(24.dp)
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                modifier = Modifier.height(26.dp)
                             ) {
-                                Text(if (isAutoFit) "Auto-Fit ✓" else "Auto-Fit", fontSize = 10.sp, color = if (isAutoFit) NeonPalette.Cyan else Color.White)
+                                Text(if (isAutoFit) "Auto-Fit ✓" else "Auto-Fit", fontSize = 10.sp, color = if (isAutoFit) NeonPalette.Cyan else MaterialTheme.colorScheme.onSurface)
                             }
 
                             OutlinedButton(
                                 onClick = { showGrid = !showGrid },
-                                shape = RoundedCornerShape(4.dp),
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                                modifier = Modifier.height(24.dp)
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                modifier = Modifier.height(26.dp)
                             ) {
-                                Text(if (showGrid) "Grid On" else "Grid Off", fontSize = 10.sp, color = Color.White)
+                                Text(if (showGrid) "Grid On" else "Grid Off", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface)
                             }
                         }
                     }
@@ -915,15 +930,15 @@ fun LayerStudioFullScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1.2f)
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(16.dp))
                             .background(
                                 if (showGrid) {
-                                    Brush.radialGradient(listOf(Color(0xFF0C1322), Color(0xFF04060C)))
+                                    Brush.radialGradient(listOf(MaterialTheme.colorScheme.surfaceContainer, MaterialTheme.colorScheme.surfaceContainerLowest))
                                 } else {
-                                    Brush.verticalGradient(listOf(Color(0xFF030509), Color(0xFF030509)))
+                                    Brush.verticalGradient(listOf(MaterialTheme.colorScheme.surfaceContainerLowest, MaterialTheme.colorScheme.surfaceContainerLowest))
                                 }
                             )
-                            .border(1.5.dp, Color(0xFF1B263E), RoundedCornerShape(12.dp)),
+                            .border(1.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f), RoundedCornerShape(16.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         val availableDimension = minOf(maxWidth.value, maxHeight.value)
@@ -943,10 +958,10 @@ fun LayerStudioFullScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(140.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(Color(0xFF080C16))
-                                .border(1.dp, Color(selectedDetails.badgeColor).copy(alpha = 0.5f), RoundedCornerShape(10.dp))
-                                .padding(10.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                                .border(1.dp, Color(selectedDetails.badgeColor).copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                                .padding(12.dp)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxSize(),
@@ -957,9 +972,9 @@ fun LayerStudioFullScreen(
                                 Box(
                                     modifier = Modifier
                                         .size(116.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(Color(0xFF030509))
-                                        .border(1.dp, Color(0xFF182236), RoundedCornerShape(8.dp)),
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f), RoundedCornerShape(10.dp)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     NxprcCanvasPreview(
@@ -986,20 +1001,20 @@ fun LayerStudioFullScreen(
                                         )
                                         Text(
                                             text = "[${selectedDetails.categoryBadge}]",
-                                            color = Color.White.copy(alpha = 0.6f),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontSize = 10.sp
                                         )
                                     }
 
                                     Text(
                                         text = selectedDetails.title,
-                                        color = Color.White,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         fontWeight = FontWeight.SemiBold,
                                         fontSize = 12.sp
                                     )
                                     Text(
                                         text = selectedDetails.summary,
-                                        color = Color(0xFF94A3B8),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 10.5.sp
                                     )
 
@@ -1014,14 +1029,14 @@ fun LayerStudioFullScreen(
                                                 onActiveLayersChange(newSet)
                                                 onFeedback(if (isActive) "Muted Layer #$safeSelectedIndex" else "Activated Layer #$safeSelectedIndex")
                                             },
-                                            shape = RoundedCornerShape(4.dp),
+                                            shape = RoundedCornerShape(8.dp),
                                             colors = ButtonDefaults.buttonColors(
-                                                containerColor = if (isActive) Color(0xFF0B2F25) else Color(0xFF2A1215)
+                                                containerColor = if (isActive) Color(0xFF10B981).copy(alpha = 0.16f) else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
                                             ),
-                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                                            modifier = Modifier.height(26.dp)
+                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                            modifier = Modifier.height(28.dp)
                                         ) {
-                                            Text(if (isActive) "👁️ Active" else "🚫 Muted", fontSize = 10.sp)
+                                            Text(if (isActive) "👁️ Active" else "🚫 Muted", fontSize = 10.5.sp, color = if (isActive) Color(0xFF34D399) else MaterialTheme.colorScheme.error)
                                         }
 
                                         val isSolo = soloLayerIndex == safeSelectedIndex
@@ -1031,14 +1046,14 @@ fun LayerStudioFullScreen(
                                                 onSoloLayerChange(newSolo)
                                                 onFeedback(if (newSolo != null) "Soloing Layer #$safeSelectedIndex" else "Exited solo mode")
                                             },
-                                            shape = RoundedCornerShape(4.dp),
+                                            shape = RoundedCornerShape(8.dp),
                                             colors = ButtonDefaults.buttonColors(
-                                                containerColor = if (isSolo) Color(0xFFD97706) else Color(0xFF182030)
+                                                containerColor = if (isSolo) Color(0xFFF59E0B).copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceContainerHigh
                                             ),
-                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                                            modifier = Modifier.height(26.dp)
+                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                            modifier = Modifier.height(28.dp)
                                         ) {
-                                            Text(if (isSolo) "🎯 Solo Active" else "🎯 Solo Layer", fontSize = 10.sp)
+                                            Text(if (isSolo) "🎯 Solo Active" else "🎯 Solo Layer", fontSize = 10.5.sp, color = if (isSolo) Color(0xFFFBBF24) else MaterialTheme.colorScheme.onSurface)
                                         }
                                     }
                                 }
@@ -1057,16 +1072,16 @@ fun LayerStudioFullScreen(
                     modifier = Modifier
                         .then(if (isCompact) Modifier.weight(1f) else Modifier.width(if (isMedium) 300.dp else 360.dp))
                         .fillMaxHeight()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFF090D18))
-                        .border(1.dp, Color(0xFF1B2438), RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(inspectorScrollState)
-                            .padding(start = 10.dp, top = 10.dp, bottom = 10.dp, end = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                            .padding(start = 12.dp, top = 12.dp, bottom = 12.dp, end = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                     if (selectedDetails != null && selectedLayer != null) {
                         // Inspector Title & Copy Code
@@ -1078,7 +1093,7 @@ fun LayerStudioFullScreen(
                             Column {
                                 Text(
                                     text = "🔍 LAYER INSPECTOR",
-                                    color = Color(0xFF94A3B8),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp
                                 )
@@ -1086,7 +1101,7 @@ fun LayerStudioFullScreen(
                                     text = "Layer #$safeSelectedIndex: ${selectedDetails.categoryBadge}",
                                     color = Color(selectedDetails.badgeColor),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp
+                                    fontSize = 12.5.sp
                                 )
                             }
 
@@ -1099,12 +1114,12 @@ fun LayerStudioFullScreen(
                                         onFeedback("⚠️ Failed to access clipboard. Please retry.")
                                     }
                                 },
-                                shape = RoundedCornerShape(4.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B263A)),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                                modifier = Modifier.height(26.dp)
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                modifier = Modifier.height(28.dp)
                             ) {
-                                Text("📋 Copy", fontSize = 10.sp, color = NeonPalette.Cyan, fontWeight = FontWeight.Bold)
+                                Text("📋 Copy", fontSize = 10.5.sp, color = NeonPalette.Cyan, fontWeight = FontWeight.Bold)
                             }
                         }
 
@@ -1114,14 +1129,14 @@ fun LayerStudioFullScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = 90.dp, max = 130.dp)
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(Color(0xFF030509))
-                                .border(1.dp, Color(0xFF151E2E), RoundedCornerShape(6.dp))
-                                .padding(start = 8.dp, top = 8.dp, bottom = 8.dp, end = 4.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+                                .padding(start = 10.dp, top = 8.dp, bottom = 8.dp, end = 6.dp)
                         ) {
                             Text(
                                 text = selectedDetails.codeSnippet,
-                                color = Color(0xFFCBD5E1),
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 10.5.sp,
                                 lineHeight = 14.sp,
@@ -1145,11 +1160,11 @@ fun LayerStudioFullScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color(0xFF0D101C))
-                                .border(1.dp, Color(0xFF7C3AED).copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-                                .padding(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainer)
+                                .border(1.dp, Color(0xFF8B5CF6).copy(alpha = 0.45f), RoundedCornerShape(14.dp))
+                                .padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -1160,10 +1175,10 @@ fun LayerStudioFullScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Text("🤖 SURGICAL AI COPILOT", color = Color(0xFFC4B5FD), fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                                    Text("🔒 Layer #$safeSelectedIndex Only", color = Color.White.copy(alpha = 0.5f), fontSize = 9.5.sp)
+                                    Text("🤖 SURGICAL AI COPILOT", color = Color(0xFFC4B5FD), fontWeight = FontWeight.Bold, fontSize = 11.5.sp)
+                                    Text("🔒 Layer #$safeSelectedIndex Only", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 9.5.sp)
                                 }
-                                Text("Live Sandbox", color = Color(0xFF10B981), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Text("Live Sandbox", color = Color(0xFF34D399), fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
                             }
 
                             OutlinedTextField(
@@ -1173,13 +1188,14 @@ fun LayerStudioFullScreen(
                                     Text(
                                         "e.g. 'Make gloss 20% subtler', 'Change icon to neon skull'...",
                                         fontSize = 11.sp,
-                                        color = Color.White.copy(alpha = 0.4f)
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                     )
                                 },
+                                shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(52.dp),
-                                textStyle = LocalTextStyle.current.copy(fontSize = 11.sp, color = Color.White)
+                                    .height(54.dp),
+                                textStyle = LocalTextStyle.current.copy(fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
                             )
 
                             // Action Toolbar: Copy Prompt, Edit Directly, Paste Clipboard
@@ -1203,9 +1219,9 @@ fun LayerStudioFullScreen(
                                             onFeedback("⚠️ Failed to access clipboard. Please retry.")
                                         }
                                     },
-                                    shape = RoundedCornerShape(6.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
-                                    modifier = Modifier.weight(1f).height(30.dp),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8B5CF6)),
+                                    modifier = Modifier.weight(1f).height(32.dp),
                                     contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
                                 ) {
                                     Text("🤖 Copy Prompt", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
@@ -1216,9 +1232,9 @@ fun LayerStudioFullScreen(
                                         replacementCode = selectedDetails.codeSnippet
                                         onFeedback("Loaded Layer #$safeSelectedIndex snippet for manual editing.")
                                     },
-                                    shape = RoundedCornerShape(6.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
-                                    modifier = Modifier.height(30.dp),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                                    modifier = Modifier.height(32.dp),
                                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                                 ) {
                                     Text("✏️ Edit Direct", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = NeonPalette.Cyan)
@@ -1242,9 +1258,9 @@ fun LayerStudioFullScreen(
                                             onFeedback("Could not read clipboard: ${e.message}")
                                         }
                                     },
-                                    shape = RoundedCornerShape(6.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
-                                    modifier = Modifier.height(30.dp),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                                    modifier = Modifier.height(32.dp),
                                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                                 ) {
                                     Text("📋 Paste", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFBBF24))
@@ -1254,8 +1270,8 @@ fun LayerStudioFullScreen(
                             // Replacement Code Text Area
                             Text(
                                 text = "Modified Code to Inject (Layer #$safeSelectedIndex):",
-                                color = Color(0xFFCBD5E1),
-                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 10.5.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
 
@@ -1266,16 +1282,17 @@ fun LayerStudioFullScreen(
                                     Text(
                                         "Paste AI response (e.g. .layer-$safeSelectedIndex { ... }, SVG <path .../>, or CSS properties)...",
                                         fontSize = 10.sp,
-                                        color = Color.White.copy(alpha = 0.35f)
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                     )
                                 },
+                                shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(100.dp),
                                 textStyle = LocalTextStyle.current.copy(
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 10.5.sp,
-                                    color = Color(0xFFE2E8F0)
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             )
 
@@ -1320,19 +1337,19 @@ fun LayerStudioFullScreen(
                                     }
                                 },
                                 enabled = replacementCode.isNotBlank(),
-                                shape = RoundedCornerShape(6.dp),
+                                shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color(0xFF10B981),
-                                    disabledContainerColor = Color(0xFF1E293B)
+                                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                                 ),
-                                modifier = Modifier.fillMaxWidth().height(34.dp),
+                                modifier = Modifier.fillMaxWidth().height(36.dp),
                                 contentPadding = PaddingValues(vertical = 4.dp)
                             ) {
                                 Text(
                                     text = "⚡ Apply Code & Update Live Preview",
-                                    fontSize = 11.sp,
+                                    fontSize = 11.5.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (replacementCode.isNotBlank()) Color.Black else Color.White.copy(alpha = 0.35f)
+                                    color = if (replacementCode.isNotBlank()) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                                 )
                             }
 
@@ -1344,7 +1361,7 @@ fun LayerStudioFullScreen(
                         }
                     } else {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Select a layer to inspect", color = Color.White.copy(alpha = 0.4f), fontSize = 12.sp)
+                            Text("Select a layer to inspect", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), fontSize = 12.sp)
                         }
                     }
                 }
@@ -1371,9 +1388,9 @@ fun LayerStudioFullScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF090D18))
-                    .border(BorderStroke(1.dp, Color(0xFF1B2438)))
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)))
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -1394,8 +1411,8 @@ fun LayerStudioFullScreen(
                             "Live preview & exports reflect staged edits. Click '💾 Save Changes' to commit to HTML editor."
                         else
                             "Surgical edits preview live. Export or push anytime; code remains unchanged in HTML until saved.",
-                        color = Color.White.copy(alpha = 0.65f),
-                        fontSize = 10.5.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 11.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1414,35 +1431,35 @@ fun LayerStudioFullScreen(
                             onFeedback("✓ All surgical changes saved to HTML editor!")
                         },
                         enabled = hasUnsavedChanges,
-                        shape = RoundedCornerShape(6.dp),
+                        shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF10B981),
-                            disabledContainerColor = Color(0xFF1E293B)
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                         ),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                        modifier = Modifier.height(30.dp)
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
+                        modifier = Modifier.height(36.dp)
                     ) {
                         Text(
                             text = if (hasUnsavedChanges) "💾 Save Changes" else "✓ Saved",
-                            fontSize = 11.sp,
+                            fontSize = 11.5.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (hasUnsavedChanges) Color.Black else Color.White.copy(alpha = 0.35f)
+                            color = if (hasUnsavedChanges) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                         )
                     }
 
                     // Quick Export .nxprc
                     Button(
                         onClick = { onExportDoc(exportDoc) },
-                        shape = RoundedCornerShape(6.dp),
+                        shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = NeonPalette.Cyan),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                        modifier = Modifier.height(30.dp)
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
+                        modifier = Modifier.height(36.dp)
                     ) {
-                        Icon(Icons.Default.Download, contentDescription = null, tint = Color.Black, modifier = Modifier.size(13.dp))
-                        Spacer(Modifier.width(4.dp))
+                        Icon(Icons.Default.Download, contentDescription = null, tint = Color.Black, modifier = Modifier.size(15.dp))
+                        Spacer(Modifier.width(5.dp))
                         Text(
                             text = "Export .nxprc (${exportDoc.canvas.layers.size} L)",
-                            fontSize = 11.sp,
+                            fontSize = 11.5.sp,
                             color = Color.Black,
                             fontWeight = FontWeight.Bold
                         )
@@ -1452,21 +1469,21 @@ fun LayerStudioFullScreen(
                     Button(
                         onClick = { onPushAdbDoc(exportDoc) },
                         enabled = isPushEnabled,
-                        shape = RoundedCornerShape(6.dp),
+                        shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF00FF99),
-                            disabledContainerColor = Color(0xFF1E293B)
+                            containerColor = Color(0xFF10B981),
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                         ),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                        modifier = Modifier.height(30.dp)
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
+                        modifier = Modifier.height(36.dp)
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.Send,
                             contentDescription = null,
-                            tint = if (isPushEnabled) Color.Black else Color.White.copy(alpha = 0.35f),
-                            modifier = Modifier.size(13.dp)
+                            tint = if (isPushEnabled) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            modifier = Modifier.size(15.dp)
                         )
-                        Spacer(Modifier.width(4.dp))
+                        Spacer(Modifier.width(5.dp))
                         Text(
                             text = if (isPushEnabled) {
                                 val base = pushLabel ?: "Push to Phone"
@@ -1474,8 +1491,8 @@ fun LayerStudioFullScreen(
                             } else {
                                 pushLabel ?: "No Phone Connected"
                             },
-                            fontSize = 11.sp,
-                            color = if (isPushEnabled) Color.Black else Color.White.copy(alpha = 0.35f),
+                            fontSize = 11.5.sp,
+                            color = if (isPushEnabled) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                             fontWeight = FontWeight.Bold
                         )
                     }

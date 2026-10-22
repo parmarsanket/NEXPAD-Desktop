@@ -357,7 +357,7 @@ object NxprcHtmlCssConverter {
 
         // If no <style> block exists, inject one with default spring physics
         if (!res.contains("<style", ignoreCase = true)) {
-            val springPhysicsBlock = "<style>\n  ${defaultPhysics.toRootBlock()}\n  $activeSelector { transform: scale(${defaultPhysics.pressScaleFormatted}) translateY(2px); }\n</style>\n"
+            val springPhysicsBlock = "<style>\n  ${defaultPhysics.toRootBlock()}\n  $activeSelector { transform: scale(${defaultPhysics.pressScaleFormatted}); transform-origin: 50% 50%; }\n</style>\n"
             val bodyIdx = res.indexOf("<body", ignoreCase = true)
             res = if (bodyIdx != -1) {
                 val afterBody = res.indexOf(">", bodyIdx) + 1
@@ -382,7 +382,7 @@ object NxprcHtmlCssConverter {
                 val match = styleEndRegex.find(res)
                 if (match != null) {
                     val insertIdx = match.range.first
-                    val fallbackActive = "\n  $activeSelector { transform: scale(var(--press-scale, ${defaultPhysics.pressScaleFormatted})) translateY(2px); }\n"
+                    val fallbackActive = "\n  $activeSelector { transform: scale(var(--press-scale, ${defaultPhysics.pressScaleFormatted})); transform-origin: 50% 50%; }\n"
                     res = res.substring(0, insertIdx) + fallbackActive + res.substring(insertIdx)
                 }
             }

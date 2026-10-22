@@ -689,7 +689,7 @@ private fun DualShock4Dashboard(
                             modifier = Modifier.weight(1f),
                             title = "DSU Motion Server",
                             value = "$dsuClientCount Active Client${if (dsuClientCount != 1) "s" else ""}",
-                            subtitle = "UDP Port 26760 (Cemuhook)",
+                            subtitle = "UDP Port 26760",
                             color = NeonPalette.Cyan
                         )
                         StatusTile(
