@@ -1061,7 +1061,7 @@ class NxprcComponentDetectorTest {
         assertTrue(sandboxB.contains("data-seed=\"77777\""))
         assertTrue(presetB.contains("data-seed=\"24892\""))
         // Multi-layer styling of .btn-core is preserved (not destroyed by capSelectors)
-        assertTrue(sandboxB.contains("linear-gradient(160deg, #4a2a14 0%, #2a1408 55%, #140803 100%)"))
+        assertTrue(sandboxB.contains("radial-gradient(circle at 45% 40%, #20242b 0%, #101217 70%, #06080a 100%)"))
     }
 
     @Test

@@ -55,6 +55,7 @@ import com.sanket.tools.nexpaddesktop.plugins.DesktopPluginManager
 import com.sanket.tools.nexpaddesktop.plugins.NxprcComponentDetector
 import com.sanket.tools.nexpaddesktop.plugins.NxprcExporter
 import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
+import com.sanket.tools.nexpaddesktop.plugins.NxprcPresetStyle
 import com.sanket.tools.nexpaddesktop.plugins.NxprcSeedEngine
 import com.sanket.tools.nexpaddesktop.plugins.UniversalPushManager
 import com.sanket.tools.nexpaddesktop.ui.components.glassCard
@@ -148,6 +149,7 @@ fun PluginsScreen(
     var currentSeed by remember { mutableStateOf(initialDetected.seed ?: NxprcSeedEngine.canonicalSeedFor(defaultCtrl.key)) }
     var htmlCodeSeed by remember { mutableStateOf(initialDetected.seed ?: currentSeed) }
     val initialSeedProfile = remember(currentSeed) { NxprcSeedEngine.resolve(defaultCtrl.key, defaultCtrl.componentType.name, currentSeed) }
+    var selectedPresetStyle by remember { mutableStateOf(NxprcPresetStyle.XBOX_ELITE) }
     var selectedCategory by remember { mutableStateOf(defaultCtrl.categoryType.id) }
     var selectedButtonKey by remember { mutableStateOf(defaultCtrl.key) }
     var htmlSource by remember { mutableStateOf(NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A) }
@@ -280,6 +282,54 @@ fun PluginsScreen(
         }
     }
 
+    val handleSelectPresetStyle: (NxprcPresetStyle) -> Unit = { style ->
+        selectedPresetStyle = style
+        scope.launch {
+            val base = withContext(Dispatchers.Default) {
+                NxprcHtmlCssConverter.getReferenceTemplate(defaultControl, category, style)
+            }
+            val detected = withContext(Dispatchers.Default) {
+                NxprcComponentDetector.detect(
+                    html = base,
+                    fallbackCategory = category,
+                    fallbackControl = defaultControl,
+                    fallbackId = componentId,
+                    fallbackName = componentName,
+                    fallbackWidthDp = targetWidthDp,
+                    fallbackHeightDp = targetHeightDp
+                )
+            }
+            val starterSeed = detected.seed ?: NxprcSeedEngine.canonicalSeedFor(defaultControl)
+            currentSeed = starterSeed
+            htmlCodeSeed = starterSeed
+
+            val profile = NxprcSeedEngine.resolve(defaultControl, category, starterSeed, detected.componentName.ifBlank { componentName })
+            val resolvedId = if (detected.componentId.isNotBlank()) detected.componentId else profile.componentId
+            val resolvedName = if (detected.componentName.isNotBlank()) detected.componentName else profile.skinName
+            componentId = resolvedId
+            componentName = resolvedName
+
+            htmlSource = base
+            promptCopiedBanner = "✓ Applied ${style.displayName} style for $defaultControl ($category)!"
+            try {
+                val newDoc = withContext(Dispatchers.Default) {
+                    NxprcHtmlCssConverter.convert(
+                        source = base,
+                        id = resolvedId,
+                        name = resolvedName,
+                        category = category,
+                        defaultControl = defaultControl
+                    )
+                }
+                compiledDoc = newDoc
+                compileError = null
+                resetLayersToAllEnabled(newDoc.canvas.layers.size)
+            } catch (e: Exception) {
+                compileError = e.message ?: "Compilation error"
+            }
+        }
+    }
+
     val handleSetSeed: (Long) -> Unit = { newSeed ->
         currentSeed = newSeed
         val profile = NxprcSeedEngine.resolve(defaultControl, category, newSeed, componentName)
@@ -370,7 +420,7 @@ fun PluginsScreen(
 
         scope.launch {
             val baseSource = btn.starterHtmlPreset ?: withContext(Dispatchers.Default) {
-                NxprcHtmlCssConverter.getReferenceTemplate(btn.key, btn.categoryType.id)
+                NxprcHtmlCssConverter.getReferenceTemplate(btn.key, btn.categoryType.id, selectedPresetStyle)
             }
             val detected = withContext(Dispatchers.Default) {
                 NxprcComponentDetector.detect(
@@ -426,7 +476,7 @@ fun PluginsScreen(
     val handleLoadStarter: () -> Unit = {
         scope.launch {
             val base = withContext(Dispatchers.Default) {
-                NxprcHtmlCssConverter.getReferenceTemplate(defaultControl, category)
+                NxprcHtmlCssConverter.getReferenceTemplate(defaultControl, category, selectedPresetStyle)
             }
             val detected = withContext(Dispatchers.Default) {
                 NxprcComponentDetector.detect(
@@ -540,6 +590,8 @@ fun PluginsScreen(
                     buttonsByCategory = buttonsByCategory,
                     selectedButtonKey = selectedButtonKey,
                     onSelectButton = handleSelectButton,
+                    selectedPresetStyle = selectedPresetStyle,
+                    onSelectPresetStyle = handleSelectPresetStyle,
                     htmlSource = htmlSource,
                     onHtmlSourceChange = { htmlSource = it }
                 )
@@ -728,6 +780,8 @@ fun PluginsScreen(
                             buttonsByCategory = buttonsByCategory,
                             selectedButtonKey = selectedButtonKey,
                             onSelectButton = handleSelectButton,
+                            selectedPresetStyle = selectedPresetStyle,
+                            onSelectPresetStyle = handleSelectPresetStyle,
                             htmlSource = htmlSource,
                             onHtmlSourceChange = { htmlSource = it }
                         )
@@ -1328,6 +1382,8 @@ private fun ComponentEditorPane(
     buttonsByCategory: Map<String, List<SubCategoryDefinition>>,
     selectedButtonKey: String,
     onSelectButton: (SubCategoryDefinition) -> Unit,
+    selectedPresetStyle: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE,
+    onSelectPresetStyle: (NxprcPresetStyle) -> Unit = {},
     htmlSource: String,
     onHtmlSourceChange: (String) -> Unit
 ) {
@@ -1585,6 +1641,70 @@ private fun ComponentEditorPane(
                         maxLines = 1,
                         softWrap = false
                     )
+                }
+            }
+        }
+
+        // 4b. Hardware Preset Style Selector
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color(0xFF131826),
+                border = BorderStroke(1.dp, Color(0xFF222F46))
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "✨ Style:",
+                        color = Color.White.copy(alpha = 0.85f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            NxprcPresetStyle.entries.forEach { style ->
+                val isSelected = selectedPresetStyle == style
+                Surface(
+                    onClick = { onSelectPresetStyle(style) },
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (isSelected) NeonPalette.Cyan.copy(alpha = 0.16f) else Color(0xFF0E1320),
+                    border = BorderStroke(
+                        1.dp,
+                        if (isSelected) NeonPalette.Cyan else Color(0xFF222F46)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = style.displayName,
+                            color = if (isSelected) NeonPalette.Cyan else Color.White.copy(alpha = 0.85f),
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = 11.sp
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = if (isSelected) NeonPalette.Cyan.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.12f)
+                        ) {
+                            Text(
+                                text = style.badge,
+                                color = if (isSelected) Color.White else Color.White.copy(alpha = 0.65f),
+                                fontSize = 8.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                            )
+                        }
+                    }
                 }
             }
         }

@@ -553,6 +553,8 @@ object NxprcHtmlCssConverter {
     /** Reference templates (structure guide only) delegated to [NxprcPresets]. */
     fun getReferenceTemplate(control: String): String = NxprcPresets.getReferenceTemplate(control)
     fun getReferenceTemplate(control: String, category: String): String = NxprcPresets.getReferenceTemplate(control, category)
+    fun getReferenceTemplate(control: String, category: String, style: NxprcPresetStyle): String = NxprcPresets.getReferenceTemplate(control, category, style)
+    fun getReferenceTemplate(control: String, category: String, consoleMode: ConsoleMode, style: NxprcPresetStyle): String = NxprcPresets.getReferenceTemplate(control, category, consoleMode, style)
     fun getReferenceTemplate(control: String, category: String, consoleMode: ConsoleMode): String =
         NxprcPresets.getReferenceTemplate(control, category, consoleMode)
 

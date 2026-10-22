@@ -5,6 +5,18 @@ import com.sanket.tools.nexpad.category.CategoryType
 import com.sanket.tools.nexpad.category.ComponentType
 import com.sanket.tools.nexpad.category.ControlKey
 
+enum class NxprcPresetStyle(
+    val id: String,
+    val displayName: String,
+    val badge: String,
+    val description: String
+) {
+    XBOX_ELITE("xbox_elite", "Xbox Elite Crystal", "Pro Luxury", "Clear resin dome with 3D floating neon glyph"),
+    ARCADE("arcade", "Candy Cab Arcade", "Retro Arcade", "Sanwa-style glossy convex dome with crisp white label"),
+    CYBERPUNK("cyberpunk", "Cyberpunk Mecha", "Sci-Fi HUD", "Chamfered titanium squircle with glowing HUD glyph"),
+    SATIN("satin", "Satin DualSense", "Minimalist", "Frosted velvet matte cap with minimalist typography")
+}
+
 /*
  * NXPRC Starter Component Library
  *
@@ -94,7 +106,8 @@ private fun faceMaterial(accent: String): Triple<String, String, String> = when 
     else -> Triple("#F3E9CD", "#D8C7A3", "#5C4625")      // Classic Cream
 }
 
-private fun facePreset(
+
+private fun facePresetXboxElite(
     control: String,
     label: String,
     accent: String,
@@ -112,9 +125,6 @@ $motion
   --accent-core: $accent;
   --accent: $accent;
   --accent-glow: $glow;
-  --cream: #eadfc2;
-  --cream-dark: #c9b78d;
-  --ink: #3b1d0a;
 }
 $selector {
   position: relative;
@@ -124,14 +134,14 @@ $selector {
   border: none;
   outline: none;
   border-radius: 50%;
-  background: linear-gradient(160deg, #4a2a14 0%, #2a1408 55%, #140803 100%);
+  background: radial-gradient(circle at 45% 40%, #20242b 0%, #101217 70%, #06080a 100%);
   box-shadow:
-    0 8px 20px rgba(0, 0, 0, 0.65),
+    0 12px 28px rgba(0, 0, 0, 0.85),
     0 0 24px var(--accent-glow),
-    inset 0 2px 3px rgba(255, 200, 140, 0.25),
-    inset 0 -5px 10px rgba(0, 0, 0, 0.85);
+    inset 0 2px 3px rgba(255, 255, 255, 0.15),
+    inset 0 -6px 12px rgba(0, 0, 0, 0.95);
   transform-origin: 50% 50%;
-  font-family: "Courier New", Courier, monospace;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   cursor: pointer;
   overflow: visible;
 }
@@ -156,81 +166,47 @@ $selector .socket-well {
   width: 84px;
   height: 84px;
   border-radius: 50%;
-  background: radial-gradient(circle at 45% 40%, #2b1f16 0%, #160e08 65%, #0a0603 100%);
+  background: radial-gradient(circle at 50% 50%, #0c0e12 0%, #050608 100%);
   box-shadow:
-    inset 0 5px 10px rgba(0, 0, 0, 0.92),
-    inset 0 -2px 3px rgba(255, 255, 255, 0.12);
+    inset 0 6px 12px rgba(0, 0, 0, 0.95),
+    inset 0 -2px 4px rgba(255, 255, 255, 0.08);
 }
 $selector .face-plate {
   position: absolute;
-  left: 13px;
-  top: 13px;
-  width: 70px;
-  height: 70px;
+  left: 12px;
+  top: 12px;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.40) 0%, rgba(255, 255, 255, 0) 30%),
-    linear-gradient(160deg, #f3e9cd 0%, var(--cream) 45%, var(--cream-dark) 100%);
+    radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.35) 0%, transparent 45%),
+    linear-gradient(180deg, #18231e 0%, #0f1613 55%, #080c0a 100%);
   box-shadow:
-    inset 0 2px 2px rgba(255, 255, 255, 0.75),
-    inset 0 -5px 9px rgba(90, 55, 20, 0.50),
-    0 4px 10px rgba(0, 0, 0, 0.60);
+    0 4px 10px rgba(0, 0, 0, 0.70),
+    inset 0 1.5px 3px rgba(255, 255, 255, 0.40),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.80);
 }
-$selector .grip-ribs {
+$selector .specular-arc {
   position: absolute;
-  left: 30px;
-  top: 22px;
-  width: 36px;
-  height: 12px;
-  border-radius: 4px;
-  background: repeating-linear-gradient(
-    180deg,
-    rgba(59, 29, 10, 0.55) 0px,
-    rgba(59, 29, 10, 0.55) 2px,
-    rgba(255, 255, 255, 0.5) 2px,
-    rgba(255, 255, 255, 0.5) 3px,
-    transparent 3px,
-    transparent 6px
-  );
-  box-shadow: inset 0 1px 2px rgba(59, 29, 10, 0.5);
+  left: 22px;
+  top: 16px;
+  width: 52px;
+  height: 24px;
+  border-radius: 50%;
+  border-top: 2px solid rgba(255, 255, 255, 0.70);
+  transform: rotate(-10deg);
+  pointer-events: none;
 }
-$selector .retro-stripes {
+$selector .caustic-glow {
   position: absolute;
-  left: 30px;
+  left: 24px;
   top: 66px;
-  width: 36px;
-  height: 6px;
-  border-radius: 3px;
-  background: linear-gradient(
-    90deg,
-    var(--accent-core) 0%,
-    var(--accent-core) 33%,
-    #dc2626 33%,
-    #dc2626 66%,
-    #7c2d12 66%,
-    #7c2d12 100%
-  );
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  width: 48px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 50%, var(--accent-glow) 0%, transparent 70%);
+  pointer-events: none;
 }
-$selector .gauge-left,
-$selector .gauge-right {
-  position: absolute;
-  top: 31px;
-  width: 4px;
-  height: 34px;
-  border-radius: 2px;
-  background: repeating-linear-gradient(
-    180deg,
-    var(--accent-core) 0px,
-    var(--accent-core) 4px,
-    #3b1d0a 4px,
-    #3b1d0a 6px
-  );
-  box-shadow: 0 0 6px var(--accent-glow);
-  animation: glow-pulse 1.6s ease-in-out infinite;
-}
-$selector .gauge-left { left: 21px; }
-$selector .gauge-right { right: 21px; }
 $selector .btn-label {
   position: absolute;
   left: 0;
@@ -241,9 +217,229 @@ $selector .btn-label {
   text-align: center;
   font-size: 34px;
   font-weight: 900;
-  letter-spacing: 1px;
-  color: var(--ink);
-  text-shadow: 2px 2px 0 var(--accent-core);
+  color: var(--accent-core);
+  text-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.95),
+    0 0 14px var(--accent-glow),
+    0 0 28px var(--accent-glow);
+}
+$active
+""".trimIndent()
+
+    val body = """
+  <button class="nexpad-btn" data-control="$control" data-category="BUTTON" data-codename="Xbox Elite" data-name="$name" data-seed="$seed" id="rc.${control.lowercase()}_$seed">
+    <div class="glow-ring"></div>
+    <div class="socket-well"></div>
+    <div class="face-plate" data-layer-role="base"></div>
+    <div class="specular-arc"></div>
+    <div class="caustic-glow"></div>
+    <span class="btn-label">$label</span>
+  </button>
+    """.trimIndent()
+
+    return htmlDocument(css, body)
+}
+
+private fun facePresetArcade(
+    control: String,
+    label: String,
+    accent: String,
+    glow: String,
+    name: String,
+    seed: Int
+): String {
+    val motion = retroMotion("0.65", "460", "0.93")
+    val selector = ".nexpad-btn"
+    val active = centeredPress(selector)
+    val domeColors = when (accent.uppercase()) {
+        "#00FFA3", "#4ADE80", "#10B981" -> Pair("#4ade80", "#065f46")
+        "#FF2A6D", "#FF3366", "#F43F5E", "#EF4444" -> Pair("#f87171", "#7f1d1d")
+        "#00E5FF", "#00B0FF", "#0284C7" -> Pair("#38bdf8", "#0c4a6e")
+        "#FFD600", "#FFCC00", "#F59E0B" -> Pair("#fde047", "#78350f")
+        else -> Pair("#cbd5e1", "#334155")
+    }
+
+    val css = """
+$motion
+:root {
+  --accent-core: $accent;
+  --accent: $accent;
+  --accent-glow: $glow;
+  --dome-light: ${domeColors.first};
+  --dome-dark: ${domeColors.second};
+}
+$selector {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  padding: 0;
+  border: none;
+  outline: none;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #2e2e2e 0%, #151515 50%, #0a0a0a 100%);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.80),
+    0 0 22px var(--accent-glow),
+    inset 0 2px 2px rgba(255, 255, 255, 0.25),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.90);
+  transform-origin: 50% 50%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  overflow: visible;
+}
+$selector:active {
+  transform: scale(var(--press-scale));
+}
+$selector .glow-ring {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  box-shadow: 0 0 24px var(--accent-glow);
+  animation: pulse-aura 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+$selector .socket-well {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 45% 40%, #1f1f1f 0%, #0d0d0d 100%);
+  box-shadow: inset 0 5px 8px rgba(0, 0, 0, 0.95);
+}
+$selector .face-plate {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 25%, var(--dome-light) 0%, var(--accent-core) 45%, var(--dome-dark) 100%);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.65),
+    inset 0 3px 4px rgba(255, 255, 255, 0.50),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.65);
+}
+$selector .arcade-sheen {
+  position: absolute;
+  left: 20px;
+  top: 16px;
+  width: 56px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 100%);
+  pointer-events: none;
+}
+$selector .btn-label {
+  position: absolute;
+  left: 0;
+  top: 31px;
+  width: 96px;
+  height: 34px;
+  line-height: 34px;
+  text-align: center;
+  font-size: 34px;
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.65),
+    0 -1px 1px rgba(0, 0, 0, 0.45);
+}
+$active
+""".trimIndent()
+
+    val body = """
+  <button class="nexpad-btn" data-control="$control" data-category="BUTTON" data-codename="Candy Cab" data-name="$name" data-seed="$seed" id="rc.${control.lowercase()}_$seed">
+    <div class="glow-ring"></div>
+    <div class="socket-well"></div>
+    <div class="face-plate" data-layer-role="base"></div>
+    <div class="arcade-sheen"></div>
+    <span class="btn-label">$label</span>
+  </button>
+    """.trimIndent()
+
+    return htmlDocument(css, body)
+}
+
+private fun facePresetCyberpunk(
+    control: String,
+    label: String,
+    accent: String,
+    glow: String,
+    name: String,
+    seed: Int
+): String {
+    val motion = retroMotion("0.60", "480", "0.94")
+    val selector = ".nexpad-btn"
+    val active = centeredPress(selector)
+
+    val css = """
+$motion
+:root {
+  --accent-core: $accent;
+  --accent: $accent;
+  --accent-glow: $glow;
+}
+$selector {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  padding: 0;
+  border: 1.5px solid var(--accent-glow);
+  outline: none;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #1b2028 0%, #0e1117 60%, #07090c 100%);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.90),
+    0 0 25px var(--accent-glow),
+    inset 0 1px 2px rgba(255, 255, 255, 0.15),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.80);
+  transform-origin: 50% 50%;
+  font-family: "Courier New", Courier, monospace;
+  cursor: pointer;
+  overflow: visible;
+}
+$selector:active {
+  transform: scale(var(--press-scale));
+}
+$selector .glow-ring {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 88px;
+  height: 88px;
+  border-radius: 18px;
+  box-shadow: 0 0 26px var(--accent-glow);
+  animation: pulse-aura 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+$selector .face-plate {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  width: 76px;
+  height: 76px;
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(6, 182, 212, 0.08) 0%, transparent 60%),
+    linear-gradient(145deg, #151922 0%, #0b0d13 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.12),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.70);
+}
+$selector .cyber-grid {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  width: 64px;
+  height: 64px;
+  border: 1px dashed rgba(6, 182, 212, 0.25);
+  border-radius: 10px;
+  pointer-events: none;
 }
 $selector .button-emblem {
   position: absolute;
@@ -253,33 +449,160 @@ $selector .button-emblem {
   height: 96px;
   pointer-events: none;
 }
+$selector .btn-label {
+  position: absolute;
+  left: 0;
+  top: 31px;
+  width: 96px;
+  height: 34px;
+  line-height: 34px;
+  text-align: center;
+  font-size: 34px;
+  font-weight: 900;
+  color: var(--accent-core);
+  text-shadow:
+    0 0 10px var(--accent-core),
+    0 0 24px var(--accent-glow),
+    0 0 42px var(--accent-glow);
+}
 $active
 """.trimIndent()
 
     val body = """
-  <button class="nexpad-btn" data-control="$control" data-category="BUTTON" data-codename="Retro Foundry" data-name="$name" data-seed="$seed" id="rc.${control.lowercase()}_$seed">
+  <button class="nexpad-btn" data-control="$control" data-category="BUTTON" data-codename="Cyberpunk" data-name="$name" data-seed="$seed" id="rc.${control.lowercase()}_$seed">
     <div class="glow-ring"></div>
-    <div class="socket-well"></div>
     <div class="face-plate" data-layer-role="base"></div>
-    <div class="grip-ribs"></div>
-    <div class="retro-stripes"></div>
-    <div class="gauge-left"></div>
-    <div class="gauge-right"></div>
+    <div class="cyber-grid"></div>
     <svg class="button-emblem" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="15" cy="15" r="2.5" fill="#8a7448"/>
-      <line x1="13.5" y1="15" x2="16.5" y2="15" stroke="#3b1d0a" stroke-width="1"/>
-      <circle cx="81" cy="15" r="2.5" fill="#8a7448"/>
-      <line x1="79.5" y1="15" x2="82.5" y2="15" stroke="#3b1d0a" stroke-width="1"/>
-      <circle cx="15" cy="81" r="2.5" fill="#8a7448"/>
-      <line x1="13.5" y1="81" x2="16.5" y2="81" stroke="#3b1d0a" stroke-width="1"/>
-      <circle cx="81" cy="81" r="2.5" fill="#8a7448"/>
-      <line x1="79.5" y1="81" x2="82.5" y2="81" stroke="#3b1d0a" stroke-width="1"/>
+      <path d="M 14 20 L 14 14 L 20 14" stroke="$accent" stroke-width="2" fill="none"/>
+      <path d="M 82 76 L 82 82 L 76 82" stroke="$accent" stroke-width="2" fill="none"/>
     </svg>
     <span class="btn-label">$label</span>
   </button>
     """.trimIndent()
 
     return htmlDocument(css, body)
+}
+
+private fun facePresetSatin(
+    control: String,
+    label: String,
+    accent: String,
+    glow: String,
+    name: String,
+    seed: Int
+): String {
+    val motion = retroMotion("0.70", "420", "0.95")
+    val selector = ".nexpad-btn"
+    val active = centeredPress(selector)
+
+    val css = """
+$motion
+:root {
+  --accent-core: $accent;
+  --accent: $accent;
+  --accent-glow: $glow;
+}
+$selector {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  padding: 0;
+  border: none;
+  outline: none;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #242831 0%, #15181f 60%, #0d0f14 100%);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.75),
+    0 0 20px rgba(148, 163, 184, 0.20),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.18),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.85);
+  transform-origin: 50% 50%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  overflow: visible;
+}
+$selector:active {
+  transform: scale(var(--press-scale));
+}
+$selector .glow-ring {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  box-shadow: 0 0 22px rgba(148, 163, 184, 0.25);
+  animation: pulse-aura 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+$selector .socket-well {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 45% 40%, #1c1f26 0%, #0c0e12 100%);
+  box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.90);
+}
+$selector .face-plate {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 30%, #323744 0%, #1e222b 60%, #13151b 100%);
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.50),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.25),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.60);
+}
+$selector .btn-label {
+  position: absolute;
+  left: 0;
+  top: 31px;
+  width: 96px;
+  height: 34px;
+  line-height: 34px;
+  text-align: center;
+  font-size: 34px;
+  font-weight: 700;
+  color: #e2e8f0;
+  letter-spacing: -0.5px;
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.65),
+    0 -1px 1px rgba(255, 255, 255, 0.25);
+}
+$active
+""".trimIndent()
+
+    val body = """
+  <button class="nexpad-btn" data-control="$control" data-category="BUTTON" data-codename="Satin DualSense" data-name="$name" data-seed="$seed" id="rc.${control.lowercase()}_$seed">
+    <div class="glow-ring"></div>
+    <div class="socket-well"></div>
+    <div class="face-plate" data-layer-role="base"></div>
+    <span class="btn-label">$label</span>
+  </button>
+    """.trimIndent()
+
+    return htmlDocument(css, body)
+}
+
+private fun facePreset(
+    control: String,
+    label: String,
+    accent: String,
+    glow: String,
+    name: String,
+    seed: Int,
+    style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE
+): String = when (style) {
+    NxprcPresetStyle.XBOX_ELITE -> facePresetXboxElite(control, label, accent, glow, name, seed)
+    NxprcPresetStyle.ARCADE -> facePresetArcade(control, label, accent, glow, name, seed)
+    NxprcPresetStyle.CYBERPUNK -> facePresetCyberpunk(control, label, accent, glow, name, seed)
+    NxprcPresetStyle.SATIN -> facePresetSatin(control, label, accent, glow, name, seed)
 }
 
 private fun triggerPreset(control: String): String {
@@ -1544,23 +1867,56 @@ ${centeredPress(".speed-turbo")}
         """.trimIndent()
     )
 
-    val PRESET_NEO_TACTILE_A =
-        facePreset("A", "A", "#00FFA3", "rgba(0, 255, 163, 0.42)", "Neo Tactile A", 16166)
-    val PRESET_NEO_TACTILE_B =
-        facePreset("B", "B", "#FF2A6D", "rgba(255, 42, 109, 0.36)", "Neo Tactile B", 24892)
-    val PRESET_NEO_TACTILE_X =
-        facePreset("X", "X", "#00E5FF", "rgba(0, 229, 255, 0.38)", "Neo Tactile X", 38120)
-    val PRESET_NEO_TACTILE_Y =
-        facePreset("Y", "Y", "#FFD600", "rgba(255, 214, 0, 0.40)", "Neo Tactile Y", 49551)
+    // --- Xbox Elite Crystal Resin Presets ---
+    val PRESET_XBOX_ELITE_A = facePreset("A", "A", "#00FFA3", "rgba(0, 255, 163, 0.42)", "Xbox Elite A", 16166, NxprcPresetStyle.XBOX_ELITE)
+    val PRESET_XBOX_ELITE_B = facePreset("B", "B", "#FF2A6D", "rgba(255, 42, 109, 0.36)", "Xbox Elite B", 24892, NxprcPresetStyle.XBOX_ELITE)
+    val PRESET_XBOX_ELITE_X = facePreset("X", "X", "#00E5FF", "rgba(0, 229, 255, 0.38)", "Xbox Elite X", 38120, NxprcPresetStyle.XBOX_ELITE)
+    val PRESET_XBOX_ELITE_Y = facePreset("Y", "Y", "#FFD600", "rgba(255, 214, 0, 0.40)", "Xbox Elite Y", 49551, NxprcPresetStyle.XBOX_ELITE)
+    val PRESET_XBOX_ELITE_PS_CROSS = facePreset("A", "✕", "#3F8FE0", "rgba(63, 143, 224, 0.34)", "Xbox Elite Cross", 16166, NxprcPresetStyle.XBOX_ELITE)
+    val PRESET_XBOX_ELITE_PS_CIRCLE = facePreset("B", "○", "#E6474E", "rgba(230, 71, 78, 0.34)", "Xbox Elite Circle", 24892, NxprcPresetStyle.XBOX_ELITE)
+    val PRESET_XBOX_ELITE_PS_SQUARE = facePreset("X", "□", "#E055B8", "rgba(224, 85, 184, 0.34)", "Xbox Elite Square", 38120, NxprcPresetStyle.XBOX_ELITE)
+    val PRESET_XBOX_ELITE_PS_TRIANGLE = facePreset("Y", "△", "#3FD25A", "rgba(63, 210, 90, 0.34)", "Xbox Elite Triangle", 49551, NxprcPresetStyle.XBOX_ELITE)
 
-    val PRESET_NEO_TACTILE_PS_CROSS =
-        facePreset("A", "✕", "#3F8FE0", "rgba(63, 143, 224, 0.34)", "Neo Tactile Cross", 16166)
-    val PRESET_NEO_TACTILE_PS_CIRCLE =
-        facePreset("B", "○", "#E6474E", "rgba(230, 71, 78, 0.34)", "Neo Tactile Circle", 24892)
-    val PRESET_NEO_TACTILE_PS_SQUARE =
-        facePreset("X", "□", "#E055B8", "rgba(224, 85, 184, 0.34)", "Neo Tactile Square", 38120)
-    val PRESET_NEO_TACTILE_PS_TRIANGLE =
-        facePreset("Y", "△", "#3FD25A", "rgba(63, 210, 90, 0.34)", "Neo Tactile Triangle", 49551)
+    // --- Candy Cab Arcade Presets ---
+    val PRESET_ARCADE_A = facePreset("A", "A", "#00FFA3", "rgba(0, 255, 163, 0.42)", "Candy Cab A", 16166, NxprcPresetStyle.ARCADE)
+    val PRESET_ARCADE_B = facePreset("B", "B", "#FF2A6D", "rgba(255, 42, 109, 0.36)", "Candy Cab B", 24892, NxprcPresetStyle.ARCADE)
+    val PRESET_ARCADE_X = facePreset("X", "X", "#00E5FF", "rgba(0, 229, 255, 0.38)", "Candy Cab X", 38120, NxprcPresetStyle.ARCADE)
+    val PRESET_ARCADE_Y = facePreset("Y", "Y", "#FFD600", "rgba(255, 214, 0, 0.40)", "Candy Cab Y", 49551, NxprcPresetStyle.ARCADE)
+    val PRESET_ARCADE_PS_CROSS = facePreset("A", "✕", "#3F8FE0", "rgba(63, 143, 224, 0.34)", "Candy Cab Cross", 16166, NxprcPresetStyle.ARCADE)
+    val PRESET_ARCADE_PS_CIRCLE = facePreset("B", "○", "#E6474E", "rgba(230, 71, 78, 0.34)", "Candy Cab Circle", 24892, NxprcPresetStyle.ARCADE)
+    val PRESET_ARCADE_PS_SQUARE = facePreset("X", "□", "#E055B8", "rgba(224, 85, 184, 0.34)", "Candy Cab Square", 38120, NxprcPresetStyle.ARCADE)
+    val PRESET_ARCADE_PS_TRIANGLE = facePreset("Y", "△", "#3FD25A", "rgba(63, 210, 90, 0.34)", "Candy Cab Triangle", 49551, NxprcPresetStyle.ARCADE)
+
+    // --- Cyberpunk Mecha Presets ---
+    val PRESET_CYBERPUNK_A = facePreset("A", "A", "#00FFA3", "rgba(0, 255, 163, 0.42)", "Cyberpunk A", 16166, NxprcPresetStyle.CYBERPUNK)
+    val PRESET_CYBERPUNK_B = facePreset("B", "B", "#FF2A6D", "rgba(255, 42, 109, 0.36)", "Cyberpunk B", 24892, NxprcPresetStyle.CYBERPUNK)
+    val PRESET_CYBERPUNK_X = facePreset("X", "X", "#00E5FF", "rgba(0, 229, 255, 0.38)", "Cyberpunk X", 38120, NxprcPresetStyle.CYBERPUNK)
+    val PRESET_CYBERPUNK_Y = facePreset("Y", "Y", "#FFD600", "rgba(255, 214, 0, 0.40)", "Cyberpunk Y", 49551, NxprcPresetStyle.CYBERPUNK)
+    val PRESET_CYBERPUNK_PS_CROSS = facePreset("A", "✕", "#3F8FE0", "rgba(63, 143, 224, 0.34)", "Cyberpunk Cross", 16166, NxprcPresetStyle.CYBERPUNK)
+    val PRESET_CYBERPUNK_PS_CIRCLE = facePreset("B", "○", "#E6474E", "rgba(230, 71, 78, 0.34)", "Cyberpunk Circle", 24892, NxprcPresetStyle.CYBERPUNK)
+    val PRESET_CYBERPUNK_PS_SQUARE = facePreset("X", "□", "#E055B8", "rgba(224, 85, 184, 0.34)", "Cyberpunk Square", 38120, NxprcPresetStyle.CYBERPUNK)
+    val PRESET_CYBERPUNK_PS_TRIANGLE = facePreset("Y", "△", "#3FD25A", "rgba(63, 210, 90, 0.34)", "Cyberpunk Triangle", 49551, NxprcPresetStyle.CYBERPUNK)
+
+    // --- Satin DualSense Presets ---
+    val PRESET_SATIN_A = facePreset("A", "A", "#00FFA3", "rgba(0, 255, 163, 0.42)", "Satin DualSense A", 16166, NxprcPresetStyle.SATIN)
+    val PRESET_SATIN_B = facePreset("B", "B", "#FF2A6D", "rgba(255, 42, 109, 0.36)", "Satin DualSense B", 24892, NxprcPresetStyle.SATIN)
+    val PRESET_SATIN_X = facePreset("X", "X", "#00E5FF", "rgba(0, 229, 255, 0.38)", "Satin DualSense X", 38120, NxprcPresetStyle.SATIN)
+    val PRESET_SATIN_Y = facePreset("Y", "Y", "#FFD600", "rgba(255, 214, 0, 0.40)", "Satin DualSense Y", 49551, NxprcPresetStyle.SATIN)
+    val PRESET_SATIN_PS_CROSS = facePreset("A", "✕", "#3F8FE0", "rgba(63, 143, 224, 0.34)", "Satin DualSense Cross", 16166, NxprcPresetStyle.SATIN)
+    val PRESET_SATIN_PS_CIRCLE = facePreset("B", "○", "#E6474E", "rgba(230, 71, 78, 0.34)", "Satin DualSense Circle", 24892, NxprcPresetStyle.SATIN)
+    val PRESET_SATIN_PS_SQUARE = facePreset("X", "□", "#E055B8", "rgba(224, 85, 184, 0.34)", "Satin DualSense Square", 38120, NxprcPresetStyle.SATIN)
+    val PRESET_SATIN_PS_TRIANGLE = facePreset("Y", "△", "#3FD25A", "rgba(63, 210, 90, 0.34)", "Satin DualSense Triangle", 49551, NxprcPresetStyle.SATIN)
+
+    // --- Canonical aliases defaulting to Xbox Elite Crystal ---
+    val PRESET_NEO_TACTILE_A get() = PRESET_XBOX_ELITE_A
+    val PRESET_NEO_TACTILE_B get() = PRESET_XBOX_ELITE_B
+    val PRESET_NEO_TACTILE_X get() = PRESET_XBOX_ELITE_X
+    val PRESET_NEO_TACTILE_Y get() = PRESET_XBOX_ELITE_Y
+
+    val PRESET_NEO_TACTILE_PS_CROSS get() = PRESET_XBOX_ELITE_PS_CROSS
+    val PRESET_NEO_TACTILE_PS_CIRCLE get() = PRESET_XBOX_ELITE_PS_CIRCLE
+    val PRESET_NEO_TACTILE_PS_SQUARE get() = PRESET_XBOX_ELITE_PS_SQUARE
+    val PRESET_NEO_TACTILE_PS_TRIANGLE get() = PRESET_XBOX_ELITE_PS_TRIANGLE
 
     val PRESET_DPAD_UP = dpadDirectionPreset("UP")
     val PRESET_DPAD_DOWN = dpadDirectionPreset("DOWN")
@@ -1763,18 +2119,25 @@ ${centeredPress(".system-btn")}
     val PRESET_MACRO_M3 get() = createPresetMacroPaddle("M3")
     val PRESET_MACRO_M4 get() = createPresetMacroPaddle("M4")
 
-    fun getReferenceTemplate(control: String): String = getReferenceTemplateInternal(control, "BUTTON")
+    fun getReferenceTemplate(control: String): String = getReferenceTemplateInternal(control, "BUTTON", ConsoleMode.XBOX, NxprcPresetStyle.XBOX_ELITE)
 
     fun getReferenceTemplate(control: String, category: String): String =
-        getReferenceTemplateInternal(control, category)
+        getReferenceTemplateInternal(control, category, ConsoleMode.XBOX, NxprcPresetStyle.XBOX_ELITE)
 
     fun getReferenceTemplate(control: String, category: String, consoleMode: ConsoleMode): String =
-        getReferenceTemplateInternal(control, category, consoleMode)
+        getReferenceTemplateInternal(control, category, consoleMode, NxprcPresetStyle.XBOX_ELITE)
+
+    fun getReferenceTemplate(control: String, category: String, style: NxprcPresetStyle): String =
+        getReferenceTemplateInternal(control, category, ConsoleMode.XBOX, style)
+
+    fun getReferenceTemplate(control: String, category: String, consoleMode: ConsoleMode, style: NxprcPresetStyle): String =
+        getReferenceTemplateInternal(control, category, consoleMode, style)
 
     private fun getReferenceTemplateInternal(
         control: String,
         category: String,
-        consoleMode: ConsoleMode = ConsoleMode.XBOX
+        consoleMode: ConsoleMode = ConsoleMode.XBOX,
+        style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE
     ): String {
         val ctrl = ControlKey.fromIdentifier(control)
         val catType = ctrl?.categoryType
@@ -1818,21 +2181,41 @@ ${centeredPress(".system-btn")}
             }
         }
 
-        if (consoleMode == ConsoleMode.PLAYSTATION) {
-            return when (ctrl) {
-                ControlKey.A -> PRESET_NEO_TACTILE_PS_CROSS
-                ControlKey.B -> PRESET_NEO_TACTILE_PS_CIRCLE
-                ControlKey.X -> PRESET_NEO_TACTILE_PS_SQUARE
-                ControlKey.Y -> PRESET_NEO_TACTILE_PS_TRIANGLE
-                else -> PRESET_NEO_TACTILE_PS_CROSS
+        if (ctrl in listOf(ControlKey.A, ControlKey.B, ControlKey.X, ControlKey.Y)) {
+            val isPs = consoleMode == ConsoleMode.PLAYSTATION
+            return when (style) {
+                NxprcPresetStyle.XBOX_ELITE -> when (ctrl) {
+                    ControlKey.A -> if (isPs) PRESET_XBOX_ELITE_PS_CROSS else PRESET_XBOX_ELITE_A
+                    ControlKey.B -> if (isPs) PRESET_XBOX_ELITE_PS_CIRCLE else PRESET_XBOX_ELITE_B
+                    ControlKey.X -> if (isPs) PRESET_XBOX_ELITE_PS_SQUARE else PRESET_XBOX_ELITE_X
+                    ControlKey.Y -> if (isPs) PRESET_XBOX_ELITE_PS_TRIANGLE else PRESET_XBOX_ELITE_Y
+                    else -> PRESET_XBOX_ELITE_A
+                }
+                NxprcPresetStyle.ARCADE -> when (ctrl) {
+                    ControlKey.A -> if (isPs) PRESET_ARCADE_PS_CROSS else PRESET_ARCADE_A
+                    ControlKey.B -> if (isPs) PRESET_ARCADE_PS_CIRCLE else PRESET_ARCADE_B
+                    ControlKey.X -> if (isPs) PRESET_ARCADE_PS_SQUARE else PRESET_ARCADE_X
+                    ControlKey.Y -> if (isPs) PRESET_ARCADE_PS_TRIANGLE else PRESET_ARCADE_Y
+                    else -> PRESET_ARCADE_A
+                }
+                NxprcPresetStyle.CYBERPUNK -> when (ctrl) {
+                    ControlKey.A -> if (isPs) PRESET_CYBERPUNK_PS_CROSS else PRESET_CYBERPUNK_A
+                    ControlKey.B -> if (isPs) PRESET_CYBERPUNK_PS_CIRCLE else PRESET_CYBERPUNK_B
+                    ControlKey.X -> if (isPs) PRESET_CYBERPUNK_PS_SQUARE else PRESET_CYBERPUNK_X
+                    ControlKey.Y -> if (isPs) PRESET_CYBERPUNK_PS_TRIANGLE else PRESET_CYBERPUNK_Y
+                    else -> PRESET_CYBERPUNK_A
+                }
+                NxprcPresetStyle.SATIN -> when (ctrl) {
+                    ControlKey.A -> if (isPs) PRESET_SATIN_PS_CROSS else PRESET_SATIN_A
+                    ControlKey.B -> if (isPs) PRESET_SATIN_PS_CIRCLE else PRESET_SATIN_B
+                    ControlKey.X -> if (isPs) PRESET_SATIN_PS_SQUARE else PRESET_SATIN_X
+                    ControlKey.Y -> if (isPs) PRESET_SATIN_PS_TRIANGLE else PRESET_SATIN_Y
+                    else -> PRESET_SATIN_A
+                }
             }
         }
 
         return when (ctrl) {
-            ControlKey.A -> PRESET_NEO_TACTILE_A
-            ControlKey.B -> PRESET_NEO_TACTILE_B
-            ControlKey.X -> PRESET_NEO_TACTILE_X
-            ControlKey.Y -> PRESET_NEO_TACTILE_Y
             ControlKey.UP -> PRESET_DPAD_UP
             ControlKey.DOWN -> PRESET_DPAD_DOWN
             ControlKey.LEFT -> PRESET_DPAD_LEFT
