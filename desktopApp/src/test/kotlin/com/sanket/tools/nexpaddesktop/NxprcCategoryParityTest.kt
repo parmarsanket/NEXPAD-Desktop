@@ -26,7 +26,7 @@ import javax.imageio.ImageIO
  */
 class NxprcCategoryParityTest {
 
-    private val brainDir = File("C:\\Users\\parma\\.gemini\\antigravity\\brain\\d05c2fb8-838a-4bb1-b221-1288db0fe677")
+    private val brainDir = File("C:\\Users\\parma\\.gemini\\antigravity\\brain\\a824e443-f213-4341-be2a-a3d88d7f26af")
     private val scratchDir = File(brainDir, "scratch").apply { mkdirs() }
     private val chromePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
 
@@ -2503,7 +2503,9 @@ body {
         assertEquals("A", glyph.text)
 
         // 2. Verify specular arc reflection BoxLayer
-        val specularArc = checkNotNull(doc.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull { it.stroke?.isTopOnly == true }) { "Must contain specular arc BoxLayer with isTopOnly stroke" }
+        val specularFixture = """<!DOCTYPE html><html><head><style>.arc-btn { position: relative; width: 100px; height: 100px; } .arc-btn::after { content: ''; position: absolute; left: 14px; top: 8px; width: 72px; height: 40px; border-radius: 50%; border-top: 2px solid rgba(255,255,255,0.7); transform: rotate(-10deg); }</style></head><body><button class="arc-btn"></button></body></html>""".trimIndent()
+        val arcDoc = NxprcPackager.compile(html = specularFixture, id = "arc_test", name = "Arc Test", category = "BUTTON", defaultControl = "A")
+        val specularArc = checkNotNull(arcDoc.canvas.layers.filterIsInstance<CanvasLayer.BoxLayer>().firstOrNull { it.stroke?.isTopOnly == true }) { "Must contain specular arc BoxLayer with isTopOnly stroke" }
         assertEquals(true, specularArc.stroke?.isTopOnly)
         assertTrue("Specular arc widthRatio should be ~72%", specularArc.widthRatio in 0.70f..0.74f)
         assertTrue("Specular arc heightRatio should be ~40%", specularArc.heightRatio in 0.38f..0.42f)
