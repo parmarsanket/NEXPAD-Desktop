@@ -602,68 +602,483 @@ private fun facePreset(
 }
 
 
-private data class StyleTheme(
+private data class ElementStyleConfig(
     val chassisBg: String,
     val chassisShadow: String,
     val facePlateBg: String,
-    val facePlateShadow: String,
-    val textColor: String,
-    val textShadow: String,
-    val accentBorder: String = "none",
-    val fontFam: String = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    val barColor: String = "#ffffff",
-    val barShadow: String = "none"
+    val accentColor: String,
+    val accentShadow: String,
+    val accentBorder: String
 )
 
-private fun resolveStyleTheme(style: NxprcPresetStyle, accent: String, glow: String): StyleTheme = when (style) {
-    NxprcPresetStyle.XBOX_ELITE -> StyleTheme(
-        chassisBg = "radial-gradient(circle at 45% 40%, #20242b 0%, #101217 70%, #06080a 100%)",
-        chassisShadow = "0 8px 22px rgba(0, 0, 0, 0.85), 0 0 22px $glow, inset 0 2px 3px rgba(255, 255, 255, 0.15), inset 0 -6px 12px rgba(0, 0, 0, 0.95)",
-        facePlateBg = "linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, transparent 35%), linear-gradient(160deg, #1c232d 0%, #11151c 55%, #080a0e 100%)",
-        facePlateShadow = "inset 0 1.5px 3px rgba(255, 255, 255, 0.25), inset 0 -6px 10px rgba(0, 0, 0, 0.80)",
-        textColor = accent,
-        textShadow = "0 2px 8px rgba(0, 0, 0, 0.95), 0 0 14px $glow",
-        accentBorder = "none",
-        fontFam = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-        barColor = accent,
-        barShadow = "0 0 8px $glow"
-    )
-    NxprcPresetStyle.ARCADE -> StyleTheme(
-        chassisBg = "linear-gradient(180deg, #2c2c2c 0%, #181818 50%, #0d0d0d 100%)",
-        chassisShadow = "0 8px 22px rgba(0, 0, 0, 0.80), 0 0 20px $glow, inset 0 2px 2px rgba(255, 255, 255, 0.30), inset 0 -5px 10px rgba(0, 0, 0, 0.90)",
-        facePlateBg = "radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.50) 0%, $accent 48%, #064e3b 100%)",
-        facePlateShadow = "0 4px 12px rgba(0, 0, 0, 0.65), inset 0 3px 4px rgba(255, 255, 255, 0.55), inset 0 -5px 10px rgba(0, 0, 0, 0.65)",
-        textColor = "#ffffff",
-        textShadow = "0 2px 4px rgba(0, 0, 0, 0.70), 0 -1px 1px rgba(0, 0, 0, 0.50)",
-        accentBorder = "none",
-        fontFam = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-        barColor = "#ffffff",
-        barShadow = "0 1px 3px rgba(0, 0, 0, 0.70)"
-    )
-    NxprcPresetStyle.CYBERPUNK -> StyleTheme(
-        chassisBg = "linear-gradient(145deg, #1b2028 0%, #0e1117 60%, #07090c 100%)",
-        chassisShadow = "0 8px 24px rgba(0, 0, 0, 0.90), 0 0 25px $glow, inset 0 1px 2px rgba(255, 255, 255, 0.15), inset 0 -4px 8px rgba(0, 0, 0, 0.80)",
-        facePlateBg = "linear-gradient(180deg, rgba(6, 182, 212, 0.12) 0%, transparent 60%), linear-gradient(145deg, #151922 0%, #0b0d13 100%)",
-        facePlateShadow = "inset 0 1px 1px rgba(255, 255, 255, 0.18), inset 0 -4px 8px rgba(0, 0, 0, 0.85)",
-        textColor = accent,
-        textShadow = "0 0 10px $accent, 0 0 24px $glow, 0 0 42px $glow",
-        accentBorder = "1.5px solid $glow",
-        fontFam = "'Courier New', Courier, monospace",
-        barColor = accent,
-        barShadow = "0 0 10px $accent"
-    )
-    NxprcPresetStyle.SATIN -> StyleTheme(
-        chassisBg = "linear-gradient(160deg, #242831 0%, #15181f 60%, #0d0f14 100%)",
-        chassisShadow = "0 8px 22px rgba(0, 0, 0, 0.75), 0 0 18px rgba(148, 163, 184, 0.20), inset 0 1.5px 2px rgba(255, 255, 255, 0.18), inset 0 -5px 10px rgba(0, 0, 0, 0.85)",
-        facePlateBg = "radial-gradient(circle at 40% 30%, #353b49 0%, #20242e 60%, #13161c 100%)",
-        facePlateShadow = "0 4px 10px rgba(0, 0, 0, 0.50), inset 0 1.5px 2px rgba(255, 255, 255, 0.25), inset 0 -4px 8px rgba(0, 0, 0, 0.65)",
-        textColor = "#e2e8f0",
-        textShadow = "0 2px 4px rgba(0, 0, 0, 0.65), 0 -1px 1px rgba(255, 255, 255, 0.25)",
-        accentBorder = "none",
-        fontFam = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-        barColor = "#e2e8f0",
-        barShadow = "0 1px 2px rgba(0, 0, 0, 0.50)"
-    )
+// =========================================================================
+// 1. TRIGGER PRESETS (LT / RT) - 4 DISTINCT HARDWARE IDENTITIES
+// =========================================================================
+
+private fun triggerPresetXboxElite(control: String, accent: String, glow: String, right: Boolean): String {
+    val motion = retroMotion("0.68", "440", "0.95")
+    val selector = ".trigger-btn"
+    val active = centeredPress(selector)
+    val seed = if (right) 63400 else 62900
+    val name = "Xbox Elite Trigger $control #$seed"
+
+    val css = """
+$motion
+:root {
+  --accent: $accent;
+  --accent-glow: $glow;
+}
+$selector {
+  position: relative;
+  width: 110px;
+  height: 140px;
+  padding: 0;
+  border: none;
+  outline: none;
+  border-radius: 22px;
+  background: radial-gradient(circle at 45% 35%, #242a34 0%, #11141a 65%, #06080a 100%);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.85),
+    0 0 24px var(--accent-glow),
+    inset 0 2px 3px rgba(255, 255, 255, 0.15),
+    inset 0 -6px 12px rgba(0, 0, 0, 0.95);
+  transform-origin: 50% 50%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  overflow: visible;
+}
+$selector .glow-ring {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 98px;
+  height: 128px;
+  border-radius: 20px;
+  box-shadow: 0 0 26px var(--accent-glow);
+  animation: pulse-aura 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+$selector .socket-well {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 98px;
+  height: 128px;
+  border-radius: 18px 18px 24px 24px;
+  background: radial-gradient(circle at 50% 50%, #0d0f14 0%, #050608 100%);
+  box-shadow:
+    inset 0 6px 14px rgba(0, 0, 0, 0.95),
+    inset 0 -2px 4px rgba(255, 255, 255, 0.08);
+}
+$selector .face-plate {
+  position: absolute;
+  left: 11px;
+  top: 11px;
+  width: 88px;
+  height: 118px;
+  border-radius: 14px 14px 20px 20px;
+  background: linear-gradient(180deg, #222834 0%, #141720 55%, #0a0c10 100%);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.80),
+    inset 0 2px 3px rgba(255, 255, 255, 0.25),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.90);
+}
+$selector .specular-arc {
+  position: absolute;
+  left: 20px;
+  top: 15px;
+  width: 70px;
+  height: 26px;
+  border-radius: 14px 14px 50% 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.70) 0%, rgba(255, 255, 255, 0.12) 60%, transparent 100%);
+  pointer-events: none;
+}
+$selector .elite-grip {
+  position: absolute;
+  left: 20px;
+  top: 76px;
+  width: 70px;
+  height: 42px;
+  border-radius: 8px 8px 14px 14px;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(0, 0, 0, 0.45) 0px,
+    rgba(0, 0, 0, 0.45) 2px,
+    transparent 2px,
+    transparent 6px
+  );
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.85);
+}
+$selector .caustic-glow {
+  position: absolute;
+  left: 26px;
+  top: 114px;
+  width: 58px;
+  height: 10px;
+  border-radius: 5px;
+  background: radial-gradient(ellipse at 50% 100%, var(--accent-glow) 0%, transparent 70%);
+  pointer-events: none;
+}
+$selector .btn-label {
+  position: absolute;
+  left: 0;
+  top: 36px;
+  width: 110px;
+  height: 34px;
+  line-height: 34px;
+  text-align: center;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: var(--accent);
+  text-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.95),
+    0 0 14px var(--accent-glow),
+    0 0 28px var(--accent-glow);
+}
+$active
+""".trimIndent()
+
+    val body = """
+  <button class="trigger-btn" data-control="$control" data-category="TRIGGER" data-codename="Xbox Elite" data-name="$name" data-seed="$seed" id="rc.${control.lowercase()}_$seed">
+    <div class="glow-ring"></div>
+    <div class="socket-well"></div>
+    <div class="face-plate" data-layer-role="base"></div>
+    <div class="specular-arc"></div>
+    <div class="elite-grip"></div>
+    <div class="caustic-glow"></div>
+    <span class="btn-label">$control</span>
+  </button>
+    """.trimIndent()
+
+    return htmlDocument(css, body)
+}
+
+private fun triggerPresetArcade(control: String, accent: String, glow: String, right: Boolean): String {
+    val motion = retroMotion("0.65", "460", "0.93")
+    val selector = ".trigger-btn"
+    val active = centeredPress(selector)
+    val seed = if (right) 63400 else 62900
+    val name = "Candy Cab Arcade Trigger $control #$seed"
+    val domeLight = if (right) "#f87171" else "#4ade80"
+    val domeDark = if (right) "#7f1d1d" else "#064e3b"
+
+    val css = """
+$motion
+:root {
+  --accent: $accent;
+  --accent-glow: $glow;
+  --dome-light: $domeLight;
+  --dome-dark: $domeDark;
+}
+$selector {
+  position: relative;
+  width: 110px;
+  height: 140px;
+  padding: 0;
+  border: none;
+  outline: none;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #363636 0%, #1a1a1a 50%, #0a0a0a 100%);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.85),
+    0 0 22px var(--accent-glow),
+    inset 0 2px 2px rgba(255, 255, 255, 0.25),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.95);
+  transform-origin: 50% 50%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  overflow: visible;
+}
+$selector .glow-ring {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 98px;
+  height: 128px;
+  border-radius: 20px;
+  box-shadow: 0 0 24px var(--accent-glow);
+  animation: pulse-aura 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+$selector .socket-well {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 98px;
+  height: 128px;
+  border-radius: 18px;
+  background: radial-gradient(circle at 50% 50%, #181818 0%, #060606 100%);
+  box-shadow: inset 0 5px 10px rgba(0, 0, 0, 0.95);
+}
+$selector .face-plate {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  width: 90px;
+  height: 120px;
+  border-radius: 14px 14px 20px 20px;
+  background: radial-gradient(ellipse at 40% 30%, var(--dome-light) 0%, var(--accent) 50%, var(--dome-dark) 100%);
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.70),
+    inset 0 3px 4px rgba(255, 255, 255, 0.55),
+    inset 0 -6px 12px rgba(0, 0, 0, 0.70);
+}
+$selector .arcade-sheen {
+  position: absolute;
+  left: 20px;
+  top: 14px;
+  width: 70px;
+  height: 32px;
+  border-radius: 14px 14px 50% 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.80) 0%, rgba(255, 255, 255, 0.20) 50%, transparent 100%);
+  pointer-events: none;
+}
+$selector .btn-label {
+  position: absolute;
+  left: 0;
+  top: 48px;
+  width: 110px;
+  height: 36px;
+  line-height: 36px;
+  text-align: center;
+  font-size: 34px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #ffffff;
+  text-shadow:
+    0 2px 5px rgba(0, 0, 0, 0.75),
+    0 -1px 1px rgba(0, 0, 0, 0.40);
+}
+$active
+""".trimIndent()
+
+    val body = """
+  <button class="trigger-btn" data-control="$control" data-category="TRIGGER" data-codename="Candy Cab Arcade" data-name="$name" data-seed="$seed" id="rc.${control.lowercase()}_$seed">
+    <div class="glow-ring"></div>
+    <div class="socket-well"></div>
+    <div class="face-plate" data-layer-role="base"></div>
+    <div class="arcade-sheen"></div>
+    <span class="btn-label">$control</span>
+  </button>
+    """.trimIndent()
+
+    return htmlDocument(css, body)
+}
+
+private fun triggerPresetCyberpunk(control: String, accent: String, glow: String, right: Boolean): String {
+    val motion = retroMotion("0.68", "440", "0.94")
+    val selector = ".trigger-btn"
+    val active = centeredPress(selector)
+    val seed = if (right) 63400 else 62900
+    val name = "Cyberpunk Trigger $control #$seed"
+
+    val css = """
+$motion
+:root {
+  --accent: $accent;
+  --accent-glow: $glow;
+}
+$selector {
+  position: relative;
+  width: 110px;
+  height: 140px;
+  padding: 0;
+  border: 1.5px solid var(--accent-glow);
+  outline: none;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #181d26 0%, #0e1117 60%, #07090c 100%);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.90),
+    0 0 25px var(--accent-glow),
+    inset 0 1px 2px rgba(255, 255, 255, 0.15),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.80);
+  transform-origin: 50% 50%;
+  font-family: 'Courier New', Courier, monospace;
+  cursor: pointer;
+  overflow: visible;
+}
+$selector .glow-ring {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 102px;
+  height: 132px;
+  border-radius: 18px;
+  box-shadow: 0 0 24px var(--accent-glow);
+  animation: pulse-aura 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+$selector .face-plate {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  width: 94px;
+  height: 124px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  background:
+    linear-gradient(180deg, rgba(6, 182, 212, 0.10) 0%, transparent 50%),
+    linear-gradient(145deg, #131720 0%, #090c12 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.80);
+}
+$selector .cyber-telemetry {
+  position: absolute;
+  left: 14px;
+  top: 20px;
+  width: 6px;
+  height: 96px;
+  border-radius: 3px;
+  background: repeating-linear-gradient(
+    180deg,
+    var(--accent) 0px,
+    var(--accent) 4px,
+    transparent 4px,
+    transparent 10px
+  );
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+$selector .button-emblem {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 110px;
+  height: 140px;
+  pointer-events: none;
+}
+$selector .btn-label {
+  position: absolute;
+  left: 0;
+  top: 46px;
+  width: 110px;
+  height: 36px;
+  line-height: 36px;
+  text-align: center;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: var(--accent);
+  text-shadow:
+    0 0 8px var(--accent),
+    0 0 20px var(--accent-glow),
+    0 0 36px var(--accent-glow);
+}
+$active
+""".trimIndent()
+
+    val body = """
+  <button class="trigger-btn" data-control="$control" data-category="TRIGGER" data-codename="Cyberpunk" data-name="$name" data-seed="$seed" id="rc.${control.lowercase()}_$seed">
+    <div class="glow-ring"></div>
+    <div class="face-plate" data-layer-role="base"></div>
+    <div class="cyber-telemetry"></div>
+    <svg class="button-emblem" viewBox="0 0 110 140" xmlns="http://www.w3.org/2000/svg">
+      <path d="M 16 26 L 16 16 L 26 16" stroke="$accent" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M 94 114 L 94 124 L 84 124" stroke="$accent" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    </svg>
+    <span class="btn-label">$control</span>
+  </button>
+    """.trimIndent()
+
+    return htmlDocument(css, body)
+}
+
+private fun triggerPresetSatin(control: String, accent: String, glow: String, right: Boolean): String {
+    val motion = retroMotion("0.70", "420", "0.95")
+    val selector = ".trigger-btn"
+    val active = centeredPress(selector)
+    val seed = if (right) 63400 else 62900
+    val name = "Satin DualSense Trigger $control #$seed"
+
+    val css = """
+$motion
+:root {
+  --accent: $accent;
+  --accent-glow: $glow;
+}
+$selector {
+  position: relative;
+  width: 110px;
+  height: 140px;
+  padding: 0;
+  border: none;
+  outline: none;
+  border-radius: 22px;
+  background: linear-gradient(160deg, #282d38 0%, #161921 60%, #0d0f14 100%);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.80),
+    0 0 18px rgba(148, 163, 184, 0.20),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.20),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.90);
+  transform-origin: 50% 50%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  overflow: visible;
+}
+$selector .glow-ring {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 98px;
+  height: 128px;
+  border-radius: 20px;
+  box-shadow: 0 0 20px rgba(148, 163, 184, 0.22);
+  animation: pulse-aura 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+$selector .socket-well {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 98px;
+  height: 128px;
+  border-radius: 20px 20px 26px 26px;
+  background: #080a0e;
+  box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.95);
+}
+$selector .face-plate {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  width: 90px;
+  height: 120px;
+  border-radius: 16px 16px 22px 22px;
+  background: radial-gradient(ellipse at 45% 35%, #383e4c 0%, #222630 55%, #13161c 100%);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.65),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.22),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.70);
+}
+$selector .btn-label {
+  position: absolute;
+  left: 0;
+  top: 48px;
+  width: 110px;
+  height: 36px;
+  line-height: 36px;
+  text-align: center;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: #e2e8f0;
+  text-shadow:
+    0 -1px 1px rgba(0, 0, 0, 0.85),
+    0 1px 1px rgba(255, 255, 255, 0.20);
+}
+$active
+""".trimIndent()
+
+    val body = """
+  <button class="trigger-btn" data-control="$control" data-category="TRIGGER" data-codename="Satin DualSense" data-name="$name" data-seed="$seed" id="rc.${control.lowercase()}_$seed">
+    <div class="glow-ring"></div>
+    <div class="socket-well"></div>
+    <div class="face-plate" data-layer-role="base"></div>
+    <span class="btn-label">$control</span>
+  </button>
+    """.trimIndent()
+
+    return htmlDocument(css, body)
 }
 
 private fun triggerPreset(
@@ -673,11 +1088,23 @@ private fun triggerPreset(
     val right = control.uppercase() == "RT"
     val accent = if (right) "#DC2626" else "#10B981"
     val glow = if (right) "rgba(220, 38, 38, 0.55)" else "rgba(16, 185, 129, 0.55)"
-    val seed = if (right) 63400 else 62900
-    val name = "${style.displayName} Trigger $control #$seed"
-    val motion = retroMotion("0.68", "440", "0.95")
-    val active = centeredPress(".trigger-btn")
-    val theme = resolveStyleTheme(style, accent, glow)
+    return when (style) {
+        NxprcPresetStyle.XBOX_ELITE -> triggerPresetXboxElite(control, accent, glow, right)
+        NxprcPresetStyle.ARCADE -> triggerPresetArcade(control, accent, glow, right)
+        NxprcPresetStyle.CYBERPUNK -> triggerPresetCyberpunk(control, accent, glow, right)
+        NxprcPresetStyle.SATIN -> triggerPresetSatin(control, accent, glow, right)
+    }
+}
+
+
+// =========================================================================
+// 2. BUMPER PRESETS (LB / RB) - 4 DISTINCT HARDWARE IDENTITIES
+// =========================================================================
+
+private fun bumperPresetXboxElite(control: String, accent: String, glow: String): String {
+    val motion = retroMotion("0.72", "480", "0.95")
+    val selector = ".bumper-btn"
+    val active = centeredPress(selector)
 
     val css = """
 $motion
@@ -685,167 +1112,344 @@ $motion
   --accent: $accent;
   --accent-glow: $glow;
 }
-.trigger-btn {
+$selector {
   position: relative;
-  width: 110px;
-  height: 140px;
+  width: 120px;
+  height: 52px;
   padding: 0;
-  border: ${theme.accentBorder};
+  border: none;
   outline: none;
-  border-radius: 22px;
-  background: ${theme.chassisBg};
-  box-shadow: ${theme.chassisShadow};
+  border-radius: 17px;
+  background: radial-gradient(ellipse at 50% 30%, #242a34 0%, #11141a 70%, #06080a 100%);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.85),
+    0 0 20px var(--accent-glow),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.20),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.90);
   transform-origin: 50% 50%;
-  font-family: ${theme.fontFam};
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   cursor: pointer;
   overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.glow-ring {
+$selector .socket-well {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 112px;
+  height: 44px;
+  border-radius: 14px;
+  background: #0c0e12;
+  box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.95);
+}
+$selector .face-plate {
   position: absolute;
   left: 6px;
   top: 6px;
-  width: 98px;
-  height: 128px;
-  border-radius: 22px;
-  box-shadow: 0 0 30px var(--accent-glow);
-  animation: pulse-aura 2.4s ease-in-out infinite;
+  width: 108px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #242a34 0%, #141720 60%, #0a0c10 100%);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.70),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.30),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.85);
+}
+$selector .bumper-sheen {
+  position: absolute;
+  left: 12%;
+  top: 10%;
+  width: 76%;
+  height: 35%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.50) 0%, transparent 80%);
   pointer-events: none;
 }
-.face-plate {
-  position: absolute;
-  left: 8px;
-  top: 8px;
-  width: 94px;
-  height: 124px;
-  border-radius: 16px 16px 24px 24px;
-  background: ${theme.facePlateBg};
-  box-shadow: ${theme.facePlateShadow};
-}
-.grip-ribs {
-  position: absolute;
-  left: 28px;
-  top: 16px;
-  width: 54px;
-  height: 30px;
-  border-radius: 8px;
-  background: repeating-linear-gradient(
-    180deg,
-    rgba(59, 29, 10, 0.55) 0px,
-    rgba(59, 29, 10, 0.55) 2px,
-    rgba(255, 255, 255, 0.5) 2px,
-    rgba(255, 255, 255, 0.5) 3px,
-    transparent 3px,
-    transparent 6px
-  );
-  box-shadow: inset 0 2px 4px rgba(59, 29, 10, 0.5);
-}
-.retro-stripes {
-  position: absolute;
-  left: 8px;
-  top: 98px;
-  width: 94px;
-  height: 18px;
-  border-radius: 0 0 20px 20px;
-  background: linear-gradient(
-    180deg,
-    #f97316 0%,
-    #f97316 33%,
-    #dc2626 33%,
-    #dc2626 66%,
-    #7c2d12 66%,
-    #7c2d12 100%
-  );
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
-}
-.gauge-left,
-.gauge-right {
-  position: absolute;
-  top: 16px;
-  width: 6px;
-  height: 74px;
-  border-radius: 3px;
-  background: repeating-linear-gradient(
-    180deg,
-    $accent 0px,
-    $accent 6px,
-    #3b1d0a 6px,
-    #3b1d0a 9px
-  );
-  box-shadow: 0 0 8px var(--accent-glow);
-  animation: glow-pulse 1.6s ease-in-out infinite;
-}
-.gauge-left { left: 16px; }
-.gauge-right { left: 88px; }
-.button-emblem {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 110px;
-  height: 140px;
-  pointer-events: none;
-}
-.dial {
-  position: absolute;
-  left: 46px;
-  top: 118px;
-  width: 18px;
-  height: 18px;
-  transform-origin: 50% 50%;
-}
-.btn-label {
-  position: absolute;
-  left: 0;
-  top: 47px;
-  width: 110px;
-  height: 34px;
-  line-height: 34px;
-  text-align: center;
-  font-size: 28px;
+$selector .bumper-label {
+  position: relative;
+  z-index: 5;
+  font-size: 24px;
   font-weight: 900;
-  letter-spacing: 1px;
-  color: ${theme.textColor};
-  text-shadow: ${theme.textShadow};
+  letter-spacing: 2px;
+  color: var(--accent);
+  text-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.95),
+    0 0 14px var(--accent-glow);
 }
 $active
 """.trimIndent()
 
     val body = """
-  <button class="trigger-btn" data-control="$control" data-category="TRIGGER" data-codename="${style.displayName}" data-name="$name" data-seed="$seed" id="rc.${control.lowercase()}_$seed">
-    <div class="glow-ring"></div>
+  <button class="bumper-btn" data-control="$control" data-category="BUMPER" data-codename="Xbox Elite" data-name="Xbox Elite Bumper $control" data-seed="48200" id="rc.${control.lowercase()}_48200">
+    <div class="socket-well"></div>
     <div class="face-plate" data-layer-role="base"></div>
-    <div class="grip-ribs" data-layer-role="detail"></div>
-    <div class="retro-stripes" data-layer-role="detail"></div>
-    <div class="gauge-left" data-layer-role="detail"></div>
-    <div class="gauge-right" data-layer-role="detail"></div>
-    <svg class="button-emblem" viewBox="0 0 110 140" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="wingGrad_$control" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stop-color="#7c2d12"/>
-          <stop offset="1" stop-color="$accent"/>
-        </linearGradient>
-      </defs>
-      <!-- flanged grip wings -->
-      <polygon points="8,52 1,60 1,84 8,92" fill="url(#wingGrad_$control)"/>
-      <polygon points="102,52 109,60 109,84 102,92" fill="url(#wingGrad_$control)"/>
-      <!-- pull chevrons -->
-      <path d="M40 84 L55 91 L70 84" fill="none" stroke="#3b1d0a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M40 79 L55 86 L70 79" fill="none" stroke="$accent" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      <!-- corner screws -->
-      <circle cx="16" cy="12" r="2.5" fill="#8a7448"/>
-      <line x1="14.5" y1="12" x2="17.5" y2="12" stroke="#3b1d0a" stroke-width="1"/>
-      <circle cx="94" cy="12" r="2.5" fill="#8a7448"/>
-      <line x1="92.5" y1="12" x2="95.5" y2="12" stroke="#3b1d0a" stroke-width="1"/>
-      <circle cx="16" cy="124" r="2.5" fill="#8a7448"/>
-      <line x1="14.5" y1="124" x2="17.5" y2="124" stroke="#3b1d0a" stroke-width="1"/>
-      <circle cx="94" cy="124" r="2.5" fill="#8a7448"/>
-      <line x1="92.5" y1="124" x2="95.5" y2="124" stroke="#3b1d0a" stroke-width="1"/>
+    <div class="bumper-sheen"></div>
+    <span class="bumper-label">$control</span>
+  </button>
+    """.trimIndent()
+
+    return htmlDocument(css, body)
+}
+
+private fun bumperPresetArcade(control: String, accent: String, glow: String): String {
+    val motion = retroMotion("0.70", "480", "0.94")
+    val selector = ".bumper-btn"
+    val active = centeredPress(selector)
+    val right = control.uppercase() == "RB"
+    val domeLight = if (right) "#f87171" else "#4ade80"
+    val domeDark = if (right) "#7f1d1d" else "#064e3b"
+
+    val css = """
+$motion
+:root {
+  --accent: $accent;
+  --accent-glow: $glow;
+  --dome-light: $domeLight;
+  --dome-dark: $domeDark;
+}
+$selector {
+  position: relative;
+  width: 120px;
+  height: 52px;
+  padding: 0;
+  border: none;
+  outline: none;
+  border-radius: 17px;
+  background: linear-gradient(180deg, #363636 0%, #1a1a1a 50%, #0a0a0a 100%);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.85),
+    0 0 20px var(--accent-glow),
+    inset 0 2px 2px rgba(255, 255, 255, 0.25),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.95);
+  transform-origin: 50% 50%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+$selector .socket-well {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 112px;
+  height: 44px;
+  border-radius: 14px;
+  background: radial-gradient(circle at 50% 50%, #181818 0%, #060606 100%);
+  box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.95);
+}
+$selector .face-plate {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 108px;
+  height: 40px;
+  border-radius: 12px;
+  background: radial-gradient(ellipse at 40% 30%, var(--dome-light) 0%, var(--accent) 50%, var(--dome-dark) 100%);
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.70),
+    inset 0 2px 3px rgba(255, 255, 255, 0.55),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.70);
+}
+$selector .arcade-sheen {
+  position: absolute;
+  left: 14px;
+  top: 8px;
+  width: 92px;
+  height: 16px;
+  border-radius: 8px 8px 50% 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.80) 0%, rgba(255, 255, 255, 0.20) 50%, transparent 100%);
+  pointer-events: none;
+}
+$selector .bumper-label {
+  position: relative;
+  z-index: 5;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #ffffff;
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.75),
+    0 -1px 1px rgba(0, 0, 0, 0.40);
+}
+$active
+""".trimIndent()
+
+    val body = """
+  <button class="bumper-btn" data-control="$control" data-category="BUMPER" data-codename="Candy Cab Arcade" data-name="Candy Cab Arcade Bumper $control" data-seed="48200" id="rc.${control.lowercase()}_48200">
+    <div class="socket-well"></div>
+    <div class="face-plate" data-layer-role="base"></div>
+    <div class="arcade-sheen"></div>
+    <span class="bumper-label">$control</span>
+  </button>
+    """.trimIndent()
+
+    return htmlDocument(css, body)
+}
+
+private fun bumperPresetCyberpunk(control: String, accent: String, glow: String): String {
+    val motion = retroMotion("0.70", "460", "0.94")
+    val selector = ".bumper-btn"
+    val active = centeredPress(selector)
+
+    val css = """
+$motion
+:root {
+  --accent: $accent;
+  --accent-glow: $glow;
+}
+$selector {
+  position: relative;
+  width: 120px;
+  height: 52px;
+  padding: 0;
+  border: 1.5px solid var(--accent-glow);
+  outline: none;
+  border-radius: 17px;
+  background: linear-gradient(145deg, #181d26 0%, #0e1117 60%, #07090c 100%);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.90),
+    0 0 22px var(--accent-glow),
+    inset 0 1px 2px rgba(255, 255, 255, 0.15),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.80);
+  transform-origin: 50% 50%;
+  font-family: 'Courier New', Courier, monospace;
+  cursor: pointer;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+$selector .face-plate {
+  position: absolute;
+  left: 5px;
+  top: 5px;
+  width: 110px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  background:
+    linear-gradient(180deg, rgba(6, 182, 212, 0.10) 0%, transparent 60%),
+    linear-gradient(145deg, #131720 0%, #090c12 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.80);
+}
+$selector .button-emblem {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 120px;
+  height: 52px;
+  pointer-events: none;
+}
+$selector .bumper-label {
+  position: relative;
+  z-index: 5;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: var(--accent);
+  text-shadow:
+    0 0 8px var(--accent),
+    0 0 20px var(--accent-glow),
+    0 0 36px var(--accent-glow);
+}
+$active
+""".trimIndent()
+
+    val body = """
+  <button class="bumper-btn" data-control="$control" data-category="BUMPER" data-codename="Cyberpunk" data-name="Cyberpunk Bumper $control" data-seed="48200" id="rc.${control.lowercase()}_48200">
+    <div class="face-plate" data-layer-role="base"></div>
+    <svg class="button-emblem" viewBox="0 0 120 52" xmlns="http://www.w3.org/2000/svg">
+      <path d="M 12 18 L 12 10 L 22 10" stroke="$accent" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M 108 34 L 108 42 L 98 42" stroke="$accent" stroke-width="2" fill="none" stroke-linecap="round"/>
     </svg>
-    <svg class="dial" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="10" cy="10" r="8" fill="#2a1408" stroke="$accent" stroke-width="1"/>
-      <path d="M10 2 L11.5 8.5 L18 10 L11.5 11.5 L10 18 L8.5 11.5 L2 10 L8.5 8.5 Z" fill="$accent"/>
-      <circle cx="10" cy="10" r="2" fill="#eadfc2"/>
-    </svg>
-    <span class="btn-label">$control</span>
+    <span class="bumper-label">$control</span>
+  </button>
+    """.trimIndent()
+
+    return htmlDocument(css, body)
+}
+
+private fun bumperPresetSatin(control: String, accent: String, glow: String): String {
+    val motion = retroMotion("0.72", "440", "0.95")
+    val selector = ".bumper-btn"
+    val active = centeredPress(selector)
+
+    val css = """
+$motion
+:root {
+  --accent: $accent;
+  --accent-glow: $glow;
+}
+$selector {
+  position: relative;
+  width: 120px;
+  height: 52px;
+  padding: 0;
+  border: none;
+  outline: none;
+  border-radius: 17px;
+  background: linear-gradient(160deg, #282d38 0%, #161921 60%, #0d0f14 100%);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.80),
+    0 0 16px rgba(148, 163, 184, 0.20),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.20),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.90);
+  transform-origin: 50% 50%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+$selector .socket-well {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 112px;
+  height: 44px;
+  border-radius: 14px;
+  background: #080a0e;
+  box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.95);
+}
+$selector .face-plate {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 108px;
+  height: 40px;
+  border-radius: 12px;
+  background: radial-gradient(ellipse at 45% 35%, #383e4c 0%, #222630 55%, #13161c 100%);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.65),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.22),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.70);
+}
+$selector .bumper-label {
+  position: relative;
+  z-index: 5;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #e2e8f0;
+  text-shadow:
+    0 -1px 1px rgba(0, 0, 0, 0.85),
+    0 1px 1px rgba(255, 255, 255, 0.20);
+}
+$active
+""".trimIndent()
+
+    val body = """
+  <button class="bumper-btn" data-control="$control" data-category="BUMPER" data-codename="Satin DualSense" data-name="Satin DualSense Bumper $control" data-seed="48200" id="rc.${control.lowercase()}_48200">
+    <div class="socket-well"></div>
+    <div class="face-plate" data-layer-role="base"></div>
+    <span class="bumper-label">$control</span>
   </button>
     """.trimIndent()
 
@@ -859,9 +1463,23 @@ private fun bumperPreset(
     val right = control.uppercase() == "RB"
     val accent = if (right) "#DC2626" else "#10B981"
     val glow = if (right) "rgba(220, 38, 38, 0.45)" else "rgba(16, 185, 129, 0.45)"
-    val motion = retroMotion("0.72", "480", "0.95")
-    val active = centeredPress(".bumper-btn")
-    val theme = resolveStyleTheme(style, accent, glow)
+    return when (style) {
+        NxprcPresetStyle.XBOX_ELITE -> bumperPresetXboxElite(control, accent, glow)
+        NxprcPresetStyle.ARCADE -> bumperPresetArcade(control, accent, glow)
+        NxprcPresetStyle.CYBERPUNK -> bumperPresetCyberpunk(control, accent, glow)
+        NxprcPresetStyle.SATIN -> bumperPresetSatin(control, accent, glow)
+    }
+}
+
+
+// =========================================================================
+// 3. D-PAD DIRECTIONAL PRESETS (UP/DOWN/LEFT/RIGHT)
+// =========================================================================
+
+private fun dpadDirectionPresetXboxElite(control: String, glyph: String, accent: String, glow: String): String {
+    val motion = retroMotion("0.68", "460", "0.94")
+    val selector = ".dpad-btn"
+    val active = centeredPress(selector)
 
     val css = """
 $motion
@@ -869,52 +1487,336 @@ $motion
   --accent: $accent;
   --accent-glow: $glow;
 }
-.bumper-btn {
+$selector {
   position: relative;
-  width: 120px;
-  height: 52px;
+  width: 88px;
+  height: 88px;
   padding: 0;
-  border: ${theme.accentBorder};
+  border: none;
   outline: none;
-  border-radius: 17px;
-  background: ${theme.chassisBg};
-  box-shadow: ${theme.chassisShadow};
+  border-radius: 18px;
+  background: radial-gradient(circle at 45% 40%, #20242b 0%, #101217 70%, #06080a 100%);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.85),
+    0 0 20px var(--accent-glow),
+    inset 0 2px 3px rgba(255, 255, 255, 0.15),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.95);
   transform-origin: 50% 50%;
-  font-family: ${theme.fontFam};
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   cursor: pointer;
   overflow: visible;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.bumper-btn::before {
-  content: "";
+$selector .socket-well {
   position: absolute;
-  left: 12%;
-  top: 10%;
-  width: 76%;
-  height: 35%;
-  border: 1px solid rgba(255, 248, 232, 0.42);
-  border-radius: 50%;
-  background: radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.30) 0%, transparent 80%);
-  pointer-events: none;
-  z-index: 3;
+  left: 5px;
+  top: 5px;
+  width: 78px;
+  height: 78px;
+  border-radius: 15px;
+  background: radial-gradient(circle at 50% 50%, #0c0e12 0%, #050608 100%);
+  box-shadow: inset 0 5px 10px rgba(0, 0, 0, 0.95);
 }
-.bumper-label {
+$selector .face-plate {
+  position: absolute;
+  left: 9px;
+  top: 9px;
+  width: 70px;
+  height: 70px;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 40% 30%, rgba(255, 255, 255, 0.18) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, #16241d 0%, #0c1410 55%, #050806 100%);
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.75),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.40),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.85);
+}
+$selector .specular-arc {
+  position: absolute;
+  left: 17px;
+  top: 12px;
+  width: 54px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.70) 0%, transparent 100%);
+  pointer-events: none;
+}
+$selector .dpad-glyph {
   position: relative;
   z-index: 5;
-  font-size: 24px;
-  font-weight: 900;
-  letter-spacing: 2px;
-  color: ${theme.textColor};
-  text-shadow: ${theme.textShadow};
+  font-size: 34px;
+  color: var(--accent);
+  text-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.95),
+    0 0 14px var(--accent-glow);
 }
 $active
 """.trimIndent()
 
     val body = """
-  <button class="bumper-btn" data-control="$control" data-category="BUMPER" data-codename="${style.displayName}" data-name="${style.displayName} Bumper $control" data-seed="48200" id="rc.${control.lowercase()}_48200">
-    <span class="bumper-label">$control</span>
+  <button class="dpad-btn" data-control="$control" data-category="DPAD" data-codename="Xbox Elite" data-name="Xbox Elite D-Pad $control" data-seed="33100" id="rc.dpad_${control.lowercase()}">
+    <div class="socket-well"></div>
+    <div class="face-plate" data-layer-role="base"></div>
+    <div class="specular-arc"></div>
+    <span class="dpad-glyph">$glyph</span>
+  </button>
+    """.trimIndent()
+
+    return htmlDocument(css, body)
+}
+
+private fun dpadDirectionPresetArcade(control: String, glyph: String, accent: String, glow: String): String {
+    val motion = retroMotion("0.65", "460", "0.93")
+    val selector = ".dpad-btn"
+    val active = centeredPress(selector)
+    val domeColors = Pair("#38bdf8", "#082f49")
+
+    val css = """
+$motion
+:root {
+  --accent: $accent;
+  --accent-glow: $glow;
+  --dome-light: ${domeColors.first};
+  --dome-dark: ${domeColors.second};
+}
+$selector {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  padding: 0;
+  border: none;
+  outline: none;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #363636 0%, #1a1a1a 50%, #0a0a0a 100%);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.85),
+    0 0 20px var(--accent-glow),
+    inset 0 2px 2px rgba(255, 255, 255, 0.25),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.95);
+  transform-origin: 50% 50%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+$selector .socket-well {
+  position: absolute;
+  left: 5px;
+  top: 5px;
+  width: 78px;
+  height: 78px;
+  border-radius: 15px;
+  background: radial-gradient(circle at 50% 50%, #181818 0%, #060606 100%);
+  box-shadow: inset 0 5px 10px rgba(0, 0, 0, 0.95);
+}
+$selector .face-plate {
+  position: absolute;
+  left: 9px;
+  top: 9px;
+  width: 70px;
+  height: 70px;
+  border-radius: 12px;
+  background: radial-gradient(circle at 38% 28%, var(--dome-light) 0%, #0284c7 50%, var(--dome-dark) 100%);
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.70),
+    inset 0 2.5px 3px rgba(255, 255, 255, 0.55),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.70);
+}
+$selector .arcade-sheen {
+  position: absolute;
+  left: 17px;
+  top: 12px;
+  width: 54px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.80) 0%, rgba(255, 255, 255, 0.20) 50%, transparent 100%);
+  pointer-events: none;
+}
+$selector .dpad-glyph {
+  position: relative;
+  z-index: 5;
+  font-size: 34px;
+  color: #ffffff;
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.75),
+    0 -1px 1px rgba(0, 0, 0, 0.40);
+}
+$active
+""".trimIndent()
+
+    val body = """
+  <button class="dpad-btn" data-control="$control" data-category="DPAD" data-codename="Candy Cab Arcade" data-name="Candy Cab Arcade D-Pad $control" data-seed="33100" id="rc.dpad_${control.lowercase()}">
+    <div class="socket-well"></div>
+    <div class="face-plate" data-layer-role="base"></div>
+    <div class="arcade-sheen"></div>
+    <span class="dpad-glyph">$glyph</span>
+  </button>
+    """.trimIndent()
+
+    return htmlDocument(css, body)
+}
+
+private fun dpadDirectionPresetCyberpunk(control: String, glyph: String, accent: String, glow: String): String {
+    val motion = retroMotion("0.68", "440", "0.94")
+    val selector = ".dpad-btn"
+    val active = centeredPress(selector)
+
+    val css = """
+$motion
+:root {
+  --accent: $accent;
+  --accent-glow: $glow;
+}
+$selector {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  padding: 0;
+  border: 1.5px solid var(--accent-glow);
+  outline: none;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #181d26 0%, #0e1117 60%, #07090c 100%);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.90),
+    0 0 22px var(--accent-glow),
+    inset 0 1px 2px rgba(255, 255, 255, 0.15),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.80);
+  transform-origin: 50% 50%;
+  font-family: 'Courier New', Courier, monospace;
+  cursor: pointer;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+$selector .face-plate {
+  position: absolute;
+  left: 7px;
+  top: 7px;
+  width: 74px;
+  height: 74px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  background:
+    linear-gradient(180deg, rgba(6, 182, 212, 0.10) 0%, transparent 50%),
+    linear-gradient(145deg, #131720 0%, #090c12 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.80);
+}
+$selector .button-emblem {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 88px;
+  height: 88px;
+  pointer-events: none;
+}
+$selector .dpad-glyph {
+  position: relative;
+  z-index: 5;
+  font-size: 34px;
+  color: var(--accent);
+  text-shadow:
+    0 0 8px var(--accent),
+    0 0 20px var(--accent-glow),
+    0 0 36px var(--accent-glow);
+}
+$active
+""".trimIndent()
+
+    val body = """
+  <button class="dpad-btn" data-control="$control" data-category="DPAD" data-codename="Cyberpunk" data-name="Cyberpunk D-Pad $control" data-seed="33100" id="rc.dpad_${control.lowercase()}">
+    <div class="face-plate" data-layer-role="base"></div>
+    <svg class="button-emblem" viewBox="0 0 88 88" xmlns="http://www.w3.org/2000/svg">
+      <path d="M 14 24 L 14 14 L 24 14" stroke="$accent" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M 74 64 L 74 74 L 64 74" stroke="$accent" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    </svg>
+    <span class="dpad-glyph">$glyph</span>
+  </button>
+    """.trimIndent()
+
+    return htmlDocument(css, body)
+}
+
+private fun dpadDirectionPresetSatin(control: String, glyph: String, accent: String, glow: String): String {
+    val motion = retroMotion("0.70", "420", "0.95")
+    val selector = ".dpad-btn"
+    val active = centeredPress(selector)
+
+    val css = """
+$motion
+:root {
+  --accent: $accent;
+  --accent-glow: $glow;
+}
+$selector {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  padding: 0;
+  border: none;
+  outline: none;
+  border-radius: 18px;
+  background: linear-gradient(160deg, #282d38 0%, #161921 60%, #0d0f14 100%);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.80),
+    0 0 16px rgba(148, 163, 184, 0.20),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.20),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.90);
+  transform-origin: 50% 50%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+$selector .socket-well {
+  position: absolute;
+  left: 5px;
+  top: 5px;
+  width: 78px;
+  height: 78px;
+  border-radius: 15px;
+  background: #080a0e;
+  box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.95);
+}
+$selector .face-plate {
+  position: absolute;
+  left: 9px;
+  top: 9px;
+  width: 70px;
+  height: 70px;
+  border-radius: 12px;
+  background: radial-gradient(circle at 42% 32%, #383e4c 0%, #222630 55%, #13161c 100%);
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.65),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.22),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.70);
+}
+$selector .dpad-glyph {
+  position: relative;
+  z-index: 5;
+  font-size: 34px;
+  color: #e2e8f0;
+  text-shadow:
+    0 -1px 1px rgba(0, 0, 0, 0.85),
+    0 1px 1px rgba(255, 255, 255, 0.20);
+}
+$active
+""".trimIndent()
+
+    val body = """
+  <button class="dpad-btn" data-control="$control" data-category="DPAD" data-codename="Satin DualSense" data-name="Satin DualSense D-Pad $control" data-seed="33100" id="rc.dpad_${control.lowercase()}">
+    <div class="socket-well"></div>
+    <div class="face-plate" data-layer-role="base"></div>
+    <span class="dpad-glyph">$glyph</span>
   </button>
     """.trimIndent()
 
@@ -926,14 +1828,30 @@ private fun dpadDirectionPreset(
     style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE
 ): String {
     val glyph = dpadGlyph(control)
-    val motion = retroMotion("0.68", "460", "0.94")
-    val active = centeredPress(".dpad-btn")
     val accent = when (control.uppercase()) {
         "DOWN", "RIGHT" -> "#DC2626"
         else -> "#10B981"
     }
     val glow = "rgba(16, 185, 129, 0.45)"
-    val theme = resolveStyleTheme(style, accent, glow)
+    return when (style) {
+        NxprcPresetStyle.XBOX_ELITE -> dpadDirectionPresetXboxElite(control, glyph, accent, glow)
+        NxprcPresetStyle.ARCADE -> dpadDirectionPresetArcade(control, glyph, accent, glow)
+        NxprcPresetStyle.CYBERPUNK -> dpadDirectionPresetCyberpunk(control, glyph, accent, glow)
+        NxprcPresetStyle.SATIN -> dpadDirectionPresetSatin(control, glyph, accent, glow)
+    }
+}
+
+
+// =========================================================================
+// 4. D-PAD FULL CROSS PRESETS - 4 DISTINCT HARDWARE IDENTITIES
+// =========================================================================
+
+private fun dpadCrossPresetXboxElite(): String {
+    val motion = retroMotion("0.68", "460", "0.95")
+    val selector = ".dpad-cross"
+    val active = centeredPress(selector)
+    val accent = "#10B981"
+    val glow = "rgba(16, 185, 129, 0.45)"
 
     val css = """
 $motion
@@ -941,88 +1859,413 @@ $motion
   --accent: $accent;
   --accent-glow: $glow;
 }
-.dpad-btn {
+$selector {
   position: relative;
-  width: 88px;
-  height: 88px;
+  width: 160px;
+  height: 160px;
   padding: 0;
-  border: ${theme.accentBorder};
+  border: none;
   outline: none;
-  border-radius: 18px;
-  background: ${theme.chassisBg};
-  box-shadow: ${theme.chassisShadow};
+  border-radius: 36px;
+  background: radial-gradient(circle at 45% 40%, #20242b 0%, #101217 70%, #06080a 100%);
+  box-shadow:
+    0 14px 32px rgba(0, 0, 0, 0.85),
+    0 0 24px var(--accent-glow),
+    inset 0 2px 3px rgba(255, 255, 255, 0.15),
+    inset 0 -6px 14px rgba(0, 0, 0, 0.95);
   transform-origin: 50% 50%;
-  font-family: ${theme.fontFam};
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   cursor: pointer;
   overflow: visible;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
-.glow-ring {
+$selector .glow-ring {
   position: absolute;
-  left: 4px;
-  top: 4px;
-  width: 80px;
-  height: 80px;
-  border-radius: 16px;
-  box-shadow: 0 0 20px var(--accent-glow);
+  left: 6px;
+  top: 6px;
+  width: 148px;
+  height: 148px;
+  border-radius: 32px;
+  box-shadow: 0 0 26px var(--accent-glow);
   animation: pulse-aura 2.4s ease-in-out infinite;
   pointer-events: none;
 }
-.face-plate {
+$selector .socket-well {
   position: absolute;
-  left: 7px;
-  top: 7px;
-  width: 74px;
-  height: 74px;
-  border-radius: 14px;
-  background: ${theme.facePlateBg};
-  box-shadow: ${theme.facePlateShadow};
+  left: 8px;
+  top: 8px;
+  width: 144px;
+  height: 144px;
+  border-radius: 30px;
+  background: radial-gradient(circle at 50% 50%, #0c0e12 0%, #050608 100%);
+  box-shadow: inset 0 6px 14px rgba(0, 0, 0, 0.95);
 }
-.grip-ribs {
+$selector .face-plate {
   position: absolute;
-  left: 17px;
-  top: 17px;
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  border: 1px dashed rgba(59, 29, 10, 0.40);
+  left: 12px;
+  top: 12px;
+  width: 136px;
+  height: 136px;
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 40% 30%, rgba(255, 255, 255, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, #16241d 0%, #0c1410 55%, #050806 100%);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.75),
+    inset 0 2px 3px rgba(255, 255, 255, 0.35),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.90);
 }
-.button-emblem {
+$selector .cross-center {
   position: absolute;
-  left: 0;
-  top: 0;
-  width: 88px;
-  height: 88px;
-  pointer-events: none;
+  left: 56px;
+  top: 56px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 45% 40%, #1a2029 0%, #0a0d12 100%);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.90);
 }
-.dpad-glyph {
-  position: relative;
+$selector .dpad-arrow {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  line-height: 28px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--accent);
+  text-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.95),
+    0 0 14px var(--accent-glow);
   z-index: 5;
-  font-size: 34px;
-  color: ${theme.textColor};
-  text-shadow: ${theme.textShadow};
 }
+$selector .dpad-up    { left: 66px; top: 16px; }
+$selector .dpad-right { left: 116px; top: 66px; }
+$selector .dpad-down  { left: 66px; top: 116px; }
+$selector .dpad-left  { left: 16px; top: 66px; }
 $active
 """.trimIndent()
 
     val body = """
-  <button class="dpad-btn" data-control="$control" data-category="DPAD" data-codename="${style.displayName}" data-name="${style.displayName} D-Pad $control" data-seed="33100" id="rc.dpad_${control.lowercase()}">
+  <button class="dpad-cross" data-control="DPAD" data-category="DPAD" data-codename="Xbox Elite" data-name="Xbox Elite D-Pad Cross" data-seed="31000" id="rc.dpad_cross">
     <div class="glow-ring"></div>
+    <div class="socket-well"></div>
     <div class="face-plate" data-layer-role="base"></div>
-    <div class="grip-ribs" data-layer-role="detail"></div>
-    <svg class="button-emblem" viewBox="0 0 88 88" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="2.5" fill="#8a7448"/>
-      <line x1="10.5" y1="12" x2="13.5" y2="12" stroke="#261307" stroke-width="1"/>
-      <circle cx="76" cy="12" r="2.5" fill="#8a7448"/>
-      <line x1="74.5" y1="12" x2="77.5" y2="12" stroke="#261307" stroke-width="1"/>
-      <circle cx="12" cy="76" r="2.5" fill="#8a7448"/>
-      <line x1="10.5" y1="76" x2="13.5" y2="76" stroke="#261307" stroke-width="1"/>
-      <circle cx="76" cy="76" r="2.5" fill="#8a7448"/>
-      <line x1="74.5" y1="76" x2="77.5" y2="76" stroke="#261307" stroke-width="1"/>
+    <div class="cross-center" data-layer-role="detail"></div>
+    <span class="dpad-arrow dpad-up">▲</span>
+    <span class="dpad-arrow dpad-right">▶</span>
+    <span class="dpad-arrow dpad-down">▼</span>
+    <span class="dpad-arrow dpad-left">◀</span>
+  </button>
+    """.trimIndent()
+
+    return htmlDocument(css, body)
+}
+
+private fun dpadCrossPresetArcade(): String {
+    val motion = retroMotion("0.65", "460", "0.93")
+    val selector = ".dpad-cross"
+    val active = centeredPress(selector)
+    val accent = "#00FFA3"
+    val glow = "rgba(0, 255, 163, 0.42)"
+    val domeLight = "#4ade80"
+    val domeDark = "#064e3b"
+
+    val css = """
+$motion
+:root {
+  --accent: $accent;
+  --accent-glow: $glow;
+  --dome-light: $domeLight;
+  --dome-dark: $domeDark;
+}
+$selector {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  padding: 0;
+  border: none;
+  outline: none;
+  border-radius: 36px;
+  background: linear-gradient(180deg, #363636 0%, #1a1a1a 50%, #0a0a0a 100%);
+  box-shadow:
+    0 14px 32px rgba(0, 0, 0, 0.85),
+    0 0 22px var(--accent-glow),
+    inset 0 2px 2px rgba(255, 255, 255, 0.25),
+    inset 0 -6px 12px rgba(0, 0, 0, 0.95);
+  transform-origin: 50% 50%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  overflow: visible;
+}
+$selector .socket-well {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  width: 144px;
+  height: 144px;
+  border-radius: 30px;
+  background: radial-gradient(circle at 50% 50%, #181818 0%, #060606 100%);
+  box-shadow: inset 0 6px 12px rgba(0, 0, 0, 0.95);
+}
+$selector .face-plate {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  width: 136px;
+  height: 136px;
+  border-radius: 26px;
+  background: radial-gradient(circle at 38% 28%, var(--dome-light) 0%, #10b981 50%, var(--dome-dark) 100%);
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.70),
+    inset 0 3px 4px rgba(255, 255, 255, 0.55),
+    inset 0 -6px 12px rgba(0, 0, 0, 0.70);
+}
+$selector .cross-center {
+  position: absolute;
+  left: 56px;
+  top: 56px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 28%, #1f2937 0%, #111827 100%);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.80);
+}
+$selector .dpad-arrow {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  line-height: 28px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.75),
+    0 -1px 1px rgba(0, 0, 0, 0.40);
+  z-index: 5;
+}
+$selector .dpad-up    { left: 66px; top: 16px; }
+$selector .dpad-right { left: 116px; top: 66px; }
+$selector .dpad-down  { left: 66px; top: 116px; }
+$selector .dpad-left  { left: 16px; top: 66px; }
+$active
+""".trimIndent()
+
+    val body = """
+  <button class="dpad-cross" data-control="DPAD" data-category="DPAD" data-codename="Candy Cab Arcade" data-name="Candy Cab Arcade D-Pad Cross" data-seed="31000" id="rc.dpad_cross">
+    <div class="socket-well"></div>
+    <div class="face-plate" data-layer-role="base"></div>
+    <div class="cross-center" data-layer-role="detail"></div>
+    <span class="dpad-arrow dpad-up">▲</span>
+    <span class="dpad-arrow dpad-right">▶</span>
+    <span class="dpad-arrow dpad-down">▼</span>
+    <span class="dpad-arrow dpad-left">◀</span>
+  </button>
+    """.trimIndent()
+
+    return htmlDocument(css, body)
+}
+
+private fun dpadCrossPresetCyberpunk(): String {
+    val motion = retroMotion("0.68", "440", "0.94")
+    val selector = ".dpad-cross"
+    val active = centeredPress(selector)
+    val accent = "#00FFA3"
+    val glow = "rgba(0, 255, 163, 0.42)"
+
+    val css = """
+$motion
+:root {
+  --accent: $accent;
+  --accent-glow: $glow;
+}
+$selector {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  padding: 0;
+  border: 1.5px solid var(--accent-glow);
+  outline: none;
+  border-radius: 36px;
+  background: linear-gradient(145deg, #181d26 0%, #0e1117 60%, #07090c 100%);
+  box-shadow:
+    0 14px 32px rgba(0, 0, 0, 0.90),
+    0 0 25px var(--accent-glow),
+    inset 0 1px 2px rgba(255, 255, 255, 0.15),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.80);
+  transform-origin: 50% 50%;
+  font-family: 'Courier New', Courier, monospace;
+  cursor: pointer;
+  overflow: visible;
+}
+$selector .face-plate {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  width: 140px;
+  height: 140px;
+  border-radius: 28px;
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  background:
+    linear-gradient(180deg, rgba(6, 182, 212, 0.10) 0%, transparent 50%),
+    linear-gradient(145deg, #131720 0%, #090c12 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.80);
+}
+$selector .cross-center {
+  position: absolute;
+  left: 56px;
+  top: 56px;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  border: 1px dashed rgba(0, 229, 255, 0.35);
+}
+$selector .button-emblem {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 160px;
+  height: 160px;
+  pointer-events: none;
+}
+$selector .dpad-arrow {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  line-height: 28px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--accent);
+  text-shadow:
+    0 0 8px var(--accent),
+    0 0 20px var(--accent-glow),
+    0 0 36px var(--accent-glow);
+  z-index: 5;
+}
+$selector .dpad-up    { left: 66px; top: 16px; }
+$selector .dpad-right { left: 116px; top: 66px; }
+$selector .dpad-down  { left: 66px; top: 116px; }
+$selector .dpad-left  { left: 16px; top: 66px; }
+$active
+""".trimIndent()
+
+    val body = """
+  <button class="dpad-cross" data-control="DPAD" data-category="DPAD" data-codename="Cyberpunk" data-name="Cyberpunk D-Pad Cross" data-seed="31000" id="rc.dpad_cross">
+    <div class="face-plate" data-layer-role="base"></div>
+    <div class="cross-center" data-layer-role="detail"></div>
+    <svg class="button-emblem" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+      <path d="M 20 34 L 20 20 L 34 20" stroke="$accent" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M 140 126 L 140 140 L 126 140" stroke="$accent" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <circle cx="80" cy="80" r="14" stroke="$accent" stroke-width="1.5" fill="none" stroke-dasharray="3,3"/>
     </svg>
-    <span class="dpad-glyph">$glyph</span>
+    <span class="dpad-arrow dpad-up">▲</span>
+    <span class="dpad-arrow dpad-right">▶</span>
+    <span class="dpad-arrow dpad-down">▼</span>
+    <span class="dpad-arrow dpad-left">◀</span>
+  </button>
+    """.trimIndent()
+
+    return htmlDocument(css, body)
+}
+
+private fun dpadCrossPresetSatin(): String {
+    val motion = retroMotion("0.70", "420", "0.95")
+    val selector = ".dpad-cross"
+    val active = centeredPress(selector)
+    val accent = "#00FFA3"
+    val glow = "rgba(148, 163, 184, 0.20)"
+
+    val css = """
+$motion
+:root {
+  --accent: $accent;
+  --accent-glow: $glow;
+}
+$selector {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  padding: 0;
+  border: none;
+  outline: none;
+  border-radius: 36px;
+  background: linear-gradient(160deg, #282d38 0%, #161921 60%, #0d0f14 100%);
+  box-shadow:
+    0 14px 32px rgba(0, 0, 0, 0.80),
+    0 0 18px rgba(148, 163, 184, 0.20),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.20),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.90);
+  transform-origin: 50% 50%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  overflow: visible;
+}
+$selector .socket-well {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  width: 144px;
+  height: 144px;
+  border-radius: 30px;
+  background: #080a0e;
+  box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.95);
+}
+$selector .face-plate {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  width: 136px;
+  height: 136px;
+  border-radius: 26px;
+  background: radial-gradient(circle at 42% 32%, #383e4c 0%, #222630 55%, #13161c 100%);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.65),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.22),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.70);
+}
+$selector .cross-center {
+  position: absolute;
+  left: 56px;
+  top: 56px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 45% 40%, #222630 0%, #101217 100%);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.90);
+}
+$selector .dpad-arrow {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  line-height: 28px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: #e2e8f0;
+  text-shadow:
+    0 -1px 1px rgba(0, 0, 0, 0.85),
+    0 1px 1px rgba(255, 255, 255, 0.20);
+  z-index: 5;
+}
+$selector .dpad-up    { left: 66px; top: 16px; }
+$selector .dpad-right { left: 116px; top: 66px; }
+$selector .dpad-down  { left: 66px; top: 116px; }
+$selector .dpad-left  { left: 16px; top: 66px; }
+$active
+""".trimIndent()
+
+    val body = """
+  <button class="dpad-cross" data-control="DPAD" data-category="DPAD" data-codename="Satin DualSense" data-name="Satin DualSense D-Pad Cross" data-seed="31000" id="rc.dpad_cross">
+    <div class="socket-well"></div>
+    <div class="face-plate" data-layer-role="base"></div>
+    <div class="cross-center" data-layer-role="detail"></div>
+    <span class="dpad-arrow dpad-up">▲</span>
+    <span class="dpad-arrow dpad-right">▶</span>
+    <span class="dpad-arrow dpad-down">▼</span>
+    <span class="dpad-arrow dpad-left">◀</span>
   </button>
     """.trimIndent()
 
@@ -1031,12 +2274,22 @@ $active
 
 private fun dpadCrossPreset(
     style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE
-): String {
-    val motion = retroMotion("0.68", "460", "0.95")
-    val active = centeredPress(".dpad-cross")
-    val accent = "#10B981"
-    val glow = "rgba(16, 185, 129, 0.45)"
-    val theme = resolveStyleTheme(style, accent, glow)
+): String = when (style) {
+    NxprcPresetStyle.XBOX_ELITE -> dpadCrossPresetXboxElite()
+    NxprcPresetStyle.ARCADE -> dpadCrossPresetArcade()
+    NxprcPresetStyle.CYBERPUNK -> dpadCrossPresetCyberpunk()
+    NxprcPresetStyle.SATIN -> dpadCrossPresetSatin()
+}
+
+
+// =========================================================================
+// 5. THUMBSTICK / JOYSTICK PRESETS (LS / RS)
+// =========================================================================
+
+private fun joystickPresetXboxElite(control: String, accent: String, glow: String): String {
+    val motion = retroMotion("0.68", "440", "0.94")
+    val selector = ".stick-btn"
+    val active = centeredPress(selector)
 
     val css = """
 $motion
@@ -1044,98 +2297,456 @@ $motion
   --accent: $accent;
   --accent-glow: $glow;
 }
-.dpad-cross {
+$selector {
   position: relative;
-  width: 160px;
-  height: 160px;
+  width: 150px;
+  height: 150px;
   padding: 0;
-  border: ${theme.accentBorder};
-  outline: none;
-  border-radius: 36px;
-  background: ${theme.chassisBg};
-  box-shadow: ${theme.chassisShadow};
+  border: none;
+  background: transparent;
   transform-origin: 50% 50%;
-  font-family: ${theme.fontFam};
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   cursor: pointer;
   overflow: visible;
 }
-.glow-ring {
-  position: absolute;
-  left: 6px;
-  top: 6px;
-  width: 148px;
-  height: 148px;
-  border-radius: 32px;
-  box-shadow: 0 0 24px var(--accent-glow);
-  animation: pulse-aura 2.4s ease-in-out infinite;
-  pointer-events: none;
-}
-.face-plate {
-  position: absolute;
-  left: 10px;
-  top: 10px;
-  width: 140px;
-  height: 140px;
-  border-radius: 28px;
-  background: ${theme.facePlateBg};
-  box-shadow: ${theme.facePlateShadow};
-}
-.cross-center {
-  position: absolute;
-  left: 56px;
-  top: 56px;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 45% 40%, #15191f 0%, #080a0e 100%);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.90);
-}
-.button-emblem {
+$selector .stick-base {
   position: absolute;
   left: 0;
   top: 0;
-  width: 160px;
-  height: 160px;
-  pointer-events: none;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 45% 40%, #20242b 0%, #101217 70%, #06080a 100%);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.85),
+    0 0 22px var(--accent-glow),
+    inset 0 2px 3px rgba(255, 255, 255, 0.15),
+    inset 0 -6px 12px rgba(0, 0, 0, 0.95);
+  z-index: 1;
 }
-.dpad-arrow {
+$selector .socket-well {
   position: absolute;
-  width: 28px;
-  height: 28px;
-  line-height: 28px;
-  text-align: center;
-  font-size: 22px;
-  font-weight: 900;
-  color: ${theme.textColor};
-  text-shadow: ${theme.textShadow};
-  z-index: 5;
+  left: 12px;
+  top: 12px;
+  width: 126px;
+  height: 126px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, #0c0e12 0%, #050608 100%);
+  box-shadow: inset 0 6px 12px rgba(0, 0, 0, 0.95);
 }
-.dpad-up    { left: 66px; top: 16px; }
-.dpad-right { left: 116px; top: 66px; }
-.dpad-down  { left: 66px; top: 116px; }
-.dpad-left  { left: 16px; top: 66px; }
+$selector .stick-cap {
+  position: absolute;
+  left: 26px;
+  top: 26px;
+  width: 98px;
+  height: 98px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 40% 30%, rgba(255, 255, 255, 0.15) 0%, transparent 45%),
+    linear-gradient(160deg, #1c232d 0%, #11151c 55%, #080a0e 100%);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.80),
+    inset 0 1.5px 3px rgba(255, 255, 255, 0.30),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+$selector .knurled-ring {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px dashed var(--accent);
+  opacity: 0.70;
+}
+$selector .cap-gloss {
+  position: absolute;
+  left: 22px;
+  top: 10px;
+  width: 54px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.50) 0%, transparent 75%);
+}
+$selector .stick-label {
+  position: relative;
+  z-index: 5;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: var(--accent);
+  text-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.95),
+    0 0 14px var(--accent-glow);
+}
 $active
 """.trimIndent()
 
     val body = """
-  <button class="dpad-cross" data-control="DPAD" data-category="DPAD" data-codename="${style.displayName}" data-name="${style.displayName} D-Pad Cross" data-seed="31000" id="rc.dpad_cross">
-    <div class="glow-ring"></div>
-    <div class="face-plate" data-layer-role="base"></div>
-    <div class="cross-center" data-layer-role="detail"></div>
-    <svg class="button-emblem" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="24" cy="24" r="3" fill="#8a7448"/>
-      <line x1="22" y1="24" x2="26" y2="24" stroke="#261307" stroke-width="1"/>
-      <circle cx="136" cy="24" r="3" fill="#8a7448"/>
-      <line x1="134" y1="24" x2="138" y2="24" stroke="#261307" stroke-width="1"/>
-      <circle cx="24" cy="136" r="3" fill="#8a7448"/>
-      <line x1="22" y1="136" x2="26" y2="136" stroke="#261307" stroke-width="1"/>
-      <circle cx="136" cy="136" r="3" fill="#8a7448"/>
-      <line x1="134" y1="136" x2="138" y2="136" stroke="#261307" stroke-width="1"/>
-    </svg>
-    <span class="dpad-arrow dpad-up">▲</span>
-    <span class="dpad-arrow dpad-right">▶</span>
-    <span class="dpad-arrow dpad-down">▼</span>
-    <span class="dpad-arrow dpad-left">◀</span>
+  <button class="stick-btn" data-control="$control" data-category="JOYSTICK" data-codename="Xbox Elite" data-name="Xbox Elite Analog Stick $control" data-seed="51200" id="rc.stick_${control.lowercase()}">
+    <div class="stick-base" data-layer-role="base">
+      <div class="socket-well" data-layer-role="base"></div>
+    </div>
+    <div class="stick-cap" data-layer-role="thumb-cap">
+      <div class="knurled-ring" data-layer-role="thumb-cap"></div>
+      <div class="cap-gloss" data-layer-role="thumb-cap"></div>
+      <span class="stick-label">$control</span>
+    </div>
+  </button>
+    """.trimIndent()
+
+    return htmlDocument(css, body)
+}
+
+private fun joystickPresetArcade(control: String, accent: String, glow: String): String {
+    val motion = retroMotion("0.65", "460", "0.93")
+    val selector = ".stick-btn"
+    val active = centeredPress(selector)
+    val right = control.uppercase() == "RS"
+    val domeLight = if (right) "#f87171" else "#4ade80"
+    val domeDark = if (right) "#7f1d1d" else "#064e3b"
+
+    val css = """
+$motion
+:root {
+  --accent: $accent;
+  --accent-glow: $glow;
+  --dome-light: $domeLight;
+  --dome-dark: $domeDark;
+}
+$selector {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  transform-origin: 50% 50%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  overflow: visible;
+}
+$selector .stick-base {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #363636 0%, #1a1a1a 50%, #0a0a0a 100%);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.85),
+    0 0 20px var(--accent-glow),
+    inset 0 2px 2px rgba(255, 255, 255, 0.25),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.95);
+  z-index: 1;
+}
+$selector .socket-well {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  width: 126px;
+  height: 126px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, #181818 0%, #060606 100%);
+  box-shadow: inset 0 5px 10px rgba(0, 0, 0, 0.95);
+}
+$selector .stick-cap {
+  position: absolute;
+  left: 26px;
+  top: 26px;
+  width: 98px;
+  height: 98px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 28%, var(--dome-light) 0%, var(--accent) 50%, var(--dome-dark) 100%);
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.70),
+    inset 0 3px 4px rgba(255, 255, 255, 0.55),
+    inset 0 -6px 12px rgba(0, 0, 0, 0.70);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+$selector .knurled-ring {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px dashed #ffffff;
+  opacity: 0.55;
+}
+$selector .cap-gloss {
+  position: absolute;
+  left: 22px;
+  top: 10px;
+  width: 54px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.80) 0%, transparent 100%);
+}
+$selector .stick-label {
+  position: relative;
+  z-index: 5;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #ffffff;
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.75),
+    0 -1px 1px rgba(0, 0, 0, 0.40);
+}
+$active
+""".trimIndent()
+
+    val body = """
+  <button class="stick-btn" data-control="$control" data-category="JOYSTICK" data-codename="Candy Cab Arcade" data-name="Candy Cab Arcade Analog Stick $control" data-seed="51200" id="rc.stick_${control.lowercase()}">
+    <div class="stick-base" data-layer-role="base">
+      <div class="socket-well" data-layer-role="base"></div>
+    </div>
+    <div class="stick-cap" data-layer-role="thumb-cap">
+      <div class="knurled-ring" data-layer-role="thumb-cap"></div>
+      <div class="cap-gloss" data-layer-role="thumb-cap"></div>
+      <span class="stick-label">$control</span>
+    </div>
+  </button>
+    """.trimIndent()
+
+    return htmlDocument(css, body)
+}
+
+private fun joystickPresetCyberpunk(control: String, accent: String, glow: String): String {
+    val motion = retroMotion("0.68", "440", "0.94")
+    val selector = ".stick-btn"
+    val active = centeredPress(selector)
+
+    val css = """
+$motion
+:root {
+  --accent: $accent;
+  --accent-glow: $glow;
+}
+$selector {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  transform-origin: 50% 50%;
+  font-family: 'Courier New', Courier, monospace;
+  cursor: pointer;
+  overflow: visible;
+}
+$selector .stick-base {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 150px;
+  height: 150px;
+  border-radius: 28px;
+  border: 1.5px solid var(--accent-glow);
+  background: linear-gradient(145deg, #181d26 0%, #0e1117 60%, #07090c 100%);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.90),
+    0 0 25px var(--accent-glow),
+    inset 0 1px 2px rgba(255, 255, 255, 0.15);
+  z-index: 1;
+}
+$selector .socket-well {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  width: 130px;
+  height: 130px;
+  border-radius: 22px;
+  background: #090c12;
+  box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.85);
+}
+$selector .stick-cap {
+  position: absolute;
+  left: 26px;
+  top: 26px;
+  width: 98px;
+  height: 98px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  background:
+    linear-gradient(180deg, rgba(6, 182, 212, 0.10) 0%, transparent 60%),
+    linear-gradient(145deg, #131720 0%, #090c12 100%);
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.80),
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.80);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+$selector .knurled-ring {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px dashed var(--accent);
+  opacity: 0.65;
+}
+$selector .cap-gloss {
+  position: absolute;
+  left: 22px;
+  top: 10px;
+  width: 54px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 0%, rgba(6, 182, 212, 0.40) 0%, transparent 75%);
+}
+$selector .stick-label {
+  position: relative;
+  z-index: 5;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: var(--accent);
+  text-shadow:
+    0 0 8px var(--accent),
+    0 0 20px var(--accent-glow),
+    0 0 36px var(--accent-glow);
+}
+$active
+""".trimIndent()
+
+    val body = """
+  <button class="stick-btn" data-control="$control" data-category="JOYSTICK" data-codename="Cyberpunk" data-name="Cyberpunk Analog Stick $control" data-seed="51200" id="rc.stick_${control.lowercase()}">
+    <div class="stick-base" data-layer-role="base">
+      <div class="socket-well" data-layer-role="base"></div>
+    </div>
+    <div class="stick-cap" data-layer-role="thumb-cap">
+      <div class="knurled-ring" data-layer-role="thumb-cap"></div>
+      <div class="cap-gloss" data-layer-role="thumb-cap"></div>
+      <span class="stick-label">$control</span>
+    </div>
+  </button>
+    """.trimIndent()
+
+    return htmlDocument(css, body)
+}
+
+private fun joystickPresetSatin(control: String, accent: String, glow: String): String {
+    val motion = retroMotion("0.70", "420", "0.95")
+    val selector = ".stick-btn"
+    val active = centeredPress(selector)
+
+    val css = """
+$motion
+:root {
+  --accent: $accent;
+  --accent-glow: $glow;
+}
+$selector {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  transform-origin: 50% 50%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  overflow: visible;
+}
+$selector .stick-base {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #282d38 0%, #161921 60%, #0d0f14 100%);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.80),
+    0 0 18px rgba(148, 163, 184, 0.20),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.20),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.90);
+  z-index: 1;
+}
+$selector .socket-well {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  width: 126px;
+  height: 126px;
+  border-radius: 50%;
+  background: #080a0e;
+  box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.95);
+}
+$selector .stick-cap {
+  position: absolute;
+  left: 26px;
+  top: 26px;
+  width: 98px;
+  height: 98px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 42% 32%, #383e4c 0%, #222630 55%, #13161c 100%);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.65),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.22),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.70);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+$selector .knurled-ring {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px dashed #94a3b8;
+  opacity: 0.40;
+}
+$selector .cap-gloss {
+  position: absolute;
+  left: 22px;
+  top: 10px;
+  width: 54px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.25) 0%, transparent 75%);
+}
+$selector .stick-label {
+  position: relative;
+  z-index: 5;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #e2e8f0;
+  text-shadow:
+    0 -1px 1px rgba(0, 0, 0, 0.85),
+    0 1px 1px rgba(255, 255, 255, 0.20);
+}
+$active
+""".trimIndent()
+
+    val body = """
+  <button class="stick-btn" data-control="$control" data-category="JOYSTICK" data-codename="Satin DualSense" data-name="Satin DualSense Analog Stick $control" data-seed="51200" id="rc.stick_${control.lowercase()}">
+    <div class="stick-base" data-layer-role="base">
+      <div class="socket-well" data-layer-role="base"></div>
+    </div>
+    <div class="stick-cap" data-layer-role="thumb-cap">
+      <div class="knurled-ring" data-layer-role="thumb-cap"></div>
+      <div class="cap-gloss" data-layer-role="thumb-cap"></div>
+      <span class="stick-label">$control</span>
+    </div>
   </button>
     """.trimIndent()
 
@@ -1149,141 +2760,18 @@ private fun joystickPreset(
     val right = control.uppercase() == "RS"
     val accent = if (right) "#DC2626" else "#10B981"
     val glow = if (right) "rgba(220, 38, 38, 0.45)" else "rgba(16, 185, 129, 0.45)"
-    val motion = retroMotion("0.68", "440", "0.94")
-    val active = centeredPress(".stick-btn")
-    val theme = resolveStyleTheme(style, accent, glow)
+    return when (style) {
+        NxprcPresetStyle.XBOX_ELITE -> joystickPresetXboxElite(control, accent, glow)
+        NxprcPresetStyle.ARCADE -> joystickPresetArcade(control, accent, glow)
+        NxprcPresetStyle.CYBERPUNK -> joystickPresetCyberpunk(control, accent, glow)
+        NxprcPresetStyle.SATIN -> joystickPresetSatin(control, accent, glow)
+    }
+}
 
-    val css = """
-$motion
-:root {
-  --accent: $accent;
-  --accent-glow: $glow;
-}
-.stick-btn {
-  position: relative;
-  width: 150px;
-  height: 150px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  transform-origin: 50% 50%;
-  font-family: ${theme.fontFam};
-  cursor: pointer;
-  overflow: visible;
-}
-.stick-base {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 150px;
-  height: 150px;
-  border-radius: 50%;
-  border: ${theme.accentBorder};
-  background: ${theme.chassisBg};
-  box-shadow: ${theme.chassisShadow};
-  z-index: 1;
-}
-.socket-well {
-  position: absolute;
-  left: 12px;
-  top: 12px;
-  width: 126px;
-  height: 126px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 45% 40%, #15191f 0%, #0b0d11 65%, #050608 100%);
-  box-shadow:
-    inset 0 6px 12px rgba(0, 0, 0, 0.95),
-    inset 0 -2px 3px rgba(255, 255, 255, 0.12);
-}
-.axis-ring {
-  position: absolute;
-  left: 26px;
-  top: 26px;
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  border: 1px dashed rgba(249, 115, 22, 0.35);
-}
-.stick-cap {
-  position: absolute;
-  left: 26px;
-  top: 26px;
-  width: 98px;
-  height: 98px;
-  border-radius: 50%;
-  background: ${theme.facePlateBg};
-  box-shadow: ${theme.facePlateShadow};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 3;
-}
-.knurled-ring {
-  position: absolute;
-  left: 16px;
-  top: 16px;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  border: 2px dashed $accent;
-  opacity: 0.65;
-}
-.cap-gloss {
-  position: absolute;
-  left: 22px;
-  top: 10px;
-  width: 54px;
-  height: 20px;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.50) 0%, transparent 75%);
-}
-.button-emblem {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 150px;
-  height: 150px;
-  pointer-events: none;
-  z-index: 2;
-}
-.stick-label {
-  position: relative;
-  z-index: 5;
-  font-size: 24px;
-  font-weight: 900;
-  letter-spacing: 1px;
-  color: ${theme.textColor};
-  text-shadow: ${theme.textShadow};
-}
-$active
-""".trimIndent()
 
-    val body = """
-  <button class="stick-btn" data-control="$control" data-category="JOYSTICK" data-codename="${style.displayName}" data-name="${style.displayName} Analog Stick $control" data-seed="51200" id="rc.stick_${control.lowercase()}">
-    <div class="stick-base" data-layer-role="base">
-      <div class="socket-well" data-layer-role="base"></div>
-      <div class="axis-ring" data-layer-role="base"></div>
-    </div>
-    <svg class="button-emblem" viewBox="0 0 150 150" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="16" cy="16" r="3" fill="#8a7448"/>
-      <line x1="14" y1="16" x2="18" y2="16" stroke="#261307" stroke-width="1"/>
-      <circle cx="134" cy="16" r="3" fill="#8a7448"/>
-      <line x1="132" y1="16" x2="136" y2="16" stroke="#261307" stroke-width="1"/>
-      <circle cx="16" cy="134" r="3" fill="#8a7448"/>
-      <line x1="14" y1="134" x2="18" y2="134" stroke="#261307" stroke-width="1"/>
-      <circle cx="134" cy="134" r="3" fill="#8a7448"/>
-      <line x1="132" y1="134" x2="136" y2="134" stroke="#261307" stroke-width="1"/>
-    </svg>
-    <div class="stick-cap" data-layer-role="thumb-cap">
-      <div class="knurled-ring" data-layer-role="thumb-cap"></div>
-      <div class="cap-gloss" data-layer-role="thumb-cap"></div>
-      <span class="stick-label">$control</span>
-    </div>
-  </button>
-    """.trimIndent()
-
-    return htmlDocument(css, body)
-}
+// =========================================================================
+// 6. STICK CLICK BUTTONS (LSB / RSB)
+// =========================================================================
 
 private fun stickButtonPreset(
     control: String,
@@ -1293,70 +2781,86 @@ private fun stickButtonPreset(
     val accent = if (right) "#DC2626" else "#10B981"
     val glow = if (right) "rgba(220, 38, 38, 0.45)" else "rgba(16, 185, 129, 0.45)"
     val motion = retroMotion("0.68", "460", "0.93")
-    val active = centeredPress(".stick-btn-ctl")
-    val theme = resolveStyleTheme(style, accent, glow)
+    val selector = ".stick-btn-ctl"
+    val active = centeredPress(selector)
 
-    val css = """
+    val css = when (style) {
+        NxprcPresetStyle.XBOX_ELITE -> """
 $motion
-:root {
-  --accent: $accent;
-  --accent-glow: $glow;
+:root { --accent: $accent; --accent-glow: $glow; }
+$selector {
+  position: relative; width: 70px; height: 70px; padding: 0; border: none; outline: none; border-radius: 50%;
+  background: radial-gradient(circle at 45% 40%, #20242b 0%, #101217 70%, #06080a 100%);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.85), inset 0 2px 3px rgba(255, 255, 255, 0.15), inset 0 -4px 8px rgba(0, 0, 0, 0.95);
+  transform-origin: 50% 50%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; cursor: pointer; overflow: visible; display: flex; align-items: center; justify-content: center;
 }
-.stick-btn-ctl {
-  position: relative;
-  width: 70px;
-  height: 70px;
-  padding: 0;
-  border: ${theme.accentBorder};
-  outline: none;
-  border-radius: 50%;
-  background: ${theme.chassisBg};
-  box-shadow: ${theme.chassisShadow};
-  transform-origin: 50% 50%;
-  font-family: ${theme.fontFam};
-  cursor: pointer;
-  overflow: visible;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+$selector .face-plate {
+  position: relative; width: 52px; height: 52px; border-radius: 50%;
+  background: radial-gradient(circle at 40% 30%, rgba(255, 255, 255, 0.18) 0%, transparent 50%), radial-gradient(circle at 50% 50%, #16241d 0%, #0c1410 55%, #050806 100%);
+  box-shadow: inset 0 1.5px 2px rgba(255, 255, 255, 0.35), inset 0 -3px 6px rgba(0, 0, 0, 0.85); display: flex; align-items: center; justify-content: center;
 }
-.face-plate {
-  position: relative;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: ${theme.facePlateBg};
-  box-shadow: ${theme.facePlateShadow};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.grip-ribs {
-  position: absolute;
-  left: 8px;
-  top: 8px;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px dashed $accent;
-  opacity: 0.60;
-}
-.stick-btn-label {
-  position: relative;
-  z-index: 5;
-  font-size: 15px;
-  font-weight: 900;
-  letter-spacing: 1px;
-  color: ${theme.textColor};
-  text-shadow: ${theme.textShadow};
-}
+$selector .stick-btn-label { position: relative; z-index: 5; font-size: 15px; font-weight: 900; letter-spacing: 1px; color: var(--accent); text-shadow: 0 2px 6px rgba(0, 0, 0, 0.95), 0 0 10px var(--accent-glow); }
 $active
 """.trimIndent()
+
+        NxprcPresetStyle.ARCADE -> """
+$motion
+:root { --accent: $accent; --accent-glow: $glow; }
+$selector {
+  position: relative; width: 70px; height: 70px; padding: 0; border: none; outline: none; border-radius: 50%;
+  background: linear-gradient(180deg, #363636 0%, #1a1a1a 50%, #0a0a0a 100%);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.85), inset 0 2px 2px rgba(255, 255, 255, 0.25), inset 0 -4px 8px rgba(0, 0, 0, 0.95);
+  transform-origin: 50% 50%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; cursor: pointer; overflow: visible; display: flex; align-items: center; justify-content: center;
+}
+$selector .face-plate {
+  position: relative; width: 52px; height: 52px; border-radius: 50%;
+  background: radial-gradient(circle at 38% 28%, #38bdf8 0%, #0284c7 50%, #082f49 100%);
+  box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.55), inset 0 -4px 8px rgba(0, 0, 0, 0.70); display: flex; align-items: center; justify-content: center;
+}
+$selector .stick-btn-label { position: relative; z-index: 5; font-size: 15px; font-weight: 900; letter-spacing: 1px; color: #ffffff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75); }
+$active
+""".trimIndent()
+
+        NxprcPresetStyle.CYBERPUNK -> """
+$motion
+:root { --accent: $accent; --accent-glow: $glow; }
+$selector {
+  position: relative; width: 70px; height: 70px; padding: 0; border: 1.5px solid var(--accent-glow); outline: none; border-radius: 16px;
+  background: linear-gradient(145deg, #181d26 0%, #0e1117 60%, #07090c 100%);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.90), 0 0 18px var(--accent-glow);
+  transform-origin: 50% 50%; font-family: 'Courier New', Courier, monospace; cursor: pointer; overflow: visible; display: flex; align-items: center; justify-content: center;
+}
+$selector .face-plate {
+  position: relative; width: 52px; height: 52px; border-radius: 12px; border: 1px solid rgba(0, 229, 255, 0.35);
+  background: linear-gradient(145deg, #131720 0%, #090c12 100%);
+  display: flex; align-items: center; justify-content: center;
+}
+$selector .stick-btn-label { position: relative; z-index: 5; font-size: 15px; font-weight: 900; letter-spacing: 1px; color: var(--accent); text-shadow: 0 0 8px var(--accent), 0 0 20px var(--accent-glow); }
+$active
+""".trimIndent()
+
+        NxprcPresetStyle.SATIN -> """
+$motion
+:root { --accent: $accent; --accent-glow: $glow; }
+$selector {
+  position: relative; width: 70px; height: 70px; padding: 0; border: none; outline: none; border-radius: 50%;
+  background: linear-gradient(160deg, #282d38 0%, #161921 60%, #0d0f14 100%);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.80), inset 0 1.5px 2px rgba(255, 255, 255, 0.20), inset 0 -4px 8px rgba(0, 0, 0, 0.90);
+  transform-origin: 50% 50%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; cursor: pointer; overflow: visible; display: flex; align-items: center; justify-content: center;
+}
+$selector .face-plate {
+  position: relative; width: 52px; height: 52px; border-radius: 50%;
+  background: radial-gradient(circle at 42% 32%, #383e4c 0%, #222630 55%, #13161c 100%);
+  box-shadow: inset 0 1.5px 2px rgba(255, 255, 255, 0.22), inset 0 -3px 6px rgba(0, 0, 0, 0.70); display: flex; align-items: center; justify-content: center;
+}
+$selector .stick-btn-label { position: relative; z-index: 5; font-size: 15px; font-weight: 700; letter-spacing: 1px; color: #e2e8f0; text-shadow: 0 -1px 1px rgba(0, 0, 0, 0.85); }
+$active
+""".trimIndent()
+    }
 
     val body = """
   <button class="stick-btn-ctl" data-control="$control" data-category="BUTTON" data-codename="${style.displayName}" data-name="${style.displayName} Click $control" data-seed="21900" id="rc.click_${control.lowercase()}">
     <div class="face-plate" data-layer-role="base">
-      <div class="grip-ribs" data-layer-role="detail"></div>
       <span class="stick-btn-label">$control</span>
     </div>
   </button>
@@ -1365,206 +2869,67 @@ $active
     return htmlDocument(css, body)
 }
 
-private fun touchpadPreset(
-    control: String,
-    style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE
-): String {
-    val right = control.uppercase() == "RTP"
-    val accent = if (right) "#DC2626" else "#10B981"
-    val glow = if (right) "rgba(220, 38, 38, 0.40)" else "rgba(16, 185, 129, 0.40)"
-    val title = if (right) "Touch Look • RTP" else "Touch Move • LTP"
-    val touchId = "touch_" + control.lowercase()
-    val motion = retroMotion("0.75", "500", "0.98")
-    val active = centeredPress(".touchpad-ctl")
-    val theme = resolveStyleTheme(style, accent, glow)
 
-    val css = """
-$motion
-:root {
-  --accent: $accent;
-  --accent-glow: $glow;
-}
-.touchpad-ctl {
-  position: relative;
-  width: 180px;
-  height: 180px;
-  padding: 12px;
-  box-sizing: border-box;
-  border: ${theme.accentBorder};
-  outline: none;
-  border-radius: 22px;
-  background: ${theme.chassisBg};
-  box-shadow: ${theme.chassisShadow};
-  transform-origin: 50% 50%;
-  font-family: ${theme.fontFam};
-  cursor: pointer;
-  overflow: visible;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-}
-.touchpad-surface {
-  position: absolute;
-  left: 12px;
-  top: 12px;
-  width: 156px;
-  height: 156px;
-  border-radius: 16px;
-  background: ${theme.facePlateBg};
-  box-shadow: ${theme.facePlateShadow};
-  z-index: 1;
-}
-.touchpad-scanline {
-  position: absolute;
-  left: 20px;
-  top: 90px;
-  width: 140px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, $accent, transparent);
-  opacity: 0.65;
-  z-index: 2;
-}
-.button-emblem {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 180px;
-  height: 180px;
-  pointer-events: none;
-  z-index: 3;
-}
-.touchpad-title, .touchpad-sub {
-  position: relative;
-  z-index: 5;
-  color: ${theme.textColor};
-  text-shadow: ${theme.textShadow};
-}
-.touchpad-title {
-  margin-top: 6px;
-  font-size: 14px;
-  font-weight: 900;
-  letter-spacing: 1.5px;
-}
-.touchpad-sub {
-  margin-bottom: 6px;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 1px;
-  color: $accent;
-}
-$active
-""".trimIndent()
-
-    val body = """
-  <button class="touchpad-ctl" data-id="$touchId" data-control="$control" data-category="TOUCHPAD" data-name="${style.displayName} Touchpad $control" data-seed="71500" id="rc.touch_${control.lowercase()}">
-    <div class="touchpad-surface" data-layer-role="base"></div>
-    <div class="touchpad-scanline" data-layer-role="detail"></div>
-    <svg class="button-emblem" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
-      <!-- 4 corner machine screws -->
-      <circle cx="20" cy="20" r="3" fill="#8a7448"/>
-      <line x1="18" y1="20" x2="22" y2="20" stroke="#261307" stroke-width="1"/>
-      <circle cx="160" cy="20" r="3" fill="#8a7448"/>
-      <line x1="158" y1="20" x2="162" y2="20" stroke="#261307" stroke-width="1"/>
-      <circle cx="20" cy="160" r="3" fill="#8a7448"/>
-      <line x1="18" y1="160" x2="22" y2="160" stroke="#261307" stroke-width="1"/>
-      <circle cx="160" cy="160" r="3" fill="#8a7448"/>
-      <line x1="158" y1="160" x2="162" y2="160" stroke="#261307" stroke-width="1"/>
-    </svg>
-    <span class="touchpad-title">$title</span>
-    <span class="touchpad-sub">2.0X BALLISTICS</span>
-  </button>
-    """.trimIndent()
-
-    return htmlDocument(css, body)
-}
-
-private fun systemPreset(
-    control: String,
-    label: String,
-    style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE
-): String {
-    val motion = retroMotion("0.75", "500", "0.93")
-    val active = centeredPress(".system-btn")
-    val accent = "#10B981"
-    val glow = "rgba(16, 185, 129, 0.40)"
-    val theme = resolveStyleTheme(style, accent, glow)
-
-    val css = """
-$motion
-.system-btn {
-  position: relative;
-  width: 64px;
-  height: 42px;
-  padding: 0;
-  border: ${theme.accentBorder};
-  outline: none;
-  border-radius: 12px;
-  background: ${theme.chassisBg};
-  box-shadow: ${theme.chassisShadow};
-  transform-origin: 50% 50%;
-  font-family: ${theme.fontFam};
-  cursor: pointer;
-  overflow: visible;
-  display: block;
-}
-.face-plate {
-  position: absolute;
-  left: 5px;
-  top: 5px;
-  width: 54px;
-  height: 32px;
-  border-radius: 8px;
-  background: ${theme.facePlateBg};
-  box-shadow: ${theme.facePlateShadow};
-}
-.btn-label {
-  position: absolute;
-  left: 0;
-  top: 6px;
-  width: 64px;
-  height: 30px;
-  line-height: 30px;
-  text-align: center;
-  font-size: 18px;
-  font-weight: 700;
-  color: ${theme.textColor};
-  text-shadow: ${theme.textShadow};
-}
-$active
-""".trimIndent()
-
-    val body = """
-  <button class="system-btn" data-control="$control" data-category="SYSTEM" data-codename="${style.displayName}" data-name="${style.displayName} $control" data-seed="11400" id="rc.sys_${control.lowercase()}">
-    <div class="face-plate" data-layer-role="base"></div>
-    <span class="btn-label">$label</span>
-  </button>
-    """.trimIndent()
-
-    return htmlDocument(css, body)
-}
+// =========================================================================
+// 7. SYSTEM BUTTON PRESETS (MENU, BACK, GUIDE, SHARE)
+// =========================================================================
 
 private fun systemMenuPreset(
     style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE
 ): String {
     val motion = retroMotion("0.75", "500", "0.93")
-    val active = centeredPress(".system-btn")
+    val selector = ".system-btn"
+    val active = centeredPress(selector)
     val accent = "#10B981"
     val glow = "rgba(16, 185, 129, 0.40)"
-    val theme = resolveStyleTheme(style, accent, glow)
+
+    val config = when (style) {
+        NxprcPresetStyle.XBOX_ELITE -> ElementStyleConfig(
+            chassisBg = "radial-gradient(circle at 45% 40%, #20242b 0%, #101217 70%, #06080a 100%)",
+            chassisShadow = "0 8px 20px rgba(0, 0, 0, 0.85), 0 0 18px $glow, inset 0 1.5px 2px rgba(255, 255, 255, 0.15), inset 0 -4px 8px rgba(0, 0, 0, 0.95)",
+            facePlateBg = "linear-gradient(160deg, #1c232d 0%, #11151c 55%, #080a0e 100%)",
+            accentColor = accent,
+            accentShadow = "0 0 8px $glow",
+            accentBorder = "none"
+        )
+        NxprcPresetStyle.ARCADE -> ElementStyleConfig(
+            chassisBg = "linear-gradient(180deg, #363636 0%, #1a1a1a 50%, #0a0a0a 100%)",
+            chassisShadow = "0 8px 20px rgba(0, 0, 0, 0.85), inset 0 2px 2px rgba(255, 255, 255, 0.25), inset 0 -4px 8px rgba(0, 0, 0, 0.95)",
+            facePlateBg = "radial-gradient(circle at 38% 28%, #4ade80 0%, #10b981 50%, #064e3b 100%)",
+            accentColor = "#ffffff",
+            accentShadow = "0 1px 3px rgba(0, 0, 0, 0.70)",
+            accentBorder = "none"
+        )
+        NxprcPresetStyle.CYBERPUNK -> ElementStyleConfig(
+            chassisBg = "linear-gradient(145deg, #181d26 0%, #0e1117 60%, #07090c 100%)",
+            chassisShadow = "0 8px 20px rgba(0, 0, 0, 0.90), 0 0 20px $glow",
+            facePlateBg = "linear-gradient(145deg, #131720 0%, #090c12 100%)",
+            accentColor = accent,
+            accentShadow = "0 0 10px $accent",
+            accentBorder = "1.5px solid $glow"
+        )
+        NxprcPresetStyle.SATIN -> ElementStyleConfig(
+            chassisBg = "linear-gradient(160deg, #282d38 0%, #161921 60%, #0d0f14 100%)",
+            chassisShadow = "0 8px 20px rgba(0, 0, 0, 0.80), inset 0 1.5px 2px rgba(255, 255, 255, 0.20), inset 0 -4px 8px rgba(0, 0, 0, 0.90)",
+            facePlateBg = "radial-gradient(circle at 42% 32%, #383e4c 0%, #222630 55%, #13161c 100%)",
+            accentColor = "#e2e8f0",
+            accentShadow = "0 1px 2px rgba(0, 0, 0, 0.50)",
+            accentBorder = "none"
+        )
+    }
 
     val css = """
 $motion
-.system-btn {
+$selector {
   position: relative;
   width: 64px;
   height: 42px;
   padding: 0;
-  border: ${theme.accentBorder};
+  border: ${config.accentBorder};
   outline: none;
   border-radius: 12px;
-  background: ${theme.chassisBg};
-  box-shadow: ${theme.chassisShadow};
+  background: ${config.chassisBg};
+  box-shadow: ${config.chassisShadow};
   transform-origin: 50% 50%;
   cursor: pointer;
   overflow: visible;
@@ -1577,8 +2942,7 @@ $motion
   width: 54px;
   height: 32px;
   border-radius: 8px;
-  background: ${theme.facePlateBg};
-  box-shadow: ${theme.facePlateShadow};
+  background: ${config.facePlateBg};
 }
 .burger-bar {
   position: absolute;
@@ -1586,8 +2950,8 @@ $motion
   width: 20px;
   height: 3px;
   border-radius: 2px;
-  background: ${theme.barColor};
-  box-shadow: ${theme.barShadow};
+  background: ${config.accentColor};
+  box-shadow: ${config.accentShadow};
   z-index: 4;
 }
 .burger-bar-1 { top: 7px; }
@@ -1609,9 +2973,113 @@ $active
     return htmlDocument(css, body)
 }
 
+private fun systemPreset(
+    control: String,
+    label: String,
+    style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE
+): String {
+    val motion = retroMotion("0.75", "500", "0.93")
+    val selector = ".system-btn"
+    val active = centeredPress(selector)
+    val accent = "#10B981"
+    val glow = "rgba(16, 185, 129, 0.40)"
+
+    val config = when (style) {
+        NxprcPresetStyle.XBOX_ELITE -> ElementStyleConfig(
+            chassisBg = "radial-gradient(circle at 45% 40%, #20242b 0%, #101217 70%, #06080a 100%)",
+            chassisShadow = "0 8px 20px rgba(0, 0, 0, 0.85), 0 0 18px $glow, inset 0 1.5px 2px rgba(255, 255, 255, 0.15), inset 0 -4px 8px rgba(0, 0, 0, 0.95)",
+            facePlateBg = "linear-gradient(160deg, #1c232d 0%, #11151c 55%, #080a0e 100%)",
+            accentColor = accent,
+            accentShadow = "0 2px 8px rgba(0, 0, 0, 0.95), 0 0 12px $glow",
+            accentBorder = "none"
+        )
+        NxprcPresetStyle.ARCADE -> ElementStyleConfig(
+            chassisBg = "linear-gradient(180deg, #363636 0%, #1a1a1a 50%, #0a0a0a 100%)",
+            chassisShadow = "0 8px 20px rgba(0, 0, 0, 0.85), inset 0 2px 2px rgba(255, 255, 255, 0.25), inset 0 -4px 8px rgba(0, 0, 0, 0.95)",
+            facePlateBg = "radial-gradient(circle at 38% 28%, #4ade80 0%, #10b981 50%, #064e3b 100%)",
+            accentColor = "#ffffff",
+            accentShadow = "0 1px 3px rgba(0, 0, 0, 0.70)",
+            accentBorder = "none"
+        )
+        NxprcPresetStyle.CYBERPUNK -> ElementStyleConfig(
+            chassisBg = "linear-gradient(145deg, #181d26 0%, #0e1117 60%, #07090c 100%)",
+            chassisShadow = "0 8px 20px rgba(0, 0, 0, 0.90), 0 0 20px $glow",
+            facePlateBg = "linear-gradient(145deg, #131720 0%, #090c12 100%)",
+            accentColor = accent,
+            accentShadow = "0 0 10px $accent, 0 0 24px $glow",
+            accentBorder = "1.5px solid $glow"
+        )
+        NxprcPresetStyle.SATIN -> ElementStyleConfig(
+            chassisBg = "linear-gradient(160deg, #282d38 0%, #161921 60%, #0d0f14 100%)",
+            chassisShadow = "0 8px 20px rgba(0, 0, 0, 0.80), inset 0 1.5px 2px rgba(255, 255, 255, 0.20), inset 0 -4px 8px rgba(0, 0, 0, 0.90)",
+            facePlateBg = "radial-gradient(circle at 42% 32%, #383e4c 0%, #222630 55%, #13161c 100%)",
+            accentColor = "#e2e8f0",
+            accentShadow = "0 -1px 1px rgba(0, 0, 0, 0.85), 0 1px 1px rgba(255, 255, 255, 0.20)",
+            accentBorder = "none"
+        )
+    }
+
+    val css = """
+$motion
+$selector {
+  position: relative;
+  width: 64px;
+  height: 42px;
+  padding: 0;
+  border: ${config.accentBorder};
+  outline: none;
+  border-radius: 12px;
+  background: ${config.chassisBg};
+  box-shadow: ${config.chassisShadow};
+  transform-origin: 50% 50%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  overflow: visible;
+  display: block;
+}
+.face-plate {
+  position: absolute;
+  left: 5px;
+  top: 5px;
+  width: 54px;
+  height: 32px;
+  border-radius: 8px;
+  background: ${config.facePlateBg};
+}
+.btn-label {
+  position: absolute;
+  left: 0;
+  top: 6px;
+  width: 64px;
+  height: 30px;
+  line-height: 30px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: ${config.accentColor};
+  text-shadow: ${config.accentShadow};
+}
+$active
+""".trimIndent()
+
+    val body = """
+  <button class="system-btn" data-control="$control" data-category="SYSTEM" data-codename="${style.displayName}" data-name="${style.displayName} $control" data-seed="11400" id="rc.sys_${control.lowercase()}">
+    <div class="face-plate" data-layer-role="base"></div>
+    <span class="btn-label">$label</span>
+  </button>
+    """.trimIndent()
+
+    return htmlDocument(css, body)
+}
+
 private fun systemViewPreset(style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE): String = systemPreset("BACK", "⧉", style)
 private fun systemHomePreset(style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE): String = systemPreset("GUIDE", "⌂", style)
 private fun systemSharePreset(style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE): String = systemPreset("SHARE", "⇪", style)
+
+
+// =========================================================================
+// 8. MACRO PADDLE PRESETS (M1, M2, M3, M4)
+// =========================================================================
 
 private fun macroPreset(
     control: String,
@@ -1619,10 +3087,45 @@ private fun macroPreset(
 ): String {
     val safeControl = control.trim().ifBlank { "M1" }.uppercase()
     val motion = retroMotion("0.70", "460", "0.94")
-    val active = centeredPress(".macro-paddle")
+    val selector = ".macro-paddle"
+    val active = centeredPress(selector)
     val accent = "#10B981"
     val glow = "rgba(16, 185, 129, 0.45)"
-    val theme = resolveStyleTheme(style, accent, glow)
+
+    val config = when (style) {
+        NxprcPresetStyle.XBOX_ELITE -> ElementStyleConfig(
+            chassisBg = "radial-gradient(circle at 45% 40%, #20242b 0%, #101217 70%, #06080a 100%)",
+            chassisShadow = "0 10px 24px rgba(0, 0, 0, 0.85), 0 0 20px $glow, inset 0 2px 3px rgba(255, 255, 255, 0.15), inset 0 -5px 10px rgba(0, 0, 0, 0.95)",
+            facePlateBg = "linear-gradient(160deg, #1c232d 0%, #11151c 55%, #080a0e 100%)",
+            accentColor = accent,
+            accentShadow = "0 2px 8px rgba(0, 0, 0, 0.95), 0 0 14px $glow",
+            accentBorder = "none"
+        )
+        NxprcPresetStyle.ARCADE -> ElementStyleConfig(
+            chassisBg = "linear-gradient(180deg, #363636 0%, #1a1a1a 50%, #0a0a0a 100%)",
+            chassisShadow = "0 10px 24px rgba(0, 0, 0, 0.85), inset 0 2px 2px rgba(255, 255, 255, 0.25), inset 0 -5px 10px rgba(0, 0, 0, 0.95)",
+            facePlateBg = "radial-gradient(circle at 38% 28%, #4ade80 0%, #10b981 50%, #064e3b 100%)",
+            accentColor = "#ffffff",
+            accentShadow = "0 2px 4px rgba(0, 0, 0, 0.70)",
+            accentBorder = "none"
+        )
+        NxprcPresetStyle.CYBERPUNK -> ElementStyleConfig(
+            chassisBg = "linear-gradient(145deg, #181d26 0%, #0e1117 60%, #07090c 100%)",
+            chassisShadow = "0 10px 24px rgba(0, 0, 0, 0.90), 0 0 22px $glow",
+            facePlateBg = "linear-gradient(145deg, #131720 0%, #090c12 100%)",
+            accentColor = accent,
+            accentShadow = "0 0 10px $accent, 0 0 24px $glow",
+            accentBorder = "1.5px solid $glow"
+        )
+        NxprcPresetStyle.SATIN -> ElementStyleConfig(
+            chassisBg = "linear-gradient(160deg, #282d38 0%, #161921 60%, #0d0f14 100%)",
+            chassisShadow = "0 10px 24px rgba(0, 0, 0, 0.80), inset 0 1.5px 2px rgba(255, 255, 255, 0.20), inset 0 -5px 10px rgba(0, 0, 0, 0.90)",
+            facePlateBg = "radial-gradient(circle at 42% 32%, #383e4c 0%, #222630 55%, #13161c 100%)",
+            accentColor = "#e2e8f0",
+            accentShadow = "0 -1px 1px rgba(0, 0, 0, 0.85), 0 1px 1px rgba(255, 255, 255, 0.20)",
+            accentBorder = "none"
+        )
+    }
 
     val css = """
 $motion
@@ -1630,18 +3133,18 @@ $motion
   --accent: $accent;
   --accent-glow: $glow;
 }
-.macro-paddle {
+$selector {
   position: relative;
   width: 72px;
   height: 72px;
   padding: 0;
-  border: ${theme.accentBorder};
+  border: ${config.accentBorder};
   outline: none;
   border-radius: 16px;
-  background: ${theme.chassisBg};
-  box-shadow: ${theme.chassisShadow};
+  background: ${config.chassisBg};
+  box-shadow: ${config.chassisShadow};
   transform-origin: 50% 50%;
-  font-family: ${theme.fontFam};
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   cursor: pointer;
   overflow: visible;
   display: flex;
@@ -1655,8 +3158,7 @@ $motion
   width: 60px;
   height: 60px;
   border-radius: 12px;
-  background: ${theme.facePlateBg};
-  box-shadow: ${theme.facePlateShadow};
+  background: ${config.facePlateBg};
 }
 .macro-bolt {
   position: absolute;
@@ -1664,8 +3166,8 @@ $motion
   top: 18px;
   z-index: 5;
   font-size: 18px;
-  color: ${theme.textColor};
-  text-shadow: ${theme.textShadow};
+  color: ${config.accentColor};
+  text-shadow: ${config.accentShadow};
 }
 .macro-label {
   position: relative;
@@ -1674,17 +3176,8 @@ $motion
   font-size: 20px;
   font-weight: 900;
   letter-spacing: 1px;
-  color: ${theme.textColor};
-  text-shadow: ${theme.textShadow};
-}
-.button-emblem {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 72px;
-  height: 72px;
-  pointer-events: none;
-  z-index: 3;
+  color: ${config.accentColor};
+  text-shadow: ${config.accentShadow};
 }
 $active
 """.trimIndent()
@@ -1692,12 +3185,6 @@ $active
     val body = """
   <button class="macro-paddle" data-control="$safeControl" data-category="MACRO" data-codename="${style.displayName}" data-name="${style.displayName} Macro $safeControl" id="rc.macro_${safeControl.lowercase()}">
     <div class="face-plate" data-layer-role="base"></div>
-    <svg class="button-emblem" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="10" cy="10" r="2" fill="#8a7448"/>
-      <circle cx="62" cy="10" r="2" fill="#8a7448"/>
-      <circle cx="10" cy="62" r="2" fill="#8a7448"/>
-      <circle cx="62" cy="62" r="2" fill="#8a7448"/>
-    </svg>
     <span class="macro-bolt">⚡</span>
     <span class="macro-label">$safeControl</span>
   </button>
@@ -1705,6 +3192,140 @@ $active
 
     return htmlDocument(css, body)
 }
+
+
+// =========================================================================
+// 9. TOUCHPAD PRESETS (LTP / RTP)
+// =========================================================================
+
+private fun touchpadPreset(
+    control: String,
+    style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE
+): String {
+    val right = control.uppercase() == "RTP"
+    val accent = if (right) "#DC2626" else "#10B981"
+    val glow = if (right) "rgba(220, 38, 38, 0.40)" else "rgba(16, 185, 129, 0.40)"
+    val title = if (right) "Touch Look • RTP" else "Touch Move • LTP"
+    val touchId = "touch_" + control.lowercase()
+    val motion = retroMotion("0.75", "500", "0.98")
+    val selector = ".touchpad-ctl"
+    val active = centeredPress(selector)
+
+    val config = when (style) {
+        NxprcPresetStyle.XBOX_ELITE -> ElementStyleConfig(
+            chassisBg = "radial-gradient(circle at 45% 40%, #20242b 0%, #101217 70%, #06080a 100%)",
+            chassisShadow = "0 14px 32px rgba(0, 0, 0, 0.85), 0 0 24px $glow, inset 0 2px 3px rgba(255, 255, 255, 0.15), inset 0 -6px 12px rgba(0, 0, 0, 0.95)",
+            facePlateBg = "linear-gradient(160deg, #1c232d 0%, #11151c 55%, #080a0e 100%)",
+            accentColor = accent,
+            accentShadow = "0 2px 8px rgba(0, 0, 0, 0.95), 0 0 14px $glow",
+            accentBorder = "none"
+        )
+        NxprcPresetStyle.ARCADE -> ElementStyleConfig(
+            chassisBg = "linear-gradient(180deg, #363636 0%, #1a1a1a 50%, #0a0a0a 100%)",
+            chassisShadow = "0 14px 32px rgba(0, 0, 0, 0.85), inset 0 2px 2px rgba(255, 255, 255, 0.25), inset 0 -6px 12px rgba(0, 0, 0, 0.95)",
+            facePlateBg = "radial-gradient(circle at 38% 28%, #4ade80 0%, #10b981 50%, #064e3b 100%)",
+            accentColor = "#ffffff",
+            accentShadow = "0 2px 4px rgba(0, 0, 0, 0.70)",
+            accentBorder = "none"
+        )
+        NxprcPresetStyle.CYBERPUNK -> ElementStyleConfig(
+            chassisBg = "linear-gradient(145deg, #181d26 0%, #0e1117 60%, #07090c 100%)",
+            chassisShadow = "0 14px 32px rgba(0, 0, 0, 0.90), 0 0 25px $glow",
+            facePlateBg = "linear-gradient(145deg, #131720 0%, #090c12 100%)",
+            accentColor = accent,
+            accentShadow = "0 0 10px $accent, 0 0 24px $glow",
+            accentBorder = "1.5px solid $glow"
+        )
+        NxprcPresetStyle.SATIN -> ElementStyleConfig(
+            chassisBg = "linear-gradient(160deg, #282d38 0%, #161921 60%, #0d0f14 100%)",
+            chassisShadow = "0 14px 32px rgba(0, 0, 0, 0.80), inset 0 1.5px 2px rgba(255, 255, 255, 0.20), inset 0 -6px 12px rgba(0, 0, 0, 0.90)",
+            facePlateBg = "radial-gradient(circle at 42% 32%, #383e4c 0%, #222630 55%, #13161c 100%)",
+            accentColor = "#e2e8f0",
+            accentShadow = "0 -1px 1px rgba(0, 0, 0, 0.85), 0 1px 1px rgba(255, 255, 255, 0.20)",
+            accentBorder = "none"
+        )
+    }
+
+    val css = """
+$motion
+:root {
+  --accent: $accent;
+  --accent-glow: $glow;
+}
+$selector {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  padding: 12px;
+  box-sizing: border-box;
+  border: ${config.accentBorder};
+  outline: none;
+  border-radius: 22px;
+  background: ${config.chassisBg};
+  box-shadow: ${config.chassisShadow};
+  transform-origin: 50% 50%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+}
+.touchpad-surface {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  width: 156px;
+  height: 156px;
+  border-radius: 16px;
+  background: ${config.facePlateBg};
+  z-index: 1;
+}
+.touchpad-scanline {
+  position: absolute;
+  left: 20px;
+  top: 90px;
+  width: 140px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, $accent, transparent);
+  opacity: 0.65;
+  z-index: 2;
+}
+.touchpad-title, .touchpad-sub {
+  position: relative;
+  z-index: 5;
+  color: ${config.accentColor};
+  text-shadow: ${config.accentShadow};
+}
+.touchpad-title {
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+}
+.touchpad-sub {
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: $accent;
+}
+$active
+""".trimIndent()
+
+    val body = """
+  <button class="touchpad-ctl" data-id="$touchId" data-control="$control" data-category="TOUCHPAD" data-name="${style.displayName} Touchpad $control" data-seed="71500" id="rc.touch_${control.lowercase()}">
+    <div class="touchpad-surface" data-layer-role="base"></div>
+    <div class="touchpad-scanline" data-layer-role="detail"></div>
+    <span class="touchpad-title">$title</span>
+    <span class="touchpad-sub">2.0X BALLISTICS</span>
+  </button>
+    """.trimIndent()
+
+    return htmlDocument(css, body)
+}
+
 
 private fun syntaxDocument(
     rootClass: String,
