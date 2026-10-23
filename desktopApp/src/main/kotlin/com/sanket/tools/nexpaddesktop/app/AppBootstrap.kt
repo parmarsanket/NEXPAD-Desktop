@@ -22,6 +22,7 @@ import com.sanket.tools.nexpaddesktop.ui.SplashScreen
 import com.sanket.tools.nexpaddesktop.ui.theme.NexpadDesktopTheme
 import com.sanket.tools.nexpaddesktop.utils.ElevationTargetResolver
 import com.sanket.tools.nexpaddesktop.utils.WindowsElevation
+import com.sanket.tools.nexpaddesktop.utils.WindowsTitleBarTheme
 import com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -331,6 +332,12 @@ object AppBootstrap {
             title = "NEXPAD Desktop",
             icon = appIcon
         ) {
+            LaunchedEffect(window, viewModel.isWindowVisible) {
+                if (viewModel.isWindowVisible) {
+                    WindowsTitleBarTheme.applyDarkTheme(window)
+                }
+            }
+
             NexpadDesktopTheme {
                 var showSplash by remember { mutableStateOf(true) }
                 Crossfade(
