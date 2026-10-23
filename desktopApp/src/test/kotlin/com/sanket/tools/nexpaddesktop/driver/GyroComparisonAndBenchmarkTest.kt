@@ -17,7 +17,7 @@ class GyroComparisonAndBenchmarkTest {
 
     @Test
     fun benchmarkDs4VsXboxSmallInputResponse() {
-        val defaultSettings = GyroSettings.DEFAULT.copy(precisionAiming = GyroSettings.DEFAULT.precisionAiming.copy(antiDeadzone = 0.14f)) // Benchmark with Anti-Deadzone = 0.14 and deadzone = 0.8°/s
+        val defaultSettings = GyroSettings.DEFAULT.copy(enabled = true, precisionAiming = GyroSettings.DEFAULT.precisionAiming.copy(antiDeadzone = 0.14f)) // Benchmark with Anti-Deadzone = 0.14 and deadzone = 0.8°/s
 
         println("==========================================================================================================")
         println("  BENCHMARK 1: DS4 vs REFINED XBOX GYRO AT SPEEDS FROM 0.0°/s (REST) TO 100°/s (FLICK)")
@@ -91,7 +91,7 @@ class GyroComparisonAndBenchmarkTest {
         println("==========================================================================================================")
 
         val p = GyroProcessor()
-        val settings = GyroSettings.DEFAULT
+        val settings = GyroSettings.DEFAULT.copy(enabled = true)
         val targetRad = 10f * degToRad
 
         println("Target Speed: 10.0 °/s. Measuring frame-by-frame convergence (60Hz / ~16.6ms per frame):")
@@ -117,7 +117,7 @@ class GyroComparisonAndBenchmarkTest {
         println("==========================================================================================================")
 
         val gyroProcessor = GyroProcessor()
-        val settings = GyroSettings.DEFAULT.copy(precisionAiming = GyroSettings.DEFAULT.precisionAiming.copy(antiDeadzone = 0.14f)) // Default is JOYSTICK_SUPREME with Anti-Deadzone
+        val settings = GyroSettings.DEFAULT.copy(enabled = true, precisionAiming = GyroSettings.DEFAULT.precisionAiming.copy(antiDeadzone = 0.14f)) // Default is JOYSTICK_SUPREME with Anti-Deadzone
         val gyroRad = 15f * degToRad // Phone has 15°/s gyro motion
 
         // Case 1: User pushes physical Right Stick to full right (+1.0) on phone screen
@@ -182,8 +182,8 @@ class GyroComparisonAndBenchmarkTest {
 
     @Test
     fun benchmarkRawSiliconGyroVsCalibratedGyro() {
-        val calibratedSettings = GyroSettings.DEFAULT.copy(inputMode = InputMode.VELOCITY, precisionAiming = GyroSettings.DEFAULT.precisionAiming.copy(antiDeadzone = 0.14f))
-        val rawSiliconSettings = GyroSettings.DEFAULT.copy(inputMode = InputMode.RAW_UNCALIBRATED, rawSilicon = GyroSettings.DEFAULT.rawSilicon.copy(antiDeadzone = 0.14f))
+        val calibratedSettings = GyroSettings.DEFAULT.copy(enabled = true, inputMode = InputMode.VELOCITY, precisionAiming = GyroSettings.DEFAULT.precisionAiming.copy(antiDeadzone = 0.14f))
+        val rawSiliconSettings = GyroSettings.DEFAULT.copy(enabled = true, inputMode = InputMode.RAW_UNCALIBRATED, rawSilicon = GyroSettings.DEFAULT.rawSilicon.copy(antiDeadzone = 0.14f))
 
         println("==========================================================================================================")
         println("  BENCHMARK 4: RAW SILICON GYRO (UNCALIBRATED + BIAS) VS CALIBRATED GYRO (0.0°/s TO 100°/s)")
@@ -267,6 +267,7 @@ class GyroComparisonAndBenchmarkTest {
     fun benchmarkYawAndRollSimultaneousBlending() {
         val processor = GyroProcessor()
         val mixSettings = GyroSettings.DEFAULT.copy(
+            enabled = true,
             precisionAiming = GyroSettings.DEFAULT.precisionAiming.copy(
                 horizontalAxis = HorizontalAxis.MIX,
                 deadzoneThreshold = 0f,
@@ -337,6 +338,7 @@ class GyroComparisonAndBenchmarkTest {
         }
 
         val baseSettings = GyroSettings.DEFAULT.copy(
+            enabled = true,
             precisionAiming = GyroSettings.DEFAULT.precisionAiming.copy(
                 maxDpsYaw = 200f,
                 accelerationEnabled = false,
@@ -434,6 +436,7 @@ class GyroComparisonAndBenchmarkTest {
 
         // Settings 1: Current Default (antiDeadzone = 0.0f, deadzoneThreshold = 0.8f)
         val currentSettings = GyroSettings.DEFAULT.copy(
+            enabled = true,
             precisionAiming = GyroSettings.DEFAULT.precisionAiming.copy(
                 maxDpsYaw = 200f,
                 maxDpsPitch = 200f,
@@ -448,6 +451,7 @@ class GyroComparisonAndBenchmarkTest {
 
         // Settings 2: Restored Calibrated Default (antiDeadzone = 0.14f, deadzoneThreshold = 0.4f)
         val restoredSettings = GyroSettings.DEFAULT.copy(
+            enabled = true,
             precisionAiming = GyroSettings.DEFAULT.precisionAiming.copy(
                 maxDpsYaw = 200f,
                 maxDpsPitch = 200f,

@@ -596,7 +596,7 @@ data class GyroSettings(
         )
 
         /** Factory defaults — all settings at their neutral/default values. */
-        val DEFAULT = GyroSettings(enabled = true)
+        val DEFAULT = GyroSettings(enabled = false)
     }
 }
 
