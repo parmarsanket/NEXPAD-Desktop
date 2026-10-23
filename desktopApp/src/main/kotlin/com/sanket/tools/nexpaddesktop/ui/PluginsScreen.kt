@@ -1359,6 +1359,134 @@ private fun PromptSplitButton(
 }
 
 /**
+ * Split Button for Loading Starter Code with Hardware Preset Style dropdown selector.
+ * Allows quick loading of the current starter, or expanding the dropdown to switch between
+ * Xbox Elite, Candy Cab Arcade, Cyberpunk, and Satin styles.
+ */
+@Composable
+private fun StarterSplitButton(
+    selectedPresetStyle: NxprcPresetStyle,
+    onSelectPresetStyle: (NxprcPresetStyle) -> Unit,
+    onLoadStarter: () -> Unit,
+    height: androidx.compose.ui.unit.Dp = 28.dp
+) {
+    var checked by remember { mutableStateOf(false) }
+
+    Box {
+        SplitButtonLayout(
+            leadingButton = {
+                SplitButtonDefaults.LeadingButton(
+                    onClick = onLoadStarter,
+                    modifier = Modifier.height(height)
+                ) {
+                    Text(
+                        text = "Load Starter Code",
+                        fontSize = if (height < 30.dp) 10.5.sp else 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
+            },
+            trailingButton = {
+                val description = "Choose Preset Hardware Style"
+
+                TooltipBox(
+                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                        TooltipAnchorPosition.Above
+                    ),
+                    tooltip = {
+                        PlainTooltip(
+                            modifier = Modifier.semantics {
+                                liveRegion = LiveRegionMode.Assertive
+                                paneTitle = description
+                            }
+                        ) {
+                            Text(description)
+                        }
+                    },
+                    state = rememberTooltipState()
+                ) {
+                    SplitButtonDefaults.TrailingButton(
+                        checked = checked,
+                        onCheckedChange = { checked = it },
+                        modifier = Modifier
+                            .size(height)
+                            .semantics {
+                                stateDescription = if (checked) "Expanded" else "Collapsed"
+                                contentDescription = description
+                            }
+                    ) {
+                        val rotation by animateFloatAsState(
+                            targetValue = if (checked) 180f else 0f,
+                            label = "Trailing Icon Rotation"
+                        )
+
+                        Icon(
+                            imageVector = Icons.Filled.KeyboardArrowDown,
+                            modifier = Modifier
+                                .size(SplitButtonDefaults.TrailingIconSize)
+                                .graphicsLayer {
+                                    rotationZ = rotation
+                                },
+                            tint = Color.White,
+                            contentDescription = null
+                        )
+                    }
+                }
+            }
+        )
+
+        DropdownMenu(
+            expanded = checked,
+            onDismissRequest = {
+                checked = false
+            }
+        ) {
+            NxprcPresetStyle.entries.forEach { style ->
+                val isSelected = style == selectedPresetStyle
+                DropdownMenuItem(
+                    text = {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = buildString {
+                                    append(style.displayName)
+                                    if (isSelected) {
+                                        append(" ✓")
+                                    }
+                                },
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) NeonPalette.Cyan else Color.White
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = if (isSelected) NeonPalette.Cyan.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.12f)
+                            ) {
+                                Text(
+                                    text = style.badge,
+                                    color = if (isSelected) Color.White else Color.White.copy(alpha = 0.65f),
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                )
+                            }
+                        }
+                    },
+                    onClick = {
+                        checked = false
+                        onSelectPresetStyle(style)
+                    }
+                )
+            }
+        }
+    }
+}
+
+/**
  * Left Component Editor Pane with adaptive header, category carousels, and monospace code editor.
  */
 @Composable
@@ -1460,18 +1588,12 @@ private fun ComponentEditorPane(
                             Text("View Prompt", fontSize = 10.5.sp, color = NeonPalette.Cyan, maxLines = 1, softWrap = false)
                         }
 
-                        OutlinedButton(
-                            onClick = onLoadStarter,
-                            shape = RoundedCornerShape(6.dp),
-                            border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f)),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                containerColor = NeonPalette.Cyan.copy(alpha = 0.08f)
-                            ),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp),
-                            modifier = Modifier.height(28.dp)
-                        ) {
-                            Text("Load Starter Code", fontSize = 10.5.sp, color = NeonPalette.Cyan, maxLines = 1, softWrap = false)
-                        }
+                        StarterSplitButton(
+                            selectedPresetStyle = selectedPresetStyle,
+                            onSelectPresetStyle = onSelectPresetStyle,
+                            onLoadStarter = onLoadStarter,
+                            height = 28.dp
+                        )
                     }
                 }
             } else {
@@ -1535,18 +1657,12 @@ private fun ComponentEditorPane(
                             Text("View Prompt", fontSize = 11.sp, color = NeonPalette.Cyan, maxLines = 1, softWrap = false)
                         }
 
-                        OutlinedButton(
-                            onClick = onLoadStarter,
-                            shape = RoundedCornerShape(10.dp),
-                            border = BorderStroke(1.dp, NeonPalette.Cyan.copy(alpha = 0.5f)),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                containerColor = NeonPalette.Cyan.copy(alpha = 0.08f)
-                            ),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                            modifier = Modifier.height(30.dp)
-                        ) {
-                            Text("Load Starter Code", fontSize = 11.sp, color = NeonPalette.Cyan, maxLines = 1, softWrap = false)
-                        }
+                        StarterSplitButton(
+                            selectedPresetStyle = selectedPresetStyle,
+                            onSelectPresetStyle = onSelectPresetStyle,
+                            onLoadStarter = onLoadStarter,
+                            height = 30.dp
+                        )
                     }
                 }
             }
@@ -1645,69 +1761,6 @@ private fun ComponentEditorPane(
             }
         }
 
-        // 4b. Hardware Preset Style Selector
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = Color(0xFF131826),
-                border = BorderStroke(1.dp, Color(0xFF222F46))
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "✨ Style:",
-                        color = Color.White.copy(alpha = 0.85f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-
-            NxprcPresetStyle.entries.forEach { style ->
-                val isSelected = selectedPresetStyle == style
-                Surface(
-                    onClick = { onSelectPresetStyle(style) },
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (isSelected) NeonPalette.Cyan.copy(alpha = 0.16f) else Color(0xFF0E1320),
-                    border = BorderStroke(
-                        1.dp,
-                        if (isSelected) NeonPalette.Cyan else Color(0xFF222F46)
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.5.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = style.displayName,
-                            color = if (isSelected) NeonPalette.Cyan else Color.White.copy(alpha = 0.85f),
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            fontSize = 11.sp
-                        )
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = if (isSelected) NeonPalette.Cyan.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.12f)
-                        ) {
-                            Text(
-                                text = style.badge,
-                                color = if (isSelected) Color.White else Color.White.copy(alpha = 0.65f),
-                                fontSize = 8.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
 
         // 5. Editor Header (Clean & Uncluttered)
         Row(
