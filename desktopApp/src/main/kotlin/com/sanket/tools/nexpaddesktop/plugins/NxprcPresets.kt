@@ -90,18 +90,6 @@ $selector:active {
 }
 """.trimIndent()
 
-private fun faceMaterial(accent: String): Triple<String, String, String> = when (accent.uppercase()) {
-    "#00FFA3", "#4ADE80", "#10B981" -> Triple("#E6F5EC", "#B0DAC0", "#3E664E") // Emerald
-    "#FF2A6D", "#FF3366", "#F43F5E" -> Triple("#FDE8EE", "#EDA3B6", "#73243A") // Crimson Rose
-    "#00E5FF", "#00B0FF", "#0284C7" -> Triple("#E2F4FA", "#93D0E8", "#1E5470") // Cyan Azure
-    "#FFD600", "#FFCC00", "#F59E0B" -> Triple("#FFF5D8", "#ECC875", "#6D4C13") // Solar Amber
-    "#3F8FE0" -> Triple("#E1EEFB", "#92BCE8", "#1C4E7E") // PS Blue
-    "#E6474E" -> Triple("#FCE7E8", "#ECA0A5", "#732025") // PS Red
-    "#E055B8" -> Triple("#FCE7F6", "#EDA5DC", "#732060") // PS Pink
-    "#3FD25A" -> Triple("#E4F8E7", "#98E0A6", "#1F682F") // PS Green
-    else -> Triple("#F3E9CD", "#D8C7A3", "#5C4625")      // Classic Cream
-}
-
 
 private fun facePresetXboxElite(
     control: String,
@@ -1828,11 +1816,10 @@ private fun dpadDirectionPreset(
     style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE
 ): String {
     val glyph = dpadGlyph(control)
-    val accent = when (control.uppercase()) {
-        "DOWN", "RIGHT" -> "#DC2626"
-        else -> "#10B981"
+    val (accent, glow) = when (control.uppercase()) {
+        "DOWN", "RIGHT" -> Pair("#DC2626", "rgba(220, 38, 38, 0.45)")
+        else -> Pair("#10B981", "rgba(16, 185, 129, 0.45)")
     }
-    val glow = "rgba(16, 185, 129, 0.45)"
     return when (style) {
         NxprcPresetStyle.XBOX_ELITE -> dpadDirectionPresetXboxElite(control, glyph, accent, glow)
         NxprcPresetStyle.ARCADE -> dpadDirectionPresetArcade(control, glyph, accent, glow)
@@ -3856,40 +3843,40 @@ ${centeredPress(".system-btn")}
             ?: CategoryType.fromIdentifier(category)
             ?: CategoryManager.findCategoryForControl(control)?.type
 
-        if (catType != null && catType != CategoryType.ABXY) {
-            return when (catType) {
-                CategoryType.DPAD -> when (ctrl) {
-                    ControlKey.DOWN -> dpadDirectionPreset("DOWN", style)
-                    ControlKey.LEFT -> dpadDirectionPreset("LEFT", style)
-                    ControlKey.RIGHT -> dpadDirectionPreset("RIGHT", style)
-                    ControlKey.DPAD -> dpadCrossPreset(style)
-                    else -> dpadDirectionPreset("UP", style)
-                }
-                CategoryType.TRIGGERS ->
-                    if (ctrl == ControlKey.LT) triggerPreset("LT", style) else triggerPreset("RT", style)
-                CategoryType.BUMPERS ->
-                    if (ctrl == ControlKey.LB) bumperPreset("LB", style) else bumperPreset("RB", style)
-                CategoryType.STICKS -> when (ctrl) {
-                    ControlKey.RS -> joystickPreset("RS", style)
-                    ControlKey.LSB -> stickButtonPreset("LSB", style)
-                    ControlKey.RSB -> stickButtonPreset("RSB", style)
-                    ControlKey.LTP -> touchpadPreset("LTP", style)
-                    ControlKey.RTP -> touchpadPreset("RTP", style)
-                    else -> joystickPreset("LS", style)
-                }
-                CategoryType.SYSTEM -> when (ctrl) {
-                    ControlKey.BACK -> systemViewPreset(style)
-                    ControlKey.GUIDE -> systemHomePreset(style)
-                    ControlKey.SHARE -> systemSharePreset(style)
-                    else -> systemMenuPreset(style)
-                }
-                CategoryType.MACROS -> when (ctrl) {
-                    ControlKey.M2 -> macroPreset("M2", style)
-                    ControlKey.M3 -> macroPreset("M3", style)
-                    ControlKey.M4 -> macroPreset("M4", style)
-                    else -> macroPreset(ctrl?.key ?: "M1", style)
-                }
-                CategoryType.ABXY -> getReferenceTemplateInternal(control, "BUTTON", consoleMode, style)
+        when (catType) {
+            CategoryType.DPAD -> return when (ctrl) {
+                ControlKey.DOWN -> dpadDirectionPreset("DOWN", style)
+                ControlKey.LEFT -> dpadDirectionPreset("LEFT", style)
+                ControlKey.RIGHT -> dpadDirectionPreset("RIGHT", style)
+                ControlKey.DPAD -> dpadCrossPreset(style)
+                else -> dpadDirectionPreset("UP", style)
+            }
+            CategoryType.TRIGGERS ->
+                return if (ctrl == ControlKey.LT) triggerPreset("LT", style) else triggerPreset("RT", style)
+            CategoryType.BUMPERS ->
+                return if (ctrl == ControlKey.LB) bumperPreset("LB", style) else bumperPreset("RB", style)
+            CategoryType.STICKS -> return when (ctrl) {
+                ControlKey.RS -> joystickPreset("RS", style)
+                ControlKey.LSB -> stickButtonPreset("LSB", style)
+                ControlKey.RSB -> stickButtonPreset("RSB", style)
+                ControlKey.LTP -> touchpadPreset("LTP", style)
+                ControlKey.RTP -> touchpadPreset("RTP", style)
+                else -> joystickPreset("LS", style)
+            }
+            CategoryType.SYSTEM -> return when (ctrl) {
+                ControlKey.BACK -> systemViewPreset(style)
+                ControlKey.GUIDE -> systemHomePreset(style)
+                ControlKey.SHARE -> systemSharePreset(style)
+                else -> systemMenuPreset(style)
+            }
+            CategoryType.MACROS -> return when (ctrl) {
+                ControlKey.M2 -> macroPreset("M2", style)
+                ControlKey.M3 -> macroPreset("M3", style)
+                ControlKey.M4 -> macroPreset("M4", style)
+                else -> macroPreset(ctrl?.key ?: "M1", style)
+            }
+            CategoryType.ABXY, null -> {
+                // Handled below by specialized ABXY style resolver
             }
         }
 
