@@ -434,13 +434,15 @@ class DesktopSharedPreferences private constructor(
      * Saves the network streaming port (default: 9999).
      */
     fun saveStreamingPort(port: Int) {
-        putInt(KEY_STREAMING_PORT, port)
+        val sanitizedPort = if (port == 9995 || port == 9998 || port !in 1024..65535) DEFAULT_STREAMING_PORT else port
+        putInt(KEY_STREAMING_PORT, sanitizedPort)
     }
 
     /**
      * Loads the configured network streaming port (defaults to 9999).
      */
     fun getStreamingPort(): Int {
-        return getInt(KEY_STREAMING_PORT, DEFAULT_STREAMING_PORT)
+        val port = getInt(KEY_STREAMING_PORT, DEFAULT_STREAMING_PORT)
+        return if (port == 9995 || port == 9998 || port !in 1024..65535) DEFAULT_STREAMING_PORT else port
     }
 }

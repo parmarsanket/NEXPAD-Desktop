@@ -158,7 +158,7 @@ class DesktopViewModel(
     }
 
     fun updateStreamingPort(newPort: Int) {
-        if (newPort in 1024..65535) {
+        if (newPort in 1024..65535 && newPort != 9995 && newPort != 9998) {
             streamingPort = newPort
             prefs.saveStreamingPort(newPort)
             onStreamingPortChanged?.invoke(newPort)

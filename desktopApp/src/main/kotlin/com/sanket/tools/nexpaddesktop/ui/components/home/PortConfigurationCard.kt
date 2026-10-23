@@ -20,6 +20,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lan
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -59,7 +60,8 @@ fun PortConfigurationCard(
 ) {
     var portText by remember(currentPort) { mutableStateOf(currentPort.toString()) }
     val parsedPort = portText.toIntOrNull()
-    val isValid = parsedPort != null && parsedPort in 1024..65535
+    val isReservedPort = parsedPort == 9995 || parsedPort == 9998
+    val isValid = parsedPort != null && parsedPort in 1024..65535 && !isReservedPort
     val isChanged = isValid && parsedPort != currentPort
     val isDefault = currentPort == 9999
 
@@ -120,7 +122,7 @@ fun PortConfigurationCard(
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "UDP gamepad receiver & ADB reverse bridge listening port (Default: 9999)",
+                            text = "UDP gamepad receiver & ADB reverse bridge listening port (Default: 9999 • Reserved: 9995, 9998)",
                             color = NeonPalette.CardIdleText,
                             fontSize = 12.sp
                         )
@@ -143,7 +145,7 @@ fun PortConfigurationCard(
                             .background(Color(0xFF111726))
                             .border(
                                 1.dp,
-                                if (!isValid && portText.isNotBlank()) Color(0xFFEF4444) else Color(0xFF222E4A),
+                                if ((!isValid && portText.isNotBlank()) || isReservedPort) Color(0xFFEF4444) else Color(0xFF222E4A),
                                 RoundedCornerShape(8.dp)
                             )
                             .padding(horizontal = 10.dp),
@@ -170,7 +172,7 @@ fun PortConfigurationCard(
                             ),
                             keyboardActions = KeyboardActions(
                                 onDone = {
-                                    if (isChanged && parsedPort != null) {
+                                    if (isChanged) {
                                         onPortChange(parsedPort)
                                     }
                                 }
@@ -181,7 +183,7 @@ fun PortConfigurationCard(
                     // Save Button
                     Button(
                         onClick = {
-                            if (parsedPort != null) {
+                            if (isChanged) {
                                 onPortChange(parsedPort)
                             }
                         },
@@ -202,8 +204,8 @@ fun PortConfigurationCard(
                         )
                     }
 
-                    // Reset Button (if altered)
-                    if (!isDefault || isChanged) {
+                    // Reset Button (if altered or non-default)
+                    if (!isDefault || isChanged || portText != "9999") {
                         OutlinedButton(
                             onClick = {
                                 portText = "9999"
@@ -226,6 +228,33 @@ fun PortConfigurationCard(
                 }
             }
 
+            // Reserved Port Warning Banner
+            if (isReservedPort) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFFEF4444).copy(alpha = 0.12f))
+                        .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.45f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 12.dp, vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = "Reserved Port Warning",
+                        tint = Color(0xFFEF4444),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "Ports 9995 and 9998 are already used by NEXPAD (${if (parsedPort == 9998) "Auto-Discovery" else "Layout Sync"}) — please do not use them!",
+                        color = Color(0xFFFCA5A5),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
             // Status Row
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -236,10 +265,20 @@ fun PortConfigurationCard(
                     modifier = Modifier
                         .size(7.dp)
                         .clip(CircleShape)
-                        .background(if (isValid) NeonPalette.Green else Color(0xFFEF4444))
+                        .background(
+                            when {
+                                isReservedPort || (!isValid && portText.isNotBlank()) -> Color(0xFFEF4444)
+                                else -> NeonPalette.Green
+                            }
+                        )
                 )
                 Text(
-                    text = if (isValid) "Server listening on 0.0.0.0:$currentPort • Port valid (1024 - 65535)" else "Invalid port! Enter a number between 1024 and 65535",
+                    text = when {
+                        isReservedPort -> "Port $parsedPort is reserved by NEXPAD (Ports 9995 & 9998 are already in use)"
+                        !isValid && portText.isNotBlank() -> "Invalid port! Enter a number between 1024 and 65535"
+                        portText.isBlank() -> "Please enter a valid port number"
+                        else -> "Server listening on 0.0.0.0:$currentPort • Port valid (1024 - 65535)"
+                    },
                     color = if (isValid) NeonPalette.CardIdleText else Color(0xFFEF4444),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium

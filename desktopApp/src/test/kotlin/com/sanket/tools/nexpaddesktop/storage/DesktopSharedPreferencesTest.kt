@@ -233,4 +233,26 @@ class DesktopSharedPreferencesTest {
         val finalPrefs = DesktopSharedPreferences.getCustomInstance(tempFile)
         assertFalse(finalPrefs.loadDeveloperOptionsEnabled())
     }
+
+    @Test
+    fun testStreamingPortPersistenceAndReservedPortGuard() {
+        // Defaults to 9999
+        assertEquals(9999, prefs.getStreamingPort())
+
+        // Save valid custom port
+        prefs.saveStreamingPort(8888)
+        assertEquals(8888, prefs.getStreamingPort())
+
+        // Reserved port 9995 must fallback to default 9999
+        prefs.saveStreamingPort(9995)
+        assertEquals(9999, prefs.getStreamingPort())
+
+        // Reserved port 9998 must fallback to default 9999
+        prefs.saveStreamingPort(9998)
+        assertEquals(9999, prefs.getStreamingPort())
+
+        // Out-of-range port must fallback to default 9999
+        prefs.saveStreamingPort(80)
+        assertEquals(9999, prefs.getStreamingPort())
+    }
 }
