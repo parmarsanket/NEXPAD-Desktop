@@ -8,6 +8,8 @@ import com.sanket.tools.nexpaddesktop.core.di.AppContainer
 import com.sanket.tools.nexpaddesktop.data.repository.SettingsRepository
 import com.sanket.tools.nexpaddesktop.ui.ControllerType
 import com.sanket.tools.nexpaddesktop.utils.AppLogger
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * ViewModel managing home dashboard state, controller type selection,

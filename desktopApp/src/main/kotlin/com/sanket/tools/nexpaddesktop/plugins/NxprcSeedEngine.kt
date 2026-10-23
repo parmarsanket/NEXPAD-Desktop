@@ -375,7 +375,7 @@ object NxprcSeedEngine {
 - **Seed Number [PROCEDURAL-SEED]**: #${profile.seed} (Minecraft-style deterministic generation seed)
 - **Style Codename [CREATIVE-REQUIRED]**: "$styleTitle" (Invent a 2-4 word descriptive style title matching your visual design, e.g. "Simple Btn Style", "Xbox Simple", "Neon Outrun", "Molten Forge")
 - **Full Component Name [GLOBAL-REQUIRED]**: "$fullName" (Format: "<Style Codename> $control #${profile.seed}")
-- **Component ID [GLOBAL-REQUIRED]**: "${profile.componentId}"
+- **Component ID [GLOBAL-REQUIRED]**: "${escapeAttr(profile.componentId)}"
 - **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
 - **Procedural Seed Theme [SEED-DIRECTIVE]**: ${profile.theme}
 - **Procedural Seed Shape [SEED-DIRECTIVE]**: ${profile.shape}
@@ -386,9 +386,9 @@ object NxprcSeedEngine {
 $standardSection
 ### SEED IDENTITY & ANTI-DUPLICATION CONTRACT:
 1. **Root Button Attributes [MANDATORY]**: The root `<button>` element MUST declare:
-   `<button class="$rootClass" data-control="$control" data-category="$category" data-codename="$styleTitle" data-name="$fullName" data-seed="${profile.seed}" id="${profile.componentId}">`
+   `<button class="$rootClass" data-control="$control" data-category="$category" data-codename="$styleTitle" data-name="$fullName" data-seed="${profile.seed}" id="${escapeAttr(profile.componentId)}">`
 2. **Procedural Seed Creativity**: Use Seed #${profile.seed} and its procedural theme, shape, surface texture, and aura lighting to craft a distinct, high-quality controller component.
-3. **Inbuilt Anti-Duplication**: Using unique seeds and ID "${profile.componentId}" guarantees this button has an independent identity and will never overwrite previous designs in NEXPAD when pushed via Wi-Fi.
+3. **Inbuilt Anti-Duplication**: Using unique seeds and ID "${escapeAttr(profile.componentId)}" guarantees this button has an independent identity and will never overwrite previous designs in NEXPAD when pushed via Wi-Fi.
 """.trimIndent()
     }
 
@@ -396,6 +396,9 @@ $standardSection
      * Generates a complete starter HTML template customized for [control]
      * and themed with [seed]'s procedural colors, gradient, and glow aura.
      */
+    private fun escapeAttr(value: String): String =
+        value.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;")
+
     fun generateSeedTemplate(control: String, category: String, seed: Long): String {
         val base = NxprcPresets.getReferenceTemplate(control, category)
         val profile = resolve(control, category, seed)
@@ -412,14 +415,14 @@ $standardSection
             html.replaceFirst("<button", "<button data-seed=\"$seed\"")
         }
         html = if (html.contains("data-codename=")) {
-            html.replace(Regex("""data-codename=["'][^"']*["']"""), "data-codename=\"$styleTitle\"")
+            html.replace(Regex("""data-codename=["'][^"']*["']"""), "data-codename=\"${escapeAttr(styleTitle)}\"")
         } else {
-            html.replaceFirst("<button", "<button data-codename=\"$styleTitle\"")
+            html.replaceFirst("<button", "<button data-codename=\"${escapeAttr(styleTitle)}\"")
         }
         html = if (html.contains("data-name=")) {
-            html.replace(Regex("""data-name=["'][^"']*["']"""), "data-name=\"${profile.skinName}\"")
+            html.replace(Regex("""data-name=["'][^"']*["']"""), "data-name=\"${escapeAttr(profile.skinName)}\"")
         } else {
-            html.replaceFirst("<button", "<button data-name=\"${profile.skinName}\"")
+            html.replaceFirst("<button", "<button data-name=\"${escapeAttr(profile.skinName)}\"")
         }
         val buttonIdRegex = Regex("""(<button\b[^>]*\bid=)["'][^"']*["']""")
         html = if (buttonIdRegex.containsMatchIn(html)) {
@@ -484,18 +487,18 @@ $standardSection
 
         // 2. Update data-codename
         html = if (html.contains("data-codename=")) {
-            html.replace(Regex("""data-codename=["'][^"']*["']"""), "data-codename=\"$styleTitle\"")
+            html.replace(Regex("""data-codename=["'][^"']*["']"""), "data-codename=\"${escapeAttr(styleTitle)}\"")
         } else if (html.contains("data-code-name=")) {
-            html.replace(Regex("""data-code-name=["'][^"']*["']"""), "data-codename=\"$styleTitle\"")
+            html.replace(Regex("""data-code-name=["'][^"']*["']"""), "data-codename=\"${escapeAttr(styleTitle)}\"")
         } else {
-            html.replaceFirst("<button", "<button data-codename=\"$styleTitle\"")
+            html.replaceFirst("<button", "<button data-codename=\"${escapeAttr(styleTitle)}\"")
         }
 
         // 3. Update data-name
         html = if (html.contains("data-name=")) {
-            html.replace(Regex("""data-name=["'][^"']*["']"""), "data-name=\"${profile.skinName}\"")
+            html.replace(Regex("""data-name=["'][^"']*["']"""), "data-name=\"${escapeAttr(profile.skinName)}\"")
         } else {
-            html.replaceFirst("<button", "<button data-name=\"${profile.skinName}\"")
+            html.replaceFirst("<button", "<button data-name=\"${escapeAttr(profile.skinName)}\"")
         }
 
         // 4. Update id

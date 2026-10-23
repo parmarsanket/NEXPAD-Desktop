@@ -6,6 +6,8 @@ import androidx.compose.runtime.setValue
 import com.sanket.tools.nexpaddesktop.core.base.BaseViewModel
 import com.sanket.tools.nexpaddesktop.core.di.AppContainer
 import com.sanket.tools.nexpaddesktop.data.repository.PortRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * ViewModel managing custom network port selection, validation against reserved ports,

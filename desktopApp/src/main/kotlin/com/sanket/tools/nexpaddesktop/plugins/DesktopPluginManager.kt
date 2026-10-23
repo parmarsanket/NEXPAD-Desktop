@@ -386,43 +386,43 @@ object DesktopPluginManager {
             val remoteFileName = "${doc.manifest.id.replace(Regex("[^a-zA-Z0-9_.-]"), "_")}.nxprc"
             val tmpRemotePath = "/data/local/tmp/$remoteFileName"
 
-            // 1. Push to /data/local/tmp/
-            val pushProcess = ProcessBuilder(adbPath, "-s", serial, "push", tempFile.absolutePath, tmpRemotePath)
-                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                .redirectError(ProcessBuilder.Redirect.DISCARD)
-                .start()
-            try { pushProcess.outputStream.close() } catch (_: Throwable) {}
-            val pushFinished = try {
-                pushProcess.waitFor(15, TimeUnit.SECONDS)
+            try {
+                // 1. Push to /data/local/tmp/
+                val pushProcess = ProcessBuilder(adbPath, "-s", serial, "push", tempFile.absolutePath, tmpRemotePath)
+                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                    .redirectError(ProcessBuilder.Redirect.DISCARD)
+                    .start()
+                try { pushProcess.outputStream.close() } catch (_: Throwable) {}
+                val pushFinished = try {
+                    pushProcess.waitFor(15, TimeUnit.SECONDS)
+                } finally {
+                    if (!pushProcess.isAlive) pushProcess.destroy() else pushProcess.destroyForcibly()
+                }
+                if (!pushFinished) {
+                    return@withContext Result.failure(IllegalStateException("ADB push timed out."))
+                }
+                if (pushProcess.exitValue() != 0) {
+                    return@withContext Result.failure(IllegalStateException("ADB push failed with exit code ${pushProcess.exitValue()}."))
+                }
+
+                // 2. Copy into app's private nxp_remote dir using run-as
+                val copyCmd = "run-as com.sanket.tools.nexpad sh -c 'mkdir -p /data/data/com.sanket.tools.nexpad/files/nxp_remote && cp $tmpRemotePath /data/data/com.sanket.tools.nexpad/files/nxp_remote/$remoteFileName'"
+                runAdbCommand(adbPath, "-s", serial, "shell", copyCmd)
+
+                // 3. Fallback: Also try pushing to external app directory
+                val extDir = "/sdcard/Android/data/com.sanket.tools.nexpad/files/nxp_remote"
+                runAdbCommand(adbPath, "-s", serial, "shell", "mkdir -p $extDir && cp $tmpRemotePath $extDir/$remoteFileName")
+
+                // 4. Send targeted broadcasts to tell Android app to reload immediately
+                runAdbCommand(adbPath, "-s", serial, "shell", "am broadcast -a com.sanket.tools.nexpad.RELOAD_REMOTE_COMPONENTS -p com.sanket.tools.nexpad")
+                runAdbCommand(adbPath, "-s", serial, "shell", "am broadcast -a com.sanket.tools.nexpad.RELOAD_COMPONENTS -p com.sanket.tools.nexpad")
+
+                Result.success("Pushed ${doc.manifest.name} (.nxprc) to phone via ADB! (Hot-reloaded)")
             } finally {
-                if (!pushProcess.isAlive) pushProcess.destroy() else pushProcess.destroyForcibly()
+                // Ensure temp files on PC and remote tmp directory are always cleaned up
+                try { runAdbCommand(adbPath, "-s", serial, "shell", "rm -f $tmpRemotePath") } catch (_: Throwable) {}
+                try { tempFile.delete() } catch (_: Throwable) {}
             }
-            if (!pushFinished) {
-                tempFile.delete()
-                return@withContext Result.failure(IllegalStateException("ADB push timed out."))
-            }
-            if (pushProcess.exitValue() != 0) {
-                tempFile.delete()
-                return@withContext Result.failure(IllegalStateException("ADB push failed with exit code ${pushProcess.exitValue()}."))
-            }
-
-            // 2. Copy into app's private nxp_remote dir using run-as
-            val copyCmd = "run-as com.sanket.tools.nexpad sh -c 'mkdir -p /data/data/com.sanket.tools.nexpad/files/nxp_remote && cp $tmpRemotePath /data/data/com.sanket.tools.nexpad/files/nxp_remote/$remoteFileName'"
-            runAdbCommand(adbPath, "-s", serial, "shell", copyCmd)
-
-            // 3. Fallback: Also try pushing to external app directory
-            val extDir = "/sdcard/Android/data/com.sanket.tools.nexpad/files/nxp_remote"
-            runAdbCommand(adbPath, "-s", serial, "shell", "mkdir -p $extDir && cp $tmpRemotePath $extDir/$remoteFileName")
-
-            // 4. Send targeted broadcasts to tell Android app to reload immediately
-            runAdbCommand(adbPath, "-s", serial, "shell", "am broadcast -a com.sanket.tools.nexpad.RELOAD_REMOTE_COMPONENTS -p com.sanket.tools.nexpad")
-            runAdbCommand(adbPath, "-s", serial, "shell", "am broadcast -a com.sanket.tools.nexpad.RELOAD_COMPONENTS -p com.sanket.tools.nexpad")
-
-            // 5. Cleanup temp files on PC and device
-            runAdbCommand(adbPath, "-s", serial, "shell", "rm -f $tmpRemotePath")
-            tempFile.delete()
-
-            Result.success("Pushed ${doc.manifest.name} (.nxprc) to phone via ADB! (Hot-reloaded)")
         } catch (e: Exception) {
             Result.failure(e)
         }
