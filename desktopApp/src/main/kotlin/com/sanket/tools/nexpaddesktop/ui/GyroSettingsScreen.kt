@@ -86,30 +86,36 @@ fun XboxMotionSettingsSection(
             onRecalibrate = onRecalibrate
         )
 
-        // 2. Live 3D Controller & Telemetry Header
-        DashboardHeader(
-            settings = settings,
-            rawGyroX = rawGyroX,
-            rawGyroY = rawGyroY,
-            rawGyroZ = rawGyroZ,
-            rawAccelX = rawAccelX,
-            rawAccelY = rawAccelY,
-            rawAccelZ = rawAccelZ,
-            rawGravityX = rawGravityX,
-            rawGravityY = rawGravityY,
-            rawGravityZ = rawGravityZ,
-            linearAccelX = linearAccelX,
-            linearAccelY = linearAccelY,
-            linearAccelZ = linearAccelZ,
-            rawUncalGyroX = rawUncalGyroX,
-            rawUncalGyroY = rawUncalGyroY,
-            rawUncalGyroZ = rawUncalGyroZ,
-            processedYaw = processedYaw,
-            processedPitch = processedPitch,
-            flightPitchDeg = flightPitchDeg,
-            flightRollDeg = flightRollDeg,
-            flightYawDeg = flightYawDeg
-        )
+        // 2. Live 3D Controller & Telemetry Header (Hidden when motion processing is paused)
+        AnimatedVisibility(
+            visible = settings.enabled,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            DashboardHeader(
+                settings = settings,
+                rawGyroX = rawGyroX,
+                rawGyroY = rawGyroY,
+                rawGyroZ = rawGyroZ,
+                rawAccelX = rawAccelX,
+                rawAccelY = rawAccelY,
+                rawAccelZ = rawAccelZ,
+                rawGravityX = rawGravityX,
+                rawGravityY = rawGravityY,
+                rawGravityZ = rawGravityZ,
+                linearAccelX = linearAccelX,
+                linearAccelY = linearAccelY,
+                linearAccelZ = linearAccelZ,
+                rawUncalGyroX = rawUncalGyroX,
+                rawUncalGyroY = rawUncalGyroY,
+                rawUncalGyroZ = rawUncalGyroZ,
+                processedYaw = processedYaw,
+                processedPitch = processedPitch,
+                flightPitchDeg = flightPitchDeg,
+                flightRollDeg = flightRollDeg,
+                flightYawDeg = flightYawDeg
+            )
+        }
 
         // 3. Expressive 5-Mode Selector Strip
         ExpressiveInputModeSelector(
