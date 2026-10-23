@@ -1668,24 +1668,46 @@ private fun ComponentEditorPane(
             }
         }
 
-        // 2. Copy Feedback Banner (Material 3 Expressive Tonal Pill)
+        // 2. Copy Feedback Banner (Material 3 Expressive Tonal Pill - Persistent Space)
+        var lastBannerText by remember { mutableStateOf("") }
         if (promptCopiedBanner != null) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.16f),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.45f)),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            lastBannerText = promptCopiedBanner
+        }
+        val bannerAlpha by animateFloatAsState(
+            targetValue = if (promptCopiedBanner != null) 1f else 0f,
+            label = "bannerAlpha"
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(if (isShort) 26.dp else 28.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            if (bannerAlpha > 0.001f && lastBannerText.isNotEmpty()) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = bannerAlpha },
+                    color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.16f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.45f)),
+                    shape = RoundedCornerShape(10.dp)
                 ) {
-                    Text(
-                        promptCopiedBanner,
-                        color = Color(0xFFC4B5FD),
-                        fontSize = 11.5.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = lastBannerText,
+                            color = Color(0xFFC4B5FD),
+                            fontSize = if (isShort) 11.sp else 11.5.sp,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }
