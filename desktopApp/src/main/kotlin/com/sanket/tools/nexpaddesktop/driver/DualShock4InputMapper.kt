@@ -96,11 +96,13 @@ class DualShock4InputMapper {
         // 6. Extended Battery & Touchpad Padding
         report.bBatteryLvl = BATTERY_FULL
         report.padding[5] = BATTERY_FULL_SPECIAL
-        report.padding[8] = TOUCH_PACKET_COUNT
-        report.padding[10] = TOUCH_POINT_UP
-        report.padding[14] = TOUCH_POINT_UP
-        report.padding[18] = TOUCH_POINT_UP
-        report.padding[22] = TOUCH_POINT_UP
+        // Touchpad packet count = 0, all touch tracking points flagged as Finger UP (0x80)
+        report.padding[6] = 0x00
+        report.padding[7] = 0x00
+        report.padding[8] = TOUCH_POINT_UP
+        report.padding[12] = TOUCH_POINT_UP
+        report.padding[17] = TOUCH_POINT_UP
+        report.padding[21] = TOUCH_POINT_UP
 
         // 7. IMU Data (Gyroscope & Accelerometer)
         val (calX, calY, calZ) = calibrateGyro(input.gyroX, input.gyroY, input.gyroZ)
@@ -113,13 +115,13 @@ class DualShock4InputMapper {
         val ay = input.accelY * ACCEL_SCALAR
         val az = input.accelZ * ACCEL_SCALAR
 
-        // DS4 body frame:
-        // wAccelX: Lateral (left/right)
-        // wAccelY: Screen normal / Vertical through controller face (+1.0G when resting flat on desk)
-        // wAccelZ: Controller top/bottom (-1.0G when held upright like a gamepad)
-        report.wAccelX = toSafeShort(-ax)
-        report.wAccelY = toSafeShort( az)
-        report.wAccelZ = toSafeShort( ay)
+        // DS4 body frame (matching Sony DualShock 4 hardware resting flat on desk face up):
+        // wAccelX: Lateral right (+ax)
+        // wAccelY: Longitudinal forward (+ay)
+        // wAccelZ: Vertical through controller face (+az, +1.0G resting flat)
+        report.wAccelX = toSafeShort(ax)
+        report.wAccelY = toSafeShort(ay)
+        report.wAccelZ = toSafeShort(az)
 
         return report
     }

@@ -84,7 +84,11 @@ object InputPipeline {
         var finalDpadLeft = input.dpadLeft
         var finalDpadRight = input.dpadRight
 
-        if (activeController == ControllerType.XBOX_360 && gyroSettings.enabled) {
+        val isDs4NativeAim = (activeController == ControllerType.DUALSHOCK_4 
+            && gyroSettings.inputMode == InputMode.VELOCITY 
+            && gyroSettings.xboxTargetStick == XboxTargetStick.NONE)
+
+        if (gyroSettings.enabled && !isDs4NativeAim) {
             if (gyroSettings.inputMode == InputMode.AIR_MOUSE) {
                 // 3D Flight Stick: Direct independent axis routing to Left Stick & Right Stick
                 fun blendFlight(physical: Float, flight: Float): Float {
@@ -261,7 +265,7 @@ object InputPipeline {
             if (processed.gesturePulseA) finalBtnA = true
         }
         
-        val isGated = gyroSettings.activationButtons.isNotEmpty() && !isActivationButtonPressed
+        val isGated = !gyroSettings.enabled || (gyroSettings.activationButtons.isNotEmpty() && !isActivationButtonPressed)
         val finalGyroX = if (isGated) 0f else input.gyroX
         val finalGyroY = if (isGated) 0f else input.gyroY
         val finalGyroZ = if (isGated) 0f else input.gyroZ
