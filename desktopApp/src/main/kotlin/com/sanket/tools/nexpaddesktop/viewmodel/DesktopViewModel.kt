@@ -190,6 +190,8 @@ class DesktopViewModel(
     fun updateRsSensitivityX(value: Float) = gyroViewModel.updateRsSensitivityX(value)
     fun updateRsSensitivityY(value: Float) = gyroViewModel.updateRsSensitivityY(value)
 
+    fun flushSettings() = gyroViewModel.flushSettings()
+
     fun clearCallbacks() {
         homeViewModel.clearCallbacks()
         gyroViewModel.clearCallbacks()

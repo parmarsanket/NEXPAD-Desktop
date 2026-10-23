@@ -232,9 +232,12 @@ object AppBootstrap {
                             }
                         },
                         onFlightAttitude = { pitch, roll, yaw ->
-                            viewModel.flightPitchDeg = pitch
-                            viewModel.flightRollDeg = roll
-                            viewModel.flightYawDeg = yaw
+                            val now = System.currentTimeMillis()
+                            if ((now - lastUiUpdateTime) <= 33L) {
+                                viewModel.flightPitchDeg = pitch
+                                viewModel.flightRollDeg = roll
+                                viewModel.flightYawDeg = yaw
+                            }
                         }
                     )
                 }
@@ -268,6 +271,7 @@ object AppBootstrap {
             connectionCoordinator.start(scope)
 
             onDispose {
+                viewModel.flushSettings()
                 connectionCoordinator.stop()
                 dsuServer.stop()
                 viewModel.clearCallbacks()
@@ -316,7 +320,13 @@ object AppBootstrap {
         }
 
         Window(
-            onCloseRequest = onExit,
+            onCloseRequest = {
+                if (androidx.compose.ui.window.isTraySupported) {
+                    viewModel.minimizeToTray()
+                } else {
+                    onExit()
+                }
+            },
             visible = viewModel.isWindowVisible,
             title = "NEXPAD Desktop",
             icon = appIcon

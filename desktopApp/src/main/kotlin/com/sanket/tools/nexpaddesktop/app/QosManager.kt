@@ -23,8 +23,19 @@ interface WinMMQos : StdCallLibrary {
  */
 object QosManager {
 
+    private var shutdownHookRegistered = false
+
     fun applyWindowsQos() {
         if (!System.getProperty("os.name").lowercase().contains("win")) return
+
+        if (!shutdownHookRegistered) {
+            try {
+                Runtime.getRuntime().addShutdownHook(Thread({
+                    restoreWindowsQos()
+                }, "Nexpad-QoS-ShutdownHook"))
+                shutdownHookRegistered = true
+            } catch (_: Throwable) {}
+        }
 
         // 1. Set Windows Process Priority to HIGH_PRIORITY_CLASS (0x00000080 = 128)
         try {

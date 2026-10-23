@@ -76,6 +76,17 @@ class GyroViewModel(
         updateGyroSettings(updated)
     }
 
+    fun flushSettings() {
+        gyroSaveJob?.cancel()
+        gyroSaveJob = null
+        gyroRepository.saveGyroSettings(gyroSettings)
+    }
+
+    override fun onCleared() {
+        flushSettings()
+        super.onCleared()
+    }
+
     fun clearCallbacks() {
         onRecalibrate = {}
     }
