@@ -86,88 +86,85 @@ fun XboxMotionSettingsSection(
             onRecalibrate = onRecalibrate
         )
 
-        // 2. Live 3D Controller & Telemetry Header (Hidden when motion processing is paused)
+        // Motion Processing Dashboard & Controls (Hidden when motion processing is paused)
         AnimatedVisibility(
             visible = settings.enabled,
             enter = fadeIn() + expandVertically(),
             exit = fadeOut() + shrinkVertically()
         ) {
-            DashboardHeader(
-                settings = settings,
-                rawGyroX = rawGyroX,
-                rawGyroY = rawGyroY,
-                rawGyroZ = rawGyroZ,
-                rawAccelX = rawAccelX,
-                rawAccelY = rawAccelY,
-                rawAccelZ = rawAccelZ,
-                rawGravityX = rawGravityX,
-                rawGravityY = rawGravityY,
-                rawGravityZ = rawGravityZ,
-                linearAccelX = linearAccelX,
-                linearAccelY = linearAccelY,
-                linearAccelZ = linearAccelZ,
-                rawUncalGyroX = rawUncalGyroX,
-                rawUncalGyroY = rawUncalGyroY,
-                rawUncalGyroZ = rawUncalGyroZ,
-                processedYaw = processedYaw,
-                processedPitch = processedPitch,
-                flightPitchDeg = flightPitchDeg,
-                flightRollDeg = flightRollDeg,
-                flightYawDeg = flightYawDeg
-            )
-        }
+            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                // 2. Live 3D Controller & Telemetry Header
+                DashboardHeader(
+                    settings = settings,
+                    rawGyroX = rawGyroX,
+                    rawGyroY = rawGyroY,
+                    rawGyroZ = rawGyroZ,
+                    rawAccelX = rawAccelX,
+                    rawAccelY = rawAccelY,
+                    rawAccelZ = rawAccelZ,
+                    rawGravityX = rawGravityX,
+                    rawGravityY = rawGravityY,
+                    rawGravityZ = rawGravityZ,
+                    linearAccelX = linearAccelX,
+                    linearAccelY = linearAccelY,
+                    linearAccelZ = linearAccelZ,
+                    rawUncalGyroX = rawUncalGyroX,
+                    rawUncalGyroY = rawUncalGyroY,
+                    rawUncalGyroZ = rawUncalGyroZ,
+                    processedYaw = processedYaw,
+                    processedPitch = processedPitch,
+                    flightPitchDeg = flightPitchDeg,
+                    flightRollDeg = flightRollDeg,
+                    flightYawDeg = flightYawDeg
+                )
 
-        // 3. Expressive 5-Mode Selector Strip
-        ExpressiveInputModeSelector(
-            activeMode = settings.inputMode,
-            onSelectMode = { onSettingsChange(settings.copy(inputMode = it)) }
-        )
+                // 3. Expressive 5-Mode Selector Strip
+                ExpressiveInputModeSelector(
+                    activeMode = settings.inputMode,
+                    onSelectMode = { onSettingsChange(settings.copy(inputMode = it)) }
+                )
 
-        // 4. Mode-Specific Configuration Panels (Crossfades smoothly on mode switch)
-        AnimatedVisibility(
-            visible = settings.enabled,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
-        ) {
-            AnimatedContent(
-                targetState = settings.inputMode,
-                transitionSpec = {
-                    fadeIn(spring(stiffness = Spring.StiffnessMediumLow)) togetherWith
-                        fadeOut(spring(stiffness = Spring.StiffnessMedium))
-                },
-                label = "xboxModeSettingsPanel"
-            ) { mode ->
-                val modePalette = NexpadTheme.colors.forMode(mode)
-                when (mode) {
-                    InputMode.VELOCITY -> PrecisionAimingPanel(
-                        config = settings.precisionAiming,
-                        palette = modePalette,
-                        onUpdate = { onSettingsChange(settings.copy(precisionAiming = it)) }
-                    )
+                // 4. Mode-Specific Configuration Panels (Crossfades smoothly on mode switch)
+                AnimatedContent(
+                    targetState = settings.inputMode,
+                    transitionSpec = {
+                        fadeIn(spring(stiffness = Spring.StiffnessMediumLow)) togetherWith
+                            fadeOut(spring(stiffness = Spring.StiffnessMedium))
+                    },
+                    label = "xboxModeSettingsPanel"
+                ) { mode ->
+                    val modePalette = NexpadTheme.colors.forMode(mode)
+                    when (mode) {
+                        InputMode.VELOCITY -> PrecisionAimingPanel(
+                            config = settings.precisionAiming,
+                            palette = modePalette,
+                            onUpdate = { onSettingsChange(settings.copy(precisionAiming = it)) }
+                        )
 
-                    InputMode.ABSOLUTE_TILT -> SteeringWheelPanel(
-                        config = settings.steeringWheel,
-                        palette = modePalette,
-                        onUpdate = { onSettingsChange(settings.copy(steeringWheel = it)) }
-                    )
+                        InputMode.ABSOLUTE_TILT -> SteeringWheelPanel(
+                            config = settings.steeringWheel,
+                            palette = modePalette,
+                            onUpdate = { onSettingsChange(settings.copy(steeringWheel = it)) }
+                        )
 
-                    InputMode.AIR_MOUSE -> FlightStickPanel(
-                        config = settings.flightStick,
-                        palette = modePalette,
-                        onUpdate = { onSettingsChange(settings.copy(flightStick = it)) }
-                    )
+                        InputMode.AIR_MOUSE -> FlightStickPanel(
+                            config = settings.flightStick,
+                            palette = modePalette,
+                            onUpdate = { onSettingsChange(settings.copy(flightStick = it)) }
+                        )
 
-                    InputMode.GESTURE -> CombatGesturesPanel(
-                        config = settings.combatGestures,
-                        palette = modePalette,
-                        onUpdate = { onSettingsChange(settings.copy(combatGestures = it)) }
-                    )
+                        InputMode.GESTURE -> CombatGesturesPanel(
+                            config = settings.combatGestures,
+                            palette = modePalette,
+                            onUpdate = { onSettingsChange(settings.copy(combatGestures = it)) }
+                        )
 
-                    InputMode.RAW_UNCALIBRATED -> RawSiliconPanel(
-                        config = settings.rawSilicon,
-                        palette = modePalette,
-                        onUpdate = { onSettingsChange(settings.copy(rawSilicon = it)) }
-                    )
+                        InputMode.RAW_UNCALIBRATED -> RawSiliconPanel(
+                            config = settings.rawSilicon,
+                            palette = modePalette,
+                            onUpdate = { onSettingsChange(settings.copy(rawSilicon = it)) }
+                        )
+                    }
                 }
             }
         }
