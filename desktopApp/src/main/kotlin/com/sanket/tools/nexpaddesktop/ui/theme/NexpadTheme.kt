@@ -32,6 +32,14 @@ fun NexpadTheme(
     }
 }
 
+/** Backward-compatible theme alias for application root and previews */
+@Composable
+fun NexpadDesktopTheme(
+    content: @Composable () -> Unit
+) {
+    NexpadTheme(content = content)
+}
+
 object NexpadTheme {
     val colors: NexpadExtendedColors
         @Composable

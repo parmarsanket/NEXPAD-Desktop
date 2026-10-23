@@ -3,8 +3,23 @@ package com.sanket.tools.nexpaddesktop.ui.theme
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.platform.Font
 import androidx.compose.ui.unit.sp
+
+val PlusJakartaSans = FontFamily(
+    Font(resource = "fonts/PlusJakartaSans-Regular.ttf", weight = FontWeight.Normal, style = FontStyle.Normal),
+    Font(resource = "fonts/PlusJakartaSans-Medium.ttf", weight = FontWeight.Medium, style = FontStyle.Normal),
+    Font(resource = "fonts/PlusJakartaSans-SemiBold.ttf", weight = FontWeight.SemiBold, style = FontStyle.Normal),
+    Font(resource = "fonts/PlusJakartaSans-Bold.ttf", weight = FontWeight.Bold, style = FontStyle.Normal),
+    Font(resource = "fonts/PlusJakartaSans-ExtraBold.ttf", weight = FontWeight.ExtraBold, style = FontStyle.Normal),
+    Font(resource = "fonts/PlusJakartaSans-ExtraBold.ttf", weight = FontWeight.Black, style = FontStyle.Normal)
+)
+
+val SpaceGrotesk = FontFamily(
+    Font(resource = "fonts/SpaceGrotesk-Medium.ttf", weight = FontWeight.Medium, style = FontStyle.Normal)
+)
 
 val NexpadTypography = Typography(
     // Large Screen / Brand Display
@@ -61,30 +76,31 @@ val NexpadTypography = Typography(
         fontFamily = PlusJakartaSans,
         fontWeight = FontWeight.Normal,
         fontSize = 13.sp,
-        lineHeight = 19.sp
+        lineHeight = 18.sp,
+        letterSpacing = 0.1.sp
     ),
-    // Secondary Descriptions & Slider Labels
     bodySmall = TextStyle(
         fontFamily = PlusJakartaSans,
         fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
-        lineHeight = 16.sp
+        fontSize = 11.sp,
+        lineHeight = 15.sp
     ),
-    // Badges, Mode Pills, FilterChips ("Stick Emulation", "ACTIVE")
+    // Monospace Data Chips & Mini Badges (DSU, Active, Rate)
     labelMedium = TextStyle(
         fontFamily = SpaceGrotesk,
         fontWeight = FontWeight.Bold,
-        fontSize = 11.5.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.5.sp
-    ),
-    // STRICT FLOOR (11.sp): Telemetry Axis Labels, Chips, 3D Viewport Overlays (Replaces 8.sp-9.sp)
-    labelSmall = TextStyle(
-        fontFamily = SpaceGrotesk,
-        fontWeight = FontWeight.SemiBold,
         fontSize = 11.sp,
         lineHeight = 14.sp,
-        letterSpacing = 0.4.sp,
-        fontFeatureSettings = "tnum"
+        letterSpacing = 0.5.sp
+    ),
+    labelSmall = TextStyle(
+        fontFamily = SpaceGrotesk,
+        fontWeight = FontWeight.Medium,
+        fontSize = 10.sp,
+        lineHeight = 12.sp,
+        letterSpacing = 0.4.sp
     )
 )
+
+/** Backward-compatible alias for [NexpadTypography] */
+val Typography = NexpadTypography

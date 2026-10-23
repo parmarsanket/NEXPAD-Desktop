@@ -6,6 +6,88 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import com.sanket.tools.nexpaddesktop.model.InputMode
 
+// ═══════════════════════════════════════════════════════
+//  MATERIAL 3 CYBER-NEON COMPATIBILITY TOKENS
+// ═══════════════════════════════════════════════════════
+val md_theme_dark_primary = Color(0xFF00E5FF)
+val md_theme_dark_onPrimary = Color(0xFF000000)
+val md_theme_dark_primaryContainer = Color(0xFF00B4FF)
+val md_theme_dark_onPrimaryContainer = Color(0xFFFFFFFF)
+val md_theme_dark_secondary = Color(0xFF00E5FF)
+val md_theme_dark_onSecondary = Color(0xFF000000)
+val md_theme_dark_secondaryContainer = Color(0xFF0075FF)
+val md_theme_dark_onSecondaryContainer = Color(0xFFFFFFFF)
+val md_theme_dark_tertiary = Color(0xFFB400FF)
+val md_theme_dark_onTertiary = Color(0xFFFFFFFF)
+val md_theme_dark_tertiaryContainer = Color(0xFF9D00FF)
+val md_theme_dark_onTertiaryContainer = Color(0xFFFFFFFF)
+val md_theme_dark_error = Color(0xFFFF4D4D)
+val md_theme_dark_errorContainer = Color(0xFF93000A)
+val md_theme_dark_onError = Color(0xFF690005)
+val md_theme_dark_onErrorContainer = Color(0xFFFFDAD6)
+val md_theme_dark_background = Color(0xFF070B14)
+val md_theme_dark_onBackground = Color(0xFFFFFFFF)
+val md_theme_dark_surface = Color(0xFF0E1524)
+val md_theme_dark_onSurface = Color(0xFFFFFFFF)
+val md_theme_dark_surfaceVariant = Color(0xFF1A2135)
+val md_theme_dark_onSurfaceVariant = Color(0xFFC4C7D0)
+val md_theme_dark_outline = Color(0xFF859398)
+val md_theme_dark_inverseOnSurface = Color(0xFF0E1524)
+val md_theme_dark_inverseSurface = Color(0xFFFFFFFF)
+val md_theme_dark_inversePrimary = Color(0xFF00E5FF)
+val md_theme_dark_surfaceTint = Color(0xFF00E5FF)
+val md_theme_dark_outlineVariant = Color(0xFF1A2135)
+val md_theme_dark_scrim = Color(0xFF000000)
+
+// ═══════════════════════════════════════════════════════
+//  NEON PALETTE — Core Brand Tokens
+// ═══════════════════════════════════════════════════════
+object NeonPalette {
+    val Cyan = Color(0xFF00E5FF)
+    val Green = Color(0xFF39FF14)
+    val Purple = Color(0xFFB400FF)
+    val Red = Color(0xFFFF3366)
+    val Amber = Color(0xFFFFB300)
+    val Blue = Color(0xFF007FFF)
+    val Magenta = Color(0xFFFF007F)
+    val LightBlue = Color(0xFF00B4FF)
+    val PureWhite = Color(0xFFFFFFFF)
+    val MutedText = Color(0xFF859398)
+
+    // Make in India Tricolor & Lion Tokens (1:1 parity with Android)
+    val TricolorSaffron = Color(0xFFFF9933)
+    val TricolorGreen = Color(0xFF138808)
+    val LionBodyTop = Color(0xFF131D31)
+    val LionBodyBottom = Color(0xFF090E1A)
+
+    // Background & Card surfaces (1:1 parity with Android NeonPalette)
+    val DarkCard = Color(0xFF141923)
+    val BorderDark = Color(0x3300E5FF)
+    val PanelBgTop = Color(0xFF0E1524)
+    val PanelBgBottom = Color(0xFF070B14)
+    val CardIdleBg = Color(0xFF111111)
+    val CardIdleBorder = Color(0xFF333333)
+    val CardIdleText = Color(0xFF888888)
+    val ConnectedDot = Color(0xFF34D399)
+
+    // Signature NEXPAD Brand Gradient Tokens (PureWhite -> Cyan -> LightBlue -> Purple)
+    val BrandGradient = listOf(
+        PureWhite,
+        Cyan,
+        LightBlue,
+        Purple
+    )
+
+    /** Cyan→Purple gradient used for all "selected" borders */
+    val GradientBorder = listOf(Cyan, Purple)
+
+    /** Subtle tint fill for "selected" backgrounds: dark blue → dark purple at ~7% */
+    val SelectedFillGradient = listOf(
+        Color(0xFF0D2847).copy(alpha = 0.07f),
+        Color(0xFF1A0A2E).copy(alpha = 0.07f)
+    )
+}
+
 /**
  * 1. Core Material 3 Tonal Palette (Deep Cyber-Slate Hierarchy)
  * Every surface step is slightly lighter and cooler to create natural depth without borders.
