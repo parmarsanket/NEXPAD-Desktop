@@ -290,5 +290,40 @@ object InputPipeline {
             gyroZ = finalGyroZ
         )
     }
+
+    /**
+     * Processes gamepad input and dispatches the translated state directly to the [IGamepadDriver]
+     * and optional [com.sanket.tools.nexpaddesktop.connection.wifi.DsuServer] instance.
+     */
+    fun processAndDispatch(
+        input: GamepadInput,
+        driver: IGamepadDriver?,
+        dsuServer: com.sanket.tools.nexpaddesktop.connection.wifi.DsuServer? = null,
+        activeController: ControllerType,
+        gyroProcessor: GyroProcessor,
+        gyroSettings: GyroSettings,
+        lsSensitivityX: Float = gyroSettings.lsSensitivityX,
+        lsSensitivityY: Float = gyroSettings.lsSensitivityY,
+        rsSensitivityX: Float = gyroSettings.rsSensitivityX,
+        rsSensitivityY: Float = gyroSettings.rsSensitivityY,
+        onProcessedAngles: (yawDps: Float, pitchDps: Float) -> Unit = { _, _ -> },
+        onFlightAttitude: (pitchDeg: Float, rollDeg: Float, yawDeg: Float) -> Unit = { _, _, _ -> }
+    ): GamepadInput {
+        val processed = processInput(
+            input = input,
+            activeController = activeController,
+            gyroProcessor = gyroProcessor,
+            gyroSettings = gyroSettings,
+            lsSensitivityX = lsSensitivityX,
+            lsSensitivityY = lsSensitivityY,
+            rsSensitivityX = rsSensitivityX,
+            rsSensitivityY = rsSensitivityY,
+            onProcessedAngles = onProcessedAngles,
+            onFlightAttitude = onFlightAttitude
+        )
+        driver?.updateInput(processed)
+        dsuServer?.updateInput(processed)
+        return processed
+    }
 }
 
