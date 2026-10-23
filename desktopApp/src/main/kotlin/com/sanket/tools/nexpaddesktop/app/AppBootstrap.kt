@@ -321,13 +321,7 @@ object AppBootstrap {
         }
 
         Window(
-            onCloseRequest = {
-                if (androidx.compose.ui.window.isTraySupported) {
-                    viewModel.minimizeToTray()
-                } else {
-                    onExit()
-                }
-            },
+            onCloseRequest = onExit,
             visible = viewModel.isWindowVisible,
             title = "NEXPAD Desktop",
             icon = appIcon
