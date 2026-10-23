@@ -181,12 +181,26 @@ private fun MotionMasterControlBar(
     onRecalibrate: () -> Unit
 ) {
     var justCalibrated by remember { mutableStateOf(false) }
+    var justReset by remember { mutableStateOf(false) }
 
     LaunchedEffect(justCalibrated) {
         if (justCalibrated) {
             delay(2000L)
             justCalibrated = false
         }
+    }
+
+    LaunchedEffect(justReset) {
+        if (justReset) {
+            delay(2000L)
+            justReset = false
+        }
+    }
+
+    val handleResetAllDefaults = {
+        onSettingsChange(GyroSettings.DEFAULT)
+        onRecalibrate()
+        justReset = true
     }
 
     Surface(
@@ -199,7 +213,7 @@ private fun MotionMasterControlBar(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                val isNarrow = maxWidth < 600.dp
+                val isNarrow = maxWidth < 760.dp
 
                 // Morphing Recalibrate Button with 2-second confirmation feedback
                 val calButtonColor by animateColorAsState(
@@ -211,6 +225,18 @@ private fun MotionMasterControlBar(
                     targetValue = if (justCalibrated) NexpadTheme.colors.statusConnected
                     else MaterialTheme.colorScheme.onSurface,
                     label = "calBtnFg"
+                )
+
+                // Morphing Reset All Defaults Button with 2-second confirmation feedback
+                val resetBtnColor by animateColorAsState(
+                    targetValue = if (justReset) NexpadTheme.colors.statusConnected.copy(alpha = 0.2f)
+                    else MaterialTheme.colorScheme.surfaceContainerHigh,
+                    label = "resetBtnBg"
+                )
+                val resetContentColor by animateColorAsState(
+                    targetValue = if (justReset) NexpadTheme.colors.statusConnected
+                    else MaterialTheme.colorScheme.onSurface,
+                    label = "resetBtnFg"
                 )
 
                 if (isNarrow) {
@@ -235,36 +261,63 @@ private fun MotionMasterControlBar(
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "Real-time 200Hz sensor translation",
+                                    text = "Real-time 200Hz sensor translation into virtual Xbox 360 inputs",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
 
-                        FilledTonalButton(
-                            onClick = {
-                                onRecalibrate()
-                                justCalibrated = true
-                            },
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = calButtonColor,
-                                contentColor = calContentColor
-                            ),
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(
-                                imageVector = if (justCalibrated) Icons.Default.Check else Icons.Default.Refresh,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (justCalibrated) "Zero Baseline Locked" else "Recalibrate Zero",
-                                style = MaterialTheme.typography.labelMedium,
-                                maxLines = 1,
-                                softWrap = false
-                            )
+                            FilledTonalButton(
+                                onClick = handleResetAllDefaults,
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = resetBtnColor,
+                                    contentColor = resetContentColor
+                                ),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = if (justReset) Icons.Default.Check else Icons.Default.RestartAlt,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (justReset) "Defaults Applied" else "Reset Defaults",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+
+                            FilledTonalButton(
+                                onClick = {
+                                    onRecalibrate()
+                                    justCalibrated = true
+                                },
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = calButtonColor,
+                                    contentColor = calContentColor
+                                ),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = if (justCalibrated) Icons.Default.Check else Icons.Default.Refresh,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (justCalibrated) "Zero Locked" else "Recalibrate Zero",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
                         }
                     }
                 } else {
@@ -300,28 +353,54 @@ private fun MotionMasterControlBar(
                             }
                         }
 
-                        FilledTonalButton(
-                            onClick = {
-                                onRecalibrate()
-                                justCalibrated = true
-                            },
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = calButtonColor,
-                                contentColor = calContentColor
-                            )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = if (justCalibrated) Icons.Default.Check else Icons.Default.Refresh,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (justCalibrated) "Zero Baseline Locked" else "Recalibrate Zero",
-                                style = MaterialTheme.typography.labelMedium,
-                                maxLines = 1,
-                                softWrap = false
-                            )
+                            FilledTonalButton(
+                                onClick = handleResetAllDefaults,
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = resetBtnColor,
+                                    contentColor = resetContentColor
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = if (justReset) Icons.Default.Check else Icons.Default.RestartAlt,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (justReset) "Xbox 360 Defaults Applied" else "Reset All Defaults",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+
+                            FilledTonalButton(
+                                onClick = {
+                                    onRecalibrate()
+                                    justCalibrated = true
+                                },
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = calButtonColor,
+                                    contentColor = calContentColor
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = if (justCalibrated) Icons.Default.Check else Icons.Default.Refresh,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (justCalibrated) "Zero Baseline Locked" else "Recalibrate Zero",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
                         }
                     }
                 }
@@ -352,6 +431,7 @@ private fun MotionMasterControlBar(
                     )
                 }
 
+                PresetPill("Default (Xbox 360)") { handleResetAllDefaults() }
                 PresetPill("FPS Aiming") { onSettingsChange(GyroSettings.FPS_PRESET) }
                 PresetPill("Sniper Precision") { onSettingsChange(GyroSettings.PRECISION_PRESET) }
                 PresetPill("Sim Racing") { onSettingsChange(GyroSettings.RACING_PRESET) }
