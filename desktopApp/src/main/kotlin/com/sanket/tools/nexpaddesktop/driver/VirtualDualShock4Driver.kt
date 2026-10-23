@@ -36,7 +36,7 @@ class VirtualDualShock4Driver(
         const val DS4_PID: Short = 0x05C4
     }
 
-    override fun connect() = synchronized(this) {
+    override fun connect(): Unit = synchronized(this) {
         // Prevent memory leaks during retry loops
         disconnect()
 
@@ -60,7 +60,10 @@ class VirtualDualShock4Driver(
             lib.vigem_target_set_pid(target, DS4_PID)
 
             // 5. Plug Device Into OS
-            lib.vigem_target_add(client, target)
+            val addResult = lib.vigem_target_add(client, target)
+            if (addResult != 0x20000000) {
+                throw Exception("Failed to add target to ViGEm bus: 0x${addResult.toString(16)}")
+            }
 
             // 6. Register Native Callbacks for Rumble and Lightbar
             notificationCallback = object : ViGEmClientLibrary.PVIGEM_DS4_NOTIFICATION {
@@ -69,7 +72,7 @@ class VirtualDualShock4Driver(
                     target: Pointer?,
                     largeMotor: Byte,
                     smallMotor: Byte,
-                    lightbarColor: Int,
+                    lightbarColor: ViGEmClientLibrary.VIGEM_DS4_LIGHTBAR_COLOR.ByValue,
                     userData: Pointer?
                 ) {
                     try {
@@ -90,13 +93,21 @@ class VirtualDualShock4Driver(
             println("✅ [DRIVER] Virtual DualShock 4 Controller mounted successfully into ViGEm Bus")
             println("⏳ [IMU CALIBRATION] Auto-calibrating Gyroscope... Keep device steady for ~2s")
 
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             System.err.println("⚠️ ViGEm DS4 init failed: ${e.message}")
             isConnected = false
+            target?.let { t ->
+                try { ViGEmClientLibrary.INSTANCE.vigem_target_free(t) } catch (_: Throwable) {}
+                target = null
+            }
+            client?.let { cl ->
+                try { ViGEmClientLibrary.INSTANCE.vigem_disconnect(cl); ViGEmClientLibrary.INSTANCE.vigem_free(cl) } catch (_: Throwable) {}
+                client = null
+            }
         }
     }
 
-    override fun disconnect() = synchronized(this) {
+    override fun disconnect(): Unit = synchronized(this) {
         val lib = ViGEmClientLibrary.INSTANCE
         target?.let { t ->
             try {
@@ -143,7 +154,7 @@ class VirtualDualShock4Driver(
         }
     }
 
-    override fun recalibrate() = synchronized(this) {
+    override fun recalibrate(): Unit = synchronized(this) {
         mapper.reset()
         println("⏳ [IMU CALIBRATION] DualShock 4 gyroscope bias reset without reconnecting target.")
     }

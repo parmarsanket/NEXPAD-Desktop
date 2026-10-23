@@ -21,6 +21,17 @@ class GamepadDriverManager(
         private set
 
     private var connectionJob: Job? = null
+    private val switchLock = Any()
+
+    init {
+        try {
+            Runtime.getRuntime().addShutdownHook(Thread({
+                try {
+                    disconnect()
+                } catch (_: Throwable) {}
+            }, "Nexpad-GamepadDriver-ShutdownHook"))
+        } catch (_: Throwable) {}
+    }
 
     val isDriverConnected: Boolean
         get() = activeDriver?.isDriverConnected() ?: false
@@ -28,12 +39,13 @@ class GamepadDriverManager(
     /**
      * Switches the active virtual controller to [controllerType], cleanly disconnecting
      * the old driver, instantiating the new one, and initiating connection.
+     * Synchronized to prevent ghost controllers when rapidly toggling.
      */
     fun switchController(
         controllerType: ControllerType,
         scope: CoroutineScope,
         onStateChanged: (Boolean) -> Unit = {}
-    ) {
+    ) = synchronized(switchLock) {
         connectionJob?.cancel()
         connectionJob = null
 
@@ -43,7 +55,7 @@ class GamepadDriverManager(
         val driver = GamepadDriverFactory.createDriver(controllerType, onRumble)
         try {
             driver.connect()
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("⚠️ [GamepadDriverManager] Initial connect failed: ${e.message}")
         }
         activeDriver = driver
@@ -55,7 +67,7 @@ class GamepadDriverManager(
                 delay(2000)
                 try {
                     driver.connect()
-                } catch (_: Exception) {}
+                } catch (_: Throwable) {}
                 onStateChanged(driver.isDriverConnected())
             }
         }
@@ -78,7 +90,7 @@ class GamepadDriverManager(
     /**
      * Disconnects and cleans up the active driver session.
      */
-    fun disconnect() {
+    fun disconnect() = synchronized(switchLock) {
         connectionJob?.cancel()
         connectionJob = null
         activeDriver?.disconnect()

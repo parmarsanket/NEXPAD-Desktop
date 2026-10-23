@@ -33,7 +33,7 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
     private var notificationCallback: ViGEmClientLibrary.PVIGEM_X360_NOTIFICATION? = null
     private val cachedReport = XUSBReport()
 
-    override fun connect() = synchronized(this) {
+    override fun connect(): Unit = synchronized(this) {
         // Prevent memory leaks during retry loops: completely clear old state before attempting
         disconnect()
 
@@ -41,21 +41,23 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
             val lib = ViGEmClientLibrary.INSTANCE
             
             // 1. Allocate Master Client
-            client = lib.vigem_alloc()
-            if (client == null) throw Exception("Failed to allocate ViGEm Client")
+            client = lib.vigem_alloc() ?: throw Exception("Failed to allocate ViGEm Client")
             
             // 2. Connect to Bus
             // ViGEmClient returns 0x20000000 (536870912) for SUCCESS (VIGEM_ERROR_NONE)
             val connectResult = lib.vigem_connect(client)
             if (connectResult != 0x20000000) {
-                throw Exception("Failed to connect to ViGEm Bus. Ensure it is installed. Error: $connectResult")
+                throw Exception("Failed to connect to ViGEm Bus. Ensure it is installed. Error: 0x${connectResult.toString(16)}")
             }
             
             // 3. Allocate Virtual Device Target
-            target = lib.vigem_target_x360_alloc()
+            target = lib.vigem_target_x360_alloc() ?: throw Exception("Failed to allocate ViGEm X360 Target")
             
             // 4. Plug Device Into OS (Triggers Windows USB insertion sound)
-            lib.vigem_target_add(client, target)
+            val addResult = lib.vigem_target_add(client, target)
+            if (addResult != 0x20000000) {
+                throw Exception("Failed to plug in X360 Target. Error: 0x${addResult.toString(16)}")
+            }
             
             // 5. Register Rumble Callbacks
             notificationCallback = object : ViGEmClientLibrary.PVIGEM_X360_NOTIFICATION {
@@ -72,9 +74,13 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
                     ledNumber: Byte, 
                     userData: Pointer?
                 ) {
-                    val leftSpeed = largeMotor.toInt() and 0xFF
-                    val rightSpeed = smallMotor.toInt() and 0xFF
-                    onRumble(GamepadFeedback(leftSpeed, rightSpeed))
+                    try {
+                        val leftSpeed = largeMotor.toInt() and 0xFF
+                        val rightSpeed = smallMotor.toInt() and 0xFF
+                        onRumble(GamepadFeedback(leftSpeed, rightSpeed))
+                    } catch (t: Throwable) {
+                        System.err.println("⚠️ Error in X360 notification callback: ${t.message}")
+                    }
                 }
             }
             
@@ -82,14 +88,25 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
             
             isConnected = true
             println("✅ [DRIVER] Virtual Xbox 360 Controller mounted successfully into ViGEm Bus")
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             System.err.println("⚠️ ViGEm init failed: ${e.message}")
             println("⚠️ Falling back to MOCK driver mode (virtual controller inputs will not work in games).")
             isConnected = false
+            target?.let { t ->
+                try { ViGEmClientLibrary.INSTANCE.vigem_target_free(t) } catch (_: Throwable) {}
+                target = null
+            }
+            client?.let { c ->
+                try {
+                    ViGEmClientLibrary.INSTANCE.vigem_disconnect(c)
+                    ViGEmClientLibrary.INSTANCE.vigem_free(c)
+                } catch (_: Throwable) {}
+                client = null
+            }
         }
     }
 
-    override fun disconnect() = synchronized(this) {
+    override fun disconnect(): Unit = synchronized(this) {
         val lib = ViGEmClientLibrary.INSTANCE
         target?.let { t ->
             try {
@@ -101,7 +118,7 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
                 }
                 // Free Native Memory Pointers
                 lib.vigem_target_free(t)
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 System.err.println("⚠️ Xbox target disconnect error: ${e.message}")
             } finally {
                 target = null
@@ -112,7 +129,7 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
             try {
                 lib.vigem_disconnect(c)
                 lib.vigem_free(c)
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 System.err.println("⚠️ Xbox client disconnect error: ${e.message}")
             } finally {
                 client = null
@@ -133,13 +150,13 @@ class VirtualGamepadDriver(private val onRumble: (GamepadFeedback) -> Unit = {})
             try {
                 // 2. Submit C-Struct to Windows Kernel
                 ViGEmClientLibrary.INSTANCE.vigem_target_x360_update(client, target, report)
-            } catch (e: Exception) { 
+            } catch (e: Throwable) { 
                 System.err.println("⚠️ Xbox input update error: ${e.message}") 
             }
         }
     }
 
-    override fun recalibrate() = synchronized(this) {
+    override fun recalibrate(): Unit = synchronized(this) {
         // Xbox 360 virtual device does not have gyro bias state
     }
 

@@ -292,17 +292,15 @@ class AdbBridgeManager(
             val p = ProcessBuilder(
                 adbPath, "-s", serial,
                 "reverse", "--remove", "localabstract:$ABSTRACT_SOCKET_NAME"
-            ).start()
+            ).redirectOutput(Redirect.DISCARD)
+             .redirectError(Redirect.DISCARD)
+             .start()
+
             try { p.outputStream.close() } catch (_: Throwable) {}
-            try {
-                if (!p.waitFor(5, TimeUnit.SECONDS)) {
-                    p.destroyForcibly()
-                } else {
-                    p.destroy()
-                }
-            } finally {
-                try { p.inputStream.close() } catch (_: Throwable) {}
-                try { p.errorStream.close() } catch (_: Throwable) {}
+            if (!p.waitFor(5, TimeUnit.SECONDS)) {
+                p.destroyForcibly()
+            } else {
+                p.destroy()
             }
             println("[ADB/Bridge] Removed adb reverse rule for $serial")
         } catch (_: Exception) {}
@@ -416,17 +414,19 @@ class AdbBridgeManager(
                             receivedInWindow = 0
                         }
 
-                        // IMMEDIATE INLINE ECHO: Send echo back to phone instantly with zero thread hop or channel delay!
-                        synchronized(outLock) {
-                            NexpadProtocol.encodeFeedback(
-                                feedback = currentFeedback,
-                                echoSequenceNumber = gamepadInput.sequenceNumber,
-                                packetLossByte = latestLossPctByte.get().toByte(),
-                                out = echoBytes,
-                                offset = 0
-                            )
-                            out.write(echoBytes)
-                            out.flush()
+                        // Decimating by 2 prevents TCP socket buffer contention while maintaining ~100Hz RTT updates
+                        if (packetCount == 1 || packetCount % 2 == 0) {
+                            synchronized(outLock) {
+                                NexpadProtocol.encodeFeedback(
+                                    feedback = currentFeedback,
+                                    echoSequenceNumber = gamepadInput.sequenceNumber,
+                                    packetLossByte = latestLossPctByte.get().toByte(),
+                                    out = echoBytes,
+                                    offset = 0
+                                )
+                                out.write(echoBytes)
+                                out.flush()
+                            }
                         }
                     } else if (delta < -100) {
                         println("🔄 [ADB/Bridge] Large negative sequence delta ($delta)! Client stream resynced to seq ${gamepadInput.sequenceNumber}.")

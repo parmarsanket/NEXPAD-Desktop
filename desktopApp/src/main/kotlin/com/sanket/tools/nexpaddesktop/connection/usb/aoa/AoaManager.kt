@@ -47,6 +47,7 @@ class AoaManager {
     }
 
     private var context: Context? = null
+    @Volatile
     private var currentState: AoaState = AoaState.Idle
 
     fun onDriverInstallStarted() {
@@ -141,7 +142,7 @@ class AoaManager {
                         lastDetectedPhoneName = aoaCandidate.friendlyName
                     }
                     val elevationRequired = processAoaDevice(aoaCandidate)
-                    if (elevationRequired) {
+                    if (elevationRequired && !userDismissedElevation) {
                         onDriverNeedChanged?.invoke(true, aoaCandidate.vid, aoaCandidate.pid, null)
                     } else {
                         onDriverNeedChanged?.invoke(false, null, null, null)
@@ -156,7 +157,7 @@ class AoaManager {
                         lastDetectedPhoneName = androidCandidate.friendlyName
                     }
                     val elevationRequired = processAndroidDevice(androidCandidate)
-                    if (elevationRequired) {
+                    if (elevationRequired && !userDismissedElevation) {
                         onDriverNeedChanged?.invoke(true, androidCandidate.vid, androidCandidate.pid, androidCandidate.mtpInterfaceNumber)
                     } else {
                         onDriverNeedChanged?.invoke(false, null, null, null)
@@ -285,6 +286,11 @@ class AoaManager {
     }
     
     fun cleanup() {
+        context?.let {
+            try {
+                LibUsb.exit(it)
+            } catch (_: Throwable) {}
+        }
         context = null
     }
 }

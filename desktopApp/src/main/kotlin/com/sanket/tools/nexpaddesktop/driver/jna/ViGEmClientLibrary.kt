@@ -61,7 +61,7 @@ interface ViGEmClientLibrary : Library {
             Target: Pointer?,
             LargeMotor: Byte,
             SmallMotor: Byte,
-            LightbarColor: Int,
+            LightbarColor: VIGEM_DS4_LIGHTBAR_COLOR.ByValue,
             UserData: Pointer?
         )
     }
