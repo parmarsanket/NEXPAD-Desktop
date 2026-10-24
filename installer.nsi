@@ -203,6 +203,7 @@ SectionEnd
 !insertmacro MUI_UNFUNCTION_DESCRIPTION_END
 
 Function un.onUninstSuccess
+  IfSilent end
   StrCmp $DriverUninstalled "1" 0 end
     MessageBox MB_YESNO|MB_ICONEXCLAMATION "The ViGEmBus Virtual Controller Driver was uninstalled.$\r$\n$\r$\nWindows strictly requires a system restart to fully remove kernel drivers from memory before they can be reinstalled in the future.$\r$\n$\r$\nWould you like to restart your computer now to flush the driver from RAM?" IDYES reboot IDNO end
     reboot:
