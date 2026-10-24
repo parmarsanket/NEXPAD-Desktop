@@ -1,3 +1,4 @@
+import java.security.MessageDigest
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
@@ -97,12 +98,24 @@ tasks.register<Exec>("packageReleaseExe") {
 
     doLast {
         if (setupExeFile.exists()) {
+            val md = MessageDigest.getInstance("SHA-256")
+            setupExeFile.inputStream().use { fis ->
+                val buffer = ByteArray(65536)
+                var read: Int
+                while (fis.read(buffer).also { read = it } != -1) {
+                    md.update(buffer, 0, read)
+                }
+            }
+            val sha256 = md.digest().joinToString("") { b -> "%02X".format(b) }
+            println("🔑 [SHA-256 CHECKSUM]: $sha256")
             if (desktopReleaseDir.exists()) {
                 setupExeFile.copyTo(desktopReleaseSetupFile, overwrite = true)
+                File(desktopReleaseDir, "NEXPAD_Desktop_Setup.exe.sha256").writeText("$sha256 *NEXPAD_Desktop_Setup.exe\n")
                 println("📦 [RELEASE SETUP] Successfully copied official installer to: ${desktopReleaseSetupFile.absolutePath}")
             }
             if (playStoreSetupFile.parentFile.exists()) {
                 setupExeFile.copyTo(playStoreSetupFile, overwrite = true)
+                File(playStoreSetupFile.parentFile, "NEXPAD_Desktop_Setup.exe.sha256").writeText("$sha256 *NEXPAD_Desktop_Setup.exe\n")
                 println("📦 [RELEASE SETUP] Successfully copied official installer to: ${playStoreSetupFile.absolutePath}")
             }
         }
