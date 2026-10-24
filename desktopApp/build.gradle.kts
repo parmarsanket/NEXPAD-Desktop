@@ -85,6 +85,8 @@ val setupExeFile = rootProject.file("installer_build/NEXPAD_Desktop_Setup.exe")
 val playStoreSetupFile = rootProject.file("../NEXPAD_PlayStore_Assets/NEXPAD_Desktop_Setup.exe")
 val desktopReleaseDir = rootProject.file("../Desktop_Release_v1.0.0")
 val desktopReleaseSetupFile = rootProject.file("../Desktop_Release_v1.0.0/NEXPAD_Desktop_Setup.exe")
+val microsoftStoreDir = rootProject.file("../Microsoft_Store_Release_v1.0.0")
+val microsoftStoreSetupFile = rootProject.file("../Microsoft_Store_Release_v1.0.0/NEXPAD_Desktop_Setup.exe")
 val installerDir = rootProject.projectDir
 
 tasks.register<Exec>("packageReleaseExe") {
@@ -141,7 +143,8 @@ tasks.register<Exec>("packageReleaseExe") {
 
         val destinations = listOf(
             desktopReleaseSetupFile,
-            playStoreSetupFile
+            playStoreSetupFile,
+            microsoftStoreSetupFile
         )
 
         destinations.forEach { destination ->
