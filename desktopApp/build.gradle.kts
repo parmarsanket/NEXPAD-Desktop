@@ -80,10 +80,35 @@ compose.desktop {
     }
 }
 
-tasks.register<Exec>("buildInstaller") {
+val nsisPath = "C:\\Program Files (x86)\\NSIS\\makensis.exe"
+val setupExeFile = rootProject.file("installer_build/NEXPAD_Desktop_Setup.exe")
+val destinationSetupFile = rootProject.file("../NEXPAD_PlayStore_Assets/NEXPAD_Desktop_Setup.exe")
+val installerDir = rootProject.projectDir
+
+tasks.register<Exec>("packageReleaseExe") {
     group = "distribution"
-    description = "Packages release distribution and compiles the official NSIS setup installer."
+    description = "Packages release distribution, builds the official NSIS setup installer, and copies it to NEXPAD_PlayStore_Assets."
     dependsOn("createReleaseDistributable")
-    workingDir = rootProject.projectDir
-    commandLine("C:\\Program Files (x86)\\NSIS\\makensis.exe", "installer.nsi")
+    notCompatibleWithConfigurationCache("Executes external NSIS compiler and file synchronization")
+    workingDir = installerDir
+    commandLine(nsisPath, "installer.nsi")
+
+    doLast {
+        if (setupExeFile.exists() && destinationSetupFile.parentFile.exists()) {
+            setupExeFile.copyTo(destinationSetupFile, overwrite = true)
+            println("📦 [RELEASE SETUP] Successfully copied official installer to: ${destinationSetupFile.absolutePath}")
+        }
+    }
+}
+
+tasks.register("packageExe") {
+    group = "distribution"
+    description = "Alias for packageReleaseExe."
+    dependsOn("packageReleaseExe")
+}
+
+tasks.register("buildInstaller") {
+    group = "distribution"
+    description = "Alias for packageReleaseExe."
+    dependsOn("packageReleaseExe")
 }
