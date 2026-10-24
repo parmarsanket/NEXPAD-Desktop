@@ -18,8 +18,8 @@ Var DriverUninstalled
 VIProductVersion "1.0.0.0"
 VIAddVersionKey "ProductName" "NEXPAD Desktop"
 VIAddVersionKey "Comments" "Official Windows Companion for NEXPAD Virtual Gamepad"
-VIAddVersionKey "CompanyName" "Sanket Parmar"
-VIAddVersionKey "LegalCopyright" "Copyright 2026 Sanket Parmar"
+VIAddVersionKey "CompanyName" "Sanket Tools"
+VIAddVersionKey "LegalCopyright" "Copyright 2026 Sanket Tools"
 VIAddVersionKey "FileDescription" "NEXPAD Desktop Setup"
 VIAddVersionKey "FileVersion" "1.0.0.0"
 VIAddVersionKey "ProductVersion" "1.0.0.0"
@@ -110,8 +110,7 @@ Section "Install"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NEXPAD" "UninstallString" '"$INSTDIR\uninstall.exe"'
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NEXPAD" "DisplayIcon" '"$INSTDIR\NEXPAD Desktop.exe"'
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NEXPAD" "DisplayVersion" "1.0.0"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NEXPAD" "Publisher" "Sanket Parmar"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NEXPAD" "Contact" "Sanket Parmar"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NEXPAD" "Publisher" "Sanket Tools"
 
   ; Add Windows Firewall exceptions so the phone can communicate with this app
   DetailPrint "Configuring Windows Firewall rules..."
