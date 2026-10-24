@@ -326,12 +326,17 @@ object DesktopPluginManager {
 
             // 2. Copy into app's private filesDir using run-as
             val copyCmd = "run-as com.sanket.tools.nexpad cp $tmpRemotePath /data/data/com.sanket.tools.nexpad/files/nxp_components/$remoteFileName"
-            runAdbCommand(adbPath, "-s", serial, "shell", copyCmd)
+            val copyOk = runAdbCommand(adbPath, "-s", serial, "shell", copyCmd)
 
             // 3. Fallback: Also try pushing to external app directory
             val extPath = "/sdcard/Android/data/com.sanket.tools.nexpad/files/nxp_components/$remoteFileName"
             runAdbCommand(adbPath, "-s", serial, "shell", "mkdir -p /sdcard/Android/data/com.sanket.tools.nexpad/files/nxp_components")
-            runAdbCommand(adbPath, "-s", serial, "shell", "cp $tmpRemotePath $extPath")
+            val extOk = runAdbCommand(adbPath, "-s", serial, "shell", "cp $tmpRemotePath $extPath")
+
+            if (!copyOk && !extOk) {
+                tempFile.delete()
+                return@withContext Result.failure(IllegalStateException("Could not copy component to phone storage. Check phone authorization."))
+            }
 
             // 4. Send broadcast to tell Android app to reload immediately
             runAdbCommand(adbPath, "-s", serial, "shell", "am broadcast -a com.sanket.tools.nexpad.RELOAD_COMPONENTS")
@@ -407,11 +412,15 @@ object DesktopPluginManager {
 
                 // 2. Copy into app's private nxp_remote dir using run-as
                 val copyCmd = "run-as com.sanket.tools.nexpad sh -c 'mkdir -p /data/data/com.sanket.tools.nexpad/files/nxp_remote && cp $tmpRemotePath /data/data/com.sanket.tools.nexpad/files/nxp_remote/$remoteFileName'"
-                runAdbCommand(adbPath, "-s", serial, "shell", copyCmd)
+                val copyOk = runAdbCommand(adbPath, "-s", serial, "shell", copyCmd)
 
                 // 3. Fallback: Also try pushing to external app directory
                 val extDir = "/sdcard/Android/data/com.sanket.tools.nexpad/files/nxp_remote"
-                runAdbCommand(adbPath, "-s", serial, "shell", "mkdir -p $extDir && cp $tmpRemotePath $extDir/$remoteFileName")
+                val extOk = runAdbCommand(adbPath, "-s", serial, "shell", "mkdir -p $extDir && cp $tmpRemotePath $extDir/$remoteFileName")
+
+                if (!copyOk && !extOk) {
+                    return@withContext Result.failure(IllegalStateException("Could not copy NXPRC to phone storage. Check phone authorization."))
+                }
 
                 // 4. Send targeted broadcasts to tell Android app to reload immediately
                 runAdbCommand(adbPath, "-s", serial, "shell", "am broadcast -a com.sanket.tools.nexpad.RELOAD_REMOTE_COMPONENTS -p com.sanket.tools.nexpad")

@@ -59,7 +59,7 @@ object WinsockBluetooth {
      * Total = 30 bytes.
      */
     @Structure.FieldOrder("addressFamily", "btAddr", "serviceClassId", "port")
-    open class SOCKADDR_BTH : Structure() {
+    open class SOCKADDR_BTH : Structure(ALIGN_NONE) {
         @JvmField var addressFamily: Short = AF_BTH.toShort()
         @JvmField var btAddr: Long = 0L
         @JvmField var serviceClassId: GUID = GUID()

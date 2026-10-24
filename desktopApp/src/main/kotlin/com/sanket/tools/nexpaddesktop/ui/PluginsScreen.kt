@@ -140,6 +140,21 @@ fun PluginsScreen(
     var showFullAuditPreview by remember { mutableStateOf(false) }
     var showFullScreenLayerStudio by remember { mutableStateOf(false) }
     var promptCopiedBanner by remember { mutableStateOf<String?>(null) }
+    var lastCleanHtmlSource by remember { mutableStateOf(NxprcHtmlCssConverter.PRESET_NEO_TACTILE_A) }
+    var pendingSwitchAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var showDiscardConfirmDialog by remember { mutableStateOf(false) }
+    var undoHtmlBackup by remember { mutableStateOf<String?>(null) }
+
+    val isCodeDirty = htmlSource.trim() != lastCleanHtmlSource.trim()
+
+    val safeExecuteChange: (() -> Unit) -> Unit = { action ->
+        if (isCodeDirty) {
+            pendingSwitchAction = action
+            showDiscardConfirmDialog = true
+        } else {
+            action()
+        }
+    }
 
     // Single-pane tab selection when window is narrow
     var singlePaneTab by remember { mutableStateOf(0) } // 0: Editor, 1: Live Sandbox
@@ -281,7 +296,11 @@ fun PluginsScreen(
             componentId = resolvedId
             componentName = resolvedName
 
+            undoHtmlBackup = htmlSource
+
             htmlSource = base
+
+            lastCleanHtmlSource = base
             promptCopiedBanner = "✓ Applied ${style.displayName} style for $defaultControl ($category)!"
             try {
                 val newDoc = withContext(Dispatchers.Default) {
@@ -416,8 +435,11 @@ fun PluginsScreen(
             componentId = resolvedId
             componentName = resolvedName
 
+            undoHtmlBackup = htmlSource
+
             htmlSource = baseSource
 
+            lastCleanHtmlSource = baseSource
             try {
                 val newDoc = withContext(Dispatchers.Default) {
                     NxprcHtmlCssConverter.convert(
@@ -471,7 +493,11 @@ fun PluginsScreen(
             componentId = resolvedId
             componentName = resolvedName
 
+            undoHtmlBackup = htmlSource
+
             htmlSource = base
+
+            lastCleanHtmlSource = base
             promptCopiedBanner = "✓ Loaded starter template for $defaultControl ($category) [Seed #$starterSeed]!"
             try {
                 val newDoc = withContext(Dispatchers.Default) {
@@ -555,15 +581,15 @@ fun PluginsScreen(
                         promptCopiedBanner = if (ok) "✓ ${selectedPromptTier.icon} ${selectedPromptTier.displayName} AI Prompt for $defaultControl ($category) [Seed #$currentSeed] copied!" else "⚠️ Clipboard busy — please try again"
                     },
                     onOpenPromptModal = { showAiPromptModal = true },
-                    onLoadStarter = handleLoadStarter,
+                    onLoadStarter = { safeExecuteChange { handleLoadStarter() } },
                     selectedCategory = selectedCategory,
-                    onSelectCategory = handleSelectCategory,
+                    onSelectCategory = { cat -> safeExecuteChange { handleSelectCategory(cat) } },
                     categories = categories,
                     buttonsByCategory = buttonsByCategory,
                     selectedButtonKey = selectedButtonKey,
-                    onSelectButton = handleSelectButton,
+                    onSelectButton = { btn -> safeExecuteChange { handleSelectButton(btn) } },
                     selectedPresetStyle = selectedPresetStyle,
-                    onSelectPresetStyle = handleSelectPresetStyle,
+                    onSelectPresetStyle = { st -> safeExecuteChange { handleSelectPresetStyle(st) } },
                     htmlSource = htmlSource,
                     onHtmlSourceChange = { htmlSource = it }
                 )
@@ -745,15 +771,15 @@ fun PluginsScreen(
                                 promptCopiedBanner = if (ok) "✓ ${selectedPromptTier.icon} ${selectedPromptTier.displayName} AI Prompt for $defaultControl ($category) [Seed #$currentSeed] copied!" else "⚠️ Clipboard busy — please try again"
                             },
                             onOpenPromptModal = { showAiPromptModal = true },
-                            onLoadStarter = handleLoadStarter,
+                            onLoadStarter = { safeExecuteChange { handleLoadStarter() } },
                             selectedCategory = selectedCategory,
-                            onSelectCategory = handleSelectCategory,
+                            onSelectCategory = { cat -> safeExecuteChange { handleSelectCategory(cat) } },
                             categories = categories,
                             buttonsByCategory = buttonsByCategory,
                             selectedButtonKey = selectedButtonKey,
-                            onSelectButton = handleSelectButton,
+                            onSelectButton = { btn -> safeExecuteChange { handleSelectButton(btn) } },
                             selectedPresetStyle = selectedPresetStyle,
-                            onSelectPresetStyle = handleSelectPresetStyle,
+                            onSelectPresetStyle = { st -> safeExecuteChange { handleSelectPresetStyle(st) } },
                             htmlSource = htmlSource,
                             onHtmlSourceChange = { htmlSource = it }
                         )
@@ -1058,6 +1084,46 @@ fun PluginsScreen(
                 pushLabel = if (activeTransport != ActiveTransport.NONE) "Push via ${activeTransport.displayName}" else "No Phone Connected",
                 onFeedback = { promptCopiedBanner = it },
                 onClose = handleCloseLayerStudio
+            )
+        }
+
+        if (showDiscardConfirmDialog) {
+            AlertDialog(
+                onDismissRequest = {
+                    showDiscardConfirmDialog = false
+                    pendingSwitchAction = null
+                },
+                title = {
+                    Text("Discard Unsaved Changes?", fontWeight = FontWeight.Bold)
+                },
+                text = {
+                    Text("You have unsaved edits in the HTML/CSS editor. Switching controls or templates will replace your current code.\n\nAre you sure you want to discard your changes?")
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showDiscardConfirmDialog = false
+                            val act = pendingSwitchAction
+                            pendingSwitchAction = null
+                            act?.invoke()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Discard & Replace", color = Color.White)
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(
+                        onClick = {
+                            showDiscardConfirmDialog = false
+                            pendingSwitchAction = null
+                        }
+                    ) {
+                        Text("Keep Editing")
+                    }
+                }
             )
         }
     }

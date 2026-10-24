@@ -81,7 +81,7 @@ class AdbBridgeManager(
 
         scannerJob = parentScope.launch(Dispatchers.IO) {
             println("[ADB/Bridge] Scanner started. Resolving ADB executable...")
-            val adbPath = AdbPathResolver.resolveAdbPath()
+            var adbPath = AdbPathResolver.resolveAdbPath()
             if (adbPath == null) {
                 println("[ADB/Bridge] ADB executable not available. Scanner standing by.")
                 isInitialScanCompleted.set(true)
@@ -96,7 +96,7 @@ class AdbBridgeManager(
                     continue
                 }
                 if (!isConnected.get()) {
-                    val resolvedPath = adbPath ?: AdbPathResolver.resolveAdbPath()
+                    val resolvedPath = adbPath ?: AdbPathResolver.resolveAdbPath()?.also { adbPath = it }
                     if (resolvedPath != null) {
                         val readyDevice = findReadyDevice(resolvedPath)
                         if (readyDevice != null) {
@@ -474,18 +474,29 @@ class AdbBridgeManager(
         isRunning.set(false)
         isConnected.set(false)
         scannerJob?.cancel()
+        scannerJob = null
         connectionScope?.cancel()
+        connectionScope = null
 
         try { clientSocket?.close() } catch (_: Exception) {}
         try { serverSocket?.close() } catch (_: Exception) {}
         clientSocket = null
         serverSocket = null
 
-        val adbPath = AdbPathResolver.resolveAdbPath()
+        var adbPath = AdbPathResolver.resolveAdbPath()
         broadcastAdbDeviceDisconnected(adbPath, activeDeviceSerial)
         removeAdbReverse(adbPath, activeDeviceSerial)
         activeDeviceSerial = null
 
+        if (adbPath != null) {
+            try {
+                ProcessBuilder(adbPath, "kill-server").start().waitFor(2, TimeUnit.SECONDS)
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun shutdown() {
+        stop()
         adbDispatcher.close()
         adbExecutor.shutdown()
     }

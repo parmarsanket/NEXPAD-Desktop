@@ -107,7 +107,11 @@ fun DashboardHeader(
 
     val linearMag = sqrt(effLinX * effLinX + effLinY * effLinY + effLinZ * effLinZ)
     val totalAccelMag = sqrt(rawAccelX * rawAccelX + rawAccelY * rawAccelY + rawAccelZ * rawAccelZ)
-    val effectiveCombatForce = if (linearMag > 1.0f) linearMag else totalAccelMag
+    val effectiveCombatForce = if (hasLinAccel || hasRawGrav) {
+        linearMag
+    } else {
+        (totalAccelMag - 9.81f).coerceAtLeast(0f)
+    }
 
     val isStrikeDetected = effectiveCombatForce >= settings.combatGestures.flickThreshold
     val isShakingDetected = effectiveCombatForce >= settings.combatGestures.shakeThreshold

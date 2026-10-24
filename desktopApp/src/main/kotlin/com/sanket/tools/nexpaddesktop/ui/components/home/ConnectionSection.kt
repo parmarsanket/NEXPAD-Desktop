@@ -194,11 +194,29 @@ fun ConnectionSection(
             )
 
             // 3. USB (ADB Bridge)
+            val isAdbActive = activeTransport == ActiveTransport.USB_ADB
             ConnectionToggleItem(
                 label = "USB (ADB Bridge)",
                 icon = Icons.Default.Usb,
                 isDeviceConnected = isDeviceConnected,
-                isActive = activeTransport == ActiveTransport.USB_ADB
+                isActive = isAdbActive,
+                hasCustomStatus = isAdbActive,
+                extraContent = {
+                    if (isAdbActive) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = NeonPalette.Green,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text("Connected", color = NeonPalette.Green, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
             )
 
             // 4. Bluetooth

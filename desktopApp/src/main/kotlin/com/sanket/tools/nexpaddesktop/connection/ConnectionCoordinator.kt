@@ -122,6 +122,7 @@ class ConnectionCoordinator(
     /**
      * Instantiates and configures a UdpServer instance.
      */
+
     private fun setupUdpServer(port: Int) {
         val server = UdpServer(
             port = port,
@@ -207,7 +208,7 @@ class ConnectionCoordinator(
         )
         aoaManager.cleanup()
         btServer.stop()
-        adbBridgeManager.stop()
+        adbBridgeManager.shutdown()
         udpServer?.stop()
         udpServer = null
         discoveryServer.stop()

@@ -25,6 +25,8 @@ import com.sanket.tools.nexpaddesktop.utils.WindowsElevation
 import com.sanket.tools.nexpaddesktop.utils.WindowsTitleBarTheme
 import com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
 import javax.imageio.ImageIO
@@ -49,12 +51,29 @@ object AppBootstrap {
             return
         }
 
-        // 3. Set Windows QoS (Priority & 1ms Timer Resolution)
+        // 3. Single Instance Guard (Prevents port conflicts and duplicate virtual gamepads)
+        val appData = System.getenv("APPDATA")
+        val baseDir = if (!appData.isNullOrBlank()) File(appData, "NEXPAD") else File(System.getProperty("user.home") ?: ".", ".nexpad")
+        baseDir.mkdirs()
+        val lockFile = File(baseDir, "app.lock")
+        val lockChannel = java.io.RandomAccessFile(lockFile, "rw").channel
+        val lock = try { lockChannel.tryLock() } catch (_: Throwable) { null }
+        if (lock == null) {
+            println("⚠️ [AppBootstrap] NEXPAD Desktop is already running. Exiting duplicate instance.")
+            return
+        }
+
+        // 4. Set Windows QoS (Priority & 1ms Timer Resolution)
         QosManager.applyWindowsQos()
 
-        // 4. Launch Desktop Compose App
-        application {
-            AppContent(appScope = this, onExit = ::exitApplication)
+        // 5. Launch Desktop Compose App
+        try {
+            application {
+                AppContent(appScope = this, onExit = ::exitApplication)
+            }
+        } finally {
+            try { lock.release() } catch (_: Throwable) {}
+            try { lockChannel.close() } catch (_: Throwable) {}
         }
     }
 
@@ -209,8 +228,18 @@ object AppBootstrap {
             dsuServer.isDs4Active = (viewModel.activeController == ControllerType.DUALSHOCK_4 && viewModel.isDsuServerEnabled)
             dsuServer.start()
 
+            var lastPacketReceivedTime = 0L
             val inputProcessingLock = Any()
+            val resetToNeutral = {
+                val neutral = GamepadInput()
+                driverManager.updateInput(neutral)
+                dsuServer.updateInput(neutral)
+                gyroProcessor.reset()
+                viewModel.latestInput = neutral
+            }
+
             val inputHandler: (GamepadInput) -> Unit = { input ->
+                lastPacketReceivedTime = System.currentTimeMillis()
                 synchronized(inputProcessingLock) {
                     InputPipeline.processAndDispatch(
                         input = input,
@@ -247,8 +276,26 @@ object AppBootstrap {
             connectionCoordinator.onTransportConnected = { transport, name ->
                 viewModel.updateConnectedDevice(name, transport)
             }
+            // Silence watchdog: if transport is active but no packets received for > 500ms, push neutral report once
+            val watchdogJob = scope.launch(Dispatchers.Default) {
+                var wasNeutralized = true
+                while (isActive) {
+                    delay(100)
+                    val timeSinceLastPacket = System.currentTimeMillis() - lastPacketReceivedTime
+                    if (viewModel.activeTransport != ActiveTransport.NONE && lastPacketReceivedTime > 0L && timeSinceLastPacket > 500L) {
+                        if (!wasNeutralized) {
+                            resetToNeutral()
+                            wasNeutralized = true
+                        }
+                    } else if (timeSinceLastPacket <= 500L) {
+                        wasNeutralized = false
+                    }
+                }
+            }
+
             connectionCoordinator.onTransportDisconnected = { transport ->
                 viewModel.updateDisconnectedDevice(transport)
+                resetToNeutral()
             }
             connectionCoordinator.onInputReceived = inputHandler
 
@@ -269,9 +316,12 @@ object AppBootstrap {
                 connectionCoordinator.updateStreamingPort(newPort, scope)
             }
 
+
             connectionCoordinator.start(scope)
 
             onDispose {
+                watchdogJob.cancel()
+                resetToNeutral()
                 viewModel.flushSettings()
                 connectionCoordinator.stop()
                 dsuServer.stop()

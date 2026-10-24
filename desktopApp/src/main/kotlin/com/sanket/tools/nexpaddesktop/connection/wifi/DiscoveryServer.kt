@@ -49,7 +49,11 @@ class DiscoveryServer(
         isRunning = true
         println("📡 Discovery Server listening on broadcast port $port")
         
-        val hostName = InetAddress.getLocalHost().hostName
+        val hostName = try {
+            InetAddress.getLocalHost().hostName
+        } catch (_: Throwable) {
+            "NEXPAD-PC"
+        }
         val hostNameBytes = hostName.toByteArray(Charsets.UTF_8)
         
         while (isActive && isRunning) {
@@ -58,6 +62,10 @@ class DiscoveryServer(
                 if (!isRunning) break
                 val datagram = socket.receive()
                 val data = datagram.packet.readByteArray()
+                
+                if (isPaused()) {
+                    continue
+                }
                 
                 if (data.isNotEmpty() && data[0] == NexpadProtocol.PACKET_TYPE_DISCOVER) {
                     println("🔍 Received DISCOVER packet from ${datagram.address}")

@@ -374,6 +374,7 @@ class UdpServer(
     }
 
     suspend fun sendFeedback(feedback: GamepadFeedback, echoSequenceNumber: Int = 0, packetLossByte: Byte = 0) {
+        lastFeedback = feedback
         val target = clientAddress
         if (target == null) {
             val now = System.currentTimeMillis()

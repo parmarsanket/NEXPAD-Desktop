@@ -99,10 +99,11 @@ class DualShock4InputMapper {
         // Touchpad packet count = 0, all touch tracking points flagged as Finger UP (0x80)
         report.padding[6] = 0x00
         report.padding[7] = 0x00
-        report.padding[8] = TOUCH_POINT_UP
-        report.padding[12] = TOUCH_POINT_UP
-        report.padding[17] = TOUCH_POINT_UP
-        report.padding[21] = TOUCH_POINT_UP
+        report.padding[8] = 0x00 // bTouchPacketsN = 0 (No active touch packets)
+        report.padding[10] = TOUCH_POINT_UP // Point 0 uncontacted
+        report.padding[14] = TOUCH_POINT_UP // Point 1 uncontacted
+        report.padding[19] = TOUCH_POINT_UP
+        report.padding[23] = TOUCH_POINT_UP
 
         // 7. IMU Data (Gyroscope & Accelerometer)
         val (calX, calY, calZ) = calibrateGyro(input.gyroX, input.gyroY, input.gyroZ)
