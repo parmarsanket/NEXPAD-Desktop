@@ -82,21 +82,29 @@ compose.desktop {
 
 val nsisPath = "C:\\Program Files (x86)\\NSIS\\makensis.exe"
 val setupExeFile = rootProject.file("installer_build/NEXPAD_Desktop_Setup.exe")
-val destinationSetupFile = rootProject.file("../NEXPAD_PlayStore_Assets/NEXPAD_Desktop_Setup.exe")
+val playStoreSetupFile = rootProject.file("../NEXPAD_PlayStore_Assets/NEXPAD_Desktop_Setup.exe")
+val desktopReleaseDir = rootProject.file("../Desktop_Release_v1.0.0")
+val desktopReleaseSetupFile = rootProject.file("../Desktop_Release_v1.0.0/NEXPAD_Desktop_Setup.exe")
 val installerDir = rootProject.projectDir
 
 tasks.register<Exec>("packageReleaseExe") {
     group = "distribution"
-    description = "Packages release distribution, builds the official NSIS setup installer, and copies it to NEXPAD_PlayStore_Assets."
+    description = "Packages release distribution, builds the official NSIS setup installer, and copies it to Desktop_Release_v1.0.0 and NEXPAD_PlayStore_Assets."
     dependsOn("createReleaseDistributable")
     notCompatibleWithConfigurationCache("Executes external NSIS compiler and file synchronization")
     workingDir = installerDir
     commandLine(nsisPath, "installer.nsi")
 
     doLast {
-        if (setupExeFile.exists() && destinationSetupFile.parentFile.exists()) {
-            setupExeFile.copyTo(destinationSetupFile, overwrite = true)
-            println("📦 [RELEASE SETUP] Successfully copied official installer to: ${destinationSetupFile.absolutePath}")
+        if (setupExeFile.exists()) {
+            if (desktopReleaseDir.exists()) {
+                setupExeFile.copyTo(desktopReleaseSetupFile, overwrite = true)
+                println("📦 [RELEASE SETUP] Successfully copied official installer to: ${desktopReleaseSetupFile.absolutePath}")
+            }
+            if (playStoreSetupFile.parentFile.exists()) {
+                setupExeFile.copyTo(playStoreSetupFile, overwrite = true)
+                println("📦 [RELEASE SETUP] Successfully copied official installer to: ${playStoreSetupFile.absolutePath}")
+            }
         }
     }
 }
