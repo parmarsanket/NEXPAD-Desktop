@@ -61,8 +61,8 @@ compose.desktop {
             packageName = "NEXPAD Desktop"
             packageVersion = "1.0.0"
             description = "Next-Generation Low-Latency Mobile-to-PC Gamepad & Motion Aiming System"
-            copyright = "© 2026 NEXPAD. All rights reserved."
-            vendor = "NEXPAD"
+            copyright = "Copyright © 2026 Sanket Parmar. All rights reserved."
+            vendor = "Sanket Parmar"
             licenseFile.set(rootProject.file("LICENSE"))
 
             windows {
@@ -81,6 +81,8 @@ compose.desktop {
 }
 
 val nsisPath = "C:\\Program Files (x86)\\NSIS\\makensis.exe"
+val signScript = rootProject.file("sign-file.ps1")
+val appExeFile = project.file("build/compose/binaries/main-release/app/NEXPAD Desktop/NEXPAD Desktop.exe")
 val setupExeFile = rootProject.file("installer_build/NEXPAD_Desktop_Setup.exe")
 val playStoreSetupFile = rootProject.file("../NEXPAD_PlayStore_Assets/NEXPAD_Desktop_Setup.exe")
 val desktopReleaseDir = rootProject.file("../Desktop_Release_v1.0.0")
@@ -95,8 +97,25 @@ tasks.register<Exec>("packageReleaseExe") {
     workingDir = installerDir
     commandLine(nsisPath, "installer.nsi")
 
+    doFirst {
+        if (signScript.exists() && appExeFile.exists()) {
+            println("🔏 [CODE SIGNING] Signing application binary: ${appExeFile.name}")
+            ProcessBuilder("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", signScript.absolutePath, "-FilePath", appExeFile.absolutePath)
+                .inheritIO()
+                .start()
+                .waitFor()
+        }
+    }
+
     doLast {
         if (setupExeFile.exists()) {
+            if (signScript.exists()) {
+                println("🔏 [CODE SIGNING] Signing installer executable: ${setupExeFile.name}")
+                ProcessBuilder("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", signScript.absolutePath, "-FilePath", setupExeFile.absolutePath)
+                    .inheritIO()
+                    .start()
+                    .waitFor()
+            }
             if (desktopReleaseDir.exists()) {
                 setupExeFile.copyTo(desktopReleaseSetupFile, overwrite = true)
                 println("📦 [RELEASE SETUP] Successfully copied official installer to: ${desktopReleaseSetupFile.absolutePath}")
