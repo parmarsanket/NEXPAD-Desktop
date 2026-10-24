@@ -6,6 +6,7 @@
 [![Driver Response](https://img.shields.io/badge/Kernel%20Injection-1ms%20(1000Hz%20Capable)-3FD25A.svg)](#-multi-transport-server-engine)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
 [![Zero Telemetry](https://img.shields.io/badge/Privacy-100%25%20Local%20%7C%200%20Telemetry-brightgreen.svg)](#-privacy-driver-safety--security-transparency)
+[![Code Signing: SignPath](https://img.shields.io/badge/Code%20Signing-SignPath%20Foundation-blue.svg)](https://signpath.org)
 [![Code Quality](https://img.shields.io/badge/Code%20Standard-Zero%20%40Suppress%20Guarantee-purple.svg)](#-developer--contributor-guide)
 
 **NEXPAD Desktop** is an ultra-high performance Windows companion server and controller authoring studio built with **Compose Multiplatform (Desktop)** and **JNA (Java Native Access)**.
@@ -201,5 +202,11 @@ For full disclosures, read [`DISCLAIMER.md`](./DISCLAIMER.md).
 This project is licensed under the **Apache License, Version 2.0**.
 - See the full [LICENSE](./LICENSE) file for legal terms.
 - Attributions for third-party libraries (ViGEmClient, JNA, libwdi) are detailed in the [NOTICE](./NOTICE) file.
+
+---
+
+## 🔏 Code Signing
+Free code signing provided by the [SignPath Foundation](https://signpath.org).
+
 
 Copyright © 2026 **Sanket Parmar**. All rights reserved.
