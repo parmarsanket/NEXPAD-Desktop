@@ -57,7 +57,7 @@ compose.desktop {
 
         nativeDistributions {
 
-            targetFormats(TargetFormat.Msi, TargetFormat.Exe, TargetFormat.AppImage)
+            targetFormats(TargetFormat.AppImage)
             packageName = "NEXPAD Desktop"
             packageVersion = "1.0.0"
             description = "Next-Generation Low-Latency Mobile-to-PC Gamepad & Motion Aiming System"
@@ -78,4 +78,12 @@ compose.desktop {
             }
         }
     }
+}
+
+tasks.register<Exec>("buildInstaller") {
+    group = "distribution"
+    description = "Packages release distribution and compiles the official NSIS setup installer."
+    dependsOn("createReleaseDistributable")
+    workingDir = rootProject.projectDir
+    commandLine("C:\\Program Files (x86)\\NSIS\\makensis.exe", "installer.nsi")
 }
