@@ -31,7 +31,6 @@ dependencies {
     implementation("org.usb4java:usb4java:1.3.0")
 
     // Navigation 3 (Compose Multiplatform)
-    implementation("androidx.navigation3:navigation3-runtime:1.1.0")
     implementation("org.jetbrains.androidx.navigation3:navigation3-ui:1.1.1")
 
     // Reorderable Drag and Drop
@@ -90,35 +89,79 @@ val installerDir = rootProject.projectDir
 
 tasks.register<Exec>("packageReleaseExe") {
     group = "distribution"
-    description = "Packages release distribution, builds the official NSIS setup installer, and copies it to Desktop_Release_v1.0.0 and NEXPAD_PlayStore_Assets."
+    description =
+        "Builds the release distributable, creates the NSIS installer, " +
+        "and copies it with its SHA-256 checksum."
+
     dependsOn("createReleaseDistributable")
-    notCompatibleWithConfigurationCache("Executes external NSIS compiler and file synchronization")
+
+    notCompatibleWithConfigurationCache(
+        "Executes external NSIS compiler and file synchronization"
+    )
+
     workingDir = installerDir
     commandLine(nsisPath, "installer.nsi")
 
+    doFirst {
+        check(File(nsisPath).isFile) {
+            "NSIS compiler not found: $nsisPath"
+        }
+
+        check(File(installerDir, "installer.nsi").isFile) {
+            "installer.nsi not found in: ${installerDir.absolutePath}"
+        }
+
+        // Ensure NSIS can write its output.
+        setupExeFile.parentFile?.mkdirs()
+    }
+
     doLast {
-        if (setupExeFile.exists()) {
-            val md = MessageDigest.getInstance("SHA-256")
-            setupExeFile.inputStream().use { fis ->
-                val buffer = ByteArray(65536)
-                var read: Int
-                while (fis.read(buffer).also { read = it } != -1) {
-                    md.update(buffer, 0, read)
-                }
-            }
-            val sha256 = md.digest().joinToString("") { b -> "%02X".format(b) }
-            println("🔑 [SHA-256 CHECKSUM]: $sha256")
-            if (desktopReleaseDir.exists()) {
-                setupExeFile.copyTo(desktopReleaseSetupFile, overwrite = true)
-                File(desktopReleaseDir, "NEXPAD_Desktop_Setup.exe.sha256").writeText("$sha256 *NEXPAD_Desktop_Setup.exe\n")
-                println("📦 [RELEASE SETUP] Successfully copied official installer to: ${desktopReleaseSetupFile.absolutePath}")
-            }
-            if (playStoreSetupFile.parentFile.exists()) {
-                setupExeFile.copyTo(playStoreSetupFile, overwrite = true)
-                File(playStoreSetupFile.parentFile, "NEXPAD_Desktop_Setup.exe.sha256").writeText("$sha256 *NEXPAD_Desktop_Setup.exe\n")
-                println("📦 [RELEASE SETUP] Successfully copied official installer to: ${playStoreSetupFile.absolutePath}")
+        check(setupExeFile.isFile) {
+            "Installer was not generated: ${setupExeFile.absolutePath}. " +
+                "Check the OutFile path in installer.nsi."
+        }
+
+        // Calculate SHA-256 without loading the whole EXE into memory.
+        val md = MessageDigest.getInstance("SHA-256")
+
+        setupExeFile.inputStream().use { input ->
+            val buffer = ByteArray(64 * 1024)
+
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+
+                md.update(buffer, 0, count)
             }
         }
+
+        val sha256 = md.digest().joinToString("") { byte ->
+            "%02X".format(byte)
+        }
+
+        val destinations = listOf(
+            desktopReleaseSetupFile,
+            playStoreSetupFile
+        )
+
+        destinations.forEach { destination ->
+            destination.parentFile?.mkdirs()
+
+            setupExeFile.copyTo(
+                target = destination,
+                overwrite = true
+            )
+
+            destination
+                .resolveSibling("${destination.name}.sha256")
+                .writeText("$sha256 *${destination.name}\n")
+
+            println(
+                "📦 [RELEASE SETUP] Successfully copied official installer to: ${destination.absolutePath}"
+            )
+        }
+
+        println("🔑 [SHA-256 CHECKSUM]: $sha256")
     }
 }
 
