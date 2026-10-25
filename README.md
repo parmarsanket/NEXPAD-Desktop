@@ -1,17 +1,228 @@
-# 🖥️ NEXPAD Desktop — Virtual Controller Server & Studio
+<div align="center">
 
-[![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011%20(x64)-0078D6.svg)](https://microsoft.com/windows)
-[![UI Framework](https://img.shields.io/badge/UI-Compose%20Multiplatform%20(Desktop)-4285F4.svg)](https://www.jetbrains.com/lp/compose-multiplatform/)
-[![Windows Driver](https://img.shields.io/badge/Driver-ViGEmBus%20Kernel%20Emulation-purple.svg)](https://github.com/nefarius/ViGEmBus)
-[![Driver Response](https://img.shields.io/badge/Kernel%20Injection-1ms%20(1000Hz%20Capable)-3FD25A.svg)](#-multi-transport-server-engine)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-[![Zero Telemetry](https://img.shields.io/badge/Privacy-100%25%20Local%20%7C%200%20Telemetry-brightgreen.svg)](#-privacy-driver-safety--security-transparency)
-[![Code Signing: SignPath](https://img.shields.io/badge/Code%20Signing-SignPath%20Foundation-blue.svg)](https://signpath.org)
-[![Code Quality](https://img.shields.io/badge/Code%20Standard-Zero%20%40Suppress%20Guarantee-purple.svg)](#-developer--contributor-guide)
+  # 🖥️ NEXPAD Desktop
+  ### Turn Any Android Smartphone into an Ultra-Low-Latency PC Gaming Controller
 
-**NEXPAD Desktop** is an ultra-high performance Windows companion server and controller authoring studio built with **Compose Multiplatform (Desktop)** and **JNA (Java Native Access)**.
+  <p align="center">
+    <b>Kernel-Level Emulation • 200Hz Polling Rate • CemuHook DSU Motion • Bidirectional Rumble • NXPRC Studio</b>
+  </p>
 
-It seamlessly bridges your Android smartphone to Windows, injecting high-speed gamepad inputs directly into the Windows Kernel via **ViGEmBus** to emulate a genuine physical **Xbox 360 controller**. It provides out-of-the-box compatibility with all PC games, competitive low-latency USB and Wi-Fi streaming, bidirectional force-feedback rumble, and integrated **CemuHook DSU motion controls** for console emulators.
+  <p align="center">
+    <a href="https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0">
+      <img src="https://img.shields.io/badge/Download-GitHub%20Release%20v1.0.0-2da44e?style=for-the-badge&logo=github&logoColor=white" alt="Download GitHub Release" height="36"/>
+    </a>
+    &nbsp;&nbsp;
+    <a href="https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0">
+      <img src="https://img.shields.io/badge/Microsoft%20Store-Coming%20Soon-0078D4?style=for-the-badge&logo=microsoft-store&logoColor=white" alt="Microsoft Store" height="36"/>
+    </a>
+  </p>
+
+  <p align="center">
+    <img src="https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011%20(x64)-0078D6.svg?style=flat-square&logo=windows" alt="Platform" />
+    <img src="https://img.shields.io/badge/UI-Compose%20Multiplatform%20(Skia)-4285F4.svg?style=flat-square&logo=jetpackcompose" alt="Compose Multiplatform" />
+    <img src="https://img.shields.io/badge/Driver-ViGEmBus%20Kernel%20(Bundled)-7B1FA2.svg?style=flat-square" alt="ViGEmBus Driver" />
+    <img src="https://img.shields.io/badge/Polling%20Rate-200Hz%20Low%20Latency-3FD25A.svg?style=flat-square" alt="200Hz Low Latency" />
+    <img src="https://img.shields.io/badge/DSU%20Motion-CemuHook%20(Port%2026760)-FF9800.svg?style=flat-square" alt="DSU Motion Server" />
+    <img src="https://img.shields.io/badge/Privacy-100%25%20Local%20%7C%200%20Telemetry-00C853.svg?style=flat-square" alt="Zero Telemetry" />
+    <img src="https://img.shields.io/badge/Standard-standard--readme-brightgreen.svg?style=flat-square" alt="Standard Readme Compliant" />
+    <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square" alt="License" />
+  </p>
+
+</div>
+
+<br/>
+
+---
+
+## 📑 Table of Contents
+
+- [Overview](#-overview)
+- [Key Features](#-key-features)
+- [Transport Comparison Matrix](#-transport-comparison-matrix)
+- [Download & Distribution](#-download--distribution-channels)
+- [Quick Start Guide](#-quick-start-guide-zero-configuration)
+- [Kernel Emulation & Controller Mapping](#-kernel-emulation--controller-mapping)
+- [CemuHook DSU Motion Setup](#-cemuhook-dsu-motion-setup)
+- [System Architecture & Data Flow](#-system-architecture--data-flow)
+- [Subsystem Navigation](#-subsystem-navigation)
+- [Developer & Build Guide](#-developer--build-guide)
+- [Frequently Asked Questions (FAQ)](#-frequently-asked-questions-faq)
+- [Privacy & Security](#-privacy--security-transparency)
+- [Legal Disclosures](#-legal-disclosures)
+- [License & Attribution](#-license--attribution)
+
+---
+
+## ⚡ Overview
+
+**NEXPAD Desktop** is an ultra-high performance Windows companion server and controller authoring studio built with **Kotlin 2.x JVM**, **Compose Multiplatform (Desktop)**, and **JNA (Java Native Access)**.
+
+It seamlessly bridges your Android smartphone to Windows, injecting controller inputs directly into the Windows Kernel via **ViGEmBus** to emulate genuine physical **Xbox 360** and **Sony DualShock 4** gamepads. The Windows installer automatically configures all drivers out-of-the-box, giving you immediate plug-and-play compatibility across Steam, Xbox Game Pass, Epic Games, and emulators (Cemu, Yuzu, Dolphin, RPCS3).
+
+---
+
+## 🌟 Key Features
+
+<table>
+  <tr>
+    <td width="50%">
+      <b>⚡ 200Hz Ultra-Low Latency Pipeline</b><br/>
+      Sub-millisecond (<b>&lt;1ms</b>) hardware response over direct USB (AOA 2.0) and high-speed <b>200Hz</b> asynchronous non-blocking NIO UDP streaming over Wi-Fi. Every millisecond counts.
+    </td>
+    <td width="50%">
+      <b>🎮 Dual Kernel Gamepad Emulation</b><br/>
+      Full native <b>Xbox 360</b> (XInput) and <b>Sony DualShock 4</b> emulation via the bundled ViGEmBus kernel driver. Zero third-party mapping software required.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <b>🎯 CemuHook DSU Motion Server</b><br/>
+      Integrated UDP motion server broadcasting on standard port <b>26760</b>. Enjoy 6-axis gyroscope steering, flight stick controls, and precision FPS gyro aiming on Cemu, Yuzu, Ryujinx, RPCS3, and Dolphin.
+    </td>
+    <td width="50%">
+      <b>📳 Bidirectional Force Feedback</b><br/>
+      Intercepts game rumble commands from XInput/ViGEm and streams real-time feedback packets back to your phone to trigger immersive haptic vibrations.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <b>🌐 4-Way Multi-Transport Engine</b><br/>
+      Connect your way: <b>USB Direct (AOA 2.0)</b>, <b>USB ADB Bridge</b> (zero driver installation), <b>200Hz Wi-Fi UDP</b>, or <b>Bluetooth RFCOMM</b> (125Hz).
+    </td>
+    <td width="50%">
+      <b>📱 Universal Android Compatibility</b><br/>
+      Dynamic protocol-level detection works out-of-the-box on <b>Samsung, Xiaomi, Vivo, OPPO, OnePlus, Google Pixel, Motorola, Nothing, ASUS, Sony</b>, and all other OEMs without root.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <b>🎨 Live NXPRC Component Studio</b><br/>
+      Design and customize vector controller layouts in real-time on desktop with instant bidirectional synchronization to your connected phone.
+    </td>
+    <td width="50%">
+      <b>🔒 100% Offline & Zero Telemetry</b><br/>
+      All processing happens strictly on your local PC and local subnet. Zero analytics, zero data collection, zero internet required.
+    </td>
+  </tr>
+</table>
+
+---
+
+## 📊 Transport Comparison Matrix
+
+Choose the connection method that best fits your playstyle:
+
+| Connection Transport | Polling Rate | Hardware Latency | Setup Effort | Windows Driver | Recommended For |
+|---|:---:|:---:|:---:|:---:|---|
+| 🔌 **USB Direct (AOA 2.0)** | **200 Hz** | **&lt; 1 ms** | Plug & Play | Automatic WinUSB | **Competitive Gaming, FPS, Fighting Games** |
+| 🛠️ **USB ADB Bridge** | **200 Hz** | **~1 ms** | USB Debugging ON | Zero Driver Required | **Quick Testing, Zero UAC Prompts** |
+| 📶 **Wi-Fi (UDP Stream)** | **200 Hz** | **~2 – 3 ms** | One-Click Connect | None | **Couch Gaming, Wireless Handheld Mode** |
+| 🔵 **Bluetooth RFCOMM** | **125 Hz** | **~8 ms** | Standard BT Pair | None | **Cable-Free Wireless Casual Play** |
+
+---
+
+## 📥 Download & Distribution Channels
+
+| Channel | Format | What's Included | Status / Link |
+|---|---|---|---|
+| 🚀 **GitHub Releases (v1.0.0)** | `NEXPAD_Desktop_Setup.exe` | Complete All-in-One Installer (Bundles App + ViGEmBus Driver) | [**Download Setup (v1.0.0)**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) |
+| 🏬 **Microsoft Store** | Sandboxed MSIX | Windows 10/11 Automated Updates | *Coming Soon (In Review)* |
+| 🧰 **Standalone MSI** | `NEXPAD-Desktop.msi` | Automated Enterprise / Network Deployment | [**Download MSI**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) |
+| 💼 **Portable Package** | `.zip` Archive | Self-Contained App + Bundled `redist/` Drivers | [**Download ZIP**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) |
+
+---
+
+## 🕹️ Quick Start Guide (Zero Configuration)
+
+Everything you need is bundled inside the installer. No external driver hunting or complex setup needed.
+
+### 1️⃣ Run the Installer
+* Download and run **`NEXPAD_Desktop_Setup.exe`**.
+* The setup wizard automatically installs NEXPAD Desktop and configures the bundled **ViGEmBus** virtual controller driver in one smooth step.
+
+> [!NOTE]
+> All required virtual controller drivers are bundled directly inside `NEXPAD_Desktop_Setup.exe` and configured automatically during installation. Zero manual driver downloads are required.
+
+### 2️⃣ Launch NEXPAD Desktop
+* Open NEXPAD Desktop from your Start Menu.
+* The status indicator will display **"ViGEmBus: READY"**, and the server will immediately begin listening for incoming connections.
+
+### 3️⃣ Connect Phone & Play!
+* Open the **NEXPAD** app on your Android phone and select your preferred transport:
+  * **USB (AOA)**: Connect via USB-C cable and tap **Connect USB**.
+  * **Wi-Fi**: Ensure your phone is on the same local Wi-Fi, enter the IP shown on Desktop, and tap **Connect Wi-Fi**.
+* Windows instantly registers an **Xbox 360 Controller for Windows**. Launch your game and play!
+
+> [!TIP]
+> You can verify your virtual controller at any time by pressing <kbd>Win</kbd> + <kbd>R</kbd>, typing `joy.cpl`, and pressing <kbd>Enter</kbd> to open Windows Game Controllers.
+
+---
+
+## 🎮 Kernel Emulation & Controller Mapping
+
+NEXPAD Desktop communicates directly with `vigemclient.dll` to inject native controller state structures into Windows:
+
+### Xbox 360 Emulation (`XUSBReport`)
+* **Digital Buttons (10)**: A, B, X, Y, Left Bumper (LB), Right Bumper (RB), Back, Start, Left Stick Click (LS), Right Stick Click (RS).
+* **Directional Pad**: 4-way discrete D-Pad states (Up, Down, Left, Right).
+* **Analog Triggers**: Left Trigger (LT) & Right Trigger (RT) with 8-bit resolution ($0\dots 255$).
+* **Analog Thumbsticks**: Left and Right 2D thumbsticks with 16-bit signed integer resolution ($-32768\dots 32767$).
+* **XInput Force Feedback**: Intercepts high-frequency and low-frequency rumble commands from games and forwards them to mobile haptic actuators.
+
+### Sony DualShock 4 Emulation (`DualShock4InputMapper`)
+* **Full DS4 Compatibility**: Emulates genuine DualShock 4 hardware, recognized by PlayStation-compatible games, emulators, and DS4Windows.
+* **Touch Pad & Lightbar**: Supports multi-touch touchpad coordinate mapping and RGB lightbar status syncing.
+
+---
+
+## 🎯 CemuHook DSU Motion Setup
+
+To enable motion controls (gyro steering / aiming) in console emulators:
+
+1. In NEXPAD Desktop, navigate to **Gyro Settings** and choose your mode (**FPS Aim Assist**, **Steering Wheel**, or **Flight Stick**).
+2. Open your emulator of choice:
+   * **Cemu**: Go to `Options` → `Gamepad motion source` → `DSU1` → Select `By Slot` or enter IP `127.0.0.1` and Port `26760`.
+   * **Yuzu / Ryujinx**: Go to `Settings` → `Input` → `Motion` → Check `Enable Motion` and configure DSU Server `127.0.0.1:26760`.
+   * **Dolphin**: Go to `Controllers` → `Alternate Input Sources` → Enable DSU Client (`127.0.0.1:26760`).
+   * **RPCS3**: Go to `Pads` → Set Handler to `DSU` and Port to `26760`.
+
+---
+
+## 🏗️ System Architecture & Data Flow
+
+```
+┌────────────────────────────────────────────────────────┐
+│               Android Phone (NEXPAD Mobile)            │
+│  Touch Controls • 6-Axis Gyroscope/Accelerometer • IMU │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+    4-Way Multi-Transport: │ AOA 2.0 (USB) | UDP (Wi-Fi) | ADB | Bluetooth
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│                    NEXPAD Desktop                      │
+│        (Kotlin 2.x JVM + Compose Multiplatform)        │
+│                                                        │
+│  • ConnectionCoordinator (Single-Active Arbitration)   │
+│  • AoaFrameDecoder / UdpServer (200Hz Low Latency)     │
+│  • GyroProcessor (Precision Crosshairs, Deadzones)     │
+│  • DsuServer (CemuHook Motion Protocol on Port 26760)  │
+│  • UniversalPushManager (.nxprc Component Sync)        │
+└──────────────────────────┬─────────────────────────────┘
+                           │ JNA (Java Native Access)
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│           ViGEmBus Kernel Driver Subsystem             │
+│       Xbox 360 (XUSBReport) | Sony DualShock 4         │
+└──────────────────────────┬─────────────────────────────┘
+                           │ Windows Kernel Driver Framework (KMDF)
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│                      Windows OS                        │
+│    DirectInput / XInput Native Physical Gamepad        │
+│                                                        │
+│   Steam • Xbox Game Pass • Epic Games • PC Emulators   │
+└────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -29,184 +240,115 @@ It seamlessly bridges your Android smartphone to Windows, injecting high-speed g
    "Where We Came From"    "Where We're Going"      "How It Works"
 ```
 
-- 📖 **[`HISTORY.md`](./HISTORY.md)** — Chronological record of all 32 development branches from Master Genesis to the Universal Timeline Track Studio.
-- 🗺️ **[`ROADMAP.md`](./ROADMAP.md)** — Forward-looking development milestones, MSIX packaging, and DualSense haptic synthesizer.
-- 🏛️ **[`ARCHITECTURE.md`](./ARCHITECTURE.md)** — Deep technical specification of the JNA ViGEmClient C++ kernel driver binding, WinUSB AOA bulk endpoints, and NIO UdpServer.
-- 📜 **[`GRADLE_COMMANDS.md`](./GRADLE_COMMANDS.md)** — Quick reference cheat-sheet for running, testing, building, and packaging the desktop application.
+- 📖 **[`HISTORY.md`](./HISTORY.md)** — Chronological engineering log of all development milestones.
+- 🗺️ **[`ROADMAP.md`](./ROADMAP.md)** — Forward-looking development milestones and store packaging.
+- 🏛️ **[`ARCHITECTURE.md`](./ARCHITECTURE.md)** — Deep technical specification of the JNA ViGEmClient binding, WinUSB AOA bulk endpoints, and NIO UdpServer.
+- 🤖 **[`AGENTS.md`](./AGENTS.md)** — Machine-readable technical reference, boundaries, and deterministic commands for AI coding assistants.
+- 📜 **[`GRADLE_COMMANDS.md`](./GRADLE_COMMANDS.md)** — Quick reference cheat-sheet for running, testing, building, and packaging.
 - ⚖️ **[`DISCLAIMER.md`](./DISCLAIMER.md)** — Nominative Fair Use, driver safety, and legal non-affiliation disclosure.
 - 📄 **[`NOTICE`](./NOTICE)** — Third-party open-source attributions (ViGEmClient, JNA, libwdi, JetBrains Compose).
 
 ---
 
-## 🚀 Key Capabilities & Architecture
+## 🛠️ Developer & Build Guide
 
-### 1. 🎮 Kernel-Level Xbox 360 Emulation (`ViGEmBus`)
-- Uses low-level **Java Native Access (JNA)** bindings to communicate directly with `vigemclient.dll` and the **Virtual Gamepad Emulation Bus (ViGEmBus)** kernel driver.
-- Dispatches raw 16-bit binary reports (`XUSBReport`) directly into the Windows driver subsystem:
-  - 10 digital buttons (A, B, X, Y, LB, RB, Back, Start, LS Click, RS Click).
-  - 4-way D-Pad states (Up, Down, Left, Right).
-  - Dual analog triggers ($0\dots 255$ 8-bit unsigned integer resolution).
-  - Dual 2D analog thumbsticks ($-32768\dots 32767$ 16-bit signed integer resolution).
-- **100% Native Game Compatibility**: Recognized immediately by Windows as a genuine physical Xbox 360 gamepad across:
-  - **Steam**, **Xbox Game Pass (PC)**, **Epic Games Store**, **EA App**, **Ubisoft Connect**, and **GOG Galaxy**.
-  - All PC AAA titles (*Forza Horizon*, *Rocket League*, *Grand Theft Auto V*, *Cyberpunk 2077*, *Elden Ring*, *Call of Duty*).
+### Prerequisites
+* **JDK**: Eclipse Temurin or Amazon Corretto **JDK 21**
+* **OS**: Windows 10 or 11 (x64)
+* **Gradle**: 9.x (Wrapper included)
 
-### 2. ⚡ Multi-Transport Server Pipeline
-- **Zero-Driver USB (AOA)**: Communicates directly with Android Open Accessory endpoints over WinUSB bulk streams with sub-millisecond ($<1\,\text{ms}$) hardware response times.
-- **High-Throughput Asynchronous NIO UDP Server**: Non-blocking UDP socket pipeline capable of sustained ingestion up to $1000\,\text{Hz}$ ($1\,\text{ms}$ with Windows multimedia timer `timeBeginPeriod(1)`), receiving 44-byte binary packets from the phone and streaming 8-byte bidirectional motor speed vibration packets (`GamepadFeedback`).
-- **ADB Reverse TCP Tunnel**: Fallback port forwarding bridge over standard Android Debug Bridge (`127.0.0.1:9999`).
-- **Bluetooth RFCOMM Serial Bridge**: Optimal 125Hz wireless connection over Windows Bluetooth serial ports.
-
-### 3. 🎯 CemuHook DSU Motion Server
-- Integrated UDP motion server running on standard port **`26760`**.
-- Receives 6-axis gyroscope and accelerometer orientation vectors from NEXPAD Mobile and broadcasts standard DSU protocol packets.
-- Provides native motion steering and tilt aiming in all modern console emulators:
-  - **Cemu** (Wii U)
-  - **Yuzu** & **Ryujinx** (Nintendo Switch)
-  - **RPCS3** (PlayStation 3)
-  - **Dolphin** (Wii & GameCube)
-
-### 4. 📳 Bidirectional Force-Feedback Game Rumble
-- Intercepts rumble vibration commands dispatched by PC games through the XInput API.
-- Captures high-frequency (small motor) and low-frequency (large motor) vibration strengths.
-- Encodes motor values into real-time 8-byte feedback packets transmitted back to the smartphone to drive tactile haptic actuators.
-
-### 5. 🎨 Modern Cyberpunk Glassmorphic UI
-- Built with **Compose Multiplatform (Desktop)** powered by the Skia graphics engine.
-- Displays live connection telemetry, round-trip time (RTT) ping latency, incoming packet counters, driver health state, and active rumble motor indicators.
-- One-click transport switcher and real-time port configuration.
-
----
-
-## 📥 Multi-Platform Distribution & Downloads
-
-NEXPAD Desktop is distributed through multiple official channels:
-
-### Option A: Microsoft Store *(Coming Soon)*
-1. Open the **Microsoft Store** on Windows 10 or 11.
-2. Search for **NEXPAD Desktop**.
-3. Click **Get / Install** for an automatic, sandboxed MSIX installation with background updates.
-
-### Option B: All-in-One Windows Setup (`NEXPAD_Setup.exe`)
-1. Download the latest **`NEXPAD_Setup.exe`** installer from [GitHub Releases](https://github.com/).
-2. Run the installer. The setup wizard will:
-   - Install the NEXPAD Desktop application to your Program Files.
-   - Automatically detect and prompt to install the official **ViGEmBus** driver if not already present.
-   - Create Start Menu and Desktop shortcuts.
-
-### Option C: Standalone MSI / Portable ZIP
-1. Download `NEXPAD-Desktop.msi` or the portable `.zip` archive from [GitHub Releases](https://github.com/).
-2. Extract or install without requiring administrative elevation (portable mode).
-
----
-
-## 🕹️ User Quick Start Guide (4 Simple Steps)
-
-### Step 1: Install ViGEmBus Driver
-NEXPAD relies on the open-source **ViGEmBus** driver to emulate physical controllers in Windows:
-- If you ran `NEXPAD_Setup.exe`, this was installed automatically.
-- Otherwise, download and run the official installer from [ViGEmBus Releases](https://github.com/nefarius/ViGEmBus/releases).
-
-### Step 2: Launch NEXPAD Desktop
-Run NEXPAD Desktop from your Start Menu.
-- The status indicator should display **"Driver Status: READY (ViGEmBus Connected)"**.
-- The server will immediately begin listening for incoming connections on UDP port `9999` and monitor USB endpoints.
-
-### Step 3: Connect NEXPAD from Your Phone
-- **USB (AOA)**: Plug your phone into your PC via USB-C and select "Connect USB (AOA)" in the mobile app.
-- **Wi-Fi**: Check the local IP address displayed on NEXPAD Desktop (e.g., `192.168.1.150`). Enter this IP in the mobile app and tap "Connect".
-
-### Step 4: Play Your PC Games!
-Windows will chime and register an **Xbox 360 Controller for Windows**. Launch Steam, Game Pass, or any game, and your phone acts as your gamepad!
-
----
-
-## 🛠️ Developer & Contributor Guide
-
-### Technical Stack & Dependencies
-- **Language**: Kotlin 2.x JVM
-- **UI Framework**: Compose Multiplatform Desktop (Skia rendering)
-- **Native Interop**: JNA (`net.java.dev.jna:jna:5.14.0`)
-- **Native Driver**: `vigemclient.dll` (x64 Windows dynamic library)
-- **USB Subsystem**: `libwdi.dll` & WinUSB bulk transfer endpoints
-- **Networking**: Java NIO asynchronous non-blocking sockets
-
-### Source Organization
-```
-NEXPADDesktop/desktopApp/src/main/
-├── kotlin/com/sanket/tools/nexpaddesktop/
-│   ├── connection/       # AOA USB stream handler, UdpServer (1000Hz), CemuHook DSU server
-│   ├── driver/           # JNA bindings: ViGEmClient, ViGEmBus, XUSBReport
-│   ├── model/            # Desktop telemetry models, client connection states
-│   ├── plugins/          # NXPRC vector plugin parser and desktop asset compiler
-│   ├── ui/               # Compose Multiplatform UI, telemetry monitors, glassmorphic HUD
-│   ├── utils/            # Network address discovery, Win32 registry utilities
-│   ├── viewmodel/        # DesktopMainViewModel, DriverViewModel, ServerViewModel
-│   └── main.kt           # Desktop application entry point & window frame
-└── resources/
-    ├── fonts/            # Plus Jakarta Sans & Space Grotesk typography
-    ├── images/           # UI vector icons and branding assets
-    └── win32-x86-64/     # vigemclient.dll, libwdi.dll native binaries
-```
-
-### Strict Code Quality Guarantee
-- **Zero Suppression Rule**: Strictly **0 `@Suppress`** and **0 `@SuppressLint`** across all Kotlin JVM sources.
-- **Thread Safety**: All incoming 1000Hz network packets are processed in lock-free ring buffers before dispatching to JNA kernel memory.
-
-### Building from Source
+### Build Commands
 
 ```powershell
 # Clone the repository
-git clone https://github.com/parmarsanket/nexpad.git
-cd nexpad/NEXPADDesktop
+git clone https://github.com/parmarsanket/NEXPAD-Desktop.git
+cd NEXPAD-Desktop
 
 # Compile Kotlin JVM sources
 .\gradlew.bat :desktopApp:compileKotlin
 
-# Run the Desktop Application in development mode
+# Launch Desktop application in development mode
 .\gradlew.bat :desktopApp:run
 
-# Run automated tests
+# Run test suite
 .\gradlew.bat :desktopApp:test
 
-# Package Standalone Windows MSI installer
+# Package Standalone Release (.exe)
+.\gradlew.bat :desktopApp:packageReleaseExe
+
+# Package Windows MSI Installer
 .\gradlew.bat :desktopApp:packageMsi
 
-# Compile NSIS All-in-One Setup (requires NSIS installed)
+# Compile All-in-One NSIS Setup Wizard (requires makensis)
 makensis installer.nsi
 ```
 
 ---
 
-## 🔒 Privacy, Driver Safety & Security Transparency
+## ❓ Frequently Asked Questions (FAQ)
 
-NEXPAD Desktop is built with complete transparency:
-- **Zero Telemetry**: Collects zero analytics, crash reports, or personal identifiers.
-- **100% Local Processing**: All server sockets listen strictly on your local subnet. No network traffic ever leaves your home network.
-- **Why ViGEmBus Needs Driver Privileges**: The ViGEmBus driver operates as a legitimate Windows Kernel-Mode Driver Framework (KMDF) device driver. It is required to tell the Windows Operating System that a real physical gamepad hardware device is connected. NEXPAD communicates with this driver entirely through standard user-mode APIs (`vigemclient.dll`).
+<details>
+<summary><b>Does NEXPAD require root access on Android?</b></summary>
+<p>
+<b>No.</b> NEXPAD works entirely within standard Android APIs. Neither USB (AOA 2.0), Wi-Fi UDP, nor Bluetooth require root permissions.
+</p>
+</details>
 
-For full disclosures, read [`DISCLAIMER.md`](./DISCLAIMER.md).
+<details>
+<summary><b>Do I need to download ViGEmBus separately?</b></summary>
+<p>
+<b>No.</b> The official <code>NEXPAD_Desktop_Setup.exe</code> installer already bundles the official ViGEmBus installer and configures it automatically during installation.
+</p>
+</details>
+
+<details>
+<summary><b>Does it work without an internet connection?</b></summary>
+<p>
+<b>Yes, 100%.</b> NEXPAD Desktop functions completely offline. Direct USB cable connection requires zero network. Over Wi-Fi, it communicates strictly within your local home subnet.
+</p>
+</details>
+
+<details>
+<summary><b>Why is 200Hz polling rate important?</b></summary>
+<p>
+A 200Hz polling rate delivers a fresh controller input packet every <b>5 milliseconds</b>. This synchronizes cleanly with high refresh-rate monitors (144Hz, 165Hz, 240Hz), ensuring zero stutter or input delay during competitive gaming.
+</p>
+</details>
+
+<details>
+<summary><b>Why does the USB driver prompt for Administrator elevation?</b></summary>
+<p>
+Standard Windows ships with a read-only MTP media driver for smartphones. To send high-speed controller data directly to the phone's hardware USB endpoints, NEXPAD uses the standard Microsoft WinUSB driver. The elevation prompt runs once via Windows UAC to configure this high-speed pathway.
+</p>
+</details>
 
 ---
 
-## ⚖️ Legal Disclaimer & Nominative Fair Use
+## 🔒 Privacy & Security Transparency
 
-- **Non-Affiliation**: NEXPAD Desktop is an independent open-source project and is not affiliated with, sponsored by, or endorsed by Microsoft Corporation, Sony Interactive Entertainment, Nintendo Co., Ltd., Valve Corporation, or Nefarius Software Solutions e.U.
-- **Trademarks**: All trademarks including **Windows**, **Xbox 360**, **Steam**, **PlayStation**, and **Nintendo** are property of their respective owners. Their mention in this repository is solely for **Nominative Fair Use** to describe technical interoperability.
-- Read [`DISCLAIMER.md`](./DISCLAIMER.md) for full terms.
+* **Zero Telemetry**: We collect zero analytics, crash logs, IP addresses, or personal data.
+* **Local Subnet Only**: Servers listen strictly on your local adapter. No traffic ever leaves your home network.
+* **Driver Safety**: NEXPAD interfaces with the verified, open-source ViGEmBus kernel driver purely through user-mode APIs (`vigemclient.dll`).
+
+Read [`DISCLAIMER.md`](./DISCLAIMER.md) for full legal disclosures.
+
+---
+
+## ⚖️ Legal Disclosures
+
+* **Non-Affiliation**: NEXPAD Desktop is an independent open-source project. It is not affiliated with, sponsored by, or endorsed by Microsoft Corporation, Sony Interactive Entertainment, Nintendo Co., Ltd., Valve Corporation, or Nefarius Software Solutions e.U.
+* **Trademarks**: All trademarks including **Windows**, **Xbox 360**, **Steam**, **PlayStation**, **DualShock**, and **Nintendo** belong to their respective owners and are mentioned strictly under **Nominative Fair Use** to describe interoperability.
 
 ---
 
 ## 📄 License & Attribution
 
 This project is licensed under the **Apache License, Version 2.0**.
-- See the full [LICENSE](./LICENSE) file for legal terms.
-- Attributions for third-party libraries (ViGEmClient, JNA, libwdi) are detailed in the [NOTICE](./NOTICE) file.
+* Read the full [LICENSE](./LICENSE) file.
+* Third-party attributions (ViGEmClient, JNA, libwdi, JetBrains Compose) are documented in [NOTICE](./NOTICE).
 
----
+<br/>
 
-## 🔏 Code Signing
-Free code signing provided by the [SignPath Foundation](https://signpath.org).
-
-
-Copyright © 2026 **Sanket Parmar**. All rights reserved.
+<div align="center">
+  <sub>Built with ❤️ by <b>Sanket Parmar</b> for the PC gaming community.</sub>
+</div>

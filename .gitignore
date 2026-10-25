@@ -41,3 +41,7 @@ redist/ViGEmBusSetup.exe
 *.appimage
 /tools/
 /desktopApp/tools/
+# Documentation images
+docs/**/*.png
+docs/*.png
+docs/images/
