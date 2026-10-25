@@ -8,11 +8,11 @@ Deep technical design, kernel driver bindings, and networking pipelines of the *
                     │ "What is it?" │
                     └───────┬───────┘
                             │
-          ┌─────────────────┼──────────────────┐
-          ▼                 ▼                  ▼
-     HISTORY.md         ROADMAP.md       ARCHITECTURE.md
-     "Where we         "Where we're       "How it
-      came from"          going"           works"
+            ┌───────────────┴───────────────┐
+            ▼                               ▼
+       HISTORY.md                    ARCHITECTURE.md
+       "Where we                         "How it
+       came from"                         works"
 ```
 
 ---

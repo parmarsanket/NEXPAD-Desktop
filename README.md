@@ -326,14 +326,13 @@ To enable motion controls (gyro steering / aiming) in console emulators:
                     │       (Windows Server)     │
                     └─────────────┬──────────────┘
                                   │
-          ┌───────────────────────┼───────────────────────┐
-          ▼                       ▼                       ▼
-     HISTORY.md              ROADMAP.md            ARCHITECTURE.md
-   "Where We Came From"    "Where We're Going"      "How It Works"
+                  ┌───────────────┴───────────────┐
+                  ▼                               ▼
+             HISTORY.md                    ARCHITECTURE.md
+        "Where We Came From"                "How It Works"
 ```
 
 - 📖 **[`HISTORY.md`](./HISTORY.md)** — Chronological engineering log of all development milestones.
-- 🗺️ **[`ROADMAP.md`](./ROADMAP.md)** — Forward-looking development milestones and store packaging.
 - 🏛️ **[`ARCHITECTURE.md`](./ARCHITECTURE.md)** — Deep technical specification of the JNA ViGEmClient binding, WinUSB AOA bulk endpoints, and NIO UdpServer.
 - 🤖 **[`AGENTS.md`](./AGENTS.md)** — Machine-readable technical reference, boundaries, and deterministic commands for AI coding assistants.
 - 📜 **[`GRADLE_COMMANDS.md`](./GRADLE_COMMANDS.md)** — Quick reference cheat-sheet for running, testing, building, and packaging.
