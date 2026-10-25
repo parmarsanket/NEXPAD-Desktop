@@ -6,7 +6,7 @@ This document details the chronological evolution of the **NEXPAD Desktop** serv
 
 ## 📅 Chronological Branch Milestone Index
 
-| # | Date & Time | Branch Name | Key Breakthroughs & Deliverables |
+| # | Date & Time | Branch / Milestone | Key Breakthroughs & Deliverables |
 |:---:|:---:|---|---|
 | **01** | `2026-05-31 02:56` | [`master`](https://github.com/parmarsanket/NEXPAD-Desktop/tree/master) | **Project Genesis**: Initial Kotlin/JVM desktop project structure with Gradle setup. |
 | **02** | `2026-05-31 03:32` | [`init`](https://github.com/parmarsanket/NEXPAD-Desktop/tree/init) | **Desktop UI Foundation**: Basic Compose Multiplatform desktop window and layout scaffolding. |
@@ -19,7 +19,7 @@ This document details the chronological evolution of the **NEXPAD Desktop** serv
 | **09** | `2026-06-07 04:46` | [`feature/controller-config`](https://github.com/parmarsanket/NEXPAD-Desktop/tree/feature/controller-config) | **Controller Configuration System**: Supported custom deadzones, stick sensitivities, and trigger thresholds. |
 | **10** | `2026-06-07 08:18` | [`feature/controller-config-v2`](https://github.com/parmarsanket/NEXPAD-Desktop/tree/feature/controller-config-v2) | **Profile Persistence**: Saved controller configurations to local JSON preferences. |
 | **11** | `2026-08-03 08:01` | [`feature/controller-setting-ui`](https://github.com/parmarsanket/NEXPAD-Desktop/tree/feature/controller-setting-ui) | **Settings UI Screen**: Interactive Compose Desktop UI for adjusting joystick curves and deadzones. |
-| **12** | `2026-08-03 12:34` | [`core/high-speed-binary-protocol`](https://github.com/parmarsanket/NEXPAD-Desktop/tree/core/high-speed-binary-protocol) | **1000Hz Binary Protocol**: Switched from JSON strings to high-speed 44-byte raw binary packet parser. |
+| **12** | `2026-08-03 12:34` | [`core/high-speed-binary-protocol`](https://github.com/parmarsanket/NEXPAD-Desktop/tree/core/high-speed-binary-protocol) | **High-Speed Binary Protocol**: Switched from JSON strings to high-speed 44-byte raw binary packet parser (200 Hz streaming rate). |
 | **13** | `2026-08-11 10:44` | [`feature/installer-and-driver-resilience`](https://github.com/parmarsanket/NEXPAD-Desktop/tree/feature/installer-and-driver-resilience) | **Installer & ViGEm Auto-Detection**: Added automated ViGEm driver presence checks and NSIS installer scripts. |
 | **14** | `2026-08-11 13:40` | [`feature/honest-telemetry`](https://github.com/parmarsanket/NEXPAD-Desktop/tree/feature/honest-telemetry) | **Honest Telemetry Engine**: Embedded microsecond RTT ping calculation and packet rate counters. |
 | **15** | `2026-08-11 17:51` | [`fix/deep-audit-networking-fixes`](https://github.com/parmarsanket/NEXPAD-Desktop/tree/fix/deep-audit-networking-fixes) | **Deep Concurrency Audit**: Fixed memory corruption in JNA native buffers and thread starvation in UDP loop. |
@@ -40,10 +40,16 @@ This document details the chronological evolution of the **NEXPAD Desktop** serv
 | **30** | `2026-09-11 10:57` | [`test/nxprc-engine-testing`](https://github.com/parmarsanket/NEXPAD-Desktop/tree/test/nxprc-engine-testing) | **Chrome Headless Test Pipeline**: Validated vector rendering with pixel-differential comparison against Chromium. |
 | **31** | `2026-09-11 12:16` | [`test/nxprc-engine-testing-v2`](https://github.com/parmarsanket/NEXPAD-Desktop/tree/test/nxprc-engine-testing-v2) | **6 Gamepad Categories Studio**: Added authoring templates for ABXY, D-Pad, Thumbsticks, Bumpers, Triggers, and System buttons. |
 | **32** | `2026-09-12 09:06` | [`test/nxprc-engine-testing-v3`](https://github.com/parmarsanket/NEXPAD-Desktop/tree/test/nxprc-engine-testing-v3) | **Universal Keyframe Studio & 3 Pillars**: Implemented dynamic timeline track keyframes, joystick physics, and 3-pillar docs. |
+| **33** | `2026-09-28 14:10` | [`feature/aoa-dynamic-pnp-detection`](https://github.com/parmarsanket/NEXPAD-Desktop/tree/main) | **Universal PnP Device Discovery**: Replaced hardcoded vendor ID lists with dynamic Windows SetupAPI discovery matching `MS_COMP_MTP` and class `WPD` across all Android OEMs. |
+| **34** | `2026-10-05 18:45` | [`fix/winusb-protocol-error-branching`](https://github.com/parmarsanket/NEXPAD-Desktop/tree/main) | **WinUSB Protocol Error Branching**: Added deterministic error handling in `AoaManager`—`LIBUSB_ERROR_NOT_SUPPORTED (-12)` routes to root composite driver swapping, while `LIBUSB_ERROR_ACCESS (-3)` scopes to MTP interface swapping. |
+| **35** | `2026-10-12 21:30` | [`fix/adb-emulator-isolation`](https://github.com/parmarsanket/NEXPAD-Desktop/tree/main) | **ADB Emulator Isolation**: Filtered out Android Studio virtual devices (`emulator-*`) in `AdbBridgeManager` so background emulators never suppress physical USB AOA accessories. |
+| **36** | `2026-10-18 16:15` | [`feature/nsis-driver-bundling`](https://github.com/parmarsanket/NEXPAD-Desktop/tree/main) | **Bundled Zero-Download NSIS Installer**: Integrated `ViGEmBusSetup.exe`, `libwdi.dll`, and platform-tools into `installer.nsi` with silent driver installation and automated Windows Firewall configuration. |
+| **37** | `2026-10-22 11:20` | [`core/200hz-nio-hardening`](https://github.com/parmarsanket/NEXPAD-Desktop/tree/main) | **Strict 200 Hz NIO Pipeline**: Stabilized 200 Hz non-blocking `DatagramChannel` engine with sub-millisecond input dispatch, microsecond telemetry, and disconnect failsafes. |
+| **38** | `2026-10-25 18:00` | [`release/v1.0.0`](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) | **v1.0.0 Production Release**: Tagged official v1.0.0 production milestone with multi-platform matrix, Microsoft Store preparation, and complete architectural documentation suite. |
 
 ---
 
 ## 🔍 How to Browse Historical Code
 To view any development branch directly on GitHub:
-👉 **[github.com/parmarsanket/NEXPAD-Desktop/branches](https://github.com/parmarsanket/NEXPAD-Desktop/branches)**
+👉 **[github.com/parmarsanket/NEXPAD-Desktop/branches](https://github.com/parmarsanket/NEXPAD-Desktop/branches)**  
 *(Note: Older branches appear under the "Stale" tab or via branch search)*

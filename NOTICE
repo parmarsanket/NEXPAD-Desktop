@@ -41,3 +41,7 @@ This project incorporates components from the following open-source projects:
 8. Android SDK Platform-Tools (ADB)
    Copyright (c) 2005-2026 The Android Open Source Project
    License: Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+
+9. Nullsoft Scriptable Install System (NSIS)
+   Copyright (c) 1999-2026 Contributors
+   License: zlib/libpng License (https://nsis.sourceforge.io/License)

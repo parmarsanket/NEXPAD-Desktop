@@ -3,7 +3,7 @@
 **Project:** NEXPAD Desktop (Virtual Controller Server & Studio)  
 **Author / Copyright Holder:** Sanket Parmar  
 **License:** Apache License, Version 2.0  
-**Last Updated:** October 2, 2026
+**Last Updated:** October 2026
 
 ---
 
@@ -39,7 +39,7 @@ NEXPAD Desktop interfaces with the open-source **ViGEmBus** driver (Virtual Game
 
 ## 4. Clean-Room Implementation & Absence of Proprietary Binaries
 - **Zero Proprietary Code**: NEXPAD Desktop was developed independently through clean-room software engineering. It contains **no reverse-engineered proprietary Microsoft, Sony, or Nintendo code, no extracted console firmware, and no confidential SDKs**.
-- **Public Communication Protocols**: All network protocols (1000Hz UDP binary stream, CemuHook DSU motion protocol over port 26760, and AOA USB endpoints) utilize public networking standards and open protocol specifications.
+- **Public Communication Protocols**: All network protocols (200Hz UDP binary stream, CemuHook DSU motion protocol over port 26760, and AOA USB endpoints) utilize public networking standards and open protocol specifications.
 
 ---
 

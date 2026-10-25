@@ -1,128 +1,120 @@
-# NEXPADDesktop Gradle Commands
+# 📜 NEXPAD Desktop Gradle & Build Commands
 
-Always run these from the desktop project folder:
+This document provides a reference cheat-sheet for compiling, running, testing, packaging, and producing installers for **NEXPAD Desktop**.
+
+Always run these commands from the `NEXPADDesktop` project root directory:
 
 ```powershell
 cd "C:\Users\parma\OneDrive\Desktop\NEXPAD Project\NEXPADDesktop"
 ```
 
-Use `.\gradlew.bat`, not `.\gralaw.bad`.
+> [!NOTE]
+> On Windows PowerShell, execute using `.\gradlew.bat`. When combining commands, use `;` as a statement separator (do not use `&&`).
 
-## Basic
+---
+
+## ⚡ 1. Fast Compilation & Validation
+
+Compile Kotlin JVM source files without packaging overhead:
 
 ```powershell
-.\gradlew.bat projects
-.\gradlew.bat tasks --all
+# Fast compilation of desktopApp Kotlin sources
+.\gradlew.bat :desktopApp:compileKotlin
+
+# Fast compilation of shared protocol library
+.\gradlew.bat :shared:compileKotlinJvm
+
+# Clean build artifacts
 .\gradlew.bat clean
 ```
 
-## Run App
+---
+
+## 🚀 2. Run & Debug Application
 
 ```powershell
+# Run Desktop Application in development mode
 .\gradlew.bat :desktopApp:run
-```
 
-Run with command-line arguments:
-
-```powershell
+# Run with custom command-line arguments
 .\gradlew.bat :desktopApp:run --args="your arguments here"
-```
 
-## Debug App
-
-Starts the app paused and waits for a debugger on port `5005`.
-
-```powershell
+# Launch in debug mode (pauses and waits for remote debugger on port 5005)
 .\gradlew.bat :desktopApp:run --debug-jvm
-```
 
-Hot reload with debugger:
-
-```powershell
-.\gradlew.bat :desktopApp:hotRun --debug-jvm
-```
-
-## Hot Reload
-
-Run with hot reload enabled:
-
-```powershell
+# Run with Compose Hot Reload
 .\gradlew.bat :desktopApp:hotRun
-```
 
-Run with automatic reload when files change:
-
-```powershell
+# Run with automatic reload on file changes
 .\gradlew.bat :desktopApp:hotRun --auto
 ```
 
-## Build
+---
+
+## 🧪 3. Testing & Code Quality
 
 ```powershell
-.\gradlew.bat :desktopApp:build
-.\gradlew.bat :desktopApp:assemble
+# Run desktopApp unit and integration tests
+.\gradlew.bat :desktopApp:test
+
+# Run all test suites across all modules
+.\gradlew.bat test
 ```
 
-## Package Installers
+---
 
-Build MSI installer:
+## 📦 4. Application Packaging (Compose Multiplatform)
 
+### Distributable Binaries
 ```powershell
+# Create unpacked application directory
+.\gradlew.bat :desktopApp:createDistributable
+
+# Create release unpacked application directory
+.\gradlew.bat :desktopApp:packageReleaseApp
+```
+
+### MSI & Native Installers
+```powershell
+# Build Windows MSI installer (debug)
 .\gradlew.bat :desktopApp:packageMsi
-```
 
-Build EXE installer:
-
-```powershell
-.\gradlew.bat :desktopApp:packageExe
-```
-
-Build all package types for current Windows OS:
-
-```powershell
-.\gradlew.bat :desktopApp:packageDistributionForCurrentOS
-```
-
-Build release MSI:
-
-```powershell
+# Build Windows MSI installer (release)
 .\gradlew.bat :desktopApp:packageReleaseMsi
-```
 
-Build release EXE:
-
-```powershell
+# Build standard EXE package
 .\gradlew.bat :desktopApp:packageReleaseExe
-```
 
-Build release packages for current Windows OS:
-
-```powershell
+# Build all package types for current Windows OS
 .\gradlew.bat :desktopApp:packageReleaseDistributionForCurrentOS
 ```
 
-## Output Locations
+---
 
-MSI output:
+## 🛠️ 5. All-in-One NSIS Setup Generation
 
-```text
-desktopApp\build\compose\binaries\main\msi\
+The production installer (`NEXPAD_Desktop_Setup.exe`) bundles the application runtime, ADB platform tools, firewall rules, and the silent ViGEmBus kernel driver installer:
+
+```powershell
+# Step 1: Generate release distributable binaries
+.\gradlew.bat :desktopApp:packageReleaseApp
+
+# Step 2: Compile NSIS installer (requires makensis on PATH)
+makensis installer.nsi
 ```
 
-EXE output:
-
+The resulting setup executable is generated at:
 ```text
-desktopApp\build\compose\binaries\main\exe\
+installer_build\NEXPAD_Desktop_Setup.exe
 ```
 
-Release MSI output:
+---
 
-```text
-desktopApp\build\compose\binaries\main-release\msi\
-```
+## 📂 6. Build Output Locations
 
-Release EXE output:
-
-```text
-desktopApp\build\compose\binaries\main-release\exe\
-```
+| Artifact | Output Path |
+|---|---|
+| **Unpacked App (Release)** | `desktopApp\build\compose\binaries\main-release\app\NEXPAD Desktop\` |
+| **Release MSI** | `desktopApp\build\compose\binaries\main-release\msi\` |
+| **Release EXE** | `desktopApp\build\compose\binaries\main-release\exe\` |
+| **All-in-One NSIS Setup** | `installer_build\NEXPAD_Desktop_Setup.exe` |
