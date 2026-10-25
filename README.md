@@ -38,11 +38,14 @@
 
 - [Overview](#-overview)
 - [Key Features](#-key-features)
+- [System Requirements](#-system-requirements)
 - [Transport Comparison Matrix](#-transport-comparison-matrix)
 - [Download & Distribution](#-download--distribution-channels)
 - [Quick Start Guide](#-quick-start-guide-zero-configuration)
+- [Network Ports & Windows Firewall](#-network-ports--windows-firewall)
 - [Kernel Emulation & Controller Mapping](#-kernel-emulation--controller-mapping)
 - [CemuHook DSU Motion Setup](#-cemuhook-dsu-motion-setup)
+- [Troubleshooting & Common Fixes](#-troubleshooting--common-fixes)
 - [System Architecture & Data Flow](#-system-architecture--data-flow)
 - [Subsystem Navigation](#-subsystem-navigation)
 - [Developer & Build Guide](#-developer--build-guide)
@@ -108,6 +111,18 @@ It seamlessly bridges your Android smartphone to Windows, injecting controller i
 
 ---
 
+## 🛡️ System Requirements
+
+| Component | Minimum Requirements | Recommended for Pro Gaming |
+|---|---|---|
+| **Operating System** | Windows 10 (64-bit, Version 1809 or higher) | Windows 11 (64-bit, Version 23H2 or higher) |
+| **Android Smartphone** | Android 6.0 (Marshmallow) with Gyroscope & Accelerometer | Android 10+ with 120Hz display & USB 3.1 Type-C |
+| **Processor & RAM** | Dual-core 2.0 GHz CPU, 2 GB RAM | Quad-core 3.0+ GHz CPU, 4 GB RAM |
+| **Wireless Connection** | 2.4 GHz Wi-Fi Router or Bluetooth 4.2 | 5 GHz Wi-Fi 6 Router or USB 3.1 Tethering |
+| **Virtual Drivers** | Bundled ViGEmBus (Installed automatically by setup) | Microsoft Visual C++ 2015–2022 x64 (Bundled) |
+
+---
+
 ## 📊 Transport Comparison Matrix
 
 Choose the connection method that best fits your playstyle:
@@ -158,20 +173,35 @@ Everything you need is bundled inside the installer. No external driver hunting 
 
 ---
 
+## 🌐 Network Ports & Windows Firewall
+
+NEXPAD Desktop communicates locally over these dedicated network ports:
+
+| Protocol | Port Number | Subsystem / Function | Scope & Direction |
+|---|:---:|---|:---:|
+| **UDP** | `9999` | 200Hz Gamepad Input Stream & LAN Discovery Beacons | Inbound (Local Subnet) |
+| **UDP** | `26760` | CemuHook DSU Motion Protocol (Cemu, Yuzu, Dolphin, RPCS3) | Local Loopback (`127.0.0.1`) |
+| **TCP** | `9999` | ADB Reverse Bridge Tunnel (`localabstract:nexpad_controller`) | Local Loopback (`127.0.0.1`) |
+
+> [!NOTE]
+> When Windows prompts with a "Windows Defender Firewall" alert on first launch, check both **Private networks** and **Public networks** to allow seamless Wi-Fi auto-discovery and UDP streaming.
+
+---
+
 ## 🎮 Kernel Emulation & Controller Mapping
 
 NEXPAD Desktop communicates directly with `vigemclient.dll` to inject native controller state structures into Windows:
 
-### Xbox 360 Emulation (`XUSBReport`)
-* **Digital Buttons (10)**: A, B, X, Y, Left Bumper (LB), Right Bumper (RB), Back, Start, Left Stick Click (LS), Right Stick Click (RS).
-* **Directional Pad**: 4-way discrete D-Pad states (Up, Down, Left, Right).
-* **Analog Triggers**: Left Trigger (LT) & Right Trigger (RT) with 8-bit resolution ($0\dots 255$).
-* **Analog Thumbsticks**: Left and Right 2D thumbsticks with 16-bit signed integer resolution ($-32768\dots 32767$).
-* **XInput Force Feedback**: Intercepts high-frequency and low-frequency rumble commands from games and forwards them to mobile haptic actuators.
-
-### Sony DualShock 4 Emulation (`DualShock4InputMapper`)
-* **Full DS4 Compatibility**: Emulates genuine DualShock 4 hardware, recognized by PlayStation-compatible games, emulators, and DS4Windows.
-* **Touch Pad & Lightbar**: Supports multi-touch touchpad coordinate mapping and RGB lightbar status syncing.
+| Smartphone Touch / Sensor Input | Virtual Xbox 360 Output | Virtual DualShock 4 Output | Behavior & Resolution |
+|---|---|---|---|
+| **Face Buttons** | A, B, X, Y | ✕, ○, □, △ | Zero-debounce digital click |
+| **Shoulder Bumpers** | LB, RB | L1, R1 | Instant microsecond trigger |
+| **Analog Triggers** | LT, RT | L2, R2 | 8-bit analog pressure ($0\dots 255$) |
+| **Dual Thumbsticks** | Left & Right Stick (LS / RS) | Left & Right Stick (L3 / R3) | 16-bit signed axis ($-32768\dots 32767$) |
+| **Directional Pad** | D-Pad (Up, Down, Left, Right) | D-Pad (Up, Down, Left, Right) | 4-way discrete digital states |
+| **System Buttons** | Back / View, Start / Menu | Share, Options, PS Home | Standard game pause / menu navigation |
+| **6-Axis Gyro / Accelerometer** | Right Stick Aim / Steering | DS4 Motion / CemuHook DSU | 200Hz smoothed orientation vectors |
+| **Smartphone Vibrator** | Left (Heavy) & Right (Light) Motors | Dual Rumble Motors | Real-time XInput feedback packet echo |
 
 ---
 
@@ -185,6 +215,45 @@ To enable motion controls (gyro steering / aiming) in console emulators:
    * **Yuzu / Ryujinx**: Go to `Settings` → `Input` → `Motion` → Check `Enable Motion` and configure DSU Server `127.0.0.1:26760`.
    * **Dolphin**: Go to `Controllers` → `Alternate Input Sources` → Enable DSU Client (`127.0.0.1:26760`).
    * **RPCS3**: Go to `Pads` → Set Handler to `DSU` and Port to `26760`.
+
+---
+
+## 🔧 Troubleshooting & Common Fixes
+
+<details>
+<summary><b>1. Phone cannot discover PC over Wi-Fi</b></summary>
+<ul>
+  <li><b>Check Windows Network Profile</b>: Open Windows Settings → Network & Internet → Properties → Set network profile to <b>Private</b> (Windows blocks UDP broadcasts on Public networks).</li>
+  <li><b>Verify Windows Firewall</b>: Ensure <code>NEXPAD Desktop.exe</code> is permitted through Windows Defender Firewall for UDP port <code>9999</code>.</li>
+  <li><b>Same Wi-Fi Band</b>: Verify both phone and PC are connected to the same Wi-Fi router (or use your phone's Wi-Fi Hotspot / USB Tethering).</li>
+</ul>
+</details>
+
+<details>
+<summary><b>2. USB Direct (AOA) mode does not start</b></summary>
+<ul>
+  <li><b>Check USB Connection Mode</b>: When you plug your phone in, swipe down from the notification bar and select <b>File Transfer / MTP</b> (not "Charging Only").</li>
+  <li><b>Accept UAC Elevation Prompt</b>: On the first USB connection, Windows will ask for permission to bind the high-speed WinUSB driver. Click <b>Yes</b>.</li>
+  <li><b>Try USB ADB Bridge</b>: If your phone OEM driver locks MTP, turn on <b>USB Debugging</b> in Android Developer Options and select <i>Connect USB (ADB)</i> for instant driverless play.</li>
+</ul>
+</details>
+
+<details>
+<summary><b>3. Game or Steam is not recognizing the controller</b></summary>
+<ul>
+  <li><b>Check Windows Game Controllers</b>: Press <kbd>Win</kbd> + <kbd>R</kbd>, typing <code>joy.cpl</code>, and press <kbd>Enter</kbd>. If you see <i>"Controller (XBOX 360 For Windows)"</i>, the driver is working properly.</li>
+  <li><b>Enable Steam Controller Support</b>: Open Steam → Settings → Controller → Toggle ON <b>Xbox Controller Support</b>.</li>
+  <li><b>Restart Game</b>: Some older games only detect controllers if NEXPAD Desktop is connected <i>before</i> the game launches.</li>
+</ul>
+</details>
+
+<details>
+<summary><b>4. Gyro motion is not responding in Cemu or Yuzu</b></summary>
+<ul>
+  <li><b>Check DSU Server Port</b>: Verify that your emulator's DSU/CemuHook motion input is configured to IP <code>127.0.0.1</code> and Port <code>26760</code>.</li>
+  <li><b>Confirm Motion is Active</b>: In NEXPAD Desktop, open <b>Gyro Settings</b> and ensure the motion mode toggle is set to <i>Precision Aiming</i>, <i>Steering Wheel</i>, or <i>Flight Stick</i>.</li>
+</ul>
+</details>
 
 ---
 
