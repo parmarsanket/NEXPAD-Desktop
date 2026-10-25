@@ -37,10 +37,10 @@
 ## 📑 Table of Contents
 
 - [Overview](#-overview)
+- [Quick Install](#-quick-install)
 - [Key Features](#-key-features)
 - [System Requirements](#-system-requirements)
 - [Transport Comparison Matrix](#-transport-comparison-matrix)
-- [Download & Distribution](#-download--distribution-channels)
 - [Quick Start Guide](#-quick-start-guide-zero-configuration)
 - [Network Ports & Windows Firewall](#-network-ports--windows-firewall)
 - [Kernel Emulation & Controller Mapping](#-kernel-emulation--controller-mapping)
@@ -61,6 +61,40 @@
 **NEXPAD Desktop** is an ultra-high performance Windows companion server and controller authoring studio built with **Kotlin 2.x JVM**, **Compose Multiplatform (Desktop)**, and **JNA (Java Native Access)**.
 
 It seamlessly bridges your Android smartphone to Windows, injecting controller inputs directly into the Windows Kernel via **ViGEmBus** to emulate genuine physical **Xbox 360** and **Sony DualShock 4** gamepads. The Windows installer automatically configures all drivers out-of-the-box, giving you immediate plug-and-play compatibility across Steam, Xbox Game Pass, Epic Games, and emulators (Cemu, Yuzu, Dolphin, RPCS3).
+
+---
+
+## 🚀 Quick Install
+
+Select your platform to download or install the pre-compiled production release:
+
+### 🖥️ Desktop (Windows)
+
+| Platform | Download | Details |
+|---|---|---|
+| **Windows (Setup)** | [**Download `NEXPAD_Desktop_Setup.exe`**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) | **Recommended:** Complete All-in-One installer. Automatically installs NEXPAD Desktop and configures the bundled ViGEmBus kernel driver. |
+| **Microsoft Store** | [**Get it from Microsoft Store**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) | Official native package for Windows 10 & 11 via the Microsoft Store *(Coming Soon / In Review)*. |
+| **Standalone MSI** | [**Download `NEXPAD-Desktop.msi`**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) | Standard Windows Installer package for silent or enterprise network deployments. |
+| **Portable Package** | [**Download `NEXPAD-Desktop.zip`**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) | Standalone portable archive with bundled `redist/` drivers. Extract and run without admin elevation. |
+
+### 📱 Mobile (Android Companion)
+
+| Platform | Download | Details |
+|---|---|---|
+| **Google Play** | [**Get it on Google Play**](https://play.google.com/store/apps/details?id=com.sanket.tools.nexpad) | Official release for Android smartphones and tablets (supports Android 6.0+ / API 23+). |
+| **Direct APK** | [**Download `NEXPAD-Mobile.apk`**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) | Standalone direct `.apk` binary release for offline installation and sideloading. |
+
+### 📦 Standalone Packages & Assets
+
+For direct downloads, offline installers, or manual installation, fetch the assets directly from GitHub Releases:
+
+[![Download Standalone Binaries](https://img.shields.io/badge/GitHub%20Releases-Download%20v1.0.0%20Assets-2ea44f?style=for-the-badge&logo=github&logoColor=white)](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0)
+
+**Standalone assets available on GitHub Releases:**
+* 🪟 **Windows Setup**: `NEXPAD_Desktop_Setup.exe` (Complete All-in-One Installer with bundled ViGEmBus driver)
+* 🧰 **Windows MSI**: `NEXPAD-Desktop.msi` (Enterprise Windows Installer)
+* 💼 **Windows Portable**: `NEXPAD-Desktop-portable.zip` (Portable ZIP archive with bundled `redist/` drivers)
+* 🤖 **Android Companion**: `NEXPAD-Mobile.apk` (Production signed APK)
 
 ---
 
@@ -133,17 +167,6 @@ Choose the connection method that best fits your playstyle:
 | 🛠️ **USB ADB Bridge** | **200 Hz** | **~1 ms** | USB Debugging ON | Zero Driver Required | **Quick Testing, Zero UAC Prompts** |
 | 📶 **Wi-Fi (UDP Stream)** | **200 Hz** | **~2 – 3 ms** | One-Click Connect | None | **Couch Gaming, Wireless Handheld Mode** |
 | 🔵 **Bluetooth RFCOMM** | **125 Hz** | **~8 ms** | Standard BT Pair | None | **Cable-Free Wireless Casual Play** |
-
----
-
-## 📥 Download & Distribution Channels
-
-| Channel | Format | What's Included | Status / Link |
-|---|---|---|---|
-| 🚀 **GitHub Releases (v1.0.0)** | `NEXPAD_Desktop_Setup.exe` | Complete All-in-One Installer (Bundles App + ViGEmBus Driver) | [**Download Setup (v1.0.0)**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) |
-| 🏬 **Microsoft Store** | Sandboxed MSIX | Windows 10/11 Automated Updates | *Coming Soon (In Review)* |
-| 🧰 **Standalone MSI** | `NEXPAD-Desktop.msi` | Automated Enterprise / Network Deployment | [**Download MSI**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) |
-| 💼 **Portable Package** | `.zip` Archive | Self-Contained App + Bundled `redist/` Drivers | [**Download ZIP**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) |
 
 ---
 
