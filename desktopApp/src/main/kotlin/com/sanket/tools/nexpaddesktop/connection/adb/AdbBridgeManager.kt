@@ -129,7 +129,7 @@ class AdbBridgeManager(
                 }
             }
 
-            var foundAnyDevice = false
+            var foundPhysicalUsbDevice = false
             var readyDevice: AdbDeviceInfo? = null
 
             for (line in lines) {
@@ -138,21 +138,27 @@ class AdbBridgeManager(
 
                 val parts = trimmed.split("\\s+".toRegex())
                 if (parts.size >= 2) {
-                    foundAnyDevice = true
-                    if (parts[1] == "device" && readyDevice == null) {
-                        val serial = parts[0]
-                        var modelName = "Android Device"
-                        for (part in parts) {
-                            if (part.startsWith("model:")) {
-                                modelName = part.substringAfter("model:").replace('_', ' ')
-                            }
+                    val serial = parts[0]
+                    val isEmulator = serial.startsWith("emulator-", ignoreCase = true)
+                    if (parts[1] == "device") {
+                        if (!isEmulator) {
+                            foundPhysicalUsbDevice = true
                         }
-                        readyDevice = AdbDeviceInfo(serial, modelName)
+                        if (readyDevice == null || (readyDevice.serial.startsWith("emulator-", ignoreCase = true) && !isEmulator)) {
+                            var modelName = if (isEmulator) "Android Emulator" else "Android Device"
+                            for (part in parts) {
+                                if (part.startsWith("model:")) {
+                                    modelName = part.substringAfter("model:").replace('_', ' ')
+                                }
+                            }
+                            readyDevice = AdbDeviceInfo(serial, modelName)
+                        }
                     }
                 }
             }
 
-            isAdbDevicePresent.set(foundAnyDevice)
+            // Exclude background emulators (emulator-xxxx) from suppressing USB AOA on physical devices
+            isAdbDevicePresent.set(foundPhysicalUsbDevice)
             readyDevice
         } catch (_: Exception) {
             isAdbDevicePresent.set(false)
