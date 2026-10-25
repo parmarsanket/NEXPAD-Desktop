@@ -121,11 +121,21 @@ object NxprcSurgicalReplacer {
         // Step 3A: Apply any markup changes (e.g. changing <span> text content)
         val htmlWithMarkup = applyMarkupUpdates(originalHtml, clean, layerIndex, layer)
 
-        // Strip HTML markup and comments from the CSS input so no <span> or HTML tags enter <style>
-        val cssOnly = clean
+        // Extract inner content of <style>...</style> tags first to prevent tag-stripping regex from wiping out styles
+        val styleTagRegex = Regex("""<style[^>]*>([\s\S]*?)<\/style>""", RegexOption.IGNORE_CASE)
+        val extractedStyles = styleTagRegex.findAll(clean).map { it.groupValues[1] }.joinToString("\n")
+        val contentWithoutStyles = clean.replace(styleTagRegex, "")
+
+        // Strip HTML markup and comments from the remaining input so no <span> or HTML tags enter <style>
+        val otherCss = contentWithoutStyles
             .replace(Regex("""<!--[\s\S]*?-->"""), "")
             .replace(Regex("""<[^>]+>[\s\S]*?<\/[^>]+>"""), "")
             .replace(Regex("""<[^>]+>"""), "")
+            .trim()
+
+        val cssOnly = listOf(extractedStyles, otherCss)
+            .filter { it.isNotBlank() }
+            .joinToString("\n")
             .trim()
 
         // Step 3B: Apply CSS rules or declarations
@@ -233,14 +243,19 @@ object NxprcSurgicalReplacer {
         return insertInsideButton(html, wrappedSvg)
     }
 
+    private fun Regex.replaceFirst(input: CharSequence, transform: (MatchResult) -> CharSequence): String {
+        val match = find(input) ?: return input.toString()
+        return input.substring(0, match.range.first) + transform(match) + input.substring(match.range.last + 1)
+    }
+
     private fun insertInsideButton(html: String, elementToInsert: String): String {
         val buttonCloseRegex = Regex("""(<\/button>)""", RegexOption.IGNORE_CASE)
         if (buttonCloseRegex.containsMatchIn(html)) {
-            return buttonCloseRegex.replaceFirst(html, "\n        $elementToInsert\n$1")
+            return buttonCloseRegex.replaceFirst(html) { match -> "\n        $elementToInsert\n${match.groupValues[1]}" }
         }
         val bodyCloseRegex = Regex("""(<\/body>)""", RegexOption.IGNORE_CASE)
         if (bodyCloseRegex.containsMatchIn(html)) {
-            return bodyCloseRegex.replaceFirst(html, "\n    $elementToInsert\n$1")
+            return bodyCloseRegex.replaceFirst(html) { match -> "\n    $elementToInsert\n${match.groupValues[1]}" }
         }
         return "$html\n$elementToInsert"
     }
@@ -272,12 +287,12 @@ object NxprcSurgicalReplacer {
         }
 
         return if (styleMatch != null) {
-            styleRegex.replaceFirst(html, "${styleMatch.groupValues[1]}$updatedCss${styleMatch.groupValues[3]}")
+            styleRegex.replaceFirst(html) { "${styleMatch.groupValues[1]}$updatedCss${styleMatch.groupValues[3]}" }
         } else {
             // No <style> tag, insert into <head> or at top
             val headRegex = Regex("""(<\/head>)""", RegexOption.IGNORE_CASE)
             if (headRegex.containsMatchIn(html)) {
-                headRegex.replaceFirst(html, "<style>\n$updatedCss\n</style>\n$1")
+                headRegex.replaceFirst(html) { match -> "<style>\n$updatedCss\n</style>\n${match.groupValues[1]}" }
             } else {
                 "<style>\n$updatedCss\n</style>\n$html"
             }
@@ -673,7 +688,7 @@ object NxprcSurgicalReplacer {
         if (match != null) {
             val existingBody = match.groupValues[2]
             val mergedBody = mergeDeclarations(existingBody, declarationsInput)
-            return finalRegex.replaceFirst(css, "${match.groupValues[1]}\n$mergedBody\n${match.groupValues[3]}")
+            return finalRegex.replaceFirst(css) { "${match.groupValues[1]}\n$mergedBody\n${match.groupValues[3]}" }
         }
 
         // Rule does not exist yet: create it
@@ -796,7 +811,7 @@ object NxprcSurgicalReplacer {
             originalCss.trimEnd() + "\n\n$targetSelector {\n$formattedBody\n}\n"
         }
 
-        return styleRegex.replaceFirst(originalHtml, "${styleMatch.groupValues[1]}$updatedCss${styleMatch.groupValues[3]}")
+        return styleRegex.replaceFirst(originalHtml) { "${styleMatch.groupValues[1]}$updatedCss${styleMatch.groupValues[3]}" }
     }
 
     /**

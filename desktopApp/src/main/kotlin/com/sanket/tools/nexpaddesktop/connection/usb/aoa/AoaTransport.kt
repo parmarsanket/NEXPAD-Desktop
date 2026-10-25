@@ -15,10 +15,16 @@ import org.usb4java.DeviceHandle
 import org.usb4java.LibUsb
 import java.nio.ByteBuffer
 import java.nio.IntBuffer
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.asCoroutineDispatcher
 
 object AoaTransport {
+
+    private val aoaDispatcher = Executors.newFixedThreadPool(2) { runnable ->
+        Thread(runnable, "AoaStreamThread").apply { isDaemon = true }
+    }.asCoroutineDispatcher()
 
     private const val BULK_READ_BUFFER_SIZE = 4096
     private const val FEEDBACK_BUFFER_SIZE = 10
@@ -63,8 +69,8 @@ object AoaTransport {
         val triggerOutChannel = Channel<Unit>(Channel.CONFLATED)
 
         try {
-            // Launch parallel IN/OUT coroutines
-            val inJob = launch(Dispatchers.IO) {
+            // Launch parallel IN/OUT coroutines on dedicated AOA thread pool
+            val inJob = launch(aoaDispatcher) {
                 runInLoop(
                     handle = handle,
                     bulkInEndpoint = endpoints.bulkIn,
@@ -76,7 +82,7 @@ object AoaTransport {
                     onInputReceived = onInputReceived
                 )
             }
-            val outJob = launch(Dispatchers.IO) {
+            val outJob = launch(aoaDispatcher) {
                 runOutLoop(handle, endpoints.bulkOut, feedbackChannel, fileSyncChannel, triggerOutChannel, latestEchoSequence, latestLossPctByte)
             }
 
@@ -143,7 +149,7 @@ object AoaTransport {
 
                 NexpadProtocol.encodeFeedback(
                     feedback = lastFeedback,
-                    echoSequenceNumber = latestEchoSequence.get(),
+                    echoSequenceNumber = latestEchoSequence.getAndSet(0),
                     packetLossByte = latestLossPctByte.get().toByte(),
                     out = feedbackBytes,
                     offset = 0
@@ -155,8 +161,13 @@ object AoaTransport {
                 outTransferred.clear()
 
                 val result = LibUsb.bulkTransfer(handle, bulkOutEndpoint, outBuffer, outTransferred, WRITE_TIMEOUT_MS)
-                if (result < 0 && result != LibUsb.ERROR_TIMEOUT) {
-                    // Suppress timeout spam, break on actual fatal pipe/disconnect errors
+                if (result == LibUsb.ERROR_PIPE) {
+                    // Endpoint stall (device not ready yet): clear halt and yield
+                    LibUsb.clearHalt(handle, bulkOutEndpoint)
+                    kotlinx.coroutines.delay(200)
+                    continue
+                } else if (result < 0 && result != LibUsb.ERROR_TIMEOUT) {
+                    // Suppress timeout spam, break on actual fatal disconnect errors
                     break
                 }
             }
@@ -165,7 +176,7 @@ object AoaTransport {
         }
     }
 
-    private fun CoroutineScope.runInLoop(
+    private suspend fun CoroutineScope.runInLoop(
         handle: DeviceHandle,
         bulkInEndpoint: Byte,
         triggerOutChannel: Channel<Unit>,
@@ -188,6 +199,7 @@ object AoaTransport {
         var lostInWindow = 0
         var receivedInWindow = 0
         var packetCount = 0
+        var pipeRetryCount = 0
 
         try {
             while (isActive) {
@@ -229,19 +241,37 @@ object AoaTransport {
 
                             // Trigger immediate feedback echo for EVERY packet (Conflated channel avoids queueing)
                             triggerOutChannel.trySend(Unit)
+                        } else if (delta < -100) {
+                            println("🔄 [AOA/Transport] Large negative sequence delta ($delta)! Resyncing sequence tracker to ${input.sequenceNumber}.")
+                            lastSequenceNumber = input.sequenceNumber
+                            latestEchoSequence.set(input.sequenceNumber)
+                            triggerOutChannel.trySend(Unit)
                         }
 
                         onInputReceived(input)
                     }
                 } else if (result == LibUsb.ERROR_TIMEOUT) {
-                    // Normal timeout during read; check if active session timed out
-                    if (isSessionActive && (System.currentTimeMillis() - lastPacketReceivedTime > 2500L)) {
-                        println("[AOA/Transport] AOA stream idle (no packets for 2.5s). Ending active session.")
+                    // Normal timeout during read; check if active session timed out (45s resilient threshold)
+                    if (isSessionActive && (System.currentTimeMillis() - lastPacketReceivedTime > 45_000L)) {
+                        println("[AOA/Transport] AOA stream idle (no packets for 45s). Ending active session.")
                         isSessionActive = false
                         onSessionEnded()
                     }
-                } else if (result == LibUsb.ERROR_PIPE || result == LibUsb.ERROR_NO_DEVICE) {
+                } else if (result == LibUsb.ERROR_PIPE) {
+                    // Pipe stall: phone OS is either showing permission prompt or launching app
+                    if (!isSessionActive && pipeRetryCount < 25) {
+                        pipeRetryCount++
+                        if (pipeRetryCount % 5 == 1) {
+                            println("[AOA/Transport] Waiting for Android app to open accessory ($pipeRetryCount/25)...")
+                        }
+                        LibUsb.clearHalt(handle, bulkInEndpoint)
+                        kotlinx.coroutines.delay(200)
+                        continue
+                    }
                     println("[AOA/Transport] Device disconnected (${LibUsb.errorName(result)}).")
+                    break
+                } else if (result == LibUsb.ERROR_NO_DEVICE) {
+                    println("[AOA/Transport] Device physically disconnected (${LibUsb.errorName(result)}).")
                     break
                 } else if (result < 0) {
                     println("[AOA/Transport] Bulk read error: ${LibUsb.errorName(result)}")

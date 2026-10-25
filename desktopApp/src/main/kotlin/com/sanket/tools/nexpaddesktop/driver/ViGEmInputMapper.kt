@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.driver
+package com.sanket.tools.nexpaddesktop.driver
 
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpaddesktop.driver.jna.XUSBReport
@@ -26,8 +26,7 @@ object ViGEmInputMapper {
      * @param input The deserialized network payload from the Android controller.
      * @return An [XUSBReport] fully populated and ready for [ViGEmClientLibrary.vigem_target_x360_update].
      */
-    fun map(input: GamepadInput): XUSBReport {
-        val report = XUSBReport()
+    fun map(input: GamepadInput, destination: XUSBReport = XUSBReport()): XUSBReport { val report = destination
         var buttons: Short = 0
         
         // ---------------------------------------------------------------------
@@ -58,17 +57,18 @@ object ViGEmInputMapper {
         // ---------------------------------------------------------------------
         report.wButtons = buttons
         
-        // Triggers map from [0f .. 1f] to [0 .. 255]
-        report.bLeftTrigger = (input.triggerL2 * 255).toInt().toByte()
-        report.bRightTrigger = (input.triggerR2 * 255).toInt().toByte()
+        // Triggers map from [0f .. 1f] to [0 .. 255] with strict bounds clamping
+        report.bLeftTrigger = (input.triggerL2.coerceIn(0f, 1f) * 255f).toInt().coerceIn(0, 255).toByte()
+        report.bRightTrigger = (input.triggerR2.coerceIn(0f, 1f) * 255f).toInt().coerceIn(0, 255).toByte()
         
-        // Joysticks map from [-1f .. 1f] to [-32768 .. 32767]
+        // Joysticks map from [-1f .. 1f] to [-32768 .. 32767] with strict bounds clamping to prevent sign flips
         // Note: XInput expects positive Y values when pushing the stick UP.
-        report.sThumbLX = (input.leftStickX * 32767).toInt().toShort()
-        report.sThumbLY = (input.leftStickY * 32767).toInt().toShort() 
-        report.sThumbRX = (input.rightStickX * 32767).toInt().toShort()
-        report.sThumbRY = (input.rightStickY * 32767).toInt().toShort() 
+        report.sThumbLX = (input.leftStickX.coerceIn(-1f, 1f) * 32767f).toInt().coerceIn(-32768, 32767).toShort()
+        report.sThumbLY = (input.leftStickY.coerceIn(-1f, 1f) * 32767f).toInt().coerceIn(-32768, 32767).toShort() 
+        report.sThumbRX = (input.rightStickX.coerceIn(-1f, 1f) * 32767f).toInt().coerceIn(-32768, 32767).toShort()
+        report.sThumbRY = (input.rightStickY.coerceIn(-1f, 1f) * 32767f).toInt().coerceIn(-32768, 32767).toShort() 
         
         return report
     }
 }
+

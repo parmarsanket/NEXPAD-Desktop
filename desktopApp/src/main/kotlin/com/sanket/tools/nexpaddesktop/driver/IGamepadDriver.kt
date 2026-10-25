@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.driver
+package com.sanket.tools.nexpaddesktop.driver
 
 import com.sanket.tools.nexpad.model.GamepadInput
 
@@ -35,6 +35,11 @@ interface IGamepadDriver {
      * @param input The generic state received over the network from the Android client.
      */
     fun updateInput(input: GamepadInput)
+
+    /**
+     * Recalibrates driver-internal state or bias without unplugging/reconnecting the virtual device.
+     */
+    fun recalibrate()
 
     /**
      * Forces the driver into a crashed state. Primarily used for unit testing 

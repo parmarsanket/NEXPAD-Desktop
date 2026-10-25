@@ -9,8 +9,10 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
@@ -33,11 +35,65 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 
+private data class SidebarDestination(
+    val screen: Screen,
+    val icon: ImageVector,
+    val label: String
+)
+
+private val baseSidebarDestinations = listOf(
+    SidebarDestination(Screen.HOME, Icons.Default.Home, "Home"),
+    SidebarDestination(Screen.CONTROLLER, Icons.Default.SportsEsports, "Controller"),
+    // TODO: Future release - Node graph routing screen
+    // SidebarDestination(Screen.NODE, Icons.Default.DeviceHub, "Node"),
+    SidebarDestination(Screen.PLUGINS, Icons.Default.Extension, "Plugins"),
+    // TODO: Future release - Layout/Profile converter screen
+    // SidebarDestination(Screen.CONVERTER, Icons.Default.SettingsEthernet, "Converter"),
+    SidebarDestination(Screen.OUTPUT, Icons.Default.Output, "Output")
+    // TODO: Future release - Keyboard & Mouse remapping screen
+    // SidebarDestination(Screen.KBM, Icons.Default.Keyboard, "KBM"),
+)
+
+private val debugSidebarDestination = SidebarDestination(Screen.DEBUG, Icons.Default.BugReport, "Debug")
+
 @Composable
 fun Sidebar(
     currentScreen: Screen,
-    onNavigate: (Screen) -> Unit
+    onNavigate: (Screen) -> Unit,
+    isDeveloperOptionsEnabled: Boolean = false
 ) {
+    val sidebarListState = rememberLazyListState()
+    val activeDestinations = remember(isDeveloperOptionsEnabled) {
+        if (isDeveloperOptionsEnabled) {
+            baseSidebarDestinations + debugSidebarDestination
+        } else {
+            baseSidebarDestinations
+        }
+    }
+
+    val edgeBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(NeonPalette.Cyan, NeonPalette.Purple, NeonPalette.Cyan)
+        )
+    }
+    val logoGlowBrush = remember {
+        Brush.radialGradient(
+            colors = listOf(
+                NeonPalette.Cyan.copy(alpha = 0.15f),
+                Color.Transparent
+            )
+        )
+    }
+    val logoRingBrush = remember {
+        Brush.linearGradient(
+            colors = NeonPalette.GradientBorder
+        )
+    }
+    val logoInnerBrush = remember {
+        Brush.linearGradient(
+            colors = listOf(NeonPalette.Cyan, NeonPalette.Purple)
+        )
+    }
     Box(
         modifier = Modifier
             .width(100.dp)
@@ -45,69 +101,64 @@ fun Sidebar(
             .background(NeonPalette.PanelBgTop)
             .drawBehind {
                 // Gradient edge line on right side
-                val brush = Brush.verticalGradient(
-                    colors = listOf(NeonPalette.Cyan, NeonPalette.Purple, NeonPalette.Cyan)
-                )
                 drawLine(
-                    brush = brush,
+                    brush = edgeBrush,
                     start = Offset(size.width, 0f),
                     end = Offset(size.width, size.height),
                     strokeWidth = 1.dp.toPx()
                 )
             }
     ) {
-        Column(
+        LazyColumn(
+            state = sidebarListState,
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(24.dp))
+            item {
+                Spacer(modifier = Modifier.height(24.dp))
 
-            // Logo Area — gradient-filled circle (#4)
-            Box(
-                modifier = Modifier
-                    .size(60.dp)
-                    .drawBehind {
-                        // Outer glow
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    NeonPalette.Cyan.copy(alpha = 0.15f),
-                                    Color.Transparent
-                                )
-                            ),
-                            radius = 28.dp.toPx()
-                        )
-                        // Gradient ring
-                        drawCircle(
-                            brush = Brush.linearGradient(
-                                colors = NeonPalette.GradientBorder
-                            ),
-                            style = Stroke(width = 1.5.dp.toPx())
-                        )
-                    },
-                contentAlignment = Alignment.Center
-            ) {
+                // Logo Area — gradient-filled circle (#4)
                 Box(
                     modifier = Modifier
-                        .size(20.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(NeonPalette.Cyan, NeonPalette.Purple)
+                        .size(60.dp)
+                        .drawBehind {
+                            // Outer glow
+                            drawCircle(
+                                brush = logoGlowBrush,
+                                radius = 28.dp.toPx()
                             )
-                        )
-                )
+                            // Gradient ring
+                            drawCircle(
+                                brush = logoRingBrush,
+                                style = Stroke(width = 1.5.dp.toPx())
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clip(CircleShape)
+                            .background(logoInnerBrush)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            items(activeDestinations, key = { it.screen.name }) { destination ->
+                SidebarItem(
+                    icon = destination.icon,
+                    label = destination.label,
+                    isSelected = currentScreen == destination.screen
+                ) {
+                    onNavigate(destination.screen)
+                }
+            }
 
-            SidebarItem(Icons.Default.Home, "Home", currentScreen == Screen.HOME) { onNavigate(Screen.HOME) }
-            SidebarItem(Icons.Default.SportsEsports, "Controller", currentScreen == Screen.CONTROLLER) { onNavigate(Screen.CONTROLLER) }
-            SidebarItem(Icons.Default.Extension, "Plugins", currentScreen == Screen.PLUGINS) { onNavigate(Screen.PLUGINS) }
-            SidebarItem(Icons.Default.DeviceHub, "Node", currentScreen == Screen.NODE) { onNavigate(Screen.NODE) }
-            SidebarItem(Icons.Default.SettingsEthernet, "Converter", currentScreen == Screen.CONVERTER) { onNavigate(Screen.CONVERTER) }
-            SidebarItem(Icons.Default.Output, "Output", currentScreen == Screen.OUTPUT) { onNavigate(Screen.OUTPUT) }
-            SidebarItem(Icons.Default.Keyboard, "KBM", currentScreen == Screen.KBM) { onNavigate(Screen.KBM) }
+            item {
+                Spacer(modifier = Modifier.height(24.dp))
+            }
         }
     }
 }
@@ -129,6 +180,25 @@ private fun SidebarItem(
     }
     val contentColor by animateColorAsState(contentColorTarget, tween(200), label = "content")
 
+    val softGlowBrush = remember {
+        Brush.linearGradient(
+            colors = listOf(
+                NeonPalette.Cyan.copy(alpha = 0.10f),
+                NeonPalette.Purple.copy(alpha = 0.08f)
+            )
+        )
+    }
+    val glassFillBrush = remember {
+        Brush.linearGradient(
+            colors = NeonPalette.SelectedFillGradient
+        )
+    }
+    val borderBrush = remember {
+        Brush.linearGradient(
+            colors = NeonPalette.GradientBorder
+        )
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -142,12 +212,7 @@ private fun SidebarItem(
                 if (isSelected) {
                     // Soft outer glow behind the pill (#3)
                     drawRoundRect(
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                NeonPalette.Cyan.copy(alpha = 0.10f),
-                                NeonPalette.Purple.copy(alpha = 0.08f)
-                            )
-                        ),
+                        brush = softGlowBrush,
                         topLeft = Offset(inset - 4.dp.toPx(), 4.dp.toPx()),
                         size = Size(size.width - inset * 2 + 8.dp.toPx(), size.height - 8.dp.toPx()),
                         cornerRadius = CornerRadius(cr + 4.dp.toPx())
@@ -155,9 +220,7 @@ private fun SidebarItem(
 
                     // Gradient-tinted glass fill (#3)
                     drawRoundRect(
-                        brush = Brush.linearGradient(
-                            colors = NeonPalette.SelectedFillGradient
-                        ),
+                        brush = glassFillBrush,
                         topLeft = Offset(inset, 6.dp.toPx()),
                         size = Size(size.width - inset * 2, size.height - 12.dp.toPx()),
                         cornerRadius = CornerRadius(cr)
@@ -165,11 +228,7 @@ private fun SidebarItem(
 
                     // Gradient border on the pill (#3)
                     drawRoundRect(
-                        brush = Brush.linearGradient(
-                            colors = NeonPalette.GradientBorder,
-                            start = Offset.Zero,
-                            end = Offset(size.width, size.height)
-                        ),
+                        brush = borderBrush,
                         topLeft = Offset(inset, 6.dp.toPx()),
                         size = Size(size.width - inset * 2, size.height - 12.dp.toPx()),
                         cornerRadius = CornerRadius(cr),

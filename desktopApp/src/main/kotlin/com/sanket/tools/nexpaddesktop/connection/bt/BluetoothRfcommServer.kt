@@ -38,10 +38,13 @@ class BluetoothRfcommServer {
     private var serverSocket: Long = WinsockBluetooth.INVALID_SOCKET
     private var clientSocket: Long = WinsockBluetooth.INVALID_SOCKET
     private var assignedChannel: Int = 0
+    private var lastQuerySet: WinsockBluetooth.WSAQUERYSETW? = null
+    private var activeSaMem: Memory? = null
+    private var activeCsAddr: WinsockBluetooth.CSADDR_INFO? = null
+    private var activeGuid: GUID? = null
 
     private val feedbackChannel = Channel<GamepadFeedback>(Channel.CONFLATED)
     private val fileSyncChannel = Channel<ByteArray>(Channel.UNLIMITED)
-    private val latestEchoSequence = AtomicInteger(0)
     private val latestLossPctByte = AtomicInteger(0)
 
     private var serverJob: Job? = null
@@ -79,6 +82,13 @@ class BluetoothRfcommServer {
     }
 
     fun pause() {
+        deregisterSdpService()
+        if (clientSocket != WinsockBluetooth.INVALID_SOCKET) {
+            val cs = clientSocket
+            clientSocket = WinsockBluetooth.INVALID_SOCKET
+            isConnected.set(false)
+            closeSocket(cs)
+        }
         if (serverSocket != WinsockBluetooth.INVALID_SOCKET) {
             val s = serverSocket
             serverSocket = WinsockBluetooth.INVALID_SOCKET
@@ -91,6 +101,8 @@ class BluetoothRfcommServer {
 
         isConnected.set(false)
         serverJob?.cancel()
+
+        deregisterSdpService()
 
         closeSocket(clientSocket)
         clientSocket = WinsockBluetooth.INVALID_SOCKET
@@ -122,6 +134,7 @@ class BluetoothRfcommServer {
             // Single Active Transport Guard: If another transport is active (AOA, ADB, Wi-Fi), completely pause!
             if (isExternalTransportActive()) {
                 if (serverSocket != WinsockBluetooth.INVALID_SOCKET) {
+                    deregisterSdpService()
                     val s = serverSocket
                     serverSocket = WinsockBluetooth.INVALID_SOCKET
                     closeSocket(s)
@@ -190,6 +203,7 @@ class BluetoothRfcommServer {
             // 5. Start listening
             val listenRes = WinsockBluetooth.INSTANCE.listen(sock, 1)
             if (listenRes == WinsockBluetooth.SOCKET_ERROR) {
+                deregisterSdpService()
                 closeSocket(sock)
                 serverSocket = WinsockBluetooth.INVALID_SOCKET
                 delay(3000)
@@ -201,6 +215,7 @@ class BluetoothRfcommServer {
             // 6. Accept Loop
             while (isRunning.get() && currentCoroutineContext().isActive) {
                 if (isExternalTransportActive()) {
+                    deregisterSdpService()
                     closeSocket(sock)
                     serverSocket = WinsockBluetooth.INVALID_SOCKET
                     break
@@ -253,7 +268,10 @@ class BluetoothRfcommServer {
 
     private fun registerSdpService(boundAddr: WinsockBluetooth.SOCKADDR_BTH) {
         try {
+            deregisterSdpService()
+
             val serviceGuid = GUID.fromString(NEXPAD_BT_UUID_STRING)
+            activeGuid = serviceGuid
 
             // Memory for CSADDR_INFO and SOCKADDR_BTH
             val saMem = Memory(WinsockBluetooth.SOCKADDR_BTH.SIZE.toLong())
@@ -261,6 +279,7 @@ class BluetoothRfcommServer {
             Pointer.nativeValue(saMem)
             val boundBytes = boundAddr.pointer.getByteArray(0, WinsockBluetooth.SOCKADDR_BTH.SIZE)
             saMem.write(0, boundBytes, 0, WinsockBluetooth.SOCKADDR_BTH.SIZE)
+            activeSaMem = saMem
 
             val csAddr = WinsockBluetooth.CSADDR_INFO().apply {
                 LocalAddr.lpSockaddr = saMem
@@ -271,6 +290,7 @@ class BluetoothRfcommServer {
                 iProtocol = WinsockBluetooth.BTHPROTO_RFCOMM
                 write()
             }
+            activeCsAddr = csAddr
 
             val querySet = WinsockBluetooth.WSAQUERYSETW().apply {
                 dwSize = size()
@@ -289,6 +309,7 @@ class BluetoothRfcommServer {
             )
 
             if (res == 0) {
+                lastQuerySet = querySet
                 println("⚡ [Bluetooth] SDP Service successfully registered for UUID $NEXPAD_BT_UUID_STRING")
             } else {
                 val err = WinsockBluetooth.INSTANCE.WSAGetLastError()
@@ -296,6 +317,29 @@ class BluetoothRfcommServer {
             }
         } catch (e: Exception) {
             println("⚠️ [Bluetooth] SDP registration exception: ${e.message}")
+        }
+    }
+
+    private fun deregisterSdpService() {
+        lastQuerySet?.let { qs ->
+            try {
+                val res = WinsockBluetooth.INSTANCE.WSASetServiceW(
+                    qs,
+                    WinsockBluetooth.RNRSERVICE_DEREGISTER,
+                    0
+                )
+                if (res != 0) {
+                    val err = WinsockBluetooth.INSTANCE.WSAGetLastError()
+                    println("⚠️ [Bluetooth] WSASetService deregister warning: Win32 Error $err")
+                }
+            } catch (e: Exception) {
+                println("⚠️ [Bluetooth] SDP deregistration exception: ${e.message}")
+            } finally {
+                lastQuerySet = null
+                activeSaMem = null
+                activeCsAddr = null
+                activeGuid = null
+            }
         }
     }
 
@@ -320,13 +364,15 @@ class BluetoothRfcommServer {
         var lostInWindow = 0
         var receivedInWindow = 0
         var packetCount = 0
+        val sendLock = Any()
+        val echoBytes = ByteArray(NexpadProtocol.FEEDBACK_PACKET_SIZE)
+        var currentFeedback = GamepadFeedback(0, 0)
 
-        // TX Feedback Job (PC -> Phone Rumble + 50 Hz Telemetry Keepalive)
+        // TX Feedback Job (PC -> Phone Rumble + 250ms Fallback Heartbeat)
         // Rate-limiting feedback prevents half-duplex Bluetooth baseband slot contention
         val txJob = launch(Dispatchers.IO) {
-            val feedbackBytes = ByteArray(NexpadProtocol.FEEDBACK_PACKET_SIZE)
-            var currentFeedback = GamepadFeedback(0, 0)
-            var lastTelemetrySent = 0L
+            val heartbeatBytes = ByteArray(NexpadProtocol.FEEDBACK_PACKET_SIZE)
+            var lastHeartbeatSent = 0L
 
             while (isActive && isConnected.get()) {
                 // Drain all pending file sync packets first
@@ -337,7 +383,9 @@ class BluetoothRfcommServer {
                     while (totalSent < syncData.size && isActive && isConnected.get()) {
                         val toSend = minOf(1024, syncData.size - totalSent)
                         val chunk = syncData.copyOfRange(totalSent, totalSent + toSend)
-                        val sent = WinsockBluetooth.INSTANCE.send(socket, chunk, chunk.size, 0)
+                        val sent = synchronized(sendLock) {
+                            WinsockBluetooth.INSTANCE.send(socket, chunk, chunk.size, 0)
+                        }
                         if (sent <= 0) {
                             println("❌ [Bluetooth] Failed to send file sync packet chunk")
                             break
@@ -348,8 +396,8 @@ class BluetoothRfcommServer {
                     syncData = fileSyncChannel.tryReceive().getOrNull()
                 }
 
-                // Event-driven rumble feedback or 20ms periodic telemetry keepalive
-                val fb = withTimeoutOrNull(20L) {
+                // Event-driven rumble feedback or 250ms periodic keepalive
+                val fb = withTimeoutOrNull(250L) {
                     feedbackChannel.receive()
                 }
                 if (fb != null) {
@@ -365,18 +413,20 @@ class BluetoothRfcommServer {
 
                 val now = System.currentTimeMillis()
                 val isRumbleEvent = (fb != null)
-                val isTelemetryTick = (now - lastTelemetrySent >= 20L)
+                val isHeartbeatTick = (now - lastHeartbeatSent >= 250L)
 
-                if (isRumbleEvent || isTelemetryTick) {
-                    lastTelemetrySent = now
-                    NexpadProtocol.encodeFeedback(
-                        feedback = currentFeedback,
-                        echoSequenceNumber = latestEchoSequence.get(),
-                        packetLossByte = latestLossPctByte.get().toByte(),
-                        out = feedbackBytes,
-                        offset = 0
-                    )
-                    val sent = WinsockBluetooth.INSTANCE.send(socket, feedbackBytes, feedbackBytes.size, 0)
+                if (isRumbleEvent || isHeartbeatTick) {
+                    lastHeartbeatSent = now
+                    val sent = synchronized(sendLock) {
+                        NexpadProtocol.encodeFeedback(
+                            feedback = currentFeedback,
+                            echoSequenceNumber = 0, // 0 = rumble/heartbeat only, ignores RTT to prevent collisions
+                            packetLossByte = latestLossPctByte.get().toByte(),
+                            out = heartbeatBytes,
+                            offset = 0
+                        )
+                        WinsockBluetooth.INSTANCE.send(socket, heartbeatBytes, heartbeatBytes.size, 0)
+                    }
                     if (sent <= 0) {
                         break
                     }
@@ -392,8 +442,12 @@ class BluetoothRfcommServer {
             while (isActive && isConnected.get()) {
                 val bytesRead = WinsockBluetooth.INSTANCE.recv(socket, rxRawBuffer, rxRawBuffer.size, 0)
                 if (bytesRead <= 0) {
-                    val err = WinsockBluetooth.INSTANCE.WSAGetLastError()
-                    if (bytesRead < 0 && err != WinsockBluetooth.WSAEWOULDBLOCK) {
+                    if (bytesRead < 0) {
+                        val err = WinsockBluetooth.INSTANCE.WSAGetLastError()
+                        if (err == WinsockBluetooth.WSAEWOULDBLOCK) {
+                            delay(1)
+                            continue
+                        }
                         println("[Bluetooth] Client read error: $err")
                     }
                     break
@@ -425,8 +479,6 @@ class BluetoothRfcommServer {
 
                 if (streamLength <= 0) continue
 
-                var latestInputInBurst: GamepadInput? = null
-
                 decoder.append(rxRawBuffer, streamOffset, streamLength) { packetBuffer, packetOffset ->
                     val gamepadInput = NexpadProtocol.decodeInput(packetBuffer, packetOffset) ?: return@append
 
@@ -443,7 +495,6 @@ class BluetoothRfcommServer {
                         }
                         receivedInWindow++
                         lastSequenceNumber = gamepadInput.sequenceNumber
-                        latestEchoSequence.set(gamepadInput.sequenceNumber)
 
                         if (packetCount % STATS_WINDOW_PACKETS == 0) {
                             val total = lostInWindow + receivedInWindow
@@ -452,14 +503,40 @@ class BluetoothRfcommServer {
                             lostInWindow = 0
                             receivedInWindow = 0
                         }
+
+                        // IMMEDIATE INLINE ECHO: Send echo back to phone instantly!
+                        // Echo on packet 1 (instant first echo) and every 2 packets (~62.5 Hz)
+                        // Decimating by 2 prevents radio airtime contention while providing 62 updates/sec!
+                        if (packetCount == 1 || packetCount % 2 == 0) {
+                            synchronized(sendLock) {
+                                NexpadProtocol.encodeFeedback(
+                                    feedback = currentFeedback,
+                                    echoSequenceNumber = gamepadInput.sequenceNumber,
+                                    packetLossByte = latestLossPctByte.get().toByte(),
+                                    out = echoBytes,
+                                    offset = 0
+                                )
+                                WinsockBluetooth.INSTANCE.send(socket, echoBytes, echoBytes.size, 0)
+                            }
+                        }
+                    } else if (delta < -100) {
+                        println("🔄 [Bluetooth] Large negative sequence delta ($delta)! Client stream resynced to seq ${gamepadInput.sequenceNumber}.")
+                        lastSequenceNumber = gamepadInput.sequenceNumber
+                        synchronized(sendLock) {
+                            NexpadProtocol.encodeFeedback(
+                                feedback = currentFeedback,
+                                echoSequenceNumber = gamepadInput.sequenceNumber,
+                                packetLossByte = latestLossPctByte.get().toByte(),
+                                out = echoBytes,
+                                offset = 0
+                            )
+                            WinsockBluetooth.INSTANCE.send(socket, echoBytes, echoBytes.size, 0)
+                        }
                     }
 
-                    // Always capture latest packet in this read batch
-                    latestInputInBurst = gamepadInput
+                    // Dispatch each input packet so button transitions and gyro deltas are never lost
+                    onInputReceived?.invoke(gamepadInput)
                 }
-
-                // Discard stale intermediate frames from burst; dispatch only freshest state
-                latestInputInBurst?.let { onInputReceived?.invoke(it) }
             }
         } catch (e: Exception) {
             println("[Bluetooth] Session exception: ${e.message}")

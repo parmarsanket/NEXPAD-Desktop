@@ -41,12 +41,12 @@ interface ViGEmClientLibrary : Library {
      */
     interface PVIGEM_X360_NOTIFICATION : Callback {
         fun callback(
-            Client: Pointer?,
-            Target: Pointer?,
-            LargeMotor: Byte,
-            SmallMotor: Byte,
-            LedNumber: Byte,
-            UserData: Pointer?
+            client: Pointer?,
+            target: Pointer?,
+            largeMotor: Byte,
+            smallMotor: Byte,
+            ledNumber: Byte,
+            userData: Pointer?
         )
     }
 
@@ -57,12 +57,12 @@ interface ViGEmClientLibrary : Library {
      */
     interface PVIGEM_DS4_NOTIFICATION : Callback {
         fun callback(
-            Client: Pointer?,
-            Target: Pointer?,
-            LargeMotor: Byte,
-            SmallMotor: Byte,
-            LightbarColor: Int,
-            UserData: Pointer?
+            client: Pointer?,
+            target: Pointer?,
+            largeMotor: Byte,
+            smallMotor: Byte,
+            lightbarColor: VIGEM_DS4_LIGHTBAR_COLOR.ByValue,
+            userData: Pointer?
         )
     }
 

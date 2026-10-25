@@ -7,6 +7,7 @@ import com.sanket.tools.nexpaddesktop.connection.adb.AdbPathResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 data class DesktopPluginItem(
     val id: String,
@@ -243,6 +244,30 @@ object DesktopPluginManager {
     /**
      * Transfers a component to the mobile device using active USB Debugging (ADB).
      */
+    private fun runAdbCommand(vararg args: String, timeoutSec: Long = 15): Boolean {
+        return try {
+            val process = ProcessBuilder(*args)
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                .redirectError(ProcessBuilder.Redirect.DISCARD)
+                .start()
+            try { process.outputStream.close() } catch (_: Throwable) {}
+            val finished = process.waitFor(timeoutSec, TimeUnit.SECONDS)
+            if (!finished) {
+                process.destroyForcibly()
+                false
+            } else {
+                val ok = process.exitValue() == 0
+                process.destroy()
+                ok
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Transfers a component to the mobile device using active USB Debugging (ADB).
+     */
     suspend fun transferViaAdb(item: DesktopPluginItem): Result<String> = withContext(Dispatchers.IO) {
         val adbPath = AdbPathResolver.resolveAdbPath()
             ?: return@withContext Result.failure(IllegalStateException("ADB executable not found. Ensure USB debugging is enabled."))
@@ -250,8 +275,20 @@ object DesktopPluginManager {
         try {
             // Check connected ADB devices
             val devicesProcess = ProcessBuilder(adbPath, "devices").redirectErrorStream(true).start()
-            val output = devicesProcess.inputStream.bufferedReader().readText()
-            devicesProcess.waitFor()
+            try { devicesProcess.outputStream.close() } catch (_: Throwable) {}
+            var output = ""
+            val devicesFinished = try {
+                output = devicesProcess.inputStream.bufferedReader().use { it.readText() }
+                devicesProcess.waitFor(15, TimeUnit.SECONDS)
+            } finally {
+                if (!devicesProcess.isAlive) devicesProcess.destroy() else devicesProcess.destroyForcibly()
+            }
+            if (!devicesFinished) {
+                return@withContext Result.failure(IllegalStateException("ADB devices check timed out."))
+            }
+            if (devicesProcess.exitValue() != 0) {
+                return@withContext Result.failure(IllegalStateException("ADB devices check failed with exit code ${devicesProcess.exitValue()}."))
+            }
 
             val lines = output.lines().filter { it.contains("device") && !it.startsWith("List") }
             if (lines.isEmpty()) {
@@ -269,21 +306,40 @@ object DesktopPluginManager {
 
             // 1. Push to /data/local/tmp/
             val pushProcess = ProcessBuilder(adbPath, "-s", serial, "push", tempFile.absolutePath, tmpRemotePath)
-                .redirectErrorStream(true).start()
-            val pushOut = pushProcess.inputStream.bufferedReader().readText()
-            pushProcess.waitFor()
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                .redirectError(ProcessBuilder.Redirect.DISCARD)
+                .start()
+            try { pushProcess.outputStream.close() } catch (_: Throwable) {}
+            val pushFinished = try {
+                pushProcess.waitFor(15, TimeUnit.SECONDS)
+            } finally {
+                if (!pushProcess.isAlive) pushProcess.destroy() else pushProcess.destroyForcibly()
+            }
+            if (!pushFinished) {
+                tempFile.delete()
+                return@withContext Result.failure(IllegalStateException("ADB push timed out."))
+            }
+            if (pushProcess.exitValue() != 0) {
+                tempFile.delete()
+                return@withContext Result.failure(IllegalStateException("ADB push failed with exit code ${pushProcess.exitValue()}."))
+            }
 
             // 2. Copy into app's private filesDir using run-as
             val copyCmd = "run-as com.sanket.tools.nexpad cp $tmpRemotePath /data/data/com.sanket.tools.nexpad/files/nxp_components/$remoteFileName"
-            ProcessBuilder(adbPath, "-s", serial, "shell", copyCmd).redirectErrorStream(true).start().waitFor()
+            val copyOk = runAdbCommand(adbPath, "-s", serial, "shell", copyCmd)
 
             // 3. Fallback: Also try pushing to external app directory
             val extPath = "/sdcard/Android/data/com.sanket.tools.nexpad/files/nxp_components/$remoteFileName"
-            ProcessBuilder(adbPath, "-s", serial, "shell", "mkdir -p /sdcard/Android/data/com.sanket.tools.nexpad/files/nxp_components").start().waitFor()
-            ProcessBuilder(adbPath, "-s", serial, "shell", "cp $tmpRemotePath $extPath").start().waitFor()
+            runAdbCommand(adbPath, "-s", serial, "shell", "mkdir -p /sdcard/Android/data/com.sanket.tools.nexpad/files/nxp_components")
+            val extOk = runAdbCommand(adbPath, "-s", serial, "shell", "cp $tmpRemotePath $extPath")
+
+            if (!copyOk && !extOk) {
+                tempFile.delete()
+                return@withContext Result.failure(IllegalStateException("Could not copy component to phone storage. Check phone authorization."))
+            }
 
             // 4. Send broadcast to tell Android app to reload immediately
-            ProcessBuilder(adbPath, "-s", serial, "shell", "am broadcast -a com.sanket.tools.nexpad.RELOAD_COMPONENTS").start().waitFor()
+            runAdbCommand(adbPath, "-s", serial, "shell", "am broadcast -a com.sanket.tools.nexpad.RELOAD_COMPONENTS")
 
             // Cleanup temp file
             tempFile.delete()
@@ -305,8 +361,20 @@ object DesktopPluginManager {
         try {
             // Check connected ADB devices
             val devicesProcess = ProcessBuilder(adbPath, "devices").redirectErrorStream(true).start()
-            val output = devicesProcess.inputStream.bufferedReader().readText()
-            devicesProcess.waitFor()
+            try { devicesProcess.outputStream.close() } catch (_: Throwable) {}
+            var output = ""
+            val devicesFinished = try {
+                output = devicesProcess.inputStream.bufferedReader().use { it.readText() }
+                devicesProcess.waitFor(15, TimeUnit.SECONDS)
+            } finally {
+                if (!devicesProcess.isAlive) devicesProcess.destroy() else devicesProcess.destroyForcibly()
+            }
+            if (!devicesFinished) {
+                return@withContext Result.failure(IllegalStateException("ADB devices check timed out."))
+            }
+            if (devicesProcess.exitValue() != 0) {
+                return@withContext Result.failure(IllegalStateException("ADB devices check failed with exit code ${devicesProcess.exitValue()}."))
+            }
 
             val lines = output.lines().filter { it.contains("device") && !it.startsWith("List") }
             if (lines.isEmpty()) {
@@ -323,27 +391,47 @@ object DesktopPluginManager {
             val remoteFileName = "${doc.manifest.id.replace(Regex("[^a-zA-Z0-9_.-]"), "_")}.nxprc"
             val tmpRemotePath = "/data/local/tmp/$remoteFileName"
 
-            // 1. Push to /data/local/tmp/
-            ProcessBuilder(adbPath, "-s", serial, "push", tempFile.absolutePath, tmpRemotePath)
-                .redirectErrorStream(true).start().waitFor()
+            try {
+                // 1. Push to /data/local/tmp/
+                val pushProcess = ProcessBuilder(adbPath, "-s", serial, "push", tempFile.absolutePath, tmpRemotePath)
+                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                    .redirectError(ProcessBuilder.Redirect.DISCARD)
+                    .start()
+                try { pushProcess.outputStream.close() } catch (_: Throwable) {}
+                val pushFinished = try {
+                    pushProcess.waitFor(15, TimeUnit.SECONDS)
+                } finally {
+                    if (!pushProcess.isAlive) pushProcess.destroy() else pushProcess.destroyForcibly()
+                }
+                if (!pushFinished) {
+                    return@withContext Result.failure(IllegalStateException("ADB push timed out."))
+                }
+                if (pushProcess.exitValue() != 0) {
+                    return@withContext Result.failure(IllegalStateException("ADB push failed with exit code ${pushProcess.exitValue()}."))
+                }
 
-            // 2. Copy into app's private nxp_remote dir using run-as
-            val copyCmd = "run-as com.sanket.tools.nexpad sh -c 'mkdir -p /data/data/com.sanket.tools.nexpad/files/nxp_remote && cp $tmpRemotePath /data/data/com.sanket.tools.nexpad/files/nxp_remote/$remoteFileName'"
-            ProcessBuilder(adbPath, "-s", serial, "shell", copyCmd).redirectErrorStream(true).start().waitFor()
+                // 2. Copy into app's private nxp_remote dir using run-as
+                val copyCmd = "run-as com.sanket.tools.nexpad sh -c 'mkdir -p /data/data/com.sanket.tools.nexpad/files/nxp_remote && cp $tmpRemotePath /data/data/com.sanket.tools.nexpad/files/nxp_remote/$remoteFileName'"
+                val copyOk = runAdbCommand(adbPath, "-s", serial, "shell", copyCmd)
 
-            // 3. Fallback: Also try pushing to external app directory
-            val extDir = "/sdcard/Android/data/com.sanket.tools.nexpad/files/nxp_remote"
-            ProcessBuilder(adbPath, "-s", serial, "shell", "mkdir -p $extDir && cp $tmpRemotePath $extDir/$remoteFileName").start().waitFor()
+                // 3. Fallback: Also try pushing to external app directory
+                val extDir = "/sdcard/Android/data/com.sanket.tools.nexpad/files/nxp_remote"
+                val extOk = runAdbCommand(adbPath, "-s", serial, "shell", "mkdir -p $extDir && cp $tmpRemotePath $extDir/$remoteFileName")
 
-            // 4. Send targeted broadcasts to tell Android app to reload immediately
-            ProcessBuilder(adbPath, "-s", serial, "shell", "am broadcast -a com.sanket.tools.nexpad.RELOAD_REMOTE_COMPONENTS -p com.sanket.tools.nexpad").start().waitFor()
-            ProcessBuilder(adbPath, "-s", serial, "shell", "am broadcast -a com.sanket.tools.nexpad.RELOAD_COMPONENTS -p com.sanket.tools.nexpad").start().waitFor()
+                if (!copyOk && !extOk) {
+                    return@withContext Result.failure(IllegalStateException("Could not copy NXPRC to phone storage. Check phone authorization."))
+                }
 
-            // 5. Cleanup temp files on PC and device
-            ProcessBuilder(adbPath, "-s", serial, "shell", "rm -f $tmpRemotePath").start().waitFor()
-            tempFile.delete()
+                // 4. Send targeted broadcasts to tell Android app to reload immediately
+                runAdbCommand(adbPath, "-s", serial, "shell", "am broadcast -a com.sanket.tools.nexpad.RELOAD_REMOTE_COMPONENTS -p com.sanket.tools.nexpad")
+                runAdbCommand(adbPath, "-s", serial, "shell", "am broadcast -a com.sanket.tools.nexpad.RELOAD_COMPONENTS -p com.sanket.tools.nexpad")
 
-            Result.success("Pushed ${doc.manifest.name} (.nxprc) to phone via ADB! (Hot-reloaded)")
+                Result.success("Pushed ${doc.manifest.name} (.nxprc) to phone via ADB! (Hot-reloaded)")
+            } finally {
+                // Ensure temp files on PC and remote tmp directory are always cleaned up
+                try { runAdbCommand(adbPath, "-s", serial, "shell", "rm -f $tmpRemotePath") } catch (_: Throwable) {}
+                try { tempFile.delete() } catch (_: Throwable) {}
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }

@@ -357,7 +357,7 @@ object NxprcHtmlCssConverter {
 
         // If no <style> block exists, inject one with default spring physics
         if (!res.contains("<style", ignoreCase = true)) {
-            val springPhysicsBlock = "<style>\n  ${defaultPhysics.toRootBlock()}\n  $activeSelector { transform: scale(${defaultPhysics.pressScaleFormatted}) translateY(2px); }\n</style>\n"
+            val springPhysicsBlock = "<style>\n  ${defaultPhysics.toRootBlock()}\n  $activeSelector { transform: scale(${defaultPhysics.pressScaleFormatted}); transform-origin: 50% 50%; }\n</style>\n"
             val bodyIdx = res.indexOf("<body", ignoreCase = true)
             res = if (bodyIdx != -1) {
                 val afterBody = res.indexOf(">", bodyIdx) + 1
@@ -382,7 +382,7 @@ object NxprcHtmlCssConverter {
                 val match = styleEndRegex.find(res)
                 if (match != null) {
                     val insertIdx = match.range.first
-                    val fallbackActive = "\n  $activeSelector { transform: scale(var(--press-scale, ${defaultPhysics.pressScaleFormatted})) translateY(2px); }\n"
+                    val fallbackActive = "\n  $activeSelector { transform: scale(var(--press-scale, ${defaultPhysics.pressScaleFormatted})); transform-origin: 50% 50%; }\n"
                     res = res.substring(0, insertIdx) + fallbackActive + res.substring(insertIdx)
                 }
             }
@@ -522,6 +522,10 @@ object NxprcHtmlCssConverter {
     val PRESET_NEO_TACTILE_B get() = NxprcPresets.PRESET_NEO_TACTILE_B
     val PRESET_NEO_TACTILE_X get() = NxprcPresets.PRESET_NEO_TACTILE_X
     val PRESET_NEO_TACTILE_Y get() = NxprcPresets.PRESET_NEO_TACTILE_Y
+    val PRESET_NEO_TACTILE_PS_CROSS get() = NxprcPresets.PRESET_NEO_TACTILE_PS_CROSS
+    val PRESET_NEO_TACTILE_PS_CIRCLE get() = NxprcPresets.PRESET_NEO_TACTILE_PS_CIRCLE
+    val PRESET_NEO_TACTILE_PS_SQUARE get() = NxprcPresets.PRESET_NEO_TACTILE_PS_SQUARE
+    val PRESET_NEO_TACTILE_PS_TRIANGLE get() = NxprcPresets.PRESET_NEO_TACTILE_PS_TRIANGLE
     val PRESET_DPAD_UP get() = NxprcPresets.PRESET_DPAD_UP
     val PRESET_DPAD_DOWN get() = NxprcPresets.PRESET_DPAD_DOWN
     val PRESET_DPAD_LEFT get() = NxprcPresets.PRESET_DPAD_LEFT
@@ -549,6 +553,10 @@ object NxprcHtmlCssConverter {
     /** Reference templates (structure guide only) delegated to [NxprcPresets]. */
     fun getReferenceTemplate(control: String): String = NxprcPresets.getReferenceTemplate(control)
     fun getReferenceTemplate(control: String, category: String): String = NxprcPresets.getReferenceTemplate(control, category)
+    fun getReferenceTemplate(control: String, category: String, style: NxprcPresetStyle): String = NxprcPresets.getReferenceTemplate(control, category, style)
+    fun getReferenceTemplate(control: String, category: String, consoleMode: ConsoleMode, style: NxprcPresetStyle): String = NxprcPresets.getReferenceTemplate(control, category, consoleMode, style)
+    fun getReferenceTemplate(control: String, category: String, consoleMode: ConsoleMode): String =
+        NxprcPresets.getReferenceTemplate(control, category, consoleMode)
 
     /** Compiler syntax skeletons delegated to [NxprcPresets]. */
     fun getSyntaxSkeleton(control: String, category: String, widthDp: Int, heightDp: Int): String =

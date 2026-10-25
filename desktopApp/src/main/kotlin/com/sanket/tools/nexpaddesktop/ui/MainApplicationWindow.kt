@@ -22,12 +22,10 @@ import com.sanket.tools.nexpaddesktop.model.GyroSettings
 import com.sanket.tools.nexpaddesktop.ui.components.drawCyberGrid
 import com.sanket.tools.nexpaddesktop.ui.theme.NeonPalette
 import com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel
+import kotlinx.serialization.Serializable
 
-enum class Screen { HOME, CONTROLLER, PLUGINS, NODE, CONVERTER, OUTPUT, KBM }
-enum class ControllerType(val displayName: String) { 
-    XBOX_360("Microsoft Xbox 360"), 
-    DUALSHOCK_4("Sony PlayStation 4 (DualShock 4)") 
-}
+typealias Screen = com.sanket.tools.nexpaddesktop.model.Screen
+typealias ControllerType = com.sanket.tools.nexpaddesktop.model.ControllerType
 
 @Composable
 fun MainApplicationWindow(
@@ -46,7 +44,8 @@ fun MainApplicationWindow(
         // Left Sidebar Navigation
         Sidebar(
             currentScreen = currentScreen,
-            onNavigate = { screen -> navigator.navigate(screen) }
+            onNavigate = { screen -> navigator.navigate(screen) },
+            isDeveloperOptionsEnabled = viewModel.isDeveloperOptionsEnabled
         )
         
         // Vertical Divider
@@ -69,7 +68,14 @@ fun MainApplicationWindow(
                         is DesktopScreenKey.Home -> HomeScreen(viewModel = viewModel)
                         is DesktopScreenKey.Controller -> ControllerScreen(viewModel = viewModel)
                         is DesktopScreenKey.Plugins -> PluginsScreen(viewModel = viewModel)
-                        is DesktopScreenKey.Output -> OutputScreen()
+                        is DesktopScreenKey.Output -> OutputScreen(viewModel = viewModel)
+                        is DesktopScreenKey.Debug -> {
+                            if (viewModel.isDeveloperOptionsEnabled) {
+                                DebugScreen(viewModel = viewModel)
+                            } else {
+                                HomeScreen(viewModel = viewModel)
+                            }
+                        }
                         else -> {
                             val screenName = (key as? DesktopScreenKey)?.toScreen()?.name ?: "UNKNOWN"
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -132,3 +138,4 @@ fun MainApplicationWindow(
 
     MainApplicationWindow(viewModel = viewModel)
 }
+

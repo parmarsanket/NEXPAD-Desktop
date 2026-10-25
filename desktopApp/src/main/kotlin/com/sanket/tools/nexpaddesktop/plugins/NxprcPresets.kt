@@ -4,1939 +4,609 @@ import com.sanket.tools.nexpad.category.CategoryManager
 import com.sanket.tools.nexpad.category.CategoryType
 import com.sanket.tools.nexpad.category.ComponentType
 import com.sanket.tools.nexpad.category.ControlKey
+import com.sanket.tools.nexpaddesktop.plugins.presets.*
 
-private fun dpadGlyph(control: String): String = when (control.uppercase()) {
-    ControlKey.DOWN.key  -> "▼"
-    ControlKey.LEFT.key  -> "◀"
-    ControlKey.RIGHT.key -> "▶"
-    ControlKey.DPAD.key  -> "❖"
-    else                 -> "▲"
+enum class NxprcPresetStyle(
+    val id: String,
+    val displayName: String,
+    val badge: String,
+    val description: String
+) {
+    XBOX_ELITE("xbox_elite", "Xbox Elite Crystal", "Pro Luxury", "Clear resin dome with 3D floating neon glyph"),
+    ARCADE("arcade", "Candy Cab Arcade", "Retro Arcade", "Sanwa-style glossy convex dome with crisp white label"),
+    CYBERPUNK("cyberpunk", "Cyberpunk Mecha", "Sci-Fi HUD", "Chamfered titanium squircle with glowing HUD glyph"),
+    SATIN("satin", "Satin DualSense", "Minimalist", "Frosted velvet matte cap with minimalist typography")
 }
 
-/**
- * Pre-built hardware button templates and syntax skeletons for the NXPRC ecosystem.
- * Extracted from NxprcHtmlCssConverter to maintain modularity and token efficiency.
+/*
+ * NXPRC Starter Component Library
+ *
+ * Visual Direction: WARM REALISTIC-RETRO HARDWARE
+ *
+ * Industrial design philosophy inspired by Braun (Dieter Rams), Teenage Engineering,
+ * and vintage 1980s studio electronics:
+ * - Molded warm polymer chassis with directional bevels & specular highlights
+ * - Recessed socket wells with machined countersinks & contact ambient occlusion
+ * - Textured rubber grip ribs and knurled traction bezels
+ * - Countersunk brass slotted machine screws & hex bolts
+ * - Painted warm cream resin faceplates with high-contrast debossed typography
+ * - Segmented illuminated optical bar gauges and ambient status indicators
+ * - Authentic Xbox and PlayStation ABXY color matrices
+ *
+ * Strictly adheres to NXPRC compiler contracts (zero CSS warnings, zero translateY jitter,
+ * spring micro-physics, inline vector SVG detailing).
  */
+
 object NxprcPresets {
-    /** Pre-built HTML/CSS templates for instant testing */
     val PRESET_ULTRA_NEXPAD_A get() = PRESET_NEO_TACTILE_A
 
-    val PRESET_CYBER_REACTOR = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --core-color: #00FFA3;
-    --core-glow: rgba(0, 255, 163, 0.6);
-    --spring-damping: 0.70;
-    --spring-stiffness: 460;
-    --press-scale: 0.93;
-  }
-  .button-a {
-    position: relative;
-    width: 88px;
-    height: 88px;
-    border-radius: 50%;
-    background:
-      radial-gradient(circle at 50% 50%, #06120c 0%, #020604 70%, #000000 100%);
-    border: 2px solid #1a3828;
-    box-shadow:
-      0 10px 24px rgba(0, 0, 0, 0.8),
-      0 0 0 3px #0a1610,
-      0 0 20px var(--core-glow),
-      inset 0 2px 4px rgba(255, 255, 255, 0.3),
-      inset 0 -6px 14px rgba(0, 0, 0, 0.9);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .button-a::before {
-    content: "";
-    position: absolute;
-    inset: 6px;
-    border-radius: 50%;
-    border: 1.5px dashed rgba(0, 255, 163, 0.45);
-    background: radial-gradient(circle at 35% 25%, rgba(0, 255, 163, 0.15) 0%, transparent 60%);
-  }
-  .button-a::after {
-    content: "";
-    position: absolute;
-    top: 8%;
-    left: 16%;
-    width: 68%;
-    height: 36%;
-    border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.75) 0%, transparent 75%);
-    transform: rotate(-12deg);
-  }
-  .button-a .reactor-core {
-    width: 58px;
-    height: 58px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, #15803d 0%, #064e3b 50%, #022c22 100%);
-    border: 1.5px solid #22c55e;
-    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.4), inset 0 -4px 8px rgba(0, 0, 0, 0.85), 0 0 14px var(--core-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .button-a span {
-    font-size: 32px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 0 0 10px #00FFA3, 0 2px 4px rgba(0, 0, 0, 0.95), 0 1px 0 rgba(255, 255, 255, 0.8);
-    z-index: 5;
-  }
-  .button-a:active {
-    transform: scale(0.93) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="button-a" data-control="A" data-category="BUTTON" data-name="Cyber Reactor A">
-    <div class="reactor-core">
-      <span>A</span>
+    val PRESET_CYBER_REACTOR = htmlDocument(
+        """
+${retroMotion("0.68", "440", "0.93")}
+:root {
+  --accent-core: #10B981;
+  --accent-glow: rgba(16, 185, 129, 0.45);
+}
+.reactor-button {
+  position: relative;
+  width: 94px;
+  height: 94px;
+  padding: 0;
+  border: none;
+  outline: none;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #3d2b1d 0%, #20150d 55%, #0f0a06 100%);
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.75),
+    0 0 24px var(--accent-glow),
+    inset 0 2px 3px rgba(255, 220, 180, 0.30),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.85);
+  transform-origin: 50% 50%;
+  font-family: "Courier New", Courier, monospace;
+  cursor: pointer;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.face-plate {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.40) 0%, transparent 45%),
+    linear-gradient(150deg, #E6F5EC 0%, #B0DAC0 45%, #3E664E 100%);
+  box-shadow:
+    inset 0 2px 2px rgba(255, 255, 255, 0.75),
+    inset 0 -5px 9px rgba(38, 19, 7, 0.60),
+    0 4px 10px rgba(0, 0, 0, 0.60);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+.reactor-button-label {
+  position: relative;
+  z-index: 5;
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--ink);
+  text-shadow: 1px 1px 0 var(--accent-core);
+}
+.button-emblem {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 94px;
+  height: 94px;
+  pointer-events: none;
+  z-index: 2;
+}
+${centeredPress(".reactor-button")}
+        """.trimIndent(),
+        """
+  <button class="reactor-button" data-control="A" data-category="BUTTON" data-codename="Cyber Reactor" data-name="Cyber Reactor A" data-seed="19900">
+    <svg class="button-emblem" viewBox="0 0 94 94" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="14" cy="14" r="2.5" fill="#8a7448"/>
+      <circle cx="80" cy="14" r="2.5" fill="#8a7448"/>
+      <circle cx="14" cy="80" r="2.5" fill="#8a7448"/>
+      <circle cx="80" cy="80" r="2.5" fill="#8a7448"/>
+    </svg>
+    <div class="face-plate" data-layer-role="base">
+      <span class="reactor-button-label">A</span>
     </div>
   </button>
-</body>
-</html>
-""".trimIndent()
+        """.trimIndent()
+    )
 
-    val PRESET_CRIMSON_OCTA = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --accent: #FF0055;
-    --accent-glow: rgba(255, 0, 85, 0.55);
-    --spring-damping: 0.68;
-    --spring-stiffness: 480;
-    --press-scale: 0.92;
-  }
-  .crimson-octa {
-    position: relative;
-    width: 92px;
-    height: 92px;
-    clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
-    background: radial-gradient(circle at 35% 25%, #e11d48 0%, #9f1239 45%, #3f0713 85%, #180206 100%);
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.8), inset 0 2px 5px rgba(255, 255, 255, 0.4), inset 0 -6px 12px rgba(0, 0, 0, 0.9), 0 0 22px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .crimson-octa::before {
-    content: "";
-    position: absolute;
-    inset: 5px;
-    clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
-    border: 1.5px solid rgba(255, 255, 255, 0.25);
-  }
-  .crimson-octa::after {
-    content: "";
-    position: absolute;
-    top: 6px;
-    left: 22px;
-    width: 48px;
-    height: 18px;
-    border-radius: 9px;
-    background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.6) 0%, transparent 80%);
-  }
-  .octa-label {
-    font-size: 34px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 0 0 12px #FF0055, 0 2px 4px rgba(0, 0, 0, 0.95), 0 1px 0 rgba(255, 255, 255, 0.8);
-    z-index: 5;
-  }
-  .crimson-octa:active {
-    transform: scale(0.92) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="crimson-octa" data-control="B" data-category="BUTTON" data-name="Crimson Octa B">
-    <span class="octa-label">B</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_SPEED_TURBO = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --accent: #FFB800;
-    --accent-glow: rgba(255, 184, 0, 0.55);
-    --spring-damping: 0.72;
-    --spring-stiffness: 500;
-    --press-scale: 0.91;
-  }
-  .speed-turbo {
-    position: relative;
-    width: 90px;
-    height: 90px;
-    border-radius: 22px;
-    background:
-      radial-gradient(circle at 35% 25%, #382e18 0%, #171206 65%, #080602 100%);
-    border: 2px solid #5a4722;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.8), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -6px 12px rgba(0, 0, 0, 0.9), 0 0 20px var(--accent-glow);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-  }
-  .speed-turbo::before {
-    content: "";
-    position: absolute;
-    inset: 4px;
-    border-radius: 18px;
-    border: 1px dashed rgba(255, 184, 0, 0.35);
-  }
-  .turbo-label {
-    font-size: 30px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 0 0 10px #FFB800, 0 2px 4px rgba(0, 0, 0, 0.95), 0 1px 0 rgba(255, 255, 255, 0.8);
-    z-index: 5;
-  }
-  .turbo-sub {
-    font-size: 9px;
-    font-weight: 900;
-    letter-spacing: 1.5px;
-    color: var(--accent);
-    text-shadow: 0 0 6px var(--accent);
-    z-index: 5;
-  }
-  .speed-turbo:active {
-    transform: scale(0.91) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="speed-turbo" data-control="Y" data-category="BUTTON" data-name="Speed Turbo Y">
-    <span class="turbo-label">Y</span>
-    <span class="turbo-sub">TURBO</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_NEO_TACTILE_A = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --btn-size: 96px;
-    --accent-glow: rgba(0, 255, 163, 0.65);
-    --accent-core: #00FFA3;
-    --spring-damping: 0.68;
-    --spring-stiffness: 440;
-    --press-scale: 0.93;
-  }
-
-  .nexpad-btn {
-    position: relative;
-    width: var(--btn-size);
-    height: var(--btn-size);
-    border-radius: 50%;
-    background:
-      radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.28) 0%, transparent 40%),
-      radial-gradient(circle at 68% 78%, rgba(0, 0, 0, 0.7) 0%, transparent 55%),
-      radial-gradient(circle at 50% 50%, #0d1a13 0%, #06100a 65%, #020503 100%);
-    border: 2px solid #1c3d2a;
-    box-shadow: 
-      0 12px 28px rgba(0, 0, 0, 0.8),
-      0 0 0 3px rgba(18, 40, 26, 0.95),
-      0 0 24px var(--accent-glow),
-      inset 0 2px 4px rgba(255, 255, 255, 0.32),
-      inset 0 -6px 14px rgba(0, 0, 0, 0.9);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .nexpad-btn::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.2) 0%, transparent 45%),
-      conic-gradient(from 180deg at 50% 50%, #173322, #326343, #122418, #478c5e, #173322, #326343, #122418);
-    box-shadow: 
-      inset 0 3px 6px rgba(255, 255, 255, 0.25),
-      inset 0 -6px 14px rgba(0, 0, 0, 0.8);
-  }
-
-  .nexpad-btn::after {
-    content: "";
-    position: absolute;
-    top: 6%;
-    left: 14%;
-    width: 72%;
-    height: 40%;
-    border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.2) 42%, transparent 75%);
-    transform: rotate(-10deg);
-    border-top: 1.5px solid rgba(255, 255, 255, 0.55);
-  }
-
-  .nexpad-btn .btn-core {
-    position: relative;
-    width: 68px;
-    height: 68px;
-    border-radius: 50%;
-    background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.55) 0%, transparent 35%),
-      radial-gradient(circle at 68% 75%, rgba(0, 0, 0, 0.55) 0%, transparent 50%),
-      linear-gradient(145deg, #10b981 0%, #059669 35%, #047857 70%, #064e3b 100%);
-    border: 1.5px solid rgba(0, 255, 163, 0.75);
-    box-shadow: 
-      inset 0 2px 5px rgba(255, 255, 255, 0.45),
-      inset 0 -5px 10px rgba(0, 0, 0, 0.75);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .nexpad-btn .btn-label {
-    font-size: 34px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 
-      0 1px 0 rgba(255, 255, 255, 0.95),
-      0 -1px 0 rgba(0, 0, 0, 0.95),
-      0 3px 8px rgba(0, 0, 0, 0.9),
-      0 0 14px var(--accent-core);
-  }
-
-  .nexpad-btn:active {
-    transform: scale(0.93) translateY(3px);
-  }
-</style>
-</head>
-<body>
-  <button class="nexpad-btn" data-control="A" data-category="BUTTON" data-name="Neo Tactile A">
-    <div class="btn-core">
-      <span class="btn-label">A</span>
+    val PRESET_CRIMSON_OCTA = htmlDocument(
+        """
+${retroMotion("0.68", "440", "0.93")}
+:root {
+  --accent-core: #F43F5E;
+  --accent-glow: rgba(244, 63, 94, 0.45);
+}
+.crimson-octa {
+  position: relative;
+  width: 94px;
+  height: 94px;
+  padding: 0;
+  border: none;
+  outline: none;
+  border-radius: 20px;
+  clip-path: polygon(29% 0%, 71% 0%, 100% 29%, 100% 71%, 71% 100%, 29% 100%, 0% 71%, 0% 29%);
+  background: linear-gradient(160deg, #3d2b1d 0%, #20150d 55%, #0f0a06 100%);
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.75),
+    0 0 24px var(--accent-glow),
+    inset 0 2px 3px rgba(255, 220, 180, 0.30),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.85);
+  transform-origin: 50% 50%;
+  font-family: "Courier New", Courier, monospace;
+  cursor: pointer;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.face-plate {
+  position: relative;
+  width: 66px;
+  height: 66px;
+  clip-path: polygon(29% 0%, 71% 0%, 100% 29%, 100% 71%, 71% 100%, 29% 100%, 0% 71%, 0% 29%);
+  background:
+    radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.40) 0%, transparent 45%),
+    linear-gradient(150deg, #FDE8EE 0%, #EDA3B6 45%, #73243A 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+.crimson-octa-label {
+  position: relative;
+  z-index: 5;
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--ink);
+  text-shadow: 1px 1px 0 var(--accent-core);
+}
+${centeredPress(".crimson-octa")}
+        """.trimIndent(),
+        """
+  <button class="crimson-octa" data-control="B" data-category="BUTTON" data-codename="Tactile Octagon" data-name="Retro Octagon B" data-seed="28800">
+    <div class="face-plate" data-layer-role="base">
+      <span class="crimson-octa-label">B</span>
     </div>
   </button>
-</body>
-</html>
-""".trimIndent()
+        """.trimIndent()
+    )
 
-    val PRESET_NEO_TACTILE_B = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --btn-size: 96px;
-    --accent-glow: rgba(255, 42, 109, 0.65);
-    --accent-core: #FF2A6D;
-    --spring-damping: 0.68;
-    --spring-stiffness: 440;
-    --press-scale: 0.93;
-  }
-
-  .nexpad-btn {
-    position: relative;
-    width: var(--btn-size);
-    height: var(--btn-size);
-    border-radius: 50%;
-    background:
-      radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.28) 0%, transparent 40%),
-      radial-gradient(circle at 68% 78%, rgba(0, 0, 0, 0.7) 0%, transparent 55%),
-      radial-gradient(circle at 50% 50%, #220b12 0%, #120408 65%, #050102 100%);
-    border: 2px solid #4a1524;
-    box-shadow: 
-      0 12px 28px rgba(0, 0, 0, 0.8),
-      0 0 0 3px rgba(60, 15, 25, 0.95),
-      0 0 24px var(--accent-glow),
-      inset 0 2px 4px rgba(255, 255, 255, 0.32),
-      inset 0 -6px 14px rgba(0, 0, 0, 0.9);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .nexpad-btn::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.2) 0%, transparent 45%),
-      conic-gradient(from 180deg at 50% 50%, #3b101c, #63182c, #260810, #8c2944, #3b101c, #63182c, #260810);
-    box-shadow: 
-      inset 0 3px 6px rgba(255, 255, 255, 0.25),
-      inset 0 -6px 14px rgba(0, 0, 0, 0.8);
-  }
-
-  .nexpad-btn::after {
-    content: "";
-    position: absolute;
-    top: 6%;
-    left: 14%;
-    width: 72%;
-    height: 40%;
-    border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.2) 42%, transparent 75%);
-    transform: rotate(-10deg);
-    border-top: 1.5px solid rgba(255, 255, 255, 0.55);
-  }
-
-  .nexpad-btn .btn-core {
-    position: relative;
-    width: 68px;
-    height: 68px;
-    border-radius: 50%;
-    background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.55) 0%, transparent 35%),
-      radial-gradient(circle at 68% 75%, rgba(0, 0, 0, 0.55) 0%, transparent 50%),
-      linear-gradient(145deg, #f43f5e 0%, #e11d48 35%, #be123c 70%, #881337 100%);
-    border: 1.5px solid rgba(255, 42, 109, 0.75);
-    box-shadow: 
-      inset 0 2px 5px rgba(255, 255, 255, 0.45),
-      inset 0 -5px 10px rgba(0, 0, 0, 0.75);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .nexpad-btn .btn-label {
-    font-size: 34px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 
-      0 1px 0 rgba(255, 255, 255, 0.95),
-      0 -1px 0 rgba(0, 0, 0, 0.95),
-      0 3px 8px rgba(0, 0, 0, 0.9),
-      0 0 14px var(--accent-core);
-  }
-
-  .nexpad-btn:active {
-    transform: scale(0.93) translateY(3px);
-  }
-</style>
-</head>
-<body>
-  <button class="nexpad-btn" data-control="B" data-category="BUTTON" data-name="Neo Tactile B">
-    <div class="btn-core">
-      <span class="btn-label">B</span>
+    val PRESET_SPEED_TURBO = htmlDocument(
+        """
+${retroMotion("0.68", "440", "0.93")}
+:root {
+  --accent-core: #F59E0B;
+  --accent-glow: rgba(245, 158, 11, 0.45);
+}
+.speed-turbo {
+  position: relative;
+  width: 104px;
+  height: 74px;
+  padding: 0;
+  border: none;
+  outline: none;
+  border-radius: 20px;
+  background: linear-gradient(160deg, #3d2b1d 0%, #20150d 55%, #0f0a06 100%);
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.75),
+    0 0 24px var(--accent-glow),
+    inset 0 2px 3px rgba(255, 220, 180, 0.30),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.85);
+  transform-origin: 50% 50%;
+  font-family: "Courier New", Courier, monospace;
+  cursor: pointer;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.face-plate {
+  position: relative;
+  width: 88px;
+  height: 58px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.40) 0%, transparent 45%),
+    linear-gradient(150deg, #FFF5D8 0%, #ECC875 45%, #6D4C13 100%);
+  box-shadow:
+    inset 0 2px 2px rgba(255, 255, 255, 0.75),
+    inset 0 -4px 8px rgba(38, 19, 7, 0.60);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+.turbo-label {
+  position: relative;
+  z-index: 5;
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--ink);
+  text-shadow: 1px 1px 0 var(--accent-core);
+}
+.turbo-sub {
+  position: relative;
+  z-index: 5;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: var(--ink);
+  opacity: 0.85;
+}
+${centeredPress(".speed-turbo")}
+        """.trimIndent(),
+        """
+  <button class="speed-turbo" data-control="Y" data-category="BUTTON" data-codename="Speed Turbo" data-name="Retro Turbo Y" data-seed="39900">
+    <div class="face-plate" data-layer-role="base">
+      <span class="turbo-label">Y</span>
+      <span class="turbo-sub">TURBO</span>
     </div>
   </button>
-</body>
-</html>
-""".trimIndent()
+        """.trimIndent()
+    )
 
-    val PRESET_NEO_TACTILE_X = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --btn-size: 96px;
-    --accent-glow: rgba(0, 229, 255, 0.65);
-    --accent-core: #00E5FF;
-    --spring-damping: 0.68;
-    --spring-stiffness: 440;
-    --press-scale: 0.93;
-  }
+    // --- Xbox Elite Crystal Resin Presets ---
+    val PRESET_XBOX_ELITE_A = FacePresetGenerator.facePreset("A", "A", "#00FFA3", "rgba(0, 255, 163, 0.42)", "Xbox Elite A", 16166, NxprcPresetStyle.XBOX_ELITE)
+    val PRESET_XBOX_ELITE_B = FacePresetGenerator.facePreset("B", "B", "#FF2A6D", "rgba(255, 42, 109, 0.36)", "Xbox Elite B", 24892, NxprcPresetStyle.XBOX_ELITE)
+    val PRESET_XBOX_ELITE_X = FacePresetGenerator.facePreset("X", "X", "#00E5FF", "rgba(0, 229, 255, 0.38)", "Xbox Elite X", 38120, NxprcPresetStyle.XBOX_ELITE)
+    val PRESET_XBOX_ELITE_Y = FacePresetGenerator.facePreset("Y", "Y", "#FFD600", "rgba(255, 214, 0, 0.40)", "Xbox Elite Y", 49551, NxprcPresetStyle.XBOX_ELITE)
+    val PRESET_XBOX_ELITE_PS_CROSS = FacePresetGenerator.facePreset("A", "✕", "#3F8FE0", "rgba(63, 143, 224, 0.34)", "Xbox Elite Cross", 16166, NxprcPresetStyle.XBOX_ELITE)
+    val PRESET_XBOX_ELITE_PS_CIRCLE = FacePresetGenerator.facePreset("B", "○", "#E6474E", "rgba(230, 71, 78, 0.34)", "Xbox Elite Circle", 24892, NxprcPresetStyle.XBOX_ELITE)
+    val PRESET_XBOX_ELITE_PS_SQUARE = FacePresetGenerator.facePreset("X", "□", "#E055B8", "rgba(224, 85, 184, 0.34)", "Xbox Elite Square", 38120, NxprcPresetStyle.XBOX_ELITE)
+    val PRESET_XBOX_ELITE_PS_TRIANGLE = FacePresetGenerator.facePreset("Y", "△", "#3FD25A", "rgba(63, 210, 90, 0.34)", "Xbox Elite Triangle", 49551, NxprcPresetStyle.XBOX_ELITE)
 
-  .nexpad-btn {
-    position: relative;
-    width: var(--btn-size);
-    height: var(--btn-size);
-    border-radius: 50%;
-    background:
-      radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.28) 0%, transparent 40%),
-      radial-gradient(circle at 68% 78%, rgba(0, 0, 0, 0.7) 0%, transparent 55%),
-      radial-gradient(circle at 50% 50%, #0b1a24 0%, #050f16 65%, #010406 100%);
-    border: 2px solid #19384d;
-    box-shadow: 
-      0 12px 28px rgba(0, 0, 0, 0.8),
-      0 0 0 3px rgba(15, 38, 55, 0.95),
-      0 0 24px var(--accent-glow),
-      inset 0 2px 4px rgba(255, 255, 255, 0.32),
-      inset 0 -6px 14px rgba(0, 0, 0, 0.9);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+    // --- Candy Cab Arcade Presets ---
+    val PRESET_ARCADE_A = FacePresetGenerator.facePreset("A", "A", "#00FFA3", "rgba(0, 255, 163, 0.42)", "Candy Cab A", 16166, NxprcPresetStyle.ARCADE)
+    val PRESET_ARCADE_B = FacePresetGenerator.facePreset("B", "B", "#FF2A6D", "rgba(255, 42, 109, 0.36)", "Candy Cab B", 24892, NxprcPresetStyle.ARCADE)
+    val PRESET_ARCADE_X = FacePresetGenerator.facePreset("X", "X", "#00E5FF", "rgba(0, 229, 255, 0.38)", "Candy Cab X", 38120, NxprcPresetStyle.ARCADE)
+    val PRESET_ARCADE_Y = FacePresetGenerator.facePreset("Y", "Y", "#FFD600", "rgba(255, 214, 0, 0.40)", "Candy Cab Y", 49551, NxprcPresetStyle.ARCADE)
+    val PRESET_ARCADE_PS_CROSS = FacePresetGenerator.facePreset("A", "✕", "#3F8FE0", "rgba(63, 143, 224, 0.34)", "Candy Cab Cross", 16166, NxprcPresetStyle.ARCADE)
+    val PRESET_ARCADE_PS_CIRCLE = FacePresetGenerator.facePreset("B", "○", "#E6474E", "rgba(230, 71, 78, 0.34)", "Candy Cab Circle", 24892, NxprcPresetStyle.ARCADE)
+    val PRESET_ARCADE_PS_SQUARE = FacePresetGenerator.facePreset("X", "□", "#E055B8", "rgba(224, 85, 184, 0.34)", "Candy Cab Square", 38120, NxprcPresetStyle.ARCADE)
+    val PRESET_ARCADE_PS_TRIANGLE = FacePresetGenerator.facePreset("Y", "△", "#3FD25A", "rgba(63, 210, 90, 0.34)", "Candy Cab Triangle", 49551, NxprcPresetStyle.ARCADE)
 
-  .nexpad-btn::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.2) 0%, transparent 45%),
-      conic-gradient(from 180deg at 50% 50%, #102638, #1c4b6e, #0c1c2b, #256a9e, #102638, #1c4b6e, #0c1c2b);
-    box-shadow: 
-      inset 0 3px 6px rgba(255, 255, 255, 0.25),
-      inset 0 -6px 14px rgba(0, 0, 0, 0.8);
-  }
+    // --- Cyberpunk Mecha Presets ---
+    val PRESET_CYBERPUNK_A = FacePresetGenerator.facePreset("A", "A", "#00FFA3", "rgba(0, 255, 163, 0.42)", "Cyberpunk A", 16166, NxprcPresetStyle.CYBERPUNK)
+    val PRESET_CYBERPUNK_B = FacePresetGenerator.facePreset("B", "B", "#FF2A6D", "rgba(255, 42, 109, 0.36)", "Cyberpunk B", 24892, NxprcPresetStyle.CYBERPUNK)
+    val PRESET_CYBERPUNK_X = FacePresetGenerator.facePreset("X", "X", "#00E5FF", "rgba(0, 229, 255, 0.38)", "Cyberpunk X", 38120, NxprcPresetStyle.CYBERPUNK)
+    val PRESET_CYBERPUNK_Y = FacePresetGenerator.facePreset("Y", "Y", "#FFD600", "rgba(255, 214, 0, 0.40)", "Cyberpunk Y", 49551, NxprcPresetStyle.CYBERPUNK)
+    val PRESET_CYBERPUNK_PS_CROSS = FacePresetGenerator.facePreset("A", "✕", "#3F8FE0", "rgba(63, 143, 224, 0.34)", "Cyberpunk Cross", 16166, NxprcPresetStyle.CYBERPUNK)
+    val PRESET_CYBERPUNK_PS_CIRCLE = FacePresetGenerator.facePreset("B", "○", "#E6474E", "rgba(230, 71, 78, 0.34)", "Cyberpunk Circle", 24892, NxprcPresetStyle.CYBERPUNK)
+    val PRESET_CYBERPUNK_PS_SQUARE = FacePresetGenerator.facePreset("X", "□", "#E055B8", "rgba(224, 85, 184, 0.34)", "Cyberpunk Square", 38120, NxprcPresetStyle.CYBERPUNK)
+    val PRESET_CYBERPUNK_PS_TRIANGLE = FacePresetGenerator.facePreset("Y", "△", "#3FD25A", "rgba(63, 210, 90, 0.34)", "Cyberpunk Triangle", 49551, NxprcPresetStyle.CYBERPUNK)
 
-  .nexpad-btn::after {
-    content: "";
-    position: absolute;
-    top: 6%;
-    left: 14%;
-    width: 72%;
-    height: 40%;
-    border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.2) 42%, transparent 75%);
-    transform: rotate(-10deg);
-    border-top: 1.5px solid rgba(255, 255, 255, 0.55);
-  }
+    // --- Satin DualSense Presets ---
+    val PRESET_SATIN_A = FacePresetGenerator.facePreset("A", "A", "#00FFA3", "rgba(0, 255, 163, 0.42)", "Satin DualSense A", 16166, NxprcPresetStyle.SATIN)
+    val PRESET_SATIN_B = FacePresetGenerator.facePreset("B", "B", "#FF2A6D", "rgba(255, 42, 109, 0.36)", "Satin DualSense B", 24892, NxprcPresetStyle.SATIN)
+    val PRESET_SATIN_X = FacePresetGenerator.facePreset("X", "X", "#00E5FF", "rgba(0, 229, 255, 0.38)", "Satin DualSense X", 38120, NxprcPresetStyle.SATIN)
+    val PRESET_SATIN_Y = FacePresetGenerator.facePreset("Y", "Y", "#FFD600", "rgba(255, 214, 0, 0.40)", "Satin DualSense Y", 49551, NxprcPresetStyle.SATIN)
+    val PRESET_SATIN_PS_CROSS = FacePresetGenerator.facePreset("A", "✕", "#3F8FE0", "rgba(63, 143, 224, 0.34)", "Satin DualSense Cross", 16166, NxprcPresetStyle.SATIN)
+    val PRESET_SATIN_PS_CIRCLE = FacePresetGenerator.facePreset("B", "○", "#E6474E", "rgba(230, 71, 78, 0.34)", "Satin DualSense Circle", 24892, NxprcPresetStyle.SATIN)
+    val PRESET_SATIN_PS_SQUARE = FacePresetGenerator.facePreset("X", "□", "#E055B8", "rgba(224, 85, 184, 0.34)", "Satin DualSense Square", 38120, NxprcPresetStyle.SATIN)
+    val PRESET_SATIN_PS_TRIANGLE = FacePresetGenerator.facePreset("Y", "△", "#3FD25A", "rgba(63, 210, 90, 0.34)", "Satin DualSense Triangle", 49551, NxprcPresetStyle.SATIN)
 
-  .nexpad-btn .btn-core {
-    position: relative;
-    width: 68px;
-    height: 68px;
-    border-radius: 50%;
-    background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.55) 0%, transparent 35%),
-      radial-gradient(circle at 68% 75%, rgba(0, 0, 0, 0.55) 0%, transparent 50%),
-      linear-gradient(145deg, #06b6d4 0%, #0284c7 35%, #0369a1 70%, #0c4a6e 100%);
-    border: 1.5px solid rgba(0, 229, 255, 0.75);
-    box-shadow: 
-      inset 0 2px 5px rgba(255, 255, 255, 0.45),
-      inset 0 -5px 10px rgba(0, 0, 0, 0.75);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+    // --- Canonical aliases defaulting to Xbox Elite Crystal ---
+    val PRESET_NEO_TACTILE_A get() = PRESET_XBOX_ELITE_A
+    val PRESET_NEO_TACTILE_B get() = PRESET_XBOX_ELITE_B
+    val PRESET_NEO_TACTILE_X get() = PRESET_XBOX_ELITE_X
+    val PRESET_NEO_TACTILE_Y get() = PRESET_XBOX_ELITE_Y
 
-  .nexpad-btn .btn-label {
-    font-size: 34px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 
-      0 1px 0 rgba(255, 255, 255, 0.95),
-      0 -1px 0 rgba(0, 0, 0, 0.95),
-      0 3px 8px rgba(0, 0, 0, 0.9),
-      0 0 14px var(--accent-core);
-  }
+    val PRESET_NEO_TACTILE_PS_CROSS get() = PRESET_XBOX_ELITE_PS_CROSS
+    val PRESET_NEO_TACTILE_PS_CIRCLE get() = PRESET_XBOX_ELITE_PS_CIRCLE
+    val PRESET_NEO_TACTILE_PS_SQUARE get() = PRESET_XBOX_ELITE_PS_SQUARE
+    val PRESET_NEO_TACTILE_PS_TRIANGLE get() = PRESET_XBOX_ELITE_PS_TRIANGLE
 
-  .nexpad-btn:active {
-    transform: scale(0.93) translateY(3px);
-  }
-</style>
-</head>
-<body>
-  <button class="nexpad-btn" data-control="X" data-category="BUTTON" data-name="Neo Tactile X">
-    <div class="btn-core">
-      <span class="btn-label">X</span>
+    val PRESET_DPAD_UP = DpadPresetGenerator.dpadDirectionPreset("UP")
+    val PRESET_DPAD_DOWN = DpadPresetGenerator.dpadDirectionPreset("DOWN")
+    val PRESET_DPAD_LEFT = DpadPresetGenerator.dpadDirectionPreset("LEFT")
+    val PRESET_DPAD_RIGHT = DpadPresetGenerator.dpadDirectionPreset("RIGHT")
+    val PRESET_DPAD_CROSS = DpadPresetGenerator.dpadCrossPreset()
+
+    val PRESET_TRIGGER_LT = TriggerPresetGenerator.triggerPreset("LT")
+    val PRESET_TRIGGER_RT = TriggerPresetGenerator.triggerPreset("RT")
+    val PRESET_BUMPER_LB = BumperPresetGenerator.bumperPreset("LB")
+    val PRESET_BUMPER_RB = BumperPresetGenerator.bumperPreset("RB")
+
+    val PRESET_THUMBSTICK_LS = JoystickPresetGenerator.joystickPreset("LS")
+    val PRESET_THUMBSTICK_RS = JoystickPresetGenerator.joystickPreset("RS")
+    val PRESET_STICK_BUTTON_LSB = JoystickPresetGenerator.stickButtonPreset("LSB")
+    val PRESET_STICK_BUTTON_RSB = JoystickPresetGenerator.stickButtonPreset("RSB")
+
+    val PRESET_TOUCHPAD_LTP = JoystickPresetGenerator.touchpadPreset("LTP")
+    val PRESET_TOUCHPAD_RTP = JoystickPresetGenerator.touchpadPreset("RTP")
+
+    val PRESET_SYSTEM_MENU = SystemPresetGenerator.systemMenuPreset()
+    val PRESET_SYSTEM_VIEW = htmlDocument(
+        """
+${retroMotion("0.75", "500", "0.93")}
+.system-btn {
+  position: relative;
+  width: 64px;
+  height: 42px;
+  padding: 0;
+  border: none;
+  outline: none;
+  border-radius: 12px;
+  background: linear-gradient(160deg, #4a2a14 0%, #2a1408 55%, #140803 100%);
+  box-shadow:
+    0 5px 12px rgba(0, 0, 0, 0.70),
+    0 0 12px rgba(249, 115, 22, 0.40),
+    inset 0 2px 2px rgba(255, 200, 140, 0.25),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.80);
+  transform-origin: 50% 50%;
+  cursor: pointer;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.face-plate {
+  position: relative;
+  width: 54px;
+  height: 32px;
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.30) 0%, transparent 40%),
+    linear-gradient(160deg, #f3e9cd 0%, var(--cream) 45%, var(--cream-dark) 100%);
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.70),
+    inset 0 -3px 5px rgba(90, 55, 20, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.system-symbol {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: var(--ink);
+}
+${centeredPress(".system-btn")}
+        """.trimIndent(),
+        """
+  <button class="system-btn" data-control="VIEW" data-category="SYSTEM" data-codename="Tactile View" data-name="Retro Foundry View" data-seed="11500">
+    <div class="face-plate" data-layer-role="base">
+      <span class="system-symbol">VIEW</span>
     </div>
   </button>
-</body>
-</html>
-""".trimIndent()
+        """.trimIndent()
+    )
 
-    val PRESET_NEO_TACTILE_Y = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --btn-size: 96px;
-    --accent-glow: rgba(255, 214, 0, 0.65);
-    --accent-core: #FFD600;
-    --spring-damping: 0.68;
-    --spring-stiffness: 440;
-    --press-scale: 0.93;
-  }
-
-  .nexpad-btn {
-    position: relative;
-    width: var(--btn-size);
-    height: var(--btn-size);
-    border-radius: 50%;
-    background:
-      radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.28) 0%, transparent 40%),
-      radial-gradient(circle at 68% 78%, rgba(0, 0, 0, 0.7) 0%, transparent 55%),
-      radial-gradient(circle at 50% 50%, #241c09 0%, #140e03 65%, #050301 100%);
-    border: 2px solid #523f14;
-    box-shadow: 
-      0 12px 28px rgba(0, 0, 0, 0.8),
-      0 0 0 3px rgba(60, 45, 12, 0.95),
-      0 0 24px var(--accent-glow),
-      inset 0 2px 4px rgba(255, 255, 255, 0.32),
-      inset 0 -6px 14px rgba(0, 0, 0, 0.9);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .nexpad-btn::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.2) 0%, transparent 45%),
-      conic-gradient(from 180deg at 50% 50%, #362a0c, #695116, #241a05, #94721c, #362a0c, #695116, #241a05);
-    box-shadow: 
-      inset 0 3px 6px rgba(255, 255, 255, 0.25),
-      inset 0 -6px 14px rgba(0, 0, 0, 0.8);
-  }
-
-  .nexpad-btn::after {
-    content: "";
-    position: absolute;
-    top: 6%;
-    left: 14%;
-    width: 72%;
-    height: 40%;
-    border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 25%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.2) 42%, transparent 75%);
-    transform: rotate(-10deg);
-    border-top: 1.5px solid rgba(255, 255, 255, 0.55);
-  }
-
-  .nexpad-btn .btn-core {
-    position: relative;
-    width: 68px;
-    height: 68px;
-    border-radius: 50%;
-    background: 
-      radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.55) 0%, transparent 35%),
-      radial-gradient(circle at 68% 75%, rgba(0, 0, 0, 0.55) 0%, transparent 50%),
-      linear-gradient(145deg, #f59e0b 0%, #d97706 35%, #b45309 70%, #78350f 100%);
-    border: 1.5px solid rgba(255, 214, 0, 0.75);
-    box-shadow: 
-      inset 0 2px 5px rgba(255, 255, 255, 0.45),
-      inset 0 -5px 10px rgba(0, 0, 0, 0.75);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .nexpad-btn .btn-label {
-    font-size: 34px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 
-      0 1px 0 rgba(255, 255, 255, 0.95),
-      0 -1px 0 rgba(0, 0, 0, 0.95),
-      0 3px 8px rgba(0, 0, 0, 0.9),
-      0 0 14px var(--accent-core);
-  }
-
-  .nexpad-btn:active {
-    transform: scale(0.93) translateY(3px);
-  }
-</style>
-</head>
-<body>
-  <button class="nexpad-btn" data-control="Y" data-category="BUTTON" data-name="Neo Tactile Y">
-    <div class="btn-core">
-      <span class="btn-label">Y</span>
+    val PRESET_SYSTEM_HOME = htmlDocument(
+        """
+${retroMotion("0.75", "500", "0.93")}
+:root {
+  --accent: #F97316;
+  --accent-glow: rgba(249, 115, 22, 0.45);
+}
+.system-btn {
+  position: relative;
+  width: 70px;
+  height: 70px;
+  padding: 0;
+  border: none;
+  outline: none;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #4a2a14 0%, #2a1408 55%, #140803 100%);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.70),
+    0 0 18px var(--accent-glow),
+    inset 0 2px 2px rgba(255, 200, 140, 0.30),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.80);
+  transform-origin: 50% 50%;
+  cursor: pointer;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.face-plate {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.40) 0%, transparent 45%),
+    linear-gradient(160deg, #f3e9cd 0%, var(--cream) 45%, var(--cream-dark) 100%);
+  box-shadow:
+    inset 0 2px 2px rgba(255, 255, 255, 0.70),
+    inset 0 -4px 7px rgba(90, 55, 20, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.system-symbol {
+  font-size: 28px;
+  color: var(--ink);
+  text-shadow: 1px 1px 0 var(--accent);
+}
+${centeredPress(".system-btn")}
+        """.trimIndent(),
+        """
+  <button class="system-btn" data-control="HOME" data-category="SYSTEM" data-codename="Tactile Home" data-name="Retro Foundry Home" data-seed="11600">
+    <div class="face-plate" data-layer-role="base">
+      <span class="system-symbol">⌂</span>
     </div>
   </button>
-</body>
-</html>
-""".trimIndent()
+        """.trimIndent()
+    )
 
-    val PRESET_DPAD_UP = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --dpad-size: 76px;
-    --accent: #00F0FF;
-    --accent-glow: rgba(0, 240, 255, 0.5);
-    --spring-damping: 0.72;
-    --spring-stiffness: 480;
-    --press-scale: 0.92;
-  }
-  .dpad-btn {
-    width: var(--dpad-size);
-    height: var(--dpad-size);
-    border-radius: 18px;
-    background: 
-      radial-gradient(circle at 50% 20%, rgba(0, 240, 255, 0.22) 0%, transparent 55%),
-      linear-gradient(180deg, #262d3a 0%, #151821 60%, #080a0e 100%);
-    border: 2px solid #384254;
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -5px 10px rgba(0, 0, 0, 0.85), 0 0 16px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  .dpad-btn::before {
-    content: "";
-    position: absolute;
-    top: 8px;
-    left: 18px;
-    width: 40px;
-    height: 3px;
-    border-radius: 1.5px;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent);
-  }
-  .dpad-btn::after {
-    content: "";
-    position: absolute;
-    top: 8%;
-    left: 14%;
-    width: 72%;
-    height: 36%;
-    border-radius: 12px;
-    background: radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.5) 0%, transparent 70%);
-  }
-  .dpad-arrow {
-    font-size: 32px;
-    font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0,0,0,0.95), 0 -1px 0 rgba(255,255,255,0.7);
-    z-index: 5;
-  }
-  .dpad-btn:active {
-    transform: scale(0.92) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="dpad-btn" data-control="UP" data-category="DPAD" data-name="D-Pad Up">
-    <span class="dpad-arrow">▲</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_DPAD_DOWN = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --dpad-size: 76px;
-    --accent: #00F0FF;
-    --accent-glow: rgba(0, 240, 255, 0.5);
-    --spring-damping: 0.72;
-    --spring-stiffness: 480;
-    --press-scale: 0.92;
-  }
-  .dpad-btn {
-    width: var(--dpad-size);
-    height: var(--dpad-size);
-    border-radius: 18px;
-    background: 
-      radial-gradient(circle at 50% 80%, rgba(0, 240, 255, 0.22) 0%, transparent 55%),
-      linear-gradient(0deg, #262d3a 0%, #151821 60%, #080a0e 100%);
-    border: 2px solid #384254;
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -5px 10px rgba(0, 0, 0, 0.85), 0 0 16px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  .dpad-btn::before {
-    content: "";
-    position: absolute;
-    bottom: 8px;
-    left: 18px;
-    width: 40px;
-    height: 3px;
-    border-radius: 1.5px;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent);
-  }
-  .dpad-btn::after {
-    content: "";
-    position: absolute;
-    bottom: 8%;
-    left: 14%;
-    width: 72%;
-    height: 36%;
-    border-radius: 12px;
-    background: radial-gradient(ellipse at 50% 70%, rgba(255, 255, 255, 0.5) 0%, transparent 70%);
-  }
-  .dpad-arrow {
-    font-size: 32px;
-    font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0,0,0,0.95), 0 -1px 0 rgba(255,255,255,0.7);
-    z-index: 5;
-  }
-  .dpad-btn:active {
-    transform: scale(0.92) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="dpad-btn" data-control="DOWN" data-category="DPAD" data-name="D-Pad Down">
-    <span class="dpad-arrow">▼</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_DPAD_LEFT = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --dpad-size: 76px;
-    --accent: #00F0FF;
-    --accent-glow: rgba(0, 240, 255, 0.5);
-    --spring-damping: 0.72;
-    --spring-stiffness: 480;
-    --press-scale: 0.92;
-  }
-  .dpad-btn {
-    width: var(--dpad-size);
-    height: var(--dpad-size);
-    border-radius: 18px;
-    background: 
-      radial-gradient(circle at 20% 50%, rgba(0, 240, 255, 0.22) 0%, transparent 55%),
-      linear-gradient(90deg, #262d3a 0%, #151821 60%, #080a0e 100%);
-    border: 2px solid #384254;
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -5px 10px rgba(0, 0, 0, 0.85), 0 0 16px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  .dpad-btn::before {
-    content: "";
-    position: absolute;
-    left: 8px;
-    top: 18px;
-    width: 3px;
-    height: 40px;
-    border-radius: 1.5px;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent);
-  }
-  .dpad-btn::after {
-    content: "";
-    position: absolute;
-    top: 14%;
-    left: 8%;
-    width: 36%;
-    height: 72%;
-    border-radius: 12px;
-    background: radial-gradient(ellipse at 30% 50%, rgba(255, 255, 255, 0.5) 0%, transparent 70%);
-  }
-  .dpad-arrow {
-    font-size: 32px;
-    font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0,0,0,0.95), 0 -1px 0 rgba(255,255,255,0.7);
-    z-index: 5;
-  }
-  .dpad-btn:active {
-    transform: scale(0.92) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="dpad-btn" data-control="LEFT" data-category="DPAD" data-name="D-Pad Left">
-    <span class="dpad-arrow">◀</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_DPAD_RIGHT = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --dpad-size: 76px;
-    --accent: #00F0FF;
-    --accent-glow: rgba(0, 240, 255, 0.5);
-    --spring-damping: 0.72;
-    --spring-stiffness: 480;
-    --press-scale: 0.92;
-  }
-  .dpad-btn {
-    width: var(--dpad-size);
-    height: var(--dpad-size);
-    border-radius: 18px;
-    background: 
-      radial-gradient(circle at 80% 50%, rgba(0, 240, 255, 0.22) 0%, transparent 55%),
-      linear-gradient(270deg, #262d3a 0%, #151821 60%, #080a0e 100%);
-    border: 2px solid #384254;
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -5px 10px rgba(0, 0, 0, 0.85), 0 0 16px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  .dpad-btn::before {
-    content: "";
-    position: absolute;
-    right: 8px;
-    top: 18px;
-    width: 3px;
-    height: 40px;
-    border-radius: 1.5px;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent);
-  }
-  .dpad-btn::after {
-    content: "";
-    position: absolute;
-    top: 14%;
-    right: 8%;
-    width: 36%;
-    height: 72%;
-    border-radius: 12px;
-    background: radial-gradient(ellipse at 70% 50%, rgba(255, 255, 255, 0.5) 0%, transparent 70%);
-  }
-  .dpad-arrow {
-    font-size: 32px;
-    font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0,0,0,0.95), 0 -1px 0 rgba(255,255,255,0.7);
-    z-index: 5;
-  }
-  .dpad-btn:active {
-    transform: scale(0.92) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="dpad-btn" data-control="RIGHT" data-category="DPAD" data-name="D-Pad Right">
-    <span class="dpad-arrow">▶</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_DPAD_CROSS = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --cross-size: 144px;
-    --accent: #00F0FF;
-    --accent-glow: rgba(0, 240, 255, 0.4);
-    --spring-damping: 0.72;
-    --spring-stiffness: 480;
-    --press-scale: 0.95;
-  }
-  .dpad-cross {
-    width: var(--cross-size);
-    height: var(--cross-size);
-    border-radius: 28px;
-    background: 
-      radial-gradient(circle at 50% 50%, #1e2430 0%, #101319 65%, #06070a 100%);
-    border: 2px solid #343d4e;
-    box-shadow: 
-      0 12px 28px rgba(0, 0, 0, 0.8), 
-      inset 0 2px 5px rgba(255, 255, 255, 0.28), 
-      inset 0 -6px 14px rgba(0, 0, 0, 0.9), 
-      0 0 24px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  .dpad-cross::before {
-    content: "";
-    position: absolute;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 45% 45%, #262e3d 0%, #0b0d12 100%);
-    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.95), 0 1px 2px rgba(255, 255, 255, 0.25);
-    border: 1.5px solid rgba(0, 240, 255, 0.35);
-  }
-  .dpad-cross::after {
-    content: "";
-    position: absolute;
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    border: 1.5px dashed rgba(0, 240, 255, 0.35);
-  }
-  .cross-center {
-    font-size: 22px;
-    font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 12px var(--accent), 0 2px 4px rgba(0,0,0,0.9);
-    z-index: 5;
-  }
-  .dpad-cross:active {
-    transform: scale(0.95);
-  }
-</style>
-</head>
-<body>
-  <button class="dpad-btn dpad-cross" data-control="DPAD" data-category="DPAD" data-name="Tactile Cross Pad">
-    <span class="cross-center">❖</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_TRIGGER_LT = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --accent: #00F0FF;
-    --accent-glow: rgba(0, 240, 255, 0.5);
-    --spring-damping: 0.65;
-    --spring-stiffness: 380;
-    --press-scale: 0.94;
-  }
-  .trigger-btn {
-    width: 74px;
-    height: 112px;
-    border-radius: 20px;
-    background: linear-gradient(180deg, #262d3a 0%, #141720 45%, #080a0e 100%);
-    border: 2px solid #384254;
-    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.32), inset 0 -8px 16px rgba(0, 0, 0, 0.85), 0 0 18px var(--accent-glow);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    padding-top: 18px;
-    box-sizing: border-box;
-    position: relative;
-  }
-  .trigger-btn::before {
-    content: "";
-    position: absolute;
-    top: 55%;
-    width: 44px;
-    height: 4px;
-    border-radius: 2px;
-    background: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 8px 0 rgba(255, 255, 255, 0.14), 0 16px 0 rgba(255, 255, 255, 0.08);
-  }
-  .trigger-label {
-    font-size: 28px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.9), 0 0 12px var(--accent);
-  }
-  .trigger-btn:active {
-    transform: scaleY(0.94) translateY(4px);
-  }
-</style>
-</head>
-<body>
-  <button class="trigger-btn" data-control="LT" data-category="TRIGGER" data-name="Tactile Trigger LT">
-    <span class="trigger-label">LT</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_TRIGGER_RT = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --accent: #FF3366;
-    --accent-glow: rgba(255, 51, 102, 0.5);
-    --spring-damping: 0.65;
-    --spring-stiffness: 380;
-    --press-scale: 0.94;
-  }
-  .trigger-btn {
-    width: 74px;
-    height: 112px;
-    border-radius: 20px;
-    background: linear-gradient(180deg, #262d3a 0%, #141720 45%, #080a0e 100%);
-    border: 2px solid #384254;
-    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.32), inset 0 -8px 16px rgba(0, 0, 0, 0.85), 0 0 18px var(--accent-glow);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    padding-top: 18px;
-    box-sizing: border-box;
-    position: relative;
-  }
-  .trigger-btn::before {
-    content: "";
-    position: absolute;
-    top: 55%;
-    width: 44px;
-    height: 4px;
-    border-radius: 2px;
-    background: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 8px 0 rgba(255, 255, 255, 0.14), 0 16px 0 rgba(255, 255, 255, 0.08);
-  }
-  .trigger-label {
-    font-size: 28px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.9), 0 0 12px var(--accent);
-  }
-  .trigger-btn:active {
-    transform: scaleY(0.94) translateY(4px);
-  }
-</style>
-</head>
-<body>
-  <button class="trigger-btn" data-control="RT" data-category="TRIGGER" data-name="Tactile Trigger RT">
-    <span class="trigger-label">RT</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_BUMPER_LB = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --accent: #00F0FF;
-    --accent-glow: rgba(0, 240, 255, 0.4);
-    --spring-damping: 0.75;
-    --spring-stiffness: 520;
-    --press-scale: 0.95;
-  }
-  .bumper-btn {
-    width: 120px;
-    height: 52px;
-    border-radius: 18px;
-    background: linear-gradient(180deg, #262e3c 0%, #151822 60%, #080a0e 100%);
-    border: 2px solid #384357;
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.7), inset 0 2px 4px rgba(255, 255, 255, 0.32), inset 0 -5px 10px rgba(0, 0, 0, 0.8), 0 0 18px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  .bumper-btn::after {
-    content: "";
-    position: absolute;
-    top: 10%;
-    left: 12%;
-    width: 76%;
-    height: 35%;
-    border-radius: 10px;
-    background: radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.45) 0%, transparent 75%);
-  }
-  .bumper-label {
-    font-size: 24px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7), 0 -1px 0 rgba(0, 0, 0, 0.95), 0 0 12px var(--accent);
-  }
-  .bumper-btn:active {
-    transform: scale(0.95) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="bumper-btn" data-control="LB" data-category="BUMPER" data-name="Shoulder Bumper LB">
-    <span class="bumper-label">LB</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_BUMPER_RB = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --accent: #00F0FF;
-    --accent-glow: rgba(0, 240, 255, 0.4);
-    --spring-damping: 0.75;
-    --spring-stiffness: 520;
-    --press-scale: 0.95;
-  }
-  .bumper-btn {
-    width: 120px;
-    height: 52px;
-    border-radius: 18px;
-    background: linear-gradient(180deg, #262e3c 0%, #151822 60%, #080a0e 100%);
-    border: 2px solid #384357;
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.7), inset 0 2px 4px rgba(255, 255, 255, 0.32), inset 0 -5px 10px rgba(0, 0, 0, 0.8), 0 0 18px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  .bumper-btn::after {
-    content: "";
-    position: absolute;
-    top: 10%;
-    left: 12%;
-    width: 76%;
-    height: 35%;
-    border-radius: 10px;
-    background: radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.45) 0%, transparent 75%);
-  }
-  .bumper-label {
-    font-size: 24px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7), 0 -1px 0 rgba(0, 0, 0, 0.95), 0 0 12px var(--accent);
-  }
-  .bumper-btn:active {
-    transform: scale(0.95) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="bumper-btn" data-control="RB" data-category="BUMPER" data-name="Shoulder Bumper RB">
-    <span class="bumper-label">RB</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_THUMBSTICK_LS = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --stick-size: 104px;
-    --accent: #4ADE80;
-    --accent-glow: rgba(74, 222, 128, 0.3);
-    --spring-damping: 0.70;
-    --spring-stiffness: 420;
-    --press-scale: 0.92;
-  }
-  .stick-btn {
-    width: var(--stick-size);
-    height: var(--stick-size);
-    position: relative;
-    background: transparent;
-    border: none;
-    padding: 0;
-    outline: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .stick-base {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background: radial-gradient(circle at 45% 40%, #262d3a 0%, #12151d 65%, #06070a 100%);
-    border: 3px solid #384355;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.75), inset 0 3px 6px rgba(255, 255, 255, 0.28), inset 0 -8px 16px rgba(0, 0, 0, 0.85), 0 0 20px var(--accent-glow);
-    box-sizing: border-box;
-  }
-  .stick-cap {
-    position: absolute;
-    width: 68px;
-    height: 68px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 50% 50%, #181c24 0%, #0a0c10 100%);
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.95), 0 0 0 2px rgba(255, 255, 255, 0.14);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-sizing: border-box;
-  }
-  .knurled-ring {
-    position: absolute;
-    width: 46px;
-    height: 46px;
-    border-radius: 50%;
-    border: 2px dashed rgba(74, 222, 128, 0.55);
-    box-sizing: border-box;
-  }
-  .stick-label {
-    font-size: 20px;
-    font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 8px var(--accent);
-    z-index: 5;
-  }
-  .stick-btn:active .stick-cap {
-    transform: scale(0.92);
-  }
-</style>
-</head>
-<body>
-  <button class="stick-btn" data-control="LS" data-category="JOYSTICK" data-name="Analog Stick LS">
-    <div class="stick-base"></div>
-    <div class="stick-cap">
-      <div class="knurled-ring"></div>
-      <span class="stick-label">LS</span>
+    val PRESET_SYSTEM_SHARE = htmlDocument(
+        """
+${retroMotion("0.75", "500", "0.93")}
+:root {
+  --accent: #F97316;
+  --accent-glow: rgba(249, 115, 22, 0.45);
+}
+.system-btn {
+  position: relative;
+  width: 70px;
+  height: 70px;
+  padding: 0;
+  border: none;
+  outline: none;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #4a2a14 0%, #2a1408 55%, #140803 100%);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.70),
+    0 0 18px var(--accent-glow),
+    inset 0 2px 2px rgba(255, 200, 140, 0.30),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.80);
+  transform-origin: 50% 50%;
+  cursor: pointer;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.face-plate {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.40) 0%, transparent 45%),
+    linear-gradient(160deg, #f3e9cd 0%, var(--cream) 45%, var(--cream-dark) 100%);
+  box-shadow:
+    inset 0 2px 2px rgba(255, 255, 255, 0.70),
+    inset 0 -4px 7px rgba(90, 55, 20, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.system-symbol {
+  font-size: 26px;
+  color: var(--ink);
+  text-shadow: 1px 1px 0 var(--accent);
+}
+${centeredPress(".system-btn")}
+        """.trimIndent(),
+        """
+  <button class="system-btn" data-control="SHARE" data-category="SYSTEM" data-codename="Tactile Share" data-name="Retro Foundry Share" data-seed="11700">
+    <div class="face-plate" data-layer-role="base">
+      <span class="system-symbol">⇪</span>
     </div>
   </button>
-</body>
-</html>
-""".trimIndent()
+        """.trimIndent()
+    )
 
-    val PRESET_THUMBSTICK_RS = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --stick-size: 104px;
-    --accent: #00B0FF;
-    --accent-glow: rgba(0, 176, 255, 0.4);
-    --spring-damping: 0.70;
-    --spring-stiffness: 420;
-    --press-scale: 0.92;
-  }
-  .stick-btn {
-    width: var(--stick-size);
-    height: var(--stick-size);
-    position: relative;
-    background: transparent;
-    border: none;
-    padding: 0;
-    outline: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .stick-base {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background: radial-gradient(circle at 45% 40%, #262d3a 0%, #12151d 65%, #06070a 100%);
-    border: 3px solid #384355;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.75), inset 0 3px 6px rgba(255, 255, 255, 0.28), inset 0 -8px 16px rgba(0, 0, 0, 0.85), 0 0 20px var(--accent-glow);
-    box-sizing: border-box;
-  }
-  .stick-cap {
-    position: absolute;
-    width: 68px;
-    height: 68px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 50% 50%, #181c24 0%, #0a0c10 100%);
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.95), 0 0 0 2px rgba(255, 255, 255, 0.14);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-sizing: border-box;
-  }
-  .knurled-ring {
-    position: absolute;
-    width: 46px;
-    height: 46px;
-    border-radius: 50%;
-    border: 2px dashed rgba(0, 176, 255, 0.55);
-    box-sizing: border-box;
-  }
-  .stick-label {
-    font-size: 20px;
-    font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 8px var(--accent);
-    z-index: 5;
-  }
-  .stick-btn:active .stick-cap {
-    transform: scale(0.92);
-  }
-</style>
-</head>
-<body>
-  <button class="stick-btn" data-control="RS" data-category="JOYSTICK" data-name="Analog Stick RS">
-    <div class="stick-base"></div>
-    <div class="stick-cap">
-      <div class="knurled-ring"></div>
-      <span class="stick-label">RS</span>
-    </div>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_STICK_BUTTON_LSB = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --btn-size: 70px;
-    --accent: #00E5FF;
-    --accent-glow: rgba(0, 229, 255, 0.45);
-    --spring-damping: 0.72;
-    --spring-stiffness: 480;
-    --press-scale: 0.90;
-  }
-  .stick-btn-ctl {
-    width: var(--btn-size);
-    height: var(--btn-size);
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 35%, #2a2f3b 0%, #101217 100%);
-    border: 2px solid #384254;
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.7), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -6px 12px rgba(0, 0, 0, 0.85), 0 0 18px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    box-sizing: border-box;
-  }
-  .stick-btn-ctl::before {
-    content: "";
-    position: absolute;
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    border: 1.5px dashed rgba(0, 229, 255, 0.45);
-    box-sizing: border-box;
-  }
-  .stick-btn-dish {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 50% 50%, #20242e 0%, #0d0e12 100%);
-    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.18);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-sizing: border-box;
-  }
-  .stick-btn-label {
-    font-size: 14px;
-    font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 8px var(--accent);
-    letter-spacing: 0.5px;
-  }
-  .stick-btn-ctl:active {
-    transform: scale(0.90) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="stick-btn-ctl" data-control="LSB" data-category="BUTTON" data-name="Stick Button LSB">
-    <div class="stick-btn-dish">
-      <span class="stick-btn-label">LSB</span>
-    </div>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_STICK_BUTTON_RSB = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --btn-size: 70px;
-    --accent: #FF007F;
-    --accent-glow: rgba(255, 0, 127, 0.45);
-    --spring-damping: 0.72;
-    --spring-stiffness: 480;
-    --press-scale: 0.90;
-  }
-  .stick-btn-ctl {
-    width: var(--btn-size);
-    height: var(--btn-size);
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 35%, #2a2f3b 0%, #101217 100%);
-    border: 2px solid #384254;
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.7), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -6px 12px rgba(0, 0, 0, 0.85), 0 0 18px var(--accent-glow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    box-sizing: border-box;
-  }
-  .stick-btn-ctl::before {
-    content: "";
-    position: absolute;
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    border: 1.5px dashed rgba(255, 0, 127, 0.45);
-    box-sizing: border-box;
-  }
-  .stick-btn-dish {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 50% 50%, #20242e 0%, #0d0e12 100%);
-    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.18);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-sizing: border-box;
-  }
-  .stick-btn-label {
-    font-size: 14px;
-    font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 8px var(--accent);
-    letter-spacing: 0.5px;
-  }
-  .stick-btn-ctl:active {
-    transform: scale(0.90) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="stick-btn-ctl" data-control="RSB" data-category="BUTTON" data-name="Stick Button RSB">
-    <div class="stick-btn-dish">
-      <span class="stick-btn-label">RSB</span>
-    </div>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_TOUCHPAD_LTP = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --pad-size: 180px;
-    --accent: #00E5FF;
-    --accent-glow: rgba(0, 229, 255, 0.35);
-  }
-  .touchpad-ctl {
-    width: var(--pad-size);
-    height: var(--pad-size);
-    border-radius: 26px;
-    background: radial-gradient(circle at 40% 40%, #20232a 0%, #111317 60%, #07080a 100%);
-    border: 2px solid #333a47;
-    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.18), inset 0 -6px 14px rgba(0, 0, 0, 0.85), 0 0 18px var(--accent-glow);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px;
-    position: relative;
-    box-sizing: border-box;
-    overflow: hidden;
-  }
-  .touchpad-surface {
-    position: absolute;
-    inset: 14px;
-    border-radius: 18px;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.02) 0%, transparent 80%);
-    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.35);
-    pointer-events: none;
-  }
-  .touchpad-title {
-    font-size: 10px;
-    font-weight: 900;
-    color: var(--accent);
-    letter-spacing: 1.2px;
-    text-transform: uppercase;
-    z-index: 2;
-  }
-  .touchpad-sub {
-    font-size: 9px;
-    color: rgba(255, 255, 255, 0.45);
-    letter-spacing: 0.8px;
-    z-index: 2;
-  }
-</style>
-</head>
-<body>
-  <button class="touchpad-ctl" data-id="touch_ltp" data-control="LTP" data-category="TOUCHPAD" data-name="Touchpad LTP">
-    <span class="touchpad-title">Touch Move • LTP</span>
-    <div class="touchpad-surface"></div>
-    <span class="touchpad-sub">2.0X BALLISTICS</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_TOUCHPAD_RTP = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --pad-size: 180px;
-    --accent: #FF007F;
-    --accent-glow: rgba(255, 0, 127, 0.35);
-  }
-  .touchpad-ctl {
-    width: var(--pad-size);
-    height: var(--pad-size);
-    border-radius: 26px;
-    background: radial-gradient(circle at 40% 40%, #20232a 0%, #111317 60%, #07080a 100%);
-    border: 2px solid #333a47;
-    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.18), inset 0 -6px 14px rgba(0, 0, 0, 0.85), 0 0 18px var(--accent-glow);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px;
-    position: relative;
-    box-sizing: border-box;
-    overflow: hidden;
-  }
-  .touchpad-surface {
-    position: absolute;
-    inset: 14px;
-    border-radius: 18px;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.02) 0%, transparent 80%);
-    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.35);
-    pointer-events: none;
-  }
-  .touchpad-title {
-    font-size: 10px;
-    font-weight: 900;
-    color: var(--accent);
-    letter-spacing: 1.2px;
-    text-transform: uppercase;
-    z-index: 2;
-  }
-  .touchpad-sub {
-    font-size: 9px;
-    color: rgba(255, 255, 255, 0.45);
-    letter-spacing: 0.8px;
-    z-index: 2;
-  }
-</style>
-</head>
-<body>
-  <button class="touchpad-ctl" data-id="touch_rtp" data-control="RTP" data-category="TOUCHPAD" data-name="Touchpad RTP">
-    <span class="touchpad-title">Touch Look • RTP</span>
-    <div class="touchpad-surface"></div>
-    <span class="touchpad-sub">2.0X BALLISTICS</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_SYSTEM_MENU = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --spring-damping: 0.78;
-    --spring-stiffness: 500;
-    --press-scale: 0.92;
-  }
-  .system-btn {
-    width: 64px;
-    height: 42px;
-    border-radius: 14px;
-    background: radial-gradient(circle at 50% 30%, #252b37 0%, #101217 100%);
-    border: 1.5px solid #363e4f;
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.65), inset 0 1px 3px rgba(255, 255, 255, 0.32), inset 0 -3px 6px rgba(0, 0, 0, 0.8);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-  }
-  .burger-bar {
-    width: 22px;
-    height: 3px;
-    border-radius: 1.5px;
-    background: #FFFFFF;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.85), 0 0 6px rgba(255,255,255,0.45);
-  }
-  .system-btn:active {
-    transform: scale(0.92) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="system-btn" data-control="MENU" data-category="SYSTEM" data-name="System Menu">
-    <div class="burger-bar"></div>
-    <div class="burger-bar"></div>
-    <div class="burger-bar"></div>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_SYSTEM_VIEW = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --spring-damping: 0.78;
-    --spring-stiffness: 500;
-    --press-scale: 0.92;
-  }
-  .system-btn {
-    width: 64px;
-    height: 42px;
-    border-radius: 14px;
-    background: radial-gradient(circle at 50% 30%, #252b37 0%, #101217 100%);
-    border: 1.5px solid #363e4f;
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.65), inset 0 1px 3px rgba(255, 255, 255, 0.32), inset 0 -3px 6px rgba(0, 0, 0, 0.8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .view-icon {
-    font-size: 22px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 0 0 10px rgba(0, 240, 255, 0.65), 0 1px 2px rgba(0,0,0,0.95);
-  }
-  .system-btn:active {
-    transform: scale(0.92) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="system-btn" data-control="VIEW" data-category="SYSTEM" data-name="System View">
-    <span class="view-icon">⧉</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_SYSTEM_HOME = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --spring-damping: 0.78;
-    --spring-stiffness: 500;
-    --press-scale: 0.93;
-  }
-  .system-home-btn {
-    width: 70px;
-    height: 70px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 50% 35%, #2a303f 0%, #12151d 70%, #050608 100%);
-    border: 2px solid #455064;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.8), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -6px 12px rgba(0, 0, 0, 0.85), 0 0 22px rgba(255, 255, 255, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  .home-symbol {
-    font-size: 32px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 0 0 14px rgba(255, 255, 255, 0.9), 0 0 22px rgba(0, 240, 255, 0.55), 0 2px 4px rgba(0,0,0,0.95);
-  }
-  .system-home-btn:active {
-    transform: scale(0.93) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="system-btn system-home-btn" data-control="HOME" data-category="SYSTEM" data-name="System Home">
-    <span class="home-symbol">⨂</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    val PRESET_SYSTEM_SHARE = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --spring-damping: 0.78;
-    --spring-stiffness: 500;
-    --press-scale: 0.93;
-  }
-  .system-share-btn {
-    width: 70px;
-    height: 70px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 50% 35%, #2a303f 0%, #12151d 70%, #050608 100%);
-    border: 2px solid #455064;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.8), inset 0 2px 4px rgba(255, 255, 255, 0.35), inset 0 -6px 12px rgba(0, 0, 0, 0.85);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  .share-symbol {
-    font-size: 28px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 0 0 14px rgba(255, 255, 255, 0.9), 0 2px 4px rgba(0,0,0,0.95);
-  }
-  .system-share-btn:active {
-    transform: scale(0.93) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="system-btn system-share-btn" data-control="SHARE" data-category="SYSTEM" data-name="System Share">
-    <span class="share-symbol">⇪</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
-
-    fun createPresetMacroPaddle(control: String = "M1"): String = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --spring-damping: 0.72;
-    --spring-stiffness: 480;
-    --press-scale: 0.94;
-    --macro-accent: #F59E0B;
-  }
-  .macro-paddle {
-    position: relative;
-    width: 72px;
-    height: 72px;
-    border-radius: 16px;
-    background: radial-gradient(circle at 40% 30%, #232936 0%, #12161f 65%, #080a0f 100%);
-    border: 2px solid #3b4559;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.25), inset 0 -4px 10px rgba(0, 0, 0, 0.85);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-  }
-  .macro-paddle::before {
-    content: "";
-    position: absolute;
-    inset: 4px;
-    border-radius: 12px;
-    border: 1px dashed rgba(245, 158, 11, 0.35);
-  }
-  .macro-bolt {
-    font-size: 14px;
-    color: var(--macro-accent);
-    text-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
-  }
-  .macro-label {
-    font-size: 20px;
-    font-weight: 900;
-    color: #FFFFFF;
-    text-shadow: 0 0 10px rgba(245, 158, 11, 0.8), 0 2px 4px rgba(0, 0, 0, 0.9);
-  }
-  .macro-paddle:active {
-    transform: scale(0.94) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="macro-paddle" data-control="$control" data-category="MACRO" data-name="Paddle $control">
-    <span class="macro-bolt">⚡</span>
-    <span class="macro-label">$control</span>
-  </button>
-</body>
-</html>
-""".trimIndent()
+    fun createPresetMacroPaddle(control: String = "M1"): String = SystemPresetGenerator.macroPreset(control)
 
     val PRESET_MACRO_M1 get() = createPresetMacroPaddle("M1")
     val PRESET_MACRO_M2 get() = createPresetMacroPaddle("M2")
     val PRESET_MACRO_M3 get() = createPresetMacroPaddle("M3")
     val PRESET_MACRO_M4 get() = createPresetMacroPaddle("M4")
 
-    /**
-     * Returns the optional reference template (document structure guide only) for any controller button key.
-     * Templates are REFERENCE ONLY — do not treat them as 100% NXPRC-compliant HTML.
-     * Some legacy templates may contain properties unsupported by the NXPRC compiler (e.g. filter: blur()).
-     * Always follow the STRICT NEXPAD COMPILER CONTRACT defined in [generateAiPrompt].
-     */
-    fun getReferenceTemplate(control: String): String = getReferenceTemplateInternal(control, "BUTTON")
+    fun getReferenceTemplate(control: String): String = getReferenceTemplateInternal(control, "BUTTON", ConsoleMode.XBOX, NxprcPresetStyle.XBOX_ELITE)
 
-    /** Returns the category-specific reference template (structure guide only) used by the desktop studio AI prompt. */
-    fun getReferenceTemplate(control: String, category: String): String = getReferenceTemplateInternal(control, category)
+    fun getReferenceTemplate(control: String, category: String): String =
+        getReferenceTemplateInternal(control, category, ConsoleMode.XBOX, NxprcPresetStyle.XBOX_ELITE)
 
-    private fun getReferenceTemplateInternal(control: String, category: String): String {
+    fun getReferenceTemplate(control: String, category: String, consoleMode: ConsoleMode): String =
+        getReferenceTemplateInternal(control, category, consoleMode, NxprcPresetStyle.XBOX_ELITE)
+
+    fun getReferenceTemplate(control: String, category: String, style: NxprcPresetStyle): String =
+        getReferenceTemplateInternal(control, category, ConsoleMode.XBOX, style)
+
+    fun getReferenceTemplate(control: String, category: String, consoleMode: ConsoleMode, style: NxprcPresetStyle): String =
+        getReferenceTemplateInternal(control, category, consoleMode, style)
+
+    private fun getReferenceTemplateInternal(
+        control: String,
+        category: String,
+        consoleMode: ConsoleMode = ConsoleMode.XBOX,
+        style: NxprcPresetStyle = NxprcPresetStyle.XBOX_ELITE
+    ): String {
         val ctrl = ControlKey.fromIdentifier(control)
         val catType = ctrl?.categoryType
             ?: CategoryType.fromIdentifier(category)
             ?: CategoryManager.findCategoryForControl(control)?.type
 
-        if (catType != null && catType != CategoryType.ABXY) {
-            return when (catType) {
-                CategoryType.DPAD -> when (ctrl) {
-                    ControlKey.DOWN -> PRESET_DPAD_DOWN
-                    ControlKey.LEFT -> PRESET_DPAD_LEFT
-                    ControlKey.RIGHT -> PRESET_DPAD_RIGHT
-                    ControlKey.DPAD -> PRESET_DPAD_CROSS
-                    else -> PRESET_DPAD_UP
+        when (catType) {
+            CategoryType.DPAD -> return when (ctrl) {
+                ControlKey.DOWN -> DpadPresetGenerator.dpadDirectionPreset("DOWN", style)
+                ControlKey.LEFT -> DpadPresetGenerator.dpadDirectionPreset("LEFT", style)
+                ControlKey.RIGHT -> DpadPresetGenerator.dpadDirectionPreset("RIGHT", style)
+                ControlKey.DPAD -> DpadPresetGenerator.dpadCrossPreset(style)
+                else -> DpadPresetGenerator.dpadDirectionPreset("UP", style)
+            }
+            CategoryType.TRIGGERS ->
+                return if (ctrl == ControlKey.LT) TriggerPresetGenerator.triggerPreset("LT", style) else TriggerPresetGenerator.triggerPreset("RT", style)
+            CategoryType.BUMPERS ->
+                return if (ctrl == ControlKey.LB) BumperPresetGenerator.bumperPreset("LB", style) else BumperPresetGenerator.bumperPreset("RB", style)
+            CategoryType.STICKS -> return when (ctrl) {
+                ControlKey.RS -> JoystickPresetGenerator.joystickPreset("RS", style)
+                ControlKey.LSB -> JoystickPresetGenerator.stickButtonPreset("LSB", style)
+                ControlKey.RSB -> JoystickPresetGenerator.stickButtonPreset("RSB", style)
+                ControlKey.LTP -> JoystickPresetGenerator.touchpadPreset("LTP", style)
+                ControlKey.RTP -> JoystickPresetGenerator.touchpadPreset("RTP", style)
+                else -> JoystickPresetGenerator.joystickPreset("LS", style)
+            }
+            CategoryType.SYSTEM -> return when (ctrl) {
+                ControlKey.BACK -> SystemPresetGenerator.systemViewPreset(style)
+                ControlKey.GUIDE -> SystemPresetGenerator.systemHomePreset(style)
+                ControlKey.SHARE -> SystemPresetGenerator.systemSharePreset(style)
+                else -> SystemPresetGenerator.systemMenuPreset(style)
+            }
+            CategoryType.MACROS -> return when (ctrl) {
+                ControlKey.M2 -> SystemPresetGenerator.macroPreset("M2", style)
+                ControlKey.M3 -> SystemPresetGenerator.macroPreset("M3", style)
+                ControlKey.M4 -> SystemPresetGenerator.macroPreset("M4", style)
+                else -> SystemPresetGenerator.macroPreset(ctrl?.key ?: "M1", style)
+            }
+            CategoryType.ABXY, null -> {
+                // Handled below by specialized ABXY style resolver
+            }
+        }
+
+        if (ctrl in listOf(ControlKey.A, ControlKey.B, ControlKey.X, ControlKey.Y)) {
+            val isPs = consoleMode == ConsoleMode.PLAYSTATION
+            return when (style) {
+                NxprcPresetStyle.XBOX_ELITE -> when (ctrl) {
+                    ControlKey.A -> if (isPs) PRESET_XBOX_ELITE_PS_CROSS else PRESET_XBOX_ELITE_A
+                    ControlKey.B -> if (isPs) PRESET_XBOX_ELITE_PS_CIRCLE else PRESET_XBOX_ELITE_B
+                    ControlKey.X -> if (isPs) PRESET_XBOX_ELITE_PS_SQUARE else PRESET_XBOX_ELITE_X
+                    ControlKey.Y -> if (isPs) PRESET_XBOX_ELITE_PS_TRIANGLE else PRESET_XBOX_ELITE_Y
+                    else -> PRESET_XBOX_ELITE_A
                 }
-                CategoryType.TRIGGERS -> if (ctrl == ControlKey.LT) PRESET_TRIGGER_LT else PRESET_TRIGGER_RT
-                CategoryType.BUMPERS -> if (ctrl == ControlKey.LB) PRESET_BUMPER_LB else PRESET_BUMPER_RB
-                CategoryType.STICKS -> when (ctrl) {
-                    ControlKey.RS -> PRESET_THUMBSTICK_RS
-                    ControlKey.LSB -> PRESET_STICK_BUTTON_LSB
-                    ControlKey.RSB -> PRESET_STICK_BUTTON_RSB
-                    ControlKey.LTP -> PRESET_TOUCHPAD_LTP
-                    ControlKey.RTP -> PRESET_TOUCHPAD_RTP
-                    else -> PRESET_THUMBSTICK_LS
+                NxprcPresetStyle.ARCADE -> when (ctrl) {
+                    ControlKey.A -> if (isPs) PRESET_ARCADE_PS_CROSS else PRESET_ARCADE_A
+                    ControlKey.B -> if (isPs) PRESET_ARCADE_PS_CIRCLE else PRESET_ARCADE_B
+                    ControlKey.X -> if (isPs) PRESET_ARCADE_PS_SQUARE else PRESET_ARCADE_X
+                    ControlKey.Y -> if (isPs) PRESET_ARCADE_PS_TRIANGLE else PRESET_ARCADE_Y
+                    else -> PRESET_ARCADE_A
                 }
-                CategoryType.SYSTEM -> when (ctrl) {
-                    ControlKey.BACK -> PRESET_SYSTEM_VIEW
-                    ControlKey.GUIDE -> PRESET_SYSTEM_HOME
-                    ControlKey.SHARE -> PRESET_SYSTEM_SHARE
-                    else -> PRESET_SYSTEM_MENU
+                NxprcPresetStyle.CYBERPUNK -> when (ctrl) {
+                    ControlKey.A -> if (isPs) PRESET_CYBERPUNK_PS_CROSS else PRESET_CYBERPUNK_A
+                    ControlKey.B -> if (isPs) PRESET_CYBERPUNK_PS_CIRCLE else PRESET_CYBERPUNK_B
+                    ControlKey.X -> if (isPs) PRESET_CYBERPUNK_PS_SQUARE else PRESET_CYBERPUNK_X
+                    ControlKey.Y -> if (isPs) PRESET_CYBERPUNK_PS_TRIANGLE else PRESET_CYBERPUNK_Y
+                    else -> PRESET_CYBERPUNK_A
                 }
-                CategoryType.MACROS -> when (ctrl) {
-                    ControlKey.M2 -> createPresetMacroPaddle("M2")
-                    ControlKey.M3 -> createPresetMacroPaddle("M3")
-                    ControlKey.M4 -> createPresetMacroPaddle("M4")
-                    else -> createPresetMacroPaddle(ctrl?.key ?: "M1")
+                NxprcPresetStyle.SATIN -> when (ctrl) {
+                    ControlKey.A -> if (isPs) PRESET_SATIN_PS_CROSS else PRESET_SATIN_A
+                    ControlKey.B -> if (isPs) PRESET_SATIN_PS_CIRCLE else PRESET_SATIN_B
+                    ControlKey.X -> if (isPs) PRESET_SATIN_PS_SQUARE else PRESET_SATIN_X
+                    ControlKey.Y -> if (isPs) PRESET_SATIN_PS_TRIANGLE else PRESET_SATIN_Y
+                    else -> PRESET_SATIN_A
                 }
-                CategoryType.ABXY -> getReferenceTemplateInternal(control, "BUTTON")
             }
         }
 
         return when (ctrl) {
-            ControlKey.A -> PRESET_NEO_TACTILE_A
-            ControlKey.B -> PRESET_NEO_TACTILE_B
-            ControlKey.X -> PRESET_NEO_TACTILE_X
-            ControlKey.Y -> PRESET_NEO_TACTILE_Y
             ControlKey.UP -> PRESET_DPAD_UP
             ControlKey.DOWN -> PRESET_DPAD_DOWN
             ControlKey.LEFT -> PRESET_DPAD_LEFT
@@ -1964,339 +634,147 @@ object NxprcPresets {
         }
     }
 
-    /**
-     * Returns an unstyled, non-binding syntax skeleton illustrating the minimal compiler contract
-     * for a given category. Intentionally free of pre-baked colors, gradients, and border-radii
-     * to eliminate visual imitation bias in generative AI models.
-     */
     fun getSyntaxSkeleton(control: String, category: String, widthDp: Int, heightDp: Int): String {
         val ctrl = ControlKey.fromIdentifier(control)
+        val upper = control.uppercase()
+        val glyph = dpadGlyph(control)
+        val catType = CategoryType.fromIdentifier(category)
+            ?: ctrl?.categoryType
+            ?: CategoryManager.findCategoryForControl(control)?.type
+
         if (ctrl == ControlKey.LTP || ctrl == ControlKey.RTP ||
-            (ctrl?.componentType == ComponentType.TOUCHPAD && ctrl.categoryType == CategoryType.STICKS)) {
-            return """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  .touchpad-ctl {
-    width: ${'$'}{widthDp}px;
-    height: ${'$'}{heightDp}px;
-    border-radius: 26px;
-    position: relative;
-    box-sizing: border-box;
-    /* Pure flat, stationary laptop trackpad surface (2.0x default ballistics). */
-    /* Strictly NO center button, NO center dot, NO movable ring, and NO tap-to-click. */
-  }
-</style>
-</head>
-<body>
-  <button class="touchpad-ctl" data-id="touch_${control.lowercase()}" data-control="$control" data-category="$category" data-name="Touchpad $control">
+            (ctrl?.componentType == ComponentType.TOUCHPAD && ctrl.categoryType == CategoryType.STICKS)
+        ) {
+            val id = "touch_" + control.lowercase()
+            return syntaxDocument(
+                "touchpad-ctl",
+                ".touchpad-ctl",
+                widthDp,
+                heightDp,
+                """
+  <button class="touchpad-ctl" data-id="$id" data-control="$control" data-category="TOUCHPAD" data-name="Touchpad $control">
     <span class="touchpad-title">$control</span>
   </button>
-</body>
-</html>
-""".trimIndent()
+                """.trimIndent()
+            )
         }
 
         if (ctrl == ControlKey.LSB || ctrl == ControlKey.RSB ||
-            (ctrl?.componentType == ComponentType.BUTTON && ctrl.categoryType == CategoryType.STICKS)) {
-            return """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --spring-damping: 0.72;
-    --spring-stiffness: 480;
-    --press-scale: 0.90;
-  }
-  .stick-btn-ctl {
-    width: ${'$'}{widthDp}px;
-    height: ${'$'}{heightDp}px;
-    position: relative;
-    border-radius: 50%;
-    /* Visually design the knurled rim, recessed thumb dish, and label here */
-  }
-  .stick-btn-ctl:active {
-    transform: scale(0.90) translateY(2px);
-  }
-</style>
-</head>
-<body>
+            (ctrl?.componentType == ComponentType.BUTTON && ctrl.categoryType == CategoryType.STICKS)
+        ) {
+            return syntaxDocument(
+                "stick-btn-ctl",
+                ".stick-btn-ctl",
+                widthDp,
+                heightDp,
+                """
   <button class="stick-btn-ctl" data-control="$control" data-category="BUTTON" data-name="Stick Button $control">
     <span class="stick-btn-label">$control</span>
   </button>
-</body>
-</html>
-""".trimIndent()
+                """.trimIndent()
+            )
         }
 
-        val catType = CategoryType.fromIdentifier(category)
-            ?: ControlKey.fromIdentifier(control)?.categoryType
-            ?: CategoryManager.findCategoryForControl(control)?.type
-
         return when (catType) {
-            CategoryType.STICKS -> """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --spring-damping: 0.70;
-    --spring-stiffness: 420;
-    --press-scale: 0.92;
-  }
-  .stick-btn {
-    width: ${'$'}{widthDp}px;
-    height: ${'$'}{heightDp}px;
-    position: relative;
-    background: transparent;
-    border: none;
-    padding: 0;
-    outline: none;
-  }
-  /* Stationary Gimbal Base (remains at 0, 0) */
-  .stick-base {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    /* Visually design the stationary socket, bezel, and directional tick markers here */
-  }
-  /* Movable Analog Thumb Cap (translates on thumb drag) */
-  .stick-cap {
-    position: absolute;
-    left: ${'$'}{(widthDp * 0.18).toInt()}px;
-    top: ${'$'}{(heightDp * 0.18).toInt()}px;
-    width: ${'$'}{(widthDp * 0.64).toInt()}px;
-    height: ${'$'}{(heightDp * 0.64).toInt()}px;
-    /* Visually design the thumb dish, knurled traction rings, vector art, and label here */
-  }
-  .stick-btn:active .stick-cap {
-    transform: scale(0.92);
-  }
-</style>
-</head>
-<body>
+            CategoryType.STICKS -> syntaxDocument(
+                "stick-btn",
+                ".stick-btn",
+                widthDp,
+                heightDp,
+                """
   <button class="stick-btn" data-control="$control" data-category="JOYSTICK" data-name="Analog Stick $control">
-    <div class="stick-base">
-      <!-- Stationary socket layers: bezel, well cavity, directional ticks -->
-    </div>
+    <div class="stick-base"></div>
     <div class="stick-cap">
-      <!-- Movable thumb cap layers: 360° analog stick navigation with NO center button -->
       <span class="stick-label">$control</span>
     </div>
   </button>
-</body>
-</html>
-            """.trimIndent()
-
-            CategoryType.TRIGGERS -> """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --spring-damping: 0.65;
-    --spring-stiffness: 380;
-    --press-scale: 0.94;
-  }
-  .trigger-btn {
-    width: ${'$'}{widthDp}px;
-    height: ${'$'}{heightDp}px;
-    position: relative;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    padding-top: 18px;
-    /* Visually design the trigger paddle body, curvature gradient, bevels, and shadows here */
-  }
-  .trigger-label {
-    font-size: 28px;
-    font-weight: 900;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    /* Visually design the label typography and embossed shadows here */
-  }
-  .trigger-btn:active {
-    transform: scaleY(0.94) translateY(4px);
-  }
-</style>
-</head>
-<body>
+                """.trimIndent(),
+                """
+.stick-base, .stick-cap { position: absolute; border: 1px solid currentColor; border-radius: 50%; }
+.stick-base { left: 0; top: 0; width: 100%; height: 100%; }
+.stick-cap { left: 17%; top: 17%; width: 66%; height: 66%; }
+.stick-label { position: relative; }
+                """.trimIndent()
+            )
+            CategoryType.TRIGGERS -> syntaxDocument(
+                "trigger-btn",
+                ".trigger-btn",
+                widthDp,
+                heightDp,
+                """
   <button class="trigger-btn" data-control="$control" data-category="TRIGGER" data-name="Trigger $control">
-    <span class="trigger-label">$control</span>
-  </button>
-</body>
-</html>
-            """.trimIndent()
-
-            CategoryType.BUMPERS -> """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --spring-damping: 0.75;
-    --spring-stiffness: 520;
-    --press-scale: 0.96;
-  }
-  .bumper-btn {
-    width: ${'$'}{widthDp}px;
-    height: ${'$'}{heightDp}px;
-    position: relative;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    /* Visually design the shoulder lever rocker, curvature specular highlight, and socket recess here */
-  }
-  .bumper-label {
-    font-size: 24px;
-    font-weight: 900;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    /* Visually design the bumper label typography and embossed shadows here */
-  }
-  .bumper-btn:active {
-    transform: scale(0.96) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="bumper-btn" data-control="$control" data-category="BUMPER" data-name="Bumper $control">
-    <span class="bumper-label">$control</span>
-  </button>
-</body>
-</html>
-            """.trimIndent()
-
-            CategoryType.DPAD -> """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --spring-damping: 0.72;
-    --spring-stiffness: 480;
-    --press-scale: ${'$'}{if (control.uppercase() == ControlKey.DPAD.key) "0.95" else "0.92"};
-  }
-  .dpad-btn {
-    width: ${'$'}{widthDp}px;
-    height: ${'$'}{heightDp}px;
-    position: relative;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    /* Visually design the directional pad geometry, rocker pivot well, and shading here */
-  }
-  .dpad-glyph {
-    font-size: 28px;
-    font-weight: 900;
-    /* Visually design the directional indicator (or embedded SVG chevron/arrow) here */
-  }
-  .dpad-btn:active {
-    transform: ${'$'}{if (control.uppercase() == ControlKey.DPAD.key) "scale(0.95)" else "scale(0.92) translateY(2px)"};
-  }
-</style>
-</head>
-<body>
-  <button class="dpad-btn" data-control="$control" data-category="DPAD" data-name="D-Pad $control">
-    <span class="dpad-glyph">${'$'}{dpadGlyph(control)}</span>
-  </button>
-</body>
-</html>
-            """.trimIndent()
-
-            CategoryType.SYSTEM, CategoryType.MACROS -> """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --spring-damping: 0.78;
-    --spring-stiffness: 500;
-    --press-scale: 0.92;
-  }
-  .system-btn {
-    width: ${'$'}{widthDp}px;
-    height: ${'$'}{heightDp}px;
-    position: relative;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    /* Visually design the low-profile utility switch body, socket bevels, and lighting here */
-  }
-  .system-btn:active {
-    transform: scale(0.92) translateY(2px);
-  }
-</style>
-</head>
-<body>
-  <button class="system-btn" data-control="$control" data-category="SYSTEM" data-name="System $control">
-    <!-- Visually design vector iconography (e.g. flex hamburger bars, overlapping windows, or emblem) here -->
-  </button>
-</body>
-</html>
-            """.trimIndent()
-
-            CategoryType.ABXY, null -> """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  :root {
-    --spring-damping: 0.68;
-    --spring-stiffness: 440;
-    --press-scale: 0.92;
-  }
-  .nexpad-btn {
-    width: ${'$'}{widthDp}px;
-    height: ${'$'}{heightDp}px;
-    position: relative;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    /* Visually design the face button silhouette, physical material, depth, and socket recess here */
-  }
-  /* Optional: embedded SVG emblem for complex characters or icons */
-  .btn-emblem {
-    width: ${'$'}{(widthDp * 0.58).toInt()}px;
-    height: ${'$'}{(heightDp * 0.58).toInt()}px;
-    position: absolute;
-    pointer-events: none;
-  }
-  .btn-label {
-    font-size: 34px;
-    font-weight: 900;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    /* Visually design the extruded 3D typography and text shadows here */
-  }
-  .nexpad-btn:active {
-    transform: scale(0.93) translateY(3px);
-  }
-</style>
-</head>
-<body>
-  <button class="nexpad-btn" data-control="$control" data-category="BUTTON" data-name="Action $control">
-    <!-- If designing a character, hero emblem, or custom icon, embed an <svg class="btn-emblem" viewBox="0 0 100 100"><path d="..."/></svg> here -->
     <span class="btn-label">$control</span>
   </button>
-</body>
-</html>
-            """.trimIndent()
+                """.trimIndent()
+            )
+            CategoryType.BUMPERS -> syntaxDocument(
+                "bumper-btn",
+                ".bumper-btn",
+                widthDp,
+                heightDp,
+                """
+  <button class="bumper-btn" data-control="$control" data-category="BUMPER" data-name="Bumper $control">
+    <span class="btn-label">$control</span>
+  </button>
+                """.trimIndent()
+            )
+            CategoryType.DPAD -> {
+                if (upper == ControlKey.DPAD.key) {
+                    syntaxDocument(
+                        "dpad-btn",
+                        ".dpad-cross",
+                        widthDp,
+                        heightDp,
+                        """
+  <button class="dpad-btn dpad-cross" data-control="DPAD" data-category="DPAD" data-name="D-Pad Cross">
+    <div class="dpad-pivot"></div>
+    <span class="dpad-arrow dpad-up">▲</span>
+    <span class="dpad-arrow dpad-right">▶</span>
+    <span class="dpad-arrow dpad-down">▼</span>
+    <span class="dpad-arrow dpad-left">◀</span>
+  </button>
+                        """.trimIndent(),
+                        ".dpad-pivot { position: absolute; }"
+                    )
+                } else {
+                    syntaxDocument(
+                        "dpad-btn",
+                        ".dpad-btn",
+                        widthDp,
+                        heightDp,
+                        """
+  <button class="dpad-btn" data-control="$control" data-category="DPAD" data-name="D-Pad $control">
+    <span class="dpad-glyph">$glyph</span>
+  </button>
+                        """.trimIndent()
+                    )
+                }
+            }
+            CategoryType.SYSTEM, CategoryType.MACROS -> {
+                val macroCategory = if (catType == CategoryType.MACROS) "MACRO" else "SYSTEM"
+                syntaxDocument(
+                    "system-btn",
+                    ".system-btn",
+                    widthDp,
+                    heightDp,
+                    """
+  <button class="system-btn" data-control="$control" data-category="$macroCategory" data-name="System $control">
+    <span class="system-label">$control</span>
+  </button>
+                    """.trimIndent()
+                )
+            }
+            CategoryType.ABXY, null -> syntaxDocument(
+                "nexpad-btn",
+                ".nexpad-btn",
+                widthDp,
+                heightDp,
+                """
+  <button class="nexpad-btn" data-control="$control" data-category="BUTTON" data-name="Action $control">
+    <span class="btn-label">$control</span>
+  </button>
+                """.trimIndent()
+            )
         }
     }
 }

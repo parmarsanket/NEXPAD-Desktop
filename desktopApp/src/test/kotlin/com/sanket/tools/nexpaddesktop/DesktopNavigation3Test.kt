@@ -82,12 +82,58 @@ class DesktopNavigation3Test {
 
     @Test
     fun testDesktopViewModelInitialState() {
-        val vm = com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel()
+        val tempFile = java.io.File.createTempFile("test_nav_prefs", ".json").apply { deleteOnExit() }
+        val testPrefs = com.sanket.tools.nexpaddesktop.storage.DesktopSharedPreferences.getCustomInstance(tempFile)
+        val vm = com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel(testPrefs)
         assertFalse(vm.isDriverConnected)
         assertNull(vm.connectedDeviceName)
         assertEquals(com.sanket.tools.nexpaddesktop.connection.ActiveTransport.NONE, vm.activeTransport)
         assertFalse(vm.isAoaDriverNeeded)
         assertEquals(com.sanket.tools.nexpaddesktop.ui.ControllerType.XBOX_360, vm.activeController)
+        assertFalse(vm.isDeveloperOptionsEnabled)
+        assertTrue(vm.isWindowVisible)
+    }
+
+    @Test
+    fun testMinimizeToTrayViewModel() {
+        val tempFile = java.io.File.createTempFile("test_tray_prefs", ".json").apply { deleteOnExit() }
+        val testPrefs = com.sanket.tools.nexpaddesktop.storage.DesktopSharedPreferences.getCustomInstance(tempFile)
+        val vm = com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel(testPrefs)
+
+        assertTrue(vm.isWindowVisible)
+
+        var notifiedTitle: String? = null
+        var notifiedMessage: String? = null
+        vm.onShowTrayNotification = { title, msg ->
+            notifiedTitle = title
+            notifiedMessage = msg
+        }
+
+        vm.minimizeToTray()
+        assertFalse(vm.isWindowVisible)
+        assertEquals("NEXPAD Desktop", notifiedTitle)
+        assertNotNull(notifiedMessage)
+
+        vm.restoreWindow()
+        assertTrue(vm.isWindowVisible)
+    }
+
+    @Test
+    fun testDeveloperOptionsViewModelToggle() {
+        val tempFile = java.io.File.createTempFile("test_dev_prefs", ".json").apply { deleteOnExit() }
+        val testPrefs = com.sanket.tools.nexpaddesktop.storage.DesktopSharedPreferences.getCustomInstance(tempFile)
+        val vm = com.sanket.tools.nexpaddesktop.viewmodel.DesktopViewModel(testPrefs)
+
+        assertFalse(vm.isDeveloperOptionsEnabled)
+        assertFalse(testPrefs.loadDeveloperOptionsEnabled())
+
+        vm.updateDeveloperOptionsEnabled(true)
+        assertTrue(vm.isDeveloperOptionsEnabled)
+        assertTrue(testPrefs.loadDeveloperOptionsEnabled())
+
+        vm.updateDeveloperOptionsEnabled(false)
+        assertFalse(vm.isDeveloperOptionsEnabled)
+        assertFalse(testPrefs.loadDeveloperOptionsEnabled())
     }
 
     @Test

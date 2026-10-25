@@ -73,6 +73,26 @@ object NetworkUtils {
         return false
     }
 
+    fun getLocalIpAddress(): String {
+        try {
+            val interfaces = NetworkInterface.getNetworkInterfaces() ?: return "Unknown"
+            while (interfaces.hasMoreElements()) {
+                val networkInterface = interfaces.nextElement()
+                if (networkInterface.isLoopback || !networkInterface.isUp || networkInterface.isVirtual) continue
+                val addresses = networkInterface.inetAddresses
+                while (addresses.hasMoreElements()) {
+                    val addr = addresses.nextElement()
+                    if (addr is java.net.Inet4Address) {
+                        return addr.hostAddress
+                    }
+                }
+            }
+        } catch (_: Exception) {
+            return "Unknown"
+        }
+        return "Unknown"
+    }
+
     private fun isInSameSubnet(addr1: ByteArray, addr2: ByteArray, prefixLength: Int): Boolean {
         if (addr1.size != 4 || addr2.size != 4) return false
         if (prefixLength <= 0) return true

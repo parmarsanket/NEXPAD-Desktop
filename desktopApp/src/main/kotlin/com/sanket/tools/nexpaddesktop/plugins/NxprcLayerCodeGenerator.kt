@@ -1,6 +1,7 @@
 package com.sanket.tools.nexpaddesktop.plugins
 
 import com.sanket.tools.nexpad.nxprc.*
+import java.util.Locale
 
 /**
  * Details and decomposed markup for an individual canvas layer.
@@ -27,10 +28,10 @@ object NxprcLayerCodeGenerator {
         val g = ((argb shr 8) and 0xFF).toInt()
         val b = (argb and 0xFF).toInt()
         return if (a == 255) {
-            String.format("#%02X%02X%02X", r, g, b)
+            String.format(Locale.US, "#%02X%02X%02X", r, g, b)
         } else {
             val alphaFloat = a / 255.0f
-            String.format("rgba(%d, %d, %d, %.2f)", r, g, b, alphaFloat)
+            String.format(Locale.US, "rgba(%d, %d, %d, %.2f)", r, g, b, alphaFloat)
         }
     }
 

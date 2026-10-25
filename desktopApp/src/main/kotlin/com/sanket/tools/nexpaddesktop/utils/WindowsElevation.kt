@@ -33,9 +33,15 @@ object WindowsElevation {
     /**
      * Executes an elevated process without any flashing CMD/PowerShell windows.
      * Suspends asynchronously on Dispatchers.IO until the elevated process exits or times out.
+     * Optionally reports progress percentage (0.0 to 1.0) and status descriptions in real time.
      */
-    suspend fun runElevated(target: ProcessTarget): Result = withContext(Dispatchers.IO) {
+    suspend fun runElevated(
+        target: ProcessTarget,
+        onProgress: ((progress: Float, status: String) -> Unit)? = null
+    ): Result = withContext(Dispatchers.IO) {
         validateTarget(target)?.let { return@withContext it }
+
+        onProgress?.invoke(0.05f, "Requesting Windows Administrator approval...")
 
         val sei = ShellAPI.SHELLEXECUTEINFO().apply {
             cbSize = size()
@@ -60,12 +66,46 @@ object WindowsElevation {
 
         try {
             val exitCodeRef = IntByReference()
-            val maxWaitMs = 35_000L
-            val pollIntervalMs = 300
+            val maxWaitMs = 90_000L // 90 seconds resilient timeout
+            val pollIntervalMs = 250
             val startTime = System.currentTimeMillis()
             var exitFound = false
 
+            val logFile = File("C:\\Users\\Public\\nexpad_driver_install.log")
+            var lastLogReadPos = 0L
+
+            onProgress?.invoke(0.12f, "Initializing driver installer engine...")
+
             while (System.currentTimeMillis() - startTime < maxWaitMs) {
+                // Live stream driver installation output from the background process
+                if (logFile.exists() && logFile.length() > lastLogReadPos) {
+                    try {
+                        java.io.RandomAccessFile(logFile, "r").use { raf ->
+                            raf.seek(lastLogReadPos)
+                            var line = raf.readLine()
+                            while (line != null) {
+                                println("Main [DriverLog]: $line")
+                                when {
+                                    line.contains("Running in headless driver installation", ignoreCase = true) ->
+                                        onProgress?.invoke(0.20f, "Preparing driver package...")
+                                    line.contains("extract_binaries", ignoreCase = true) || line.contains("Preparing driver", ignoreCase = true) ->
+                                        onProgress?.invoke(0.38f, "Extracting WinUSB driver files...")
+                                    line.contains("creating and self-signing", ignoreCase = true) || line.contains("CreateCat", ignoreCase = true) ->
+                                        onProgress?.invoke(0.58f, "Signing security certificates...")
+                                    line.contains("Installing WinUSB driver", ignoreCase = true) ->
+                                        onProgress?.invoke(0.78f, "Installing driver to Windows PnP...")
+                                    line.contains("SUCCESS: WinUSB driver installed", ignoreCase = true) ->
+                                        onProgress?.invoke(0.90f, "Configuring AOA mode...")
+                                    line.contains("Pre-installing WinUSB for Google AOA Accessory", ignoreCase = true) || line.contains("18D1", ignoreCase = true) ->
+                                        onProgress?.invoke(0.96f, "Verifying AOA driver store...")
+                                }
+                                line = raf.readLine()
+                            }
+                            lastLogReadPos = raf.filePointer
+                        }
+                    } catch (_: Exception) {}
+                }
+
                 val waitRes = Kernel32.INSTANCE.WaitForSingleObject(hProcess, pollIntervalMs)
                 if (waitRes == WinBase.WAIT_OBJECT_0) {
                     exitFound = true
@@ -79,13 +119,31 @@ object WindowsElevation {
                 }
             }
 
+            // Flush any remaining log output
+            if (logFile.exists() && logFile.length() > lastLogReadPos) {
+                try {
+                    java.io.RandomAccessFile(logFile, "r").use { raf ->
+                        raf.seek(lastLogReadPos)
+                        var line = raf.readLine()
+                        while (line != null) {
+                            println("Main [DriverLog]: $line")
+                            line = raf.readLine()
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
+
             if (exitFound && Kernel32.INSTANCE.GetExitCodeProcess(hProcess, exitCodeRef)) {
+                if (exitCodeRef.value == 0) {
+                    onProgress?.invoke(1.0f, "Driver Installed Successfully!")
+                }
                 Result.Success(exitCodeRef.value)
             } else if (exitFound) {
+                onProgress?.invoke(1.0f, "Driver Installed Successfully!")
                 Result.Success(0)
             } else {
                 val lastErr = Kernel32.INSTANCE.GetLastError()
-                Result.Error(lastErr, "Elevated driver installation timed out after 35 seconds.")
+                Result.Error(lastErr, "Elevated driver installation timed out after 90 seconds.")
             }
         } finally {
             Kernel32.INSTANCE.CloseHandle(hProcess)

@@ -3,9 +3,10 @@
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011%20(x64)-0078D6.svg)](https://microsoft.com/windows)
 [![UI Framework](https://img.shields.io/badge/UI-Compose%20Multiplatform%20(Desktop)-4285F4.svg)](https://www.jetbrains.com/lp/compose-multiplatform/)
 [![Windows Driver](https://img.shields.io/badge/Driver-ViGEmBus%20Kernel%20Emulation-purple.svg)](https://github.com/nefarius/ViGEmBus)
-[![Polling Rate](https://img.shields.io/badge/Input%20Rate-1000Hz%20(Sub--millisecond)-3FD25A.svg)](#-multi-transport-server-engine)
+[![Driver Response](https://img.shields.io/badge/Kernel%20Injection-1ms%20(1000Hz%20Capable)-3FD25A.svg)](#-multi-transport-server-engine)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
 [![Zero Telemetry](https://img.shields.io/badge/Privacy-100%25%20Local%20%7C%200%20Telemetry-brightgreen.svg)](#-privacy-driver-safety--security-transparency)
+[![Code Signing: SignPath](https://img.shields.io/badge/Code%20Signing-SignPath%20Foundation-blue.svg)](https://signpath.org)
 [![Code Quality](https://img.shields.io/badge/Code%20Standard-Zero%20%40Suppress%20Guarantee-purple.svg)](#-developer--contributor-guide)
 
 **NEXPAD Desktop** is an ultra-high performance Windows companion server and controller authoring studio built with **Compose Multiplatform (Desktop)** and **JNA (Java Native Access)**.
@@ -52,9 +53,9 @@ It seamlessly bridges your Android smartphone to Windows, injecting high-speed g
 
 ### 2. ⚡ Multi-Transport Server Pipeline
 - **Zero-Driver USB (AOA)**: Communicates directly with Android Open Accessory endpoints over WinUSB bulk streams with sub-millisecond ($<1\,\text{ms}$) hardware response times.
-- **1000Hz Asynchronous NIO UDP Server**: Non-blocking UDP socket pipeline receiving 44-byte binary packets from the phone and streaming 8-byte bidirectional motor speed vibration packets (`GamepadFeedback`).
+- **High-Throughput Asynchronous NIO UDP Server**: Non-blocking UDP socket pipeline capable of sustained ingestion up to $1000\,\text{Hz}$ ($1\,\text{ms}$ with Windows multimedia timer `timeBeginPeriod(1)`), receiving 44-byte binary packets from the phone and streaming 8-byte bidirectional motor speed vibration packets (`GamepadFeedback`).
 - **ADB Reverse TCP Tunnel**: Fallback port forwarding bridge over standard Android Debug Bridge (`127.0.0.1:9999`).
-- **Bluetooth RFCOMM Serial Bridge**: Wireless connection over Windows Bluetooth serial ports.
+- **Bluetooth RFCOMM Serial Bridge**: Optimal 125Hz wireless connection over Windows Bluetooth serial ports.
 
 ### 3. 🎯 CemuHook DSU Motion Server
 - Integrated UDP motion server running on standard port **`26760`**.
@@ -201,5 +202,11 @@ For full disclosures, read [`DISCLAIMER.md`](./DISCLAIMER.md).
 This project is licensed under the **Apache License, Version 2.0**.
 - See the full [LICENSE](./LICENSE) file for legal terms.
 - Attributions for third-party libraries (ViGEmClient, JNA, libwdi) are detailed in the [NOTICE](./NOTICE) file.
+
+---
+
+## 🔏 Code Signing
+Free code signing provided by the [SignPath Foundation](https://signpath.org).
+
 
 Copyright © 2026 **Sanket Parmar**. All rights reserved.

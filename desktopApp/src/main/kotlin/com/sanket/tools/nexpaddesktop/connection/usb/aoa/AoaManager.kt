@@ -15,6 +15,28 @@ sealed class AoaState {
     data object Connected : AoaState()
 }
 
+/**
+ * Outcome of attempting to open and handshake an Android device in MTP mode.
+ *
+ * - [HandshakeSent]     : AOA handshake was transmitted; phone is re-enumerating as accessory.
+ * - [ElevationRequired] : A WinUSB driver must be installed via UAC before libusb can open the device.
+ *                         [targetMi] = null     -> install on root composite device (no MI scoping) --
+ *                                                  required when a proprietary OEM driver (e.g. Samsung
+ *                                                  ssudbus.sys) blocks libusb at the composite level.
+ *                         [targetMi] = non-null -> scope the install to that specific interface only.
+ * - [None]              : No action taken (device did not respond to AOA or is not yet ready).
+ *
+ * Detection is purely protocol-based: no vendor ID lists are used. The libusb error code
+ * LIBUSB_ERROR_NOT_SUPPORTED (-12) is the universal, brand-agnostic signal that a proprietary
+ * OEM composite driver is blocking access and root WinUSB must be installed.
+ */
+sealed interface AndroidProcessOutcome {
+    data object HandshakeSent : AndroidProcessOutcome
+    data object None : AndroidProcessOutcome
+    /** @param targetMi null = root composite WinUSB install; non-null = MI-scoped interface install */
+    data class ElevationRequired(val targetMi: Int?) : AndroidProcessOutcome
+}
+
 class AoaManager {
     var onAoaConnected: ((String) -> Unit)? = null
     var onAoaDisconnected: (() -> Unit)? = null
@@ -47,7 +69,14 @@ class AoaManager {
     }
 
     private var context: Context? = null
+    @Volatile
     private var currentState: AoaState = AoaState.Idle
+
+    fun onDriverInstallStarted() {
+        println("[AOA/Manager] Driver installation started.")
+        userDismissedElevation = false
+        currentState = AoaState.InstallingDriver(System.currentTimeMillis())
+    }
 
     fun onDriverInstallCompleted(success: Boolean) {
         println("[AOA/Manager] Driver installation finished (success=$success).")
@@ -98,7 +127,7 @@ class AoaManager {
             // Probing device descriptors during driver installation causes PNP_VetoOutstandingOpen (-11 error)!
             if (currentState is AoaState.InstallingDriver) {
                 val state = currentState as AoaState.InstallingDriver
-                if (System.currentTimeMillis() - state.startTime > 30_000) {
+                if (System.currentTimeMillis() - state.startTime > 90_000) {
                     println("[AOA/Manager] WinUSB installation timed out or user cancelled. Resetting to Idle state.")
                     currentState = AoaState.Idle
                 }
@@ -106,7 +135,8 @@ class AoaManager {
                 continue
             }
 
-            val candidates = UsbDeviceDetector.findCandidates(context!!)
+            val ctx = context ?: break
+            val candidates = UsbDeviceDetector.findCandidates(ctx)
             
             try {
                 // If handshake was recently sent, wait for phone to complete re-enumeration as 0x18D1
@@ -134,11 +164,12 @@ class AoaManager {
                         lastDetectedPhoneName = aoaCandidate.friendlyName
                     }
                     val elevationRequired = processAoaDevice(aoaCandidate)
-                    if (elevationRequired) {
+                    if (elevationRequired && !userDismissedElevation) {
                         onDriverNeedChanged?.invoke(true, aoaCandidate.vid, aoaCandidate.pid, null)
                     } else {
                         onDriverNeedChanged?.invoke(false, null, null, null)
                     }
+                    delay(1000)
                     continue
                 }
 
@@ -147,9 +178,10 @@ class AoaManager {
                     if (!androidCandidate.friendlyName.isNullOrBlank()) {
                         lastDetectedPhoneName = androidCandidate.friendlyName
                     }
-                    val elevationRequired = processAndroidDevice(androidCandidate)
-                    if (elevationRequired) {
-                        onDriverNeedChanged?.invoke(true, androidCandidate.vid, androidCandidate.pid, androidCandidate.mtpInterfaceNumber)
+                    val outcome = processAndroidDevice(androidCandidate)
+                    if (outcome is AndroidProcessOutcome.ElevationRequired && !userDismissedElevation) {
+                        // Pass the MI determined by protocol behaviour — null means root composite install
+                        onDriverNeedChanged?.invoke(true, androidCandidate.vid, androidCandidate.pid, outcome.targetMi)
                     } else {
                         onDriverNeedChanged?.invoke(false, null, null, null)
                     }
@@ -165,42 +197,65 @@ class AoaManager {
                 candidates.forEach { it.unref() }
             }
         }
-        cleanup()
     }
 
-    private suspend fun processAndroidDevice(candidate: CandidateUsbDevice.AndroidDevice): Boolean {
+    /**
+     * Attempts to open [candidate] (an Android device in MTP mode) and send the AOA 2.0 handshake.
+     *
+     * Driver-selection logic is **entirely protocol-driven** — no vendor-ID list is used:
+     *
+     *  • LIBUSB_ERROR_NOT_SUPPORTED (-12): libusb cannot open the device at all because a proprietary
+     *    OEM composite driver (e.g. Samsung ssudbus.sys, Vivo/OPPO MTP composite driver, etc.) owns
+     *    the root hub node.  WinUSB must be installed on the ROOT composite device (targetMi = null).
+     *    This is the universal, brand-agnostic signal — it applies to any OEM that ships its own
+     *    composite USB driver on Windows.
+     *
+     *  • LIBUSB_ERROR_ACCESS (-3) / UsbOpenFailure.AccessDenied: libusb can see the device but a
+     *    standard Windows UAC permission boundary prevents direct access.  Installing WinUSB scoped
+     *    to the specific MTP interface (targetMi = mtpInterfaceNumber) is sufficient.
+     */
+    private suspend fun processAndroidDevice(candidate: CandidateUsbDevice.AndroidDevice): AndroidProcessOutcome {
         val handle = DeviceHandle()
         val openResult = LibUsb.open(candidate.device, handle)
-        
+
         if (openResult == LibUsb.SUCCESS) {
             if (currentState is AoaState.Idle) {
                 println("[AOA/Manager] Opened Android device [VID:${String.format("%04X", candidate.vid)} PID:${String.format("%04X", candidate.pid)}]")
             }
             LibUsb.setAutoDetachKernelDriver(handle, true)
-            
+
             try {
                 val handshakeOk = AoaHandshake.sendHandshake(handle, candidate.device)
                 if (handshakeOk) {
                     currentState = AoaState.HandshakeSent(System.currentTimeMillis(), candidate.vid, candidate.pid)
-                    return false
+                    return AndroidProcessOutcome.HandshakeSent
                 }
-                return false
+                return AndroidProcessOutcome.None
             } catch (e: UsbHandshakeException) {
                 if (currentState is AoaState.Idle) {
                     println("[AOA/Manager] Handshake exception: ${e.message}")
                 }
                 if (e.failure == UsbOpenFailure.AccessDenied) {
-                    return true
+                    // Standard UAC access denial — scope WinUSB to the MTP interface if known.
+                    return AndroidProcessOutcome.ElevationRequired(targetMi = candidate.mtpInterfaceNumber)
                 }
-                return false
+                return AndroidProcessOutcome.None
             } finally {
                 LibUsb.close(handle)
             }
         } else {
-            if (openResult == LibUsb.ERROR_ACCESS || openResult == LibUsb.ERROR_NOT_SUPPORTED) {
-                return true
+            // LIBUSB_ERROR_NOT_SUPPORTED (-12): a proprietary OEM composite driver is blocking libusb
+            // at the root-composite level.  This is the universal signal (brand-agnostic) that the
+            // WinUSB driver must replace the composite root — no MI scoping.
+            if (openResult == LibUsb.ERROR_NOT_SUPPORTED) {
+                println("[AOA/Manager] LibUsb.open returned ERROR_NOT_SUPPORTED for VID:${String.format("%04X", candidate.vid)} — proprietary composite driver detected. Requesting root WinUSB install.")
+                return AndroidProcessOutcome.ElevationRequired(targetMi = null)
             }
-            return false
+            // LIBUSB_ERROR_ACCESS (-3): standard permission boundary — same as the caught exception path.
+            if (openResult == LibUsb.ERROR_ACCESS) {
+                return AndroidProcessOutcome.ElevationRequired(targetMi = candidate.mtpInterfaceNumber)
+            }
+            return AndroidProcessOutcome.None
         }
     }
 
@@ -278,6 +333,11 @@ class AoaManager {
     }
     
     fun cleanup() {
-        context?.let { LibUsb.exit(it) }
+        context?.let {
+            try {
+                LibUsb.exit(it)
+            } catch (_: Throwable) {}
+        }
+        context = null
     }
 }

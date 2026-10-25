@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.driver
+package com.sanket.tools.nexpaddesktop.driver
 
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpad.model.GamepadFeedback
@@ -36,7 +36,7 @@ class VirtualDualShock4Driver(
         const val DS4_PID: Short = 0x05C4
     }
 
-    override fun connect() {
+    override fun connect(): Unit = synchronized(this) {
         // Prevent memory leaks during retry loops
         disconnect()
 
@@ -60,7 +60,10 @@ class VirtualDualShock4Driver(
             lib.vigem_target_set_pid(target, DS4_PID)
 
             // 5. Plug Device Into OS
-            lib.vigem_target_add(client, target)
+            val addResult = lib.vigem_target_add(client, target)
+            if (addResult != 0x20000000) {
+                throw Exception("Failed to add target to ViGEm bus: 0x${addResult.toString(16)}")
+            }
 
             // 6. Register Native Callbacks for Rumble and Lightbar
             notificationCallback = object : ViGEmClientLibrary.PVIGEM_DS4_NOTIFICATION {
@@ -69,7 +72,7 @@ class VirtualDualShock4Driver(
                     target: Pointer?,
                     largeMotor: Byte,
                     smallMotor: Byte,
-                    lightbarColor: Int,
+                    lightbarColor: ViGEmClientLibrary.VIGEM_DS4_LIGHTBAR_COLOR.ByValue,
                     userData: Pointer?
                 ) {
                     try {
@@ -87,48 +90,73 @@ class VirtualDualShock4Driver(
             mapper.reset()
 
             isConnected = true
-            println("✅ Virtual Sony DualShock 4 Controller Connected successfully!")
-            println("⏳ Auto-calibrating Gyroscope... Keep the phone still for ~2 seconds.")
+            println("✅ [DRIVER] Virtual DualShock 4 Controller mounted successfully into ViGEm Bus")
+            println("⏳ [IMU CALIBRATION] Auto-calibrating Gyroscope... Keep device steady for ~2s")
 
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             System.err.println("⚠️ ViGEm DS4 init failed: ${e.message}")
             isConnected = false
+            target?.let { t ->
+                try { ViGEmClientLibrary.INSTANCE.vigem_target_free(t) } catch (_: Throwable) {}
+                target = null
+            }
+            client?.let { cl ->
+                try { ViGEmClientLibrary.INSTANCE.vigem_disconnect(cl); ViGEmClientLibrary.INSTANCE.vigem_free(cl) } catch (_: Throwable) {}
+                client = null
+            }
         }
     }
 
-    override fun disconnect() {
-        try {
-            val lib = ViGEmClientLibrary.INSTANCE
-            if (target != null) lib.vigem_target_ds4_unregister_notification(target)
-            if (client != null && target != null) {
-                lib.vigem_target_remove(client, target)
+    override fun disconnect(): Unit = synchronized(this) {
+        val lib = ViGEmClientLibrary.INSTANCE
+        target?.let { t ->
+            try {
+                lib.vigem_target_ds4_unregister_notification(t)
+                client?.let { c ->
+                    lib.vigem_target_remove(c, t)
+                }
+                lib.vigem_target_free(t)
+            } catch (e: Exception) {
+                System.err.println("⚠️ DS4 target disconnect error: ${e.message}")
+            } finally {
+                target = null
             }
-            // Free Native Memory Pointers
-            if (target != null) lib.vigem_target_free(target)
-            if (client != null) {
-                lib.vigem_disconnect(client)
-                lib.vigem_free(client)
+        }
+
+        client?.let { c ->
+            try {
+                lib.vigem_disconnect(c)
+                lib.vigem_free(c)
+            } catch (e: Exception) {
+                System.err.println("⚠️ DS4 client disconnect error: ${e.message}")
+            } finally {
+                client = null
             }
-        } catch (e: Exception) { }
+        }
 
         isConnected = false
-        client = null
-        target = null
         println("Disconnected Virtual DS4 Controller.")
     }
 
     override fun updateInput(input: GamepadInput) {
-        if (!isConnected || client == null || target == null) return
+        synchronized(this) {
+            if (!isConnected || client == null || target == null) return
 
-        // Translate the input via the stateful mapper
-        val report = mapper.map(input)
+            // Translate the input via the stateful mapper
+            val report = mapper.map(input)
 
-        // Submit to Windows Kernel
-        try {
-            ViGEmClientLibrary.INSTANCE.vigem_target_ds4_update_ex(client, target, report)
-        } catch (e: Exception) { 
-            System.err.println("⚠️ DS4 update error: ${e.message}") 
+            // Submit to Windows Kernel
+            try {
+                ViGEmClientLibrary.INSTANCE.vigem_target_ds4_update_ex(client, target, report)
+            } catch (e: Exception) { 
+                System.err.println("⚠️ DS4 update error: ${e.message}") 
+            }
         }
+    }
+
+    override fun recalibrate(): Unit = synchronized(this) {
+        mapper.reset()
+        println("⏳ [IMU CALIBRATION] DualShock 4 gyroscope bias reset without reconnecting target.")
     }
 
     override fun simulateCrash() {
@@ -140,7 +168,7 @@ class VirtualDualShock4Driver(
         }
     }
 
-    override fun isDriverConnected(): Boolean {
+    override fun isDriverConnected(): Boolean = synchronized(this) {
         return isConnected
     }
 }

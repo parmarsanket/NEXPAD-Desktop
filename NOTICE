@@ -33,3 +33,11 @@ This project incorporates components from the following open-source projects:
 6. Ktor Network
    Copyright (c) 2018-2026 JetBrains s.r.o. and Ktor contributors
    License: Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+
+7. libwdi
+   Copyright (c) 2010-2026 Pete Batard
+   License: GNU Lesser General Public License v3.0 (https://github.com/pbatard/libwdi)
+
+8. Android SDK Platform-Tools (ADB)
+   Copyright (c) 2005-2026 The Android Open Source Project
+   License: Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)

@@ -32,7 +32,7 @@ class NxprcFlexLayoutTest {
         assertEquals(0.12f, sheen.offsetXRatio, 0.01f)
         assertEquals(0.10f, sheen.offsetYRatio, 0.01f)
         assertEquals(0.95f, doc.animations.pressScale, 0.01f)
-        assertEquals(2f, doc.animations.pressOffsetY, 0.01f)
+        assertEquals(0f, doc.animations.pressOffsetY, 0.01f)
         assertEquals("RB", glyph.text)
     }
 

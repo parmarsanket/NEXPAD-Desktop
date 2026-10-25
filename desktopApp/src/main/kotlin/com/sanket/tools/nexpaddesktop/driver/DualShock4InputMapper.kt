@@ -1,4 +1,4 @@
-﻿package com.sanket.tools.nexpaddesktop.driver
+package com.sanket.tools.nexpaddesktop.driver
 
 import com.sanket.tools.nexpad.model.GamepadInput
 import com.sanket.tools.nexpaddesktop.driver.jna.ViGEmClientLibrary
@@ -24,7 +24,7 @@ class DualShock4InputMapper {
     private var calibrationSamples = 0
     private var stillnessFrames = 0
     private var startTimeNanos = System.nanoTime()
-    private var lastDs4DebugSignature = ""
+    private val cachedReport = ViGEmClientLibrary.DS4_REPORT_EX.ByValue()
 
     companion object {
         private const val CALIBRATION_COUNT = 100
@@ -32,7 +32,7 @@ class DualShock4InputMapper {
         const val ACCEL_SCALAR = 835.3f
         const val STILLNESS_THRESHOLD = 0.015f
         const val CALIBRATION_ADJUST_RATE = 0.02f
-        const val TIMESTAMP_DIVISOR = 188.0
+        const val TIMESTAMP_TICK_NANOS = 5333L // 5.333µs per DS4 clock tick (~187.5 ticks/ms)
 
         const val BATTERY_FULL: Byte = 0xFF.toByte()
         const val BATTERY_FULL_SPECIAL: Byte = 0x1A
@@ -55,8 +55,7 @@ class DualShock4InputMapper {
     /**
      * Translates a generic network payload into a native C memory block.
      */
-    fun map(input: GamepadInput): ViGEmClientLibrary.DS4_REPORT_EX.ByValue {
-        val report = ViGEmClientLibrary.DS4_REPORT_EX.ByValue()
+    fun map(input: GamepadInput, destination: ViGEmClientLibrary.DS4_REPORT_EX.ByValue = cachedReport): ViGEmClientLibrary.DS4_REPORT_EX.ByValue { val report = destination
 
         // 1. Analog Sticks
         report.bThumbLX = stickToByte(input.leftStickX)
@@ -90,40 +89,40 @@ class DualShock4InputMapper {
         report.bTriggerL = triggerToByte(input.triggerL2)
         report.bTriggerR = triggerToByte(input.triggerR2)
 
-        debugDs4Mapping(input, report)
-
-        // 5. Hardware Timestamp
-        val elapsedUs = (System.nanoTime() - startTimeNanos) / 1000L
-        val tick = (elapsedUs / TIMESTAMP_DIVISOR).toLong()
-        report.wTimestamp = tick.toShort()
+        // 5. Hardware Timestamp (DS4 hardware clock ticks once every 5.333µs = 5333ns)
+        val elapsedNs = System.nanoTime() - startTimeNanos
+        report.wTimestamp = (elapsedNs / TIMESTAMP_TICK_NANOS).toShort()
 
         // 6. Extended Battery & Touchpad Padding
         report.bBatteryLvl = BATTERY_FULL
         report.padding[5] = BATTERY_FULL_SPECIAL
-        report.padding[8] = TOUCH_PACKET_COUNT
-        report.padding[10] = TOUCH_POINT_UP
-        report.padding[14] = TOUCH_POINT_UP
-        report.padding[18] = TOUCH_POINT_UP
-        report.padding[22] = TOUCH_POINT_UP
+        // Touchpad packet count = 0, all touch tracking points flagged as Finger UP (0x80)
+        report.padding[6] = 0x00
+        report.padding[7] = 0x00
+        report.padding[8] = 0x00 // bTouchPacketsN = 0 (No active touch packets)
+        report.padding[10] = TOUCH_POINT_UP // Point 0 uncontacted
+        report.padding[14] = TOUCH_POINT_UP // Point 1 uncontacted
+        report.padding[19] = TOUCH_POINT_UP
+        report.padding[23] = TOUCH_POINT_UP
 
         // 7. IMU Data (Gyroscope & Accelerometer)
         val (calX, calY, calZ) = calibrateGyro(input.gyroX, input.gyroY, input.gyroZ)
         
-        report.wGyroX = toSafeShort( calX * GYRO_SCALAR)   
-        report.wGyroY = toSafeShort(-calZ * GYRO_SCALAR)   
-        report.wGyroZ = toSafeShort(-calY * GYRO_SCALAR)   
+        report.wGyroX = toSafeShort( calX * GYRO_SCALAR)
+        report.wGyroY = toSafeShort(-calZ * GYRO_SCALAR)
+        report.wGyroZ = toSafeShort(-calY * GYRO_SCALAR)
 
-        var ax = input.accelX * ACCEL_SCALAR
-        var ay = input.accelY * ACCEL_SCALAR
-        var az = input.accelZ * ACCEL_SCALAR
+        val ax = input.accelX * ACCEL_SCALAR
+        val ay = input.accelY * ACCEL_SCALAR
+        val az = input.accelZ * ACCEL_SCALAR
 
-        if (ax == 0f && ay == 0f && az == 0f) {
-            az = -8192f 
-        }
-
+        // DS4 body frame (matching Sony DualShock 4 hardware resting flat on desk face up):
+        // wAccelX: Lateral right (+ax)
+        // wAccelY: Longitudinal forward (+ay)
+        // wAccelZ: Vertical through controller face (+az, +1.0G resting flat)
         report.wAccelX = toSafeShort(ax)
-        report.wAccelY = toSafeShort(-az)
-        report.wAccelZ = toSafeShort(-ay)
+        report.wAccelY = toSafeShort(ay)
+        report.wAccelZ = toSafeShort(az)
 
         return report
     }
@@ -133,7 +132,8 @@ class DualShock4InputMapper {
     // =========================================================================
 
     private fun stickToByte(value: Float): Byte {
-        return ((value.coerceIn(-1f, 1f) + 1f) * 127.5f).roundToInt().coerceIn(0, 255).toByte()
+        val safeValue = if (value.isFinite()) value.coerceIn(-1f, 1f) else 0f
+        return ((safeValue + 1f) * 127.5f).roundToInt().coerceIn(0, 255).toByte()
     }
 
     private fun triggerToByte(value: Float): Byte {
@@ -141,6 +141,7 @@ class DualShock4InputMapper {
     }
 
     private fun toSafeShort(value: Float): Short {
+        if (!value.isFinite()) return 0
         return value.toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
     }
 
@@ -159,15 +160,25 @@ class DualShock4InputMapper {
     private fun calibrateGyro(rawX: Float, rawY: Float, rawZ: Float): Triple<Float, Float, Float> {
         if (calibrationSamples < CALIBRATION_COUNT) {
             if (rawX != 0f || rawY != 0f || rawZ != 0f) {
-                gyroBiasX += rawX; gyroBiasY += rawY; gyroBiasZ += rawZ
-                calibrationSamples++
-                if (calibrationSamples == CALIBRATION_COUNT) {
-                    gyroBiasX /= CALIBRATION_COUNT
-                    gyroBiasY /= CALIBRATION_COUNT
-                    gyroBiasZ /= CALIBRATION_COUNT
+                // If moving too fast, user is not holding the phone still: reset calibration progress
+                if (abs(rawX) > 0.05f || abs(rawY) > 0.05f || abs(rawZ) > 0.05f) {
+                    calibrationSamples = 0
+                    gyroBiasX = 0f
+                    gyroBiasY = 0f
+                    gyroBiasZ = 0f
+                } else {
+                    gyroBiasX += rawX
+                    gyroBiasY += rawY
+                    gyroBiasZ += rawZ
+                    calibrationSamples++
+                    if (calibrationSamples == CALIBRATION_COUNT) {
+                        gyroBiasX /= CALIBRATION_COUNT
+                        gyroBiasY /= CALIBRATION_COUNT
+                        gyroBiasZ /= CALIBRATION_COUNT
+                    }
                 }
             }
-            return Triple(0f, 0f, 0f)
+            return Triple(rawX, rawY, rawZ)
         }
         val calX = rawX - gyroBiasX
         val calY = rawY - gyroBiasY
@@ -185,32 +196,5 @@ class DualShock4InputMapper {
         }
         return Triple(calX, calY, calZ)
     }
-
-    private fun debugDs4Mapping(input: GamepadInput, report: ViGEmClientLibrary.DS4_REPORT_EX) {
-        val lx = report.bThumbLX.toInt() and 0xFF
-        val ly = report.bThumbLY.toInt() and 0xFF
-        val rx = report.bThumbRX.toInt() and 0xFF
-        val ry = report.bThumbRY.toInt() and 0xFF
-        val buttons = report.wButtons.toInt() and 0xFFFF
-        val special = report.bSpecial.toInt() and 0xFF
-
-        val signature = listOf(
-            (input.leftStickX * 10f).roundToInt(),
-            (input.leftStickY * 10f).roundToInt(),
-            (input.rightStickX * 10f).roundToInt(),
-            (input.rightStickY * 10f).roundToInt(),
-            buttons,
-            special
-        ).joinToString("|")
-
-        if (signature == lastDs4DebugSignature) return
-        lastDs4DebugSignature = signature
-
-        println(
-            "NEXPAD_DS4_DEBUG " +
-                "DS4 LX=$lx LY=$ly RX=$rx RY=$ry | " +
-                "buttons=0x${buttons.toString(16).padStart(4, '0')} " +
-                "special=0x${special.toString(16).padStart(2, '0')}"
-        )
-    }
 }
+

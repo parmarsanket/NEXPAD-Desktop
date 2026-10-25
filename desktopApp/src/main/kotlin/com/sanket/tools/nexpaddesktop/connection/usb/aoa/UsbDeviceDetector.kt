@@ -47,10 +47,23 @@ object UsbDeviceDetector {
 
     /**
      * Queries Windows PnP dynamically for connected Android devices.
-     * Detects:
-     * - Windows Portable Devices (Class WPD - standard MTP without ADB)
-     * - Android USB Devices (Class AndroidUsbDeviceClass - ADB enabled!)
-     * - NEXPAD WinUSB Devices (Class USBDevice with NEXPAD driver)
+     *
+     * Detection is **fully protocol/class-based** — no vendor ID (VID) list is used.
+     * Any phone from any brand is discovered through standard Windows device class identifiers:
+     *
+     *   1. Class WPD  ("Windows Portable Device") — the class Windows assigns to every MTP device.
+     *      Covers stock Android in file-transfer / MTP mode.
+     *
+     *   2. Compatible ID "MS_COMP_MTP" present in the Instance ID — Microsoft's own MTP marker that
+     *      appears on composite devices whose MTP interface is registered with the WPD stack.
+     *      Example Instance ID: USB\VID_04E8&PID_6860&MS_COMP_MTP&SAMSUNG_ANDROID (Samsung Note 20).
+     *      This is how Samsung (and other OEMs with proprietary composite drivers) show up even when
+     *      they do NOT use the standard WPD class name.
+     *
+     *   3. Class AndroidUsbDeviceClass — ADB-enabled devices (USB Debugging ON). Tracked separately
+     *      in [dynamicPnpAdbDevices] to exclude them from AOA processing.
+     *
+     *   4. NEXPAD WinUSB devices — phone already has the NEXPAD WinUSB driver bound.
      */
     private fun refreshPnpAndroidDevices() {
         val now = System.currentTimeMillis()
@@ -61,8 +74,16 @@ object UsbDeviceDetector {
             val proc = ProcessBuilder("pnputil.exe", "/enum-devices", "/connected")
                 .redirectErrorStream(true)
                 .start()
-            val text = proc.inputStream.bufferedReader().readText()
-            proc.waitFor()
+            try { proc.outputStream.close() } catch (_: Throwable) {}
+            val text = try {
+                proc.inputStream.bufferedReader().use { it.readText() }
+            } finally {
+                if (!proc.waitFor(3, java.util.concurrent.TimeUnit.SECONDS)) {
+                    proc.destroyForcibly()
+                } else {
+                    proc.destroy()
+                }
+            }
 
             dynamicPnpAndroidDevices.clear()
             dynamicPnpAdbDevices.clear()
@@ -71,8 +92,12 @@ object UsbDeviceDetector {
                 val lower = block.lowercase()
                 val isWpd = lower.contains("class name:                 wpd")
                 val isAndroidClass = lower.contains("class name:                 androidusbdeviceclass")
-                val isNexpadWinUsb = lower.contains("class name:                 usbdevice") && 
+                val isNexpadWinUsb = lower.contains("class name:                 usbdevice") &&
                                      (lower.contains("nexpad") || lower.contains("libusb.info") || lower.contains("winusb"))
+                // MS_COMP_MTP appears in the Instance ID of every composite MTP device registered with
+                // Windows, regardless of OEM.  This is the universal signal for phones using proprietary
+                // composite drivers (Samsung, Vivo, OPPO, Xiaomi, etc.) that do NOT expose class WPD.
+                val hasMtpCompatId = lower.contains("ms_comp_mtp")
 
                 val vidMatch = Regex("vid_([0-9a-fA-F]{4})", RegexOption.IGNORE_CASE).find(block)
                 val pidMatch = Regex("pid_([0-9a-fA-F]{4})", RegexOption.IGNORE_CASE).find(block)
@@ -84,7 +109,7 @@ object UsbDeviceDetector {
                     if (isAndroidClass) {
                         dynamicPnpAdbDevices.add(key)
                     }
-                    if (isWpd || isNexpadWinUsb) {
+                    if (isWpd || isNexpadWinUsb || hasMtpCompatId) {
                         dynamicPnpAndroidDevices.add(key)
                     }
                     if (rawDesc != null && !rawDesc.contains("Composite", ignoreCase = true) && !rawDesc.equals("MTP USB Device", ignoreCase = true)) {

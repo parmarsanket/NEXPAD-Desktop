@@ -30,6 +30,9 @@ sealed interface DesktopScreenKey : NavKey {
 
     @Serializable
     data object Kbm : DesktopScreenKey
+
+    @Serializable
+    data object Debug : DesktopScreenKey
 }
 
 /**
@@ -43,6 +46,7 @@ fun Screen.toNavKey(): DesktopScreenKey = when (this) {
     Screen.NODE -> DesktopScreenKey.Node
     Screen.CONVERTER -> DesktopScreenKey.Converter
     Screen.KBM -> DesktopScreenKey.Kbm
+    Screen.DEBUG -> DesktopScreenKey.Debug
 }
 
 /**
@@ -56,4 +60,5 @@ fun DesktopScreenKey.toScreen(): Screen = when (this) {
     is DesktopScreenKey.Node -> Screen.NODE
     is DesktopScreenKey.Converter -> Screen.CONVERTER
     is DesktopScreenKey.Kbm -> Screen.KBM
+    is DesktopScreenKey.Debug -> Screen.DEBUG
 }

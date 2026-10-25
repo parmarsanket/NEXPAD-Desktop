@@ -37,8 +37,10 @@ data class SpringPhysics(
         const val DEFAULT_PRESS_SCALE = 0.92f
 
         val DEFAULT = SpringPhysics(DEFAULT_DAMPING, DEFAULT_STIFFNESS, DEFAULT_PRESS_SCALE)
+        val TRIGGER = SpringPhysics(damping = 0.68f, stiffness = 440f, pressScale = 0.95f)
         val BUMPER = SpringPhysics(damping = 0.75f, stiffness = 520f, pressScale = 0.96f)
         val STICK_BUTTON = SpringPhysics(damping = 0.72f, stiffness = 480f, pressScale = 0.90f)
+        val DPAD = SpringPhysics(damping = 0.68f, stiffness = 460f, pressScale = 0.95f)
     }
 }
 
@@ -60,8 +62,13 @@ data class ComplexityBudget(
     val maxLayers: Int,
     val maxSvgNodes: Int,
     val guidance: String,
-    val targetLayers: Int = (minLayers + maxLayers) / 2
-)
+    val targetLayers: Int = (minLayers + (if (maxLayers >= 1000) 16 else maxLayers)) / 2
+) {
+    val isUnlimitedLayers: Boolean get() = maxLayers >= 1000
+    val isUnlimitedSvg: Boolean get() = maxSvgNodes >= 1000
+    val layersDisplay: String get() = if (isUnlimitedLayers) "${minLayers}+ layers (unlimited)" else "$minLayers..$maxLayers layers"
+    val svgNodesDisplay: String get() = if (isUnlimitedSvg) "unlimited SVG nodes" else "up to $maxSvgNodes SVG nodes"
+}
 
 /**
  * Visual layering, vector detail, and mechanical construction complexity target.
@@ -84,22 +91,15 @@ enum class Complexity(
         ComplexityBudget(minLayers = 5, maxLayers = 9, maxSvgNodes = 10, guidance = "Use multiple meaningful layers, material transitions, secondary detailing, and moderately complex SVG geometry", targetLayers = 7)
     ),
     EXTREME(
-        "Extreme (use the full supported CSS/SVG expressive range when useful, including intricate vector geometry and layered surface treatment; do not add meaningless decoration just to increase complexity)",
-        ComplexityBudget(minLayers = 7, maxLayers = 14, maxSvgNodes = 20, guidance = "Use the full supported CSS/SVG expressive range when useful, including intricate vector geometry and layered surface treatment", targetLayers = 10)
+        "Extreme (use the full supported CSS/SVG expressive range; unconstrained architectural freedom with zero artificial layer or SVG caps)",
+        ComplexityBudget(
+            minLayers = 8,
+            maxLayers = Int.MAX_VALUE,
+            maxSvgNodes = Int.MAX_VALUE,
+            guidance = "No artificial caps on layers or SVG vector nodes; scale freely to match the most intricate and complex design concepts",
+            targetLayers = 16
+        )
     )
-}
-
-/**
- * Target AI model capability tier for prompt optimization.
- */
-enum class ModelCapability(
-    val id: String,
-    val maxContextTokens: Int,
-    val syntaxSkeletonRecommended: Boolean
-) {
-    COMPACT("compact", 2048, true),
-    STANDARD("standard", 4096, false),
-    FRONTIER("frontier", 8192, false)
 }
 
 /**
@@ -145,14 +145,132 @@ enum class VisualDensity(val promptDescription: String) {
 }
 
 /**
+ * Design freedom level governing adherence to console hardware ergonomics vs stylistic departure.
+ */
+enum class DesignFreedom(val promptDescription: String) {
+    OPEN("Open (unconstrained creative freedom; bold stylistic departure from standard gamepads)"),
+    GUIDED("Guided (balanced creativity honoring console ergonomic conventions while exploring custom aesthetics)"),
+    STRICT("Strict (authentic adherence to physical console gamepad hardware aesthetics and engineering)")
+}
+
+/**
+ * Native hardware ambient animation intensity for idle loop effects.
+ */
+enum class AnimationIntensity(val promptDescription: String) {
+    NONE("None (purely static design without idle animations)"),
+    SUBTLE("Subtle (gentle ambient pulse, breathing glow, or micro-shimmer)"),
+    ACTIVE("Active (noticeable idle loop: continuous rotation, rhythmic glow oscillation)"),
+    DYNAMIC("Dynamic (high-energy motion: fast rotating reactor, 360° RGB chromatic sweep)")
+}
+
+/**
+ * Geometric and visual budget allocation priority.
+ */
+enum class DetailPriority(val promptDescription: String) {
+    BALANCED("Balanced (even distribution between surface texture, bevels, and vector graphics)"),
+    SILHOUETTE("Silhouette (strong geometric contour, distinctive outline, bold massing)"),
+    MATERIAL("Material (tactile surface shaders, realistic specular sheens, micro-textures)"),
+    MECHANICS("Mechanics (seams, bolts, socket wells, knurled bezels, physical fixtures)"),
+    GRAPHICS("Graphics (intricate embedded SVG vector emblem, glyphs, and iconography)")
+}
+
+/**
+ * Reference interpretation mode separate from thematic fidelity.
+ */
+enum class Originality(val promptDescription: String) {
+    FAITHFUL("Faithful (closely preserve authentic gamepad conventions or requested motif)"),
+    INSPIRED("Inspired (creative reimagining and homage with distinctive flair)"),
+    EXPERIMENTAL("Experimental (radical, avant-garde synthesis and unconventional aesthetics)")
+}
+
+/**
+ * Target AI model capability tier for prompt optimization.
+ * Automatically aligns construction complexity, visual density, and creativity budgets
+ * with the target model's architectural capabilities.
+ */
+enum class ModelCapability(
+    val id: String,
+    val maxContextTokens: Int,
+    val syntaxSkeletonRecommended: Boolean,
+    val defaultComplexity: Complexity,
+    val defaultCreativity: Creativity,
+    val defaultVisualDensity: VisualDensity,
+    val defaultFidelity: Fidelity,
+    val defaultDesignFreedom: DesignFreedom = DesignFreedom.GUIDED,
+    val defaultAnimationIntensity: AnimationIntensity = AnimationIntensity.SUBTLE,
+    val defaultDetailPriority: DetailPriority = DetailPriority.BALANCED,
+    val defaultOriginality: Originality = Originality.INSPIRED
+) {
+    COMPACT(
+        id = "compact",
+        maxContextTokens = 2048,
+        syntaxSkeletonRecommended = true,
+        defaultComplexity = Complexity.SIMPLE,
+        defaultCreativity = Creativity.LOW,
+        defaultVisualDensity = VisualDensity.CLEAN,
+        defaultFidelity = Fidelity.FAITHFUL,
+        defaultDesignFreedom = DesignFreedom.GUIDED,
+        defaultAnimationIntensity = AnimationIntensity.SUBTLE,
+        defaultDetailPriority = DetailPriority.BALANCED,
+        defaultOriginality = Originality.FAITHFUL
+    ),
+    STANDARD(
+        id = "standard",
+        maxContextTokens = 4096,
+        syntaxSkeletonRecommended = false,
+        defaultComplexity = Complexity.AUTO,
+        defaultCreativity = Creativity.MEDIUM,
+        defaultVisualDensity = VisualDensity.BALANCED,
+        defaultFidelity = Fidelity.INSPIRED,
+        defaultDesignFreedom = DesignFreedom.GUIDED,
+        defaultAnimationIntensity = AnimationIntensity.SUBTLE,
+        defaultDetailPriority = DetailPriority.BALANCED,
+        defaultOriginality = Originality.INSPIRED
+    ),
+    FRONTIER(
+        id = "frontier",
+        maxContextTokens = Int.MAX_VALUE,
+        syntaxSkeletonRecommended = false,
+        defaultComplexity = Complexity.EXTREME,
+        defaultCreativity = Creativity.HIGH,
+        defaultVisualDensity = VisualDensity.DENSE,
+        defaultFidelity = Fidelity.INSPIRED,
+        defaultDesignFreedom = DesignFreedom.OPEN,
+        defaultAnimationIntensity = AnimationIntensity.ACTIVE,
+        defaultDetailPriority = DetailPriority.BALANCED,
+        defaultOriginality = Originality.EXPERIMENTAL
+    )
+}
+
+/**
+ * Console platform style for ABXY face button color matrix.
+ * Governs which authentic button color palette is applied to ABXY presets and AI prompts.
+ * Only affects ABXY category — all other categories (DPad, Triggers, Bumpers, Sticks, System, Macros) are unaffected.
+ */
+enum class ConsoleMode {
+    /** Xbox color matrix: A=Green, B=Red, X=Blue, Y=Yellow */
+    XBOX,
+    /** PlayStation color matrix: Cross/A=Blue, Circle/B=Red, Square/X=Pink, Triangle/Y=Green */
+    PLAYSTATION
+}
+
+/**
  * Parameterized design options for NEXPAD generative AI component creation.
  * Empowers calling editors and automated generators with fine-grained aesthetic control.
  */
 data class AiDesignOptions(
-    val creativity: Creativity = Creativity.HIGH,
-    val complexity: Complexity = Complexity.AUTO,
-    val fidelity: Fidelity = Fidelity.INSPIRED,
-    val visualDensity: VisualDensity = VisualDensity.AUTO,
+    val modelCapability: ModelCapability = ModelCapability.STANDARD,
+    val creativity: Creativity = modelCapability.defaultCreativity,
+    val complexity: Complexity = modelCapability.defaultComplexity,
+    val fidelity: Fidelity = modelCapability.defaultFidelity,
+    val visualDensity: VisualDensity = modelCapability.defaultVisualDensity,
+    val designFreedom: DesignFreedom = modelCapability.defaultDesignFreedom,
+    val animationIntensity: AnimationIntensity = modelCapability.defaultAnimationIntensity,
+    val detailPriority: DetailPriority = modelCapability.defaultDetailPriority,
+    val originality: Originality = modelCapability.defaultOriginality,
+
+    /** Console platform style for ABXY button color matrix. Defaults to Xbox. */
+    val consoleMode: ConsoleMode = ConsoleMode.XBOX,
 
     val style: String? = null,
     val color: String? = null,
@@ -167,8 +285,9 @@ data class AiDesignOptions(
     val specialInstructions: String? = null,
     val userRequest: String = "",
     val includeSyntaxSkeleton: Boolean = false,
-    val modelCapability: ModelCapability = ModelCapability.STANDARD,
-    val geometryOptions: GeometryOptions = GeometryOptions()
+    val geometryOptions: GeometryOptions = GeometryOptions(),
+    val seed: Long? = null,
+    val componentName: String? = null
 ) {
     /**
      * Returns true if explicit custom visual/thematic intent (style, color, shape, etc.) was provided.
@@ -193,10 +312,14 @@ data class AiDesignOptions(
      * Returns true if non-default generation tuning parameters (complexity, creativity, etc.) are set.
      */
     fun hasCustomGenerationParameters(): Boolean =
-        creativity != Creativity.HIGH ||
-        complexity != Complexity.AUTO ||
-        fidelity != Fidelity.INSPIRED ||
-        visualDensity != VisualDensity.AUTO ||
+        creativity != modelCapability.defaultCreativity ||
+        complexity != modelCapability.defaultComplexity ||
+        fidelity != modelCapability.defaultFidelity ||
+        visualDensity != modelCapability.defaultVisualDensity ||
+        designFreedom != modelCapability.defaultDesignFreedom ||
+        animationIntensity != modelCapability.defaultAnimationIntensity ||
+        detailPriority != modelCapability.defaultDetailPriority ||
+        originality != modelCapability.defaultOriginality ||
         modelCapability != ModelCapability.STANDARD ||
         geometryOptions != GeometryOptions() ||
         !tactilePhysics.isNullOrBlank() ||
@@ -222,9 +345,13 @@ data class AiDesignOptions(
         val sb = StringBuilder()
         sb.append("### USER DESIGN PARAMETERS & PREFERENCES:\n")
         sb.append("- **CREATIVITY**: ${creativity.promptDescription}\n")
-        sb.append("- **COMPLEXITY**: ${complexity.promptDescription} (Budget: ${complexity.budget.minLayers}..${complexity.budget.maxLayers} layers, target ${complexity.budget.targetLayers}, up to ${complexity.budget.maxSvgNodes} SVG nodes)\n")
+        sb.append("- **COMPLEXITY**: ${complexity.promptDescription} (Budget: ${complexity.budget.layersDisplay}, target ${complexity.budget.targetLayers}, ${complexity.budget.svgNodesDisplay})\n")
         sb.append("- **FIDELITY**: ${fidelity.promptDescription}\n")
         sb.append("- **VISUAL DENSITY**: ${visualDensity.promptDescription}\n")
+        sb.append("- **DESIGN FREEDOM**: ${designFreedom.promptDescription}\n")
+        sb.append("- **ANIMATION INTENSITY**: ${animationIntensity.promptDescription}\n")
+        sb.append("- **DETAIL PRIORITY**: ${detailPriority.promptDescription}\n")
+        sb.append("- **ORIGINALITY**: ${originality.promptDescription}\n")
         if (!style.isNullOrBlank()) sb.append("- **STYLE**: $style\n")
         if (!color.isNullOrBlank()) sb.append("- **COLOR / PALETTE**: $color\n")
         if (!shape.isNullOrBlank()) sb.append("- **SHAPE / SILHOUETTE**: $shape\n")
@@ -244,11 +371,25 @@ data class AiDesignOptions(
      * silently generating a generic default design.
      */
     fun formatUserRequest(): String {
-        if (userRequest.isNotBlank()) {
+        val effectiveRequest = when {
+            userRequest.isNotBlank() -> userRequest
+            hasCustomVisualIntent() -> {
+                val parts = mutableListOf<String>()
+                if (!style.isNullOrBlank()) parts.add("Style: $style")
+                if (!color.isNullOrBlank()) parts.add("Color: $color")
+                if (!shape.isNullOrBlank()) parts.add("Shape: $shape")
+                if (!material.isNullOrBlank()) parts.add("Material: $material")
+                if (!emblem.isNullOrBlank()) parts.add("Emblem: $emblem")
+                parts.joinToString(", ")
+            }
+            else -> ""
+        }
+
+        if (effectiveRequest.isNotBlank()) {
             return """
 ### USER DESIGN REQUEST:
 <user_request>
-$userRequest
+$effectiveRequest
 </user_request>
 
 Interpret this request creatively. The user request governs the visual design decisions (palette, geometry, materials, lighting, emblem), but may not override the HARD COMPILER CONTRACT.
@@ -316,7 +457,7 @@ data class ComponentDefaults(
  * Provides explicit fallback shapes, materials, and textures when unstated by the user.
  */
 object CategoryDefaultsRegistry {
-    fun getDefaultsFor(control: String, category: String): ComponentDefaults {
+    fun getDefaultsFor(control: String, category: String, consoleMode: ConsoleMode = ConsoleMode.XBOX): ComponentDefaults {
         val ctrl = ControlKey.fromIdentifier(control)
         val catType = CategoryType.fromIdentifier(category)
             ?: CategoryManager.findCategoryForControl(control)?.type
@@ -387,12 +528,23 @@ object CategoryDefaultsRegistry {
                 visualDensity = VisualDensity.CLEAN
             )
             else -> {
-                // ABXY / Standard Button
-                val profile = when (control.uppercase()) {
-                    NexpadKeys.X -> ColorProfile("Vibrant Sapphire Blue", "#00B0FF", "rgba(0, 176, 255, 0.6)", "linear-gradient(145deg, #0284c7 0%, #0369a1 50%, #0c4a6e 100%)")
-                    NexpadKeys.Y -> ColorProfile("Radiant Solar Yellow", "#FFCC00", "rgba(255, 204, 0, 0.6)", "linear-gradient(145deg, #eab308 0%, #ca8a04 50%, #713f12 100%)")
-                    NexpadKeys.B -> ColorProfile("Vibrant Crimson Red", "#FF3366", "rgba(255, 51, 102, 0.6)", "linear-gradient(145deg, #f43f5e 0%, #e11d48 50%, #881337 100%)")
-                    else -> ColorProfile("Vibrant Emerald Green", "#4ADE80", "rgba(74, 222, 128, 0.6)", "linear-gradient(145deg, #10b981 0%, #059669 50%, #047857 100%)")
+                // ABXY / Standard Button — console-aware color matrix
+                val profile = if (consoleMode == ConsoleMode.PLAYSTATION) {
+                    when (control.uppercase()) {
+                        NexpadKeys.A  -> ColorProfile("PlayStation Blue",  "#3F8FE0", "rgba(63, 143, 224, 0.65)", "linear-gradient(145deg, #1a5fa8 0%, #0e3d70 50%, #071e38 100%)")
+                        NexpadKeys.B  -> ColorProfile("PlayStation Red",   "#E6474E", "rgba(230, 71, 78, 0.65)",  "linear-gradient(145deg, #b52830 0%, #7a1117 50%, #3d0508 100%)")
+                        NexpadKeys.X  -> ColorProfile("PlayStation Pink",  "#E055B8", "rgba(224, 85, 184, 0.65)", "linear-gradient(145deg, #a8207c 0%, #70105a 50%, #380630 100%)")
+                        NexpadKeys.Y  -> ColorProfile("PlayStation Green", "#3FD25A", "rgba(63, 210, 90, 0.65)",  "linear-gradient(145deg, #19a83a 0%, #0e6f22 50%, #073812 100%)")
+                        else          -> ColorProfile("PlayStation Blue",  "#3F8FE0", "rgba(63, 143, 224, 0.65)", "linear-gradient(145deg, #1a5fa8 0%, #0e3d70 50%, #071e38 100%)")
+                    }
+                } else {
+                    // Xbox (default)
+                    when (control.uppercase()) {
+                        NexpadKeys.X -> ColorProfile("Vibrant Sapphire Blue",  "#00B0FF", "rgba(0, 176, 255, 0.6)",    "linear-gradient(145deg, #0284c7 0%, #0369a1 50%, #0c4a6e 100%)")
+                        NexpadKeys.Y -> ColorProfile("Radiant Solar Yellow",   "#FFCC00", "rgba(255, 204, 0, 0.6)",    "linear-gradient(145deg, #eab308 0%, #ca8a04 50%, #713f12 100%)")
+                        NexpadKeys.B -> ColorProfile("Vibrant Crimson Red",    "#FF3366", "rgba(255, 51, 102, 0.6)",   "linear-gradient(145deg, #f43f5e 0%, #e11d48 50%, #881337 100%)")
+                        else         -> ColorProfile("Vibrant Emerald Green",  "#4ADE80", "rgba(74, 222, 128, 0.6)",   "linear-gradient(145deg, #10b981 0%, #059669 50%, #047857 100%)")
+                    }
                 }
                 ComponentDefaults(
                     shape = "Circular Dome (border-radius: 50%)",
@@ -424,25 +576,36 @@ data class ResolvedDesign(
     val creativity: Creativity,
     val complexity: Complexity,
     val fidelity: Fidelity,
-    val visualDensity: VisualDensity
+    val visualDensity: VisualDensity,
+    val designFreedom: DesignFreedom = DesignFreedom.GUIDED,
+    val animationIntensity: AnimationIntensity = AnimationIntensity.SUBTLE,
+    val detailPriority: DetailPriority = DetailPriority.BALANCED,
+    val originality: Originality = Originality.INSPIRED
 ) {
     fun toPromptSpecification(): String {
         val sb = StringBuilder()
         sb.append("### RESOLVED DESIGN SPECIFICATION (PRE-RESOLVED INTENT):\n")
+        sb.append("> ⚠️ **PRECEDENCE NOTICE**: Values marked [CATEGORY_DEFAULT] provide default context ONLY. They carry zero override authority against user instructions. If the user's request or custom parameters specify a different style, shape, color, or effect, the user's explicit intent strictly supersedes the fallback default!\n")
         sb.append("- **STYLE**: ${style.value} [${style.source}]\n")
         sb.append("- **SHAPE**: ${shape.value} [${shape.source}]\n")
         sb.append("- **COLOR**: ${color.value} [${color.source}]\n")
         sb.append("- **MATERIAL**: ${material.value} [${material.source}]\n")
         sb.append("- **LIGHTING**: ${lighting.value} [${lighting.source}]\n")
         sb.append("- **TEXTURE**: ${texture.value} [${texture.source}]\n")
-        if (emblem != null && !emblem.value.isNullOrBlank()) {
+        if (emblem != null && emblem.value.isNotBlank()) {
             sb.append("- **EMBLEM**: ${emblem.value} [${emblem.source}]\n")
         }
         sb.append("- **LABEL**: ${label.value} [${label.source}]\n")
         sb.append("- **CREATIVITY**: ${creativity.promptDescription}\n")
-        sb.append("- **COMPLEXITY**: ${complexity.promptDescription} (Target: ${complexity.budget.targetLayers} layers, max ${complexity.budget.maxLayers} layers, up to ${complexity.budget.maxSvgNodes} SVG nodes)\n")
+        val maxLayerText = if (complexity.budget.isUnlimitedLayers) "unlimited" else "${complexity.budget.maxLayers}"
+        val maxSvgText = if (complexity.budget.isUnlimitedSvg) "unlimited" else "up to ${complexity.budget.maxSvgNodes}"
+        sb.append("- **COMPLEXITY**: ${complexity.promptDescription} (Target: ${complexity.budget.targetLayers} layers, max $maxLayerText layers, $maxSvgText SVG nodes)\n")
         sb.append("- **FIDELITY**: ${fidelity.promptDescription}\n")
         sb.append("- **VISUAL DENSITY**: ${visualDensity.promptDescription}\n")
+        sb.append("- **DESIGN FREEDOM**: ${designFreedom.promptDescription}\n")
+        sb.append("- **ANIMATION INTENSITY**: ${animationIntensity.promptDescription}\n")
+        sb.append("- **DETAIL PRIORITY**: ${detailPriority.promptDescription}\n")
+        sb.append("- **ORIGINALITY**: ${originality.promptDescription}\n")
         return sb.toString()
     }
 }
@@ -451,8 +614,8 @@ data class ResolvedDesign(
  * Resolves callers' AiDesignOptions against category hardware defaults.
  */
 object DesignResolver {
-    fun resolve(control: String, category: String, options: AiDesignOptions): ResolvedDesign {
-        val defaults = CategoryDefaultsRegistry.getDefaultsFor(control, category)
+    fun resolve(control: String, category: String, options: AiDesignOptions = AiDesignOptions()): ResolvedDesign {
+        val defaults = CategoryDefaultsRegistry.getDefaultsFor(control, category, options.consoleMode)
 
         val style = if (!options.style.isNullOrBlank()) {
             ResolvedValue(options.style, DesignSource.USER)
@@ -520,7 +683,11 @@ object DesignResolver {
             creativity = options.creativity,
             complexity = options.complexity,
             fidelity = options.fidelity,
-            visualDensity = visualDensity
+            visualDensity = visualDensity,
+            designFreedom = options.designFreedom,
+            animationIntensity = options.animationIntensity,
+            detailPriority = options.detailPriority,
+            originality = options.originality
         )
     }
 }
@@ -728,6 +895,13 @@ ${paramsSection}### PREVIOUS CODE:
 $previousHtml
 ```
 
+### NXPRC RUNTIME REPAIR CHECK:
+- Preserve one root button with explicit px bounds; this is compiled into a normalized NXPRC viewBox and then resized by both native renderers.
+- Preserve the root `:active` spring contract (`--spring-damping`, `--spring-stiffness`, `--press-scale`) and keep the default press stationary and centered.
+- Preserve a single intentional root idle animation when present. Root `@keyframes` using `transform`, `opacity`, or `hue-rotate()` can be compiled; child-only animation is not a reliable per-layer contract.
+- For a joystick, preserve `data-layer-role="base"` and `data-layer-role="thumb-cap"` so `capLayerIndices` keep the housing stationary and move only the cap.
+- Prefer `box-shadow` for glow and depth. Do not replace a valid SVG emblem with browser-only filter graphs, JavaScript, CSS drag logic, or layout animation.
+
 ### SURGICAL REPAIR CONTRACT:
 1. **Preserve Visual Design**: Do NOT redesign the component or alter its requested theme, artistic concept, color palette, or vector artwork.
 2. **Fix Compiler Diagnostics**: Resolve ONLY the specific errors and warnings reported above (e.g., ensure single root `<button>`, valid explicit px bounds, valid SVG viewBox, remove unsupported CSS like `@media`/`mix-blend-mode`/`backdrop-filter`). Note: Standard CSS `@keyframes` on transform/opacity properties ARE supported for ambient animations; do NOT remove valid keyframes unless the compiler diagnostic specifically identifies them as invalid.
@@ -742,7 +916,7 @@ $previousHtml
 
 ## CORE RULES (QUICK SUMMARY FOR ALL MODELS):
 1. Build ONE virtual controller component inside a single `<button>` element.
-2. Follow the user's visual request first — user customization always wins within compiler boundaries.
+2. UNIVERSAL LAW OF USER SUPREMACY: The user's explicit demand is sovereign. User customization ALWAYS wins over all defaults, guidelines, and restrictions. If the user explicitly demands ANY specific effect, mobility, translation (e.g. `translateY` / plunge / slide), custom geometry, or styling, the AI MUST faithfully fulfill the user's demand. Restrictions only govern unspecified defaults; the user's explicit wish is supreme.
 3. Keep the component self-contained: one `<style>` block, system fonts, zero external assets.
 4. Use only supported HTML/CSS/SVG primitives (no unsupported web page APIs).
 5. Preserve the component's interaction meaning (category semantics), not a mandatory shape.
@@ -752,6 +926,7 @@ $previousHtml
 9. Ensure the label/icon remains clearly readable with strong contrast in an unrotated DOM text node.
 10. Return ONLY the complete, self-contained HTML/CSS inside one code block.
 11. NEXPAD supports dual button labeling styles (Xbox: A, B, X, Y, LB, RB, LT, RT, LSB, RSB vs PlayStation: ✕, ○, □, △, L1, R1, L2, R2, L3, R3) and dynamically translates standard controller labels at runtime while preserving custom action text (e.g. ATTACK, DASH, JUMP).
+12. ZERO MOBILITY PRESS MANDATE (DEFAULT RULE): On `:active`, use stationary centered uniform scale (`transform: scale(var(--press-scale));` with `transform-origin: 50% 50%;`). NEVER use `translateY(...)`, `translateX(...)`, or any animation that moves, shifts, or displaces the button or its layers on press by default. Mobile screens have tightly compact layout slots where movable displacement causes clipping and looks bad. EXCEPTION: If the user explicitly demands mobility, plunging, or translation, the Universal Law of User Supremacy (Rule 2) overrides this default and you MUST fulfill the user's demand!
 """.trimIndent()
 
     private fun engineBoundaries(
@@ -760,43 +935,120 @@ $previousHtml
         heightDp: Int = 96,
         options: AiDesignOptions = AiDesignOptions()
     ): String {
-        return when (options.modelCapability) {
+        val tierContract = when (options.modelCapability) {
             ModelCapability.COMPACT -> compactEngineBoundaries(rootClass, widthDp, heightDp)
-            ModelCapability.FRONTIER -> standardEngineBoundaries(rootClass, widthDp, heightDp) + "\n\n" + frontierEngineBoundaries(rootClass, widthDp, heightDp)
+            ModelCapability.FRONTIER -> standardEngineBoundaries(rootClass, widthDp, heightDp) +
+                "\n\n" + frontierEngineBoundaries(rootClass, widthDp, heightDp)
             else -> standardEngineBoundaries(rootClass, widthDp, heightDp)
         }
+
+        // Keep this after the tier contract. The older, intentionally detailed sections
+        // above are useful background, while this short contract is the authoritative
+        // implementation recipe shared by Android and desktop renderers.
+        return tierContract + "\n\n" + nxprcRuntimePlaybook(rootClass, widthDp, heightDp, options.modelCapability)
     }
 
-    private fun compactEngineBoundaries(rootClass: String, widthDp: Int = 96, heightDp: Int = 96): String = """
+    /**
+     * The prompt used to describe NXPRC as if it were a browser. That encouraged models
+     * to spend their budget on web-only behavior (child animations, CSS filters, and
+     * movable press transforms) which the native renderers cannot reproduce consistently.
+     * This playbook is deliberately placed after each tier's broad engine guidance so it
+     * wins over browser-oriented examples without duplicating the full prompt contract.
+     */
+    private fun nxprcRuntimePlaybook(
+        rootClass: String,
+        widthDp: Int,
+        heightDp: Int,
+        capability: ModelCapability
+    ): String {
+        val categoryHint = when (rootClass) {
+            "stick-btn" -> "JOYSTICK"
+            "touchpad-ctl" -> "TOUCHPAD"
+            "trigger-btn" -> "TRIGGER"
+            "bumper-btn" -> "BUMPER"
+            "dpad-btn" -> "DPAD"
+            else -> "BUTTON/SYSTEM"
+        }
+
+        if (capability == ModelCapability.COMPACT) {
+            return """
+                ### NXPRC RUNTIME PLAYBOOK — COMPACT, AUTHORITATIVE
+                Treat the output as a small scene description for a native renderer, not as a browser page.
+                - **Canvas**: emit exactly one root `<button class="$rootClass" ...>` with `position: relative; width: ${widthDp}px; height: ${heightDp}px;`. Children use explicit px `position:absolute; left; top; width; height` or simple Flexbox. These px values become the NXPRC viewBox and are scaled later.
+                - **Reliable visual recipe**: gradients + borders + `border-radius`/`clip-path` + `box-shadow` become native `BoxLayer` geometry. Use an embedded SVG (`viewBox="0 0 100 100"`, path/circle/polygon/rect) for intricate artwork. Keep DOM text in an unrotated span.
+                - **Glow and depth**: use colored outset/inset `box-shadow`; use a root glow shadow only when a visible ambient halo is intended. Avoid huge shadows and `overflow:hidden` because Android and desktop fit the canvas using compiled outsets.
+                - **Press**: put `--spring-damping`, `--spring-stiffness`, and `--press-scale` in `:root`; define `.$rootClass:active { transform: scale(var(--press-scale)); transform-origin: 50% 50%; }`. The two native renderers read this into a spring. Do not use CSS transitions or child press transforms by default.
+                - **Idle animation**: put one `animation: ... infinite` declaration on the root, not on a decorative child. Use a single `@keyframes` channel with `transform: scale()`/`rotate()`, `opacity`, or `filter: hue-rotate()`. Name it `pulse/glow/breathe`, `spin/rotate`, or `rgb/chroma/hue` for the native idle mode. Never animate layout (`width`, `left`, `top`, `margin`) or use `scaleX/scaleY` for portable motion.
+                - **${categoryHint}**: for `stick-btn`, mark the stationary housing `data-layer-role="base"` and the centered movable cap `data-layer-role="thumb-cap"`; keep every cap detail inside that cap. The runtime supplies drag translation and spring return. A `touchpad-ctl` is stationary and must not contain a movable cap.
+                Return only the complete HTML/CSS code block.
+            """.trimIndent()
+        }
+
+        return """
+            ### NXPRC RUNTIME PLAYBOOK — AUTHORITATIVE IMPLEMENTATION CONTRACT
+            NXPRC compiles HTML/CSS/SVG into `NxprcDocument`; Android and desktop draw it. No browser behavior or JavaScript.
+
+            #### 1) Canvas and sizing
+            - Root `${widthDp}px × ${heightDp}px` is the source viewBox, not final device size. Children are normalized and both renderers center the same document with `min(width/viewBoxWidth, height/viewBoxHeight)`.
+            - Android uses nominal sizing for sticks/D-pad/touchpads and about `0.82x` for ordinary buttons. Desktop uses a normally 140dp tile and reduces fit for large `canvasOutsets`; keep outsets modest.
+            - Use one relative root, explicit px child bounds, and `overflow: visible` unless intentional. No viewport units, CSS Grid, external assets, or responsive page layout.
+
+            #### 2) Compiler-to-layer recipe
+            - Backgrounds, gradients, borders, radii, clip paths, opacity, transforms, and normal shadows → `BoxLayer` (legacy `GradientShape` may occur in fallback documents).
+            - A qualifying colored **root** outset shadow → `GlowRing`; explicit root `data-bezel="true"`/bezel/socket geometry → `BezelSocket`.
+            - Inset shadows stay on `BoxLayer`; `InnerShadow` and `GlossReflection` are explicit document primitives, not guaranteed conversions from generic HTML or pseudo-elements.
+            - Supported SVG → `VectorPath`; one short text leaf → `CenterGlyph`; multiple text leaves → `TextLayer`. Use DOM order, small `z-index`, and `data-layer-role` to make structure clear.
+
+            #### 3) Portable visual language
+            Prefer gradients, borders, rounded/oval/polygon geometry, SVG paths/paint servers, and layered `box-shadow`. `box-shadow` is reliable glow; `filter: blur()` is only a hint. Small `brightness()`/`saturate()` accents are safe; use `hue-rotate()` through root animation. Avoid SVG filters, backdrop filters, blend modes, masks, perspective, 3D, and layout animation.
+
+            #### 4) Press and idle motion
+            - Put spring variables in `:root` and one root rule: `.$rootClass:active { transform: scale(var(--press-scale)); transform-origin: 50% 50%; }`. Android and desktop read it into `NxprcAnimations` and animate it with native spring physics.
+            - Default press is stationary centered scale. Only use `translateY(...)` when the user explicitly asks for travel; it becomes a whole-component offset. Trigger input is press/release (`0 → 1 → 0`), not guaranteed pointer-distance depth.
+            - Put one `animation: ... infinite` on the root. Name `pulse/glow/breathe` → `PULSE`, `spin/rotate` → `ROTATE`, and `rgb/chroma/rainbow/hue` → `RGB_CYCLE`. Animate only uniform `scale()`/`rotate()`, `opacity`, or `hue-rotate()`; never layout. Android gates generic tracks; named modes are cross-platform, but keep static artwork complete. Desktop previews tracks continuously.
+
+            #### 5) Interaction structure
+            - **Joystick**: mark stationary housing `data-layer-role="base"` and centered movable cap `data-layer-role="thumb-cap"`; keep cap artwork inside it. `capLayerIndices` make both renderers move only the cap; keep it about 55–65% of the socket. Never implement drag in CSS/JS.
+            - **Touchpad**: stationary surface only; no joystick cap, center button, or CSS drag.
+        """.trimIndent()
+    }
+
+    private fun compactEngineBoundaries(rootClass: String, widthDp: Int = 96, heightDp: Int = 96): String {
+        val physics = when (rootClass) {
+            "trigger-btn" -> SpringPhysics.TRIGGER
+            "bumper-btn" -> SpringPhysics.BUMPER
+            "stick-btn-ctl" -> SpringPhysics.STICK_BUTTON
+            "dpad-btn" -> SpringPhysics.DPAD
+            else -> SpringPhysics.DEFAULT
+        }
+        return """
 ### SECTION 1 — STRICT COMPILER & ENGINE CONTRACT (LEAN COMPACT MODE):
 1. **Single Button Root [GLOBAL-REQUIRED]**: `<body>` must contain exactly one root `<button class="$rootClass" data-control="..." data-category="..." data-name="...">`. Keep every visual child inside it.
 2. **Explicit Dimensions [GLOBAL-REQUIRED]**: Root component dimensions MUST use explicit `px` bounds (`position: relative; width: ${widthDp}px; height: ${heightDp}px;`). Set `position: absolute`, `left`, `top`, `width`, and `height` on decorative layered children, or use Flexbox (`display: flex; gap; justify-content; align-items`). Dynamic `calc()` and `aspect-ratio` are supported on children.
 3. **Portable Self-Contained Document [GLOBAL-REQUIRED]**: Include exactly one `<style>` block, system fonts, zero external URLs, zero JavaScript, no `@import`, no `<link>`.
-4. **Stable CSS Only [GLOBAL-REQUIRED]**: Gradients (`radial-gradient`, `linear-gradient`, `conic-gradient`), `box-shadow`, `border-radius`, `clip-path: polygon(...)`, GPU `filter: blur()`. Do not use `@media`, `@supports`, `:hover`, `:focus`, `mix-blend-mode`, `backdrop-filter`, or CSS transitions. Standard CSS `@keyframes` on transform/opacity are supported for ambient loops.
+4. **Stable CSS Only [GLOBAL-REQUIRED]**: Gradients (`radial-gradient`, `linear-gradient`, `conic-gradient`), `box-shadow`, `border-radius`, `clip-path: polygon(...)`, and modest filter accents. `filter: blur()` may be retained as a compatibility hint, but `box-shadow` is the reliable cross-renderer glow primitive. Do not use `@media`, `@supports`, `:hover`, `:focus`, `mix-blend-mode`, `backdrop-filter`, or CSS transitions. Standard CSS `@keyframes` on transform/opacity are supported for ambient loops.
 5. **Real DOM Text [GLOBAL-REQUIRED]**: Labels and markings in straight, unrotated `<span>` (Text must be real DOM text without rotation).
-6. **Vector Graphics & Dual-Engine Architecture**: Complex graphics/emblems MUST use embedded `<svg class="button-emblem" viewBox="0 0 100 100"><path d="..."/></svg>`. Do NOT use SVG `<filter>` graphs (`feGaussianBlur`); place an underlying HTML/CSS `<span class="emblem-ambient">` with `box-shadow` or `filter: blur()` underneath for glow!
+6. **Vector Graphics & Dual-Engine Architecture**: Complex graphics/emblems MUST use embedded `<svg class="button-emblem" viewBox="0 0 100 100"><path d="..."/></svg>`. Do NOT use SVG `<filter>` graphs (`feGaussianBlur`); place an underlying HTML/CSS `<span class="emblem-ambient">` with a colored `box-shadow` underneath for reliable glow. A small `filter: blur()` hint is optional, not the primary effect.
 7. **Tactile Spring Micro-Physics [COMPONENT-REQUIRED]**: Declare in `:root`:
-   `--spring-damping: ${SpringPhysics.DEFAULT.damping}; --spring-stiffness: ${SpringPhysics.DEFAULT.stiffness.toInt()}; --press-scale: ${SpringPhysics.DEFAULT.pressScaleFormatted};`
-   Define active press: `.$rootClass:active { transform: scale(${SpringPhysics.DEFAULT.pressScaleFormatted}) translateY(2px); }`.
+   `--spring-damping: ${physics.damping}; --spring-stiffness: ${physics.stiffness.toInt()}; --press-scale: ${physics.pressScaleFormatted};`
+   Define active press: `.$rootClass:active { transform: scale(var(--press-scale)); }` (strictly in-place centered uniform scale; keep `transform-origin: 50% 50%`; NEVER use `translateY` or directional translation; zero mobile displacement by default, unless user explicitly demands mobility per Universal Law of User Supremacy).
 8. **Shape Freedom & Semantics**: `data-category` is metadata, not a shape instruction. Preserve the user's requested shape.
 9. **Self-check before output**: Verify single root `<button>`, explicit px bounds, unrotated DOM text, and no forbidden CSS.
 10. **Authoritative Output Contract**: Return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text outside it.
 """.trimIndent()
+    }
 
     private fun standardEngineBoundaries(rootClass: String, widthDp: Int = 96, heightDp: Int = 96): String = """
-### SECTION 1 — INSTRUCTION PRIORITY & CONFLICT RESOLUTION
-When instructions conflict, resolve them in this strict order of authority:
-1. **Non-Negotiable Compiler Safety** [GLOBAL-REQUIRED] (Single button root, px bounds, DOM text, self-contained document, no external assets or scripts).
-2. **User's Explicit Customization** [USER-OVERRIDE] (Highest design authority — user's artistic style, shape, palette, and theme always supersede defaults).
-3. **Component Semantics** [COMPONENT-REQUIRED] (Preserve interaction meaning: tappable, directional, analog, etc.).
-4. **Accessibility & Readability** [GLOBAL-REQUIRED] (High-contrast label legibility, touch target visibility).
-5. **Design Quality Principles** [RECOMMENDED] (Physical coherence, balanced hierarchy, believable depth).
-6. **Category Defaults** [RECOMMENDED] (Color palette suggestions, default glyphs used when user specifies none).
-7. **Optional Inspiration** [OPTIONAL] (Theme suggestions, optional decorative flair).
-8. **Starter-Template Examples [NON-BINDING SYNTAX REFERENCE]** (Syntax structure only — never copy its geometry, proportions, colors, materials, layer count, visual hierarchy, or silhouette unless those properties are independently required by the component contract or explicitly requested by the user).
+### SECTION 1 — INSTRUCTION PRIORITY & CONFLICT RESOLUTION (5 LAYERS OF AUTHORITY)
+When instructions or suggestions conflict, resolve them in this strict order of authority:
+1. **Layer 1: Non-Negotiable Compiler Safety [GLOBAL-REQUIRED]** (Single button root, explicit px bounds, unrotated DOM text, self-contained document with zero external assets/scripts, single code block output — non-negotiable compiler safety foundation).
+2. **Layer 2: Component Semantics [COMPONENT-REQUIRED]** (Preserve the physical control's interaction meaning: tappable face button, progressive analog trigger travel, 4-way cardinal dpad rocker, 2-zone joystick cap/base).
+3. **Layer 3: User's Explicit Customization [USER-OVERRIDE — UNIVERSAL LAW OF USER SUPREMACY]** (Highest design authority — user is sovereign: "User is God". The user's explicit design intent, style, palette, geometry, textures, emblems, or demanded mobility/translation strictly overrides all recommendations, category defaults, aesthetic suggestions, non-binding examples, and general guidelines).
+4. **Layer 4: AI Creative Interpretation [FREE-HAND]** (Fill in unspecified details creatively: infer appropriate lighting, material transitions, specular sheens, and vector detailing without simplifying meaningful artwork).
+5. **Layer 5: Category Defaults & Fallback Hardware Profiles [FALLBACK ONLY — ZERO OVERRIDE AUTHORITY]** (Category profiles and hardware defaults serve strictly as fallback inspiration when the user specifies zero design direction. They have zero authority when they conflict with user intent).
 
-> **The Golden Rule**: The user's visual and artistic instructions always win over defaults and recommendations, provided they remain compatible with the required compiler contract and component semantics.
-> **Conflict Rule**: User instructions always take precedence over optional recommendations or category defaults.
+> **The Golden Rule (Universal Law of User Supremacy)**: The user is sovereign ("User is God"). The user's visual, artistic, and behavioral instructions always win over defaults, guidelines, and restrictions. If the user explicitly demands something normally restricted by default guidelines (such as custom mobility, translation, unusual geometry, or specific styling), the AI must avoid restriction and completely fulfill the user's demand within compiler safety.
+> **Conflict Rule**: User instructions always take precedence over optional recommendations, category defaults, or general design guidelines.
 
 ### SECTION 2 — RULE CLASSIFICATION HIERARCHY
 - **[GLOBAL-REQUIRED]**: Platform/engine constraints. Violation causes compiler rejection.
@@ -837,11 +1089,11 @@ Output Format:        STRICT  (Single ```html ... ``` block, zero markdown conve
    ⚠️ The Hard Requirement: Opaque surface plates MUST sit underneath vector artwork and typography. In HTML DOM, declare face plate FIRST, embedded `<svg>` SECOND, and label `<span>` THIRD. Opaque surfaces must not unintentionally occlude required artwork or text.
 6. **Text must be real DOM text without rotation [GLOBAL-REQUIRED]**: Labels and markings in unrotated `<span>` (`NO TEXT ROTATION`). When iconography is needed, use SVG/vector graphics; do not add text only because the component is a button.
 7. **Stable CSS only [GLOBAL-REQUIRED]**: Do not use `@media`, `@supports`, `:hover`, or `:focus`. CSS transitions and layout animations are prohibited. For idle/ambient animation loops (pulsing, subtle rotation, shimmer), standard CSS `@keyframes` on transform/opacity properties are supported by the engine. Press feedback uses `.$rootClass:active` with spring micro-physics.
-8. **Optical filters [GLOBAL-REQUIRED]**: GPU `filter: blur()`, `brightness()`, `contrast()`, `saturate()`, `hue-rotate()`. Do not use `backdrop-filter` or `mix-blend-mode`.
-9. **Tactile active interaction [COMPONENT-REQUIRED]**: Always define `.$rootClass:active { transform: scale(...) translateY(...); }`.
+8. **Optical filters [GLOBAL-REQUIRED]**: Prefer gradients and `box-shadow` for paint. Small `filter: brightness()` and `saturate()` accents are portable; use `hue-rotate()` through a supported root animation/`RGB_CYCLE` channel. `filter: blur()` and `contrast()` are not reliable cross-renderer contracts. Do not use `backdrop-filter` or `mix-blend-mode`.
+9. **Tactile active interaction & Zero-Displacement Mandate [COMPONENT-REQUIRED]**: Always define `.$rootClass:active { transform: scale(var(--press-scale)); }` (centered in-place uniform scale; keep `transform-origin: 50% 50%`). ⚠️ **STRICT MOBILE ZERO-MOBILITY / ZERO-DISPLACEMENT MANDATE**: By default, NEVER use `translateY(...)`, `translateX(...)`, downward displacement, sliding, or position shifting on press (`:active`) on the root button OR on any child layers. Mobile gamepad screens have strictly bounded, compact layout slots. Shifting or movable button animations cause layout jitter, clip adjacent controls, detach from touch hitboxes, and look terrible. All tactile depth and travel must be 100% stationary in place (via internal shaders, gauge fills, lighting, or scale) — UNLESS the user explicitly demands mobility/translation, in which case the Universal Law of User Supremacy strictly overrides default restrictions and you must fulfill the user's demand!
 10. **Tactile spring micro-physics [COMPONENT-REQUIRED]**: Component MUST declare spring variables in `:root`:
     `--spring-damping: <number>;`, `--spring-stiffness: <number>;`, `--press-scale: <number>;`
-    Use user-specified tactile physics when provided; otherwise use category defaults (e.g. Bumpers: ${SpringPhysics.BUMPER.damping} / ${SpringPhysics.BUMPER.stiffness.toInt()} / ${SpringPhysics.BUMPER.pressScaleFormatted}; Stick Buttons: ${SpringPhysics.STICK_BUTTON.damping} / ${SpringPhysics.STICK_BUTTON.stiffness.toInt()} / ${SpringPhysics.STICK_BUTTON.pressScaleFormatted}; Face/Dpad/System: ${SpringPhysics.DEFAULT.damping} / ${SpringPhysics.DEFAULT.stiffness.toInt()} / ${SpringPhysics.DEFAULT.pressScaleFormatted}). If neither is specified, use global defaults: `${SpringPhysics.DEFAULT.toDeclarations()}`.
+    Use user-specified tactile physics when provided; otherwise use category defaults (e.g. Triggers: ${SpringPhysics.TRIGGER.damping} / ${SpringPhysics.TRIGGER.stiffness.toInt()} / ${SpringPhysics.TRIGGER.pressScaleFormatted}; Bumpers: ${SpringPhysics.BUMPER.damping} / ${SpringPhysics.BUMPER.stiffness.toInt()} / ${SpringPhysics.BUMPER.pressScaleFormatted}; Stick Buttons: ${SpringPhysics.STICK_BUTTON.damping} / ${SpringPhysics.STICK_BUTTON.stiffness.toInt()} / ${SpringPhysics.STICK_BUTTON.pressScaleFormatted}; D-Pad: ${SpringPhysics.DPAD.damping} / ${SpringPhysics.DPAD.stiffness.toInt()} / ${SpringPhysics.DPAD.pressScaleFormatted}; Face/System: ${SpringPhysics.DEFAULT.damping} / ${SpringPhysics.DEFAULT.stiffness.toInt()} / ${SpringPhysics.DEFAULT.pressScaleFormatted}). If neither is specified, use global defaults: `${SpringPhysics.DEFAULT.toDeclarations()}`.
 
 ### SECTION 6 — COMPILER CAPABILITIES — WHAT PRIMITIVES ARE BEST FOR:
 #### ✅ FULLY SUPPORTED:
@@ -851,9 +1103,9 @@ Output Format:        STRICT  (Single ```html ... ``` block, zero markdown conve
 - `box-shadow`: Outset socket shadows, inset bevel rims, recessed well depths.
 - `border-radius`: Circles, capsules, squircles, rounded rects.
 - `clip-path: polygon(...)`: Stars, hexagons, diamonds, shields, custom silhouettes.
-- `filter: blur(Npx)`, `filter: brightness(N)`, `filter: contrast(N)`: Single-function GPU filters.
+- `filter: brightness(N)`, `filter: saturate(N)`, `filter: hue-rotate(Ndeg)`: Small native color accents. `filter: blur(Npx)` remains a compatibility hint, but use `box-shadow` for reliable glow and do not require blur for the design to read correctly.
 - Embedded `<svg>` & Vector Nodes: `<path d="...">`, `<circle>`, `<polygon>`, `<g>`. Supports `<defs>` gradient paint servers (`linearGradient`, `radialGradient`).
-- Vector Emblem Glow Rule: Vector layers compile into GPU Skia paths; do NOT rely on SVG `<filter>` graphs (`feGaussianBlur`, `feDropShadow`) on vector paths for glow. Place an underlying HTML/CSS `<span class="emblem-ambient">` with `filter: blur(4px)` or `box-shadow` underneath the `<svg>` to cast a luminous ambient aura!
+- Vector Emblem Glow Rule: Vector layers compile into GPU Skia paths; do NOT rely on SVG `<filter>` graphs (`feGaussianBlur`, `feDropShadow`) on vector paths for glow. Place an underlying HTML/CSS `<span class="emblem-ambient">` with a colored `box-shadow` underneath the `<svg>`; `filter: blur(4px)` is optional and must not be the only glow path.
 - SVG Transforms & Group Matrices: Native support for `<g transform="translate(x, y) rotate(deg)">` and direct `<path transform="...">`.
 - `calc()` and `aspect-ratio`: Dynamic child dimensions.
 - Flexbox: Flow and alignment (`display: flex`, `gap`, `justify-content`, `align-items`).
@@ -875,11 +1127,24 @@ When the user requests a character, hero, creature, vehicle, weapon, insignia, o
    - Uses clean SVG vector paths (`<path d="...">`, `<polygon points="...">`, `<circle>`, `<ellipse>`, `<line>`) to draw the exact character, emblem, or insignia.
    - Sized appropriately to sit centered or docked on the button face (e.g., `width: 50px; height: 50px; position: absolute;` or flexbox child).
    - Supports `<defs>` gradient paint servers (`<linearGradient id="...">`, `<radialGradient id="...">` with `<stop>`) or solid vector fills and strokes.
-   - ⚠️ **VECTOR GLOW PATTERN**: Do NOT rely on SVG `<filter>` graphs (`<feGaussianBlur>`, `<feColorMatrix>`) on vector paths for glow. Instead, place an underlying HTML/CSS `<span class="emblem-ambient">` with `filter: blur(4px)` or `box-shadow: 0 0 16px var(--accent-glow)` underneath the `<svg>` to cast a luminous ambient aura!
+   - ⚠️ **VECTOR GLOW PATTERN**: Do NOT rely on SVG `<filter>` graphs (`<feGaussianBlur>`, `<feColorMatrix>`) on vector paths for glow. Instead, place an underlying HTML/CSS `<span class="emblem-ambient">` with `box-shadow: 0 0 16px var(--accent-glow)` underneath the `<svg>`. `filter: blur(4px)` is optional, not a portability guarantee.
    - ✅ **SVG TRANSFORMS & ROTATIONS**: You can freely use `<g transform="translate(x,y) rotate(deg)">` or direct `<path transform="...">` to distribute or rotate shapes (such as radial petals, emblems, gear teeth, or insignia rays) around a center point, or bake coordinates directly. Both are fully compiled.
 3. The High-Contrast Control Typography (<span class="btn-label">):
    - Real DOM text for the gamepad key ensuring instantaneous legibility during high-speed gaming.
    - ⚠️ **NO TEXT ROTATION**: Keep labels, sub-labels, and hardware text markings in straight, unrotated `<span>` elements (avoid `transform: rotate(...)` on text nodes to ensure 100% crisp subpixel font rasterization on mobile displays).
+
+### SECTION 7B — ATMOSPHERIC AURA & RGB SOCKET LIGHTING ENGINE
+NEXPAD features a native atmospheric lighting path (`.drawBehind` / `CanvasLayer.GlowRing`) that projects an unclipped ambient aura behind the button socket onto the gamepad surface:
+
+1. **Automatic Aura Color Detection**:
+   - If the root document has an explicit `GlowRing` or a visible colored outset `box-shadow` such as `box-shadow: 0 0 24px <color>`, that color is sampled for the atmospheric aura. A CSS custom property by itself is not enough; use it in a compiled shadow/stroke.
+   - If no compiled colored shadow/stroke is specified, NEXPAD falls back to the button identity and active color profile (e.g., A = Emerald Green `#4ADE80`, B = Crimson `#F87171`, X = Sapphire `#60A5FA`, Y = Solar Gold `#FBBF24`, LS = Neon Cyan `#00E5FF`, RS = Neon Magenta `#FF007F`).
+   - Custom colors are honored when they survive into a root shadow/stroke/GlowRing; unstyled buttons still receive the native fallback aura.
+
+2. **How to Express Aura in HTML/CSS**:
+   - Explicit Glow Ring Layer: Express the aura on the root or a compiled structural layer with `box-shadow: 0 0 28px var(--accent-glow);`. A dedicated `<div class="glow-ring">` is still a `BoxLayer`; its color is not guaranteed to become a separate `GlowRing`.
+   - Outset Box Shadows: Include radiant socket glow in the root button's `box-shadow`: e.g., `box-shadow: 0 8px 24px rgba(0,0,0,0.65), 0 0 28px var(--accent-glow);`.
+   - Kinematic Spring Reactivity: During button depression (`:active`), both native renderers animate the aura bloom from roughly 0.40 idle toward 0.90 with the runtime spring. This is renderer-owned behavior, not a reason to add a child CSS animation.
 
 ### SECTION 8 — DESIGN QUALITY CRITERIA & CONDITIONAL RESTRAINT
 **DESIGN QUALITY CRITERIA**:
@@ -911,15 +1176,88 @@ Self-check before output:
 - [ ] SVG ViewBox Integrity: SVG artwork coordinates stay within the declared viewBox; no arbitrary clipping.
 - [ ] Transform Origin Intent: Explicit `transform-origin` specified when rotations or scaling are applied to prevent unexpected drift.
 - [ ] Visual Stacking & Occlusion: Foreground vector artwork and labels have higher z-index (or appear after) opaque background/surface plates.
-- [ ] Tactile Physics: Valid active state `.$rootClass:active` with spring micro-physics (`--spring-damping`, `--spring-stiffness`) in `:root`.
+- [ ] Tactile Physics: Valid active state `.$rootClass:active { transform: scale(var(--press-scale)); }` with spring micro-physics (`--spring-damping`, `--spring-stiffness`, `--press-scale`) in `:root`.
 - [ ] Clean Engine Profile: No forbidden properties (no `@media`, no external fonts, no external scripts, no `mix-blend-mode`, no `backdrop-filter`, no CSS Grid).
-- [ ] Complex Graphics Architecture: If a character, emblem, or complex graphic is requested, uses an embedded `<svg class="button-emblem" viewBox="...">` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks. For vector glow, use an underlying CSS `<span>` with `filter: blur()` or `box-shadow` (no SVG `<filter>` graphs).
+- [ ] Complex Graphics Architecture: If a character, emblem, or complex graphic is requested, uses an embedded `<svg class="button-emblem" viewBox="...">` vector element with clean `<path d="...">` rather than brittle CSS `<div>` hacks. For vector glow, use an underlying CSS `<span>` with `box-shadow` (optional `filter: blur()`; no SVG `<filter>` graphs).
 
 ### SECTION 11 — AUTHORITATIVE OUTPUT CONTRACT
 To ensure reliable programmatic compilation, return ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text outside it.
 """.trimIndent()
 
-    private fun frontierEngineBoundaries(rootClass: String, widthDp: Int = 96, heightDp: Int = 96): String = """
+    private fun frontierEngineBoundaries(rootClass: String, widthDp: Int = 96, heightDp: Int = 96): String {
+        val isJoystick = rootClass == "stick-btn"
+        val joystickSection = if (isJoystick) """
+
+### SECTION F9 — ANALOG JOYSTICK ARCHITECTURE & THUMB-CAP DECOUPLING
+When authoring components for `data-category="JOYSTICK"`, the compiler and runtime enforce a strict 2-tier mechanical deconstruction:
+1. **Stationary Base / Socket Well (`data-layer-role="base"`)**:
+   - Root `<button class="stick-btn" data-category="JOYSTICK" ...>` and outer housing elements.
+   - Slotted into fixed z-order zones (`GlowRing ~1000`, `BezelSocket ~2000`, `Surface ~3000`).
+   - Remains stationary on the controller canvas during gameplay.
+   - Houses outer socket shadows, perimeter bezel rings, directional ticks, and travel limits.
+2. **Interactive Movable Thumb Cap (`data-layer-role="thumb-cap"`)**:
+   - The central stick dome, textured grip, and top insignia.
+   - MUST be marked with `data-layer-role="thumb-cap"` (or class `thumb-cap`).
+   - Slotted into elevated z-order zone `+20,000` (`LayerStack.ZONE_THUMB_CAP`).
+   - The Android runtime automatically extracts this layer hierarchy and binds it to touch drag kinematics:
+     - 2D offset translation dynamically tracking thumb drag vectors.
+      - Input travel is clamped by the native pointer handler to roughly `min(width, height) * 0.28`; keep the visible cap and socket clearance generous (the aura may extend toward ~0.35 of the tile).
+     - Circular radial deadzone filtering.
+     - 12-sample `VelocityRingBuffer` tracking flick velocity.
+     - Damped spring return to center on touch release (`waitForUpOrCancellation`).
+- **Architectural Rule**: Always center the thumb cap within the socket bounds (e.g. `width: 56px; height: 56px; left: 20px; top: 20px; position: absolute;` inside a 96x96px root) so physical deflection originates from exact mathematical zero.
+""" else ""
+
+        val isTrigger = rootClass == "trigger-btn"
+        val triggerSection = if (isTrigger) """
+
+### SECTION F9-TRIGGER — ANALOG TRIGGER ARCHITECTURE & RECEDING PADDLE KINEMATICS
+When authoring components for `data-category="TRIGGER"`, the compiler and runtime enforce mobile-safe ergonomics:
+1. **Stationary Housing Cavity**:
+   - The root `<button class="trigger-btn" data-category="TRIGGER" ...>` defines the fixed controller cavity (${widthDp}px x ${heightDp}px).
+    - Recessed cavity gradient and contact shadows communicate the idea of progressive travel depth receding into the controller shell. The current native pointer path exposes a press/release value (`0 → 1 → 0`), not a guaranteed continuous CSS finger-distance signal.
+2. **Zero-Mobility In-Place Actuation Kinematics**:
+   - On `:active` touch depression, use strictly centered uniform scaling (`transform: scale(var(--press-scale));`) with `transform-origin: 50% 50%;`.
+   - ⚠️ **MOBILE ZERO-DISPLACEMENT CONTRACT & ZERO-MOBILITY MANDATE**: By default, the root `<button>` and ALL child elements MUST NOT use `translateY(...)`, `translateX(...)`, or any animation that moves, shifts, or plunges downward on press. In compact mobile controller HUDs, shifting or moving buttons causes layout jitter, clips against neighbor controls, and detaches touch hitboxes. (EXCEPTION: Under the **Universal Law of User Supremacy ("User is Sovereign / User is God")**, if the user explicitly demands mobility, displacement, sliding, or plunge, the AI must strictly waive this restriction and faithfully fulfill the user's demand!).
+    - **Internal Stationary Depth Expression**: Represent the press/release state with stationary visual depth changes: an optional gauge/fill (`.trigger-fill`), internal shadow, specular shift, or LED glow. Do not claim continuous CSS-driven finger-distance travel; the native handler currently supplies the press/release state (unless a future analog input path is explicitly provided).
+3. **Calibrated Trigger Spring Physics**:
+   - Damping: `${SpringPhysics.TRIGGER.damping}` (optimal harmonic damping ratio without erratic overshoot)
+   - Stiffness: `${SpringPhysics.TRIGGER.stiffness.toInt()}` (natural progressive trigger resistance)
+   - Press Scale: `${SpringPhysics.TRIGGER.pressScaleFormatted}` (subtle tactile depression)
+""" else ""
+
+        val isDpad = rootClass == "dpad-btn"
+        val dpadSection = if (isDpad) """
+
+### SECTION F9-DPAD — DIRECTIONAL PAD ARCHITECTURE & 4-WAY CARDINAL KINEMATICS
+When authoring components for `data-category="DPAD"`, the compiler and runtime enforce console-authentic ergonomics, physical 4-way gamepad geometry, and multi-directional touch mechanics:
+1. **D-Pad Component Taxonomy (5 Controls)**:
+   - **4 Discrete Directional Buttons (`UP`, `DOWN`, `LEFT`, `RIGHT`)**: Used when a gamer places individual directional keys one by one (e.g. 80px x 80px). Each has a single directional chevron pointing along its respective travel axis.
+   - **Unified 4-Way D-Pad (`DPAD`, ${widthDp}px x ${heightDp}px)**: The COMPLETE 4-WAY GAMEPAD D-PAD featuring all 4 directional buttons / arms (`UP`, `DOWN`, `LEFT`, `RIGHT`) integrated into one unified physical controller mechanism.
+2. **Physical 4-Arm Geometry (Anti-Flat-Squircle Rule)**:
+   - ⚠️ **NEVER GENERATE A GENERIC FLAT SQUIRCLE OR ROUND BUTTON WITH 4 ARROWS PRINTED ON IT!** A real gamepad D-Pad is NOT a flat box or touchpad with icons stamped on the surface.
+   - The geometry MUST sculpt **4 distinct physical directional arms / buttons** radiating cardinally from a central pivot (forming an authentic 12-sided physical cross shape `+` via vertical `.dpad-arm-v` and horizontal `.dpad-arm-h` cross bars, or 4 cardinal arm button plates `.dpad-arm-top`, `.dpad-arm-bottom`, `.dpad-arm-left`, `.dpad-arm-right` as seen in Android Button Studio `RealisticDPad.kt` and `CapsulesDPad.kt`).
+   - **Recessed Chassis Socket Well**: Deep circular cavity in the gamepad body (`border-radius: 50%`) with dark radial gradient, outer bevel rim, and cavity drop shadow.
+   - **Central Concave Rocker Pivot Cup**: Deep spherical indentation (`.dpad-pivot`, ~44px x 44px) where the player's thumb rests and rocks between cardinal directions.
+   - **4 Cardinal Directional Markings**: Crisp arrow indicators (`▲ UP`, `▼ DOWN`, `◀ LEFT`, `▶ RIGHT`) positioned on the 4 respective arm face plates. Strictly do NOT reduce a 4-way D-Pad to a single center placeholder glyph or single center emblem.
+   - **8-Way Mechanical Clearance**: The cross perimeter provides clearance within the recessed controller socket bezel.
+3. **In-Place Actuation Kinematics & Mobile Zero-Displacement**:
+   - On `:active` touch depression, use centered uniform scaling (`transform: scale(var(--press-scale));`) matching native NEXPAD gamepad kinematics (`RealisticDPad.kt`).
+   - ⚠️ **MOBILE ZERO-DISPLACEMENT CONTRACT**: Root `<button>` MUST NOT use `translateY(...)` or directional translation by default. Translating the root element on mobile gamepads causes layout jitter, clips outside touch bounding boxes, and corrupts multi-touch directional vector calculation (unless explicitly demanded by the user per the Universal Law of User Supremacy).
+4. **Calibrated D-Pad Spring Physics**:
+   - Damping: `${SpringPhysics.DPAD.damping}` (optimal harmonic damping for fast rocker transitions)
+   - Stiffness: `${SpringPhysics.DPAD.stiffness.toInt()}` (snappy tactile directional feedback)
+   - Press Scale: `${SpringPhysics.DPAD.pressScaleFormatted}` (subtle tactile depression)
+""" else ""
+
+        return """
+### SECTION F0 — UNLIMITED ARCHITECTURAL EXPRESSION & ZERO COMPLEXITY CAPS
+Frontier reasoning models have more budget for structural synthesis, but the result still passes through the real NXPRC input and renderer budgets. There is no artificial aesthetic cap on purposeful layer count, SVG geometry complexity, or mechanical detailing; there is a concrete 2 MiB HTML input limit and excessive nodes still hurt compile time and preview performance:
+- **Adaptive Architectural Expression**: Scale geometry, layering, and mechanical linework freely to faithfully realize the user's concept, while ensuring every layer serves a clear visual purpose (avoid redundant stacking or decorative bloat).
+- **Unlimited Layering**: Treat layering as creatively open, not as a browser-only promise. Stack as many background, bevel, texture, shadow, gloss, emblem, and mechanical plates as the concept needs while staying inside the input/performance budget.
+- **Unlimited SVG Vector Detail**: You may author intricate multi-path SVG geometry, engravings, mechanical linework, and high-fidelity emblems, but keep paths compact and inside the declared viewBox so both Android and desktop can rasterize them reliably.
+- **Uncompromising Craftsmanship**: When asked for complex, high-end, or intricate designs, realize every nuance with full expressive power.
+
 ### SECTION F1 — COMPILATION PIPELINE TRANSPARENCY (FRONTIER DEPTH)
 The NXPRC compiler processes your HTML+CSS through this exact pipeline:
 1. **HTML Parsing**: Your HTML is parsed into a `DomNode` tree and embedded `<style>` into a `CssStylesheet`.
@@ -931,20 +1269,20 @@ The NXPRC compiler processes your HTML+CSS through this exact pipeline:
 7. **Output**: `NxprcDocument` containing `manifest` (physics, dimensions), `canvas.layers[]` (display list), and `animations` (tracks, idle, press).
 
 ### SECTION F2 — LAYER TYPE MAPPING (WHAT CSS PRODUCES WHAT LAYER)
-Your CSS patterns map to exactly these 9 compiled layer types:
+These are the important NXPRC layer types and the conditions that can produce them; generic HTML does not synthesize every native primitive automatically:
 | CSS / HTML Pattern | Compiled Layer Type | Purpose |
 |---|---|---|
-| `<div>` with `background-color` or gradient | `BoxLayer` or `GradientShape` | Multi-purpose shape with radii, shadows, transforms |
-| Heavy outer `box-shadow` (large spread/blur) | `GlowRing` | Ambient glow rendered BEHIND the button surface |
-| Outer shadow on `data-category="JOYSTICK"` | `BezelSocket` | Socket housing for analog stick components |
-| `box-shadow: inset ...` (substantial inset) | `InnerShadow` | Depth/concavity overlay creating recessed surface |
-| `::after` + semi-transparent gradient fill | `GlossReflection` | Surface sheen highlight for specular effect |
+| `<div>` with `background-color` or gradient | `BoxLayer` (a legacy `GradientShape` may appear in fallback documents) | Multi-purpose shape with radii, shadows, transforms |
+| Qualifying colored **root** outset `box-shadow` | `GlowRing` | Ambient glow rendered behind the button surface |
+| Explicit root `data-bezel="true"` or qualifying root bezel/socket geometry | `BezelSocket` | Socket housing for analog stick components |
+| `box-shadow: inset ...` | `BoxLayer.boxShadows` (native inset data) | Depth/concavity on the normal HTML path; `InnerShadow` is an explicit document primitive, not guaranteed from generic CSS |
+| `::before`/`::after` + semi-transparent gradient fill | `BoxLayer` | Surface sheen/highlight; `GlossReflection` is an explicit document primitive, not a guaranteed CSS conversion |
 | `<svg>` shapes (`<path>`, `<circle>`, `<polygon>`) | `VectorPath` | Pre-baked SVG with AffineMatrix2D applied to pathData |
 | Single-character `<span>` | `CenterGlyph` | Simplified label rendering centered on button |
 | Multi-character text or `<text>` element | `TextLayer` | Full text with shadows, font sizing, alignment |
 
 **Z-Order Zones** (1000-unit deterministic slots):
-`GlowRing(~1000)` → `BezelSocket(~2000)` → `Surface(~3000)` → `InnerShadow(~4000)` → `Content(~5000+)` → `Text(~7000)` → `ThumbCap(+20000)`
+`GlowRing(~1000)` → `BezelSocket(~2000)` → `Surface(~3000)` → `InnerShadow(~3100 when explicitly present)` → `Content(~5000+)` → `Text(~7000)` → `ThumbCap(+20000)`
 
 ### SECTION F3 — SVG PATH PRE-BAKING PIPELINE
 SVG paths are compiled with **zero runtime transform overhead**:
@@ -972,17 +1310,17 @@ TransformDef {
   isRotating: Boolean        // true if continuous rotation animation detected
 }
 ```
-**Constraint**: Only 2D affine transforms (6 DOF) are supported. `perspective`, `rotateX`, `rotateY`, `rotate3d`, and all 3D transforms are silently DROPPED by the compiler.
+**Constraint**: The portable path is 2D affine transforms: `translate`, uniform `scale`, and `rotate` (6 DOF). `perspective`, `rotateX`, `rotateY`, `rotate3d`, and all 3D transforms are silently DROPPED by the compiler. Treat skew and non-uniform `scaleX`/`scaleY` as lower-priority approximations rather than requirements for a cross-platform design.
 
 ### SECTION F5 — SPRING PHYSICS KINEMATICS
-The engine runs a **damped harmonic oscillator** at 120 FPS for press feedback:
+The native renderers implement press feedback with a Compose spring. A **damped harmonic oscillator** is a useful physical model, but the HTML author supplies spring parameters and the Android/desktop renderers own the frame timing:
 `x(t) = A · e^(-ζωₙt) · cos(ωd·t + φ)`
 Where:
-- `ζ` = `--spring-damping` (damping ratio). Tested range: `0.62 – 0.78`. Values < 0.6 produce bouncy overshoot; > 0.8 feel sluggish.
-- `ωₙ` = `√(--spring-stiffness / mass)` (natural frequency). Tested range: `380 – 520`. Values < 300 = slow return; > 600 = very snappy.
-- `ωd` = `ωₙ · √(1 - ζ²)` (damped frequency).
-- `A` = determined by `--press-scale` (amplitude). Tested range: `0.92 – 0.96`.
-- `.$rootClass:active { transform: scale(--press-scale) translateY(Npx); }` maps to the spring trajectory target.
+- `ζ` = `--spring-damping` (damping ratio). Use the category defaults unless the user requests a different feel.
+- `ωₙ` = `√(--spring-stiffness / mass)` (conceptual natural frequency); `--spring-stiffness` is passed to the native spring.
+- `ωd` = `ωₙ · √(1 - ζ²)` (conceptual damped frequency).
+- `A` = determined by `--press-scale` (amplitude).
+- `.$rootClass:active { transform: scale(var(--press-scale)); }` maps to the spring trajectory target (strictly in-place centered uniform scale; NEVER use `translateY` or displacement on press by default, unless explicitly requested by the user per the Universal Law of User Supremacy).
 
 ### SECTION F6 — CLASSIFIER INTELLIGENCE
 The compiler uses two classifiers to interpret your DOM structure:
@@ -1005,9 +1343,9 @@ The compiler uses two classifiers to interpret your DOM structure:
 **Design Tip**: Use `data-layer-role` attributes on key structural elements to help the classifier produce optimal layer types. For joystick designs, mark the movable cap element with `data-layer-role="thumb-cap"` and the housing with `data-layer-role="base"`.
 
 ### SECTION F7 — MANDATORY 5-STEP REASONING PROTOCOL
-Before writing ANY HTML/CSS code, you MUST execute this reasoning chain:
+Before writing ANY HTML/CSS code, internally execute this 5-step validation chain (INTERNAL THINKING ONLY — DO NOT OUTPUT VISIBLY IN MARKDOWN). Produce ONLY the final self-contained ```html ... ``` block:
 
-**Step 1 — LAYER PLAN**: List every visual layer you intend to create and map each to its expected `CanvasLayer` type (BoxLayer, VectorPath, GradientShape, GlowRing, InnerShadow, GlossReflection, CenterGlyph, TextLayer).
+**Step 1 — LAYER PLAN**: List every visual layer you intend to create and map each to its expected `CanvasLayer` type (BoxLayer, VectorPath, GradientShape, GlowRing, BezelSocket, InnerShadow, GlossReflection, CenterGlyph, TextLayer). Remember that generic HTML most reliably produces BoxLayer/VectorPath/TextLayer; InnerShadow and GlossReflection are explicit model primitives, not guaranteed CSS conversions.
 
 **Step 2 — Z-ORDER VERIFY**: Confirm your HTML DOM order matches the expected `LayerStack` zone progression: ambient glow → bezel/socket → primary surface → inner shadows → decorative content → vector emblem → text label.
 
@@ -1018,8 +1356,62 @@ Before writing ANY HTML/CSS code, you MUST execute this reasoning chain:
 
 **Step 4 — TRANSFORM CHECK**: Verify ALL transforms are 2D affine only. No `perspective`, `rotateX`, `rotateY`, or `rotate3d`. Confirm `transform-origin` is set explicitly when using rotate/scale.
 
-**Step 5 — BUDGET CHECK**: Count total DOM nodes vs. the complexity budget. Estimate compiled layer count vs. `targetLayers`. Verify spring physics variables are in `:root`.
+**Step 5 — BUDGET CHECK**: Count total DOM nodes and keep the HTML under the compiler's 2 MiB input limit. Frontier has open creative scope, not unlimited runtime resources: every layer and SVG path must serve the requested concept and remain practical for Android and desktop preview. Verify spring physics variables are in `:root`.
+
+### SECTION F8 — NATIVE HARDWARE AMBIENT ANIMATION ENGINES (IDLE LOOPS)
+The NXPRC document stores named idle modes plus optional typed animation tracks. The Android and desktop renderers animate the compiled document natively; they do not execute browser CSS or JavaScript. Root `@keyframes` declarations are recognized only for supported properties and are the most portable source for those tracks:
+1. **Continuous GPU Rotation (`ROTATE`)**:
+   - Trigger: Any `@keyframes` rule whose name contains `rotate` or `spin` (e.g. `@keyframes spin-core { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`), applied via `animation: spin-core 4s linear infinite;`.
+   - Engine Mapping: Sets `document.animations.idleType = "ROTATE"` when the root animation name is recognized.
+   - Runtime: Continuously rotates the compiled document around its `transform-origin` (defaults to pivot `0.5, 0.5`); child-only targeting is not a reliable portable contract.
+   - Use Cases: Rotating reactor cores, turbine fans, sci-fi HUD reticles, mystical runes, radar sweeps, or tech gears.
+2. **Harmonic Alpha/Glow Pulsing (`PULSE`)**:
+   - Trigger: Any `@keyframes` rule whose name contains `pulse`, `glow`, or `breathe` (e.g. `@keyframes pulse-aura { 0%, 100% { opacity: 0.4; } 50% { opacity: 1.0; } }`), applied via `animation: pulse-aura 2s ease-in-out infinite;`.
+   - Engine Mapping: Sets `document.animations.idleType = "PULSE"` when the root animation name is recognized.
+   - Runtime: Smoothly oscillates the compiled document's alpha/scale using a native infinite transition; it is not a promise that a particular child `GlowRing` is independently targeted.
+   - Use Cases: Bioluminescent glows, breathing power LEDs, pulsating energy crystals, and neon halo under-glow.
+3. **Hardware 360° Chromatic Cycle (`RGB_CYCLE`)**:
+   - Trigger: Any `@keyframes` rule or property whose name contains `rgb`, `rainbow`, `chroma`, or `hue` (e.g. `@keyframes rgb-chroma { from { filter: hue-rotate(0deg); } to { filter: hue-rotate(360deg); } }`).
+   - Engine Mapping: Sets `document.animations.idleType = "RGB_CYCLE"` when the root animation name or hue channel is recognized.
+   - Runtime: Applies the renderer's native hue/color treatment to the compiled document; keep the requested color cycle subtle enough for small HUD tiles.
+   - Use Cases: Cyberpunk RGB gamer peripherals, chromatic energy barriers, and iridescent metallic sheen rings.
+- **Rules & Constraints**: Put one animation declaration on the root. Animate only uniform `transform: scale()`/`rotate()`, `opacity`, or `filter: hue-rotate(...)`. Layout property animations (`width`, `height`, `left`, `top`, `margin`) are dropped. Android gates generic tracks; named modes are cross-platform, but keep static artwork complete. Desktop previews tracks continuously.
+$joystickSection$triggerSection$dpadSection
+### SECTION F10 — NATIVE HARDWARE SHADER & SKIA COMPILATION
+CSS paint declarations are parsed by `GradientParser`, `ShadowParser`, and `BoxLayerBuilder` into direct hardware-accelerated Skia / Compose graphics shaders:
+1. **Linear Gradients (`linear-gradient(angle, stops...)`)**:
+   - Parsed into normalized `ColorStop` arrays and compiled to native `Brush.linearGradient(colors, stops, start, end)`.
+   - Angles in `deg` or `turn` are geometrically projected onto the bounding box to calculate precise start/end coordinates.
+   - Use for directional light slopes, metallic chamfer bevels, and surface rake angles.
+2. **Radial Gradients (`radial-gradient(shape at position, stops...)`)**:
+   - Compiled to native `Brush.radialGradient(colors, center, radius)`.
+   - Positions like `center`, `top left`, or `circle at 35% 30%` establish 3D specular focal centers.
+   - Use for spherical doming, convex thumb wells, concave dish surfaces, and ambient spotlights.
+3. **Conic / Sweep Gradients (`conic-gradient(from angle at pos, stops...)`)**:
+   - Compiled to native `Brush.sweepGradient(colors, stops, center)`.
+   - Rotational sweeps around the center point.
+   - Ideal for anisotropic brushed-metal bezels, segmented dial ticks, and radial gauge meters.
+4. **Physically Accurate Inset Shadows (`box-shadow: inset ...`)**:
+   - Stored as inset shadow data on the normal `CanvasLayer.BoxLayer` HTML path and rendered natively.
+   - `CanvasLayer.InnerShadow` is available for explicit document layers, but do not assume ordinary HTML `box-shadow: inset` will synthesize that separate layer type.
+5. **Embedded SVG Vector Paint Servers (`<defs>`)**:
+   - Embedded `<svg>` supports `<defs>` blocks containing `<linearGradient id="...">` or `<radialGradient id="...">`.
+   - Referenced via `fill="url(#id)"` or `stroke="url(#id)"` on vector `<path>` elements, pre-compiled into native hardware vector shaders.
+
+### SECTION F11 — ATMOSPHERIC AURA & RGB SOCKET LIGHTING ENGINE
+NEXPAD features a native atmospheric lighting path (`.drawBehind` / `CanvasLayer.GlowRing`) that can project an unclipped ambient aura behind the button socket. A qualifying root shadow or the renderer's control-identity fallback supplies the aura; a decorative child is not automatically a separate `GlowRing`:
+
+1. **Automatic Aura Color Detection**:
+   - If the compiled document has an explicit `GlowRing` or a visible colored outset `box-shadow` such as `box-shadow: 0 0 24px <color>`, that color is sampled for the atmospheric aura. A CSS custom property by itself is not enough; use it in a compiled shadow or stroke.
+   - If no compiled colored shadow/stroke is specified, NEXPAD falls back to the button identity and active color profile (e.g., A = Emerald Green `#4ADE80`, B = Crimson `#F87171`, X = Sapphire `#60A5FA`, Y = Solar Gold `#FBBF24`, LS = Neon Cyan `#00E5FF`, RS = Neon Magenta `#FF007F`).
+   - Custom colors are honored when they survive into a root shadow/stroke/GlowRing; unstyled buttons still receive the native fallback aura.
+
+2. **How to Express Aura in HTML/CSS**:
+   - Explicit Glow Ring Layer: Express the aura on the root or a compiled structural layer with `box-shadow: 0 0 28px var(--accent-glow);`. A dedicated `<div class="glow-ring">` is still a `BoxLayer`; its color is not guaranteed to become a separate `GlowRing`.
+   - Outset Box Shadows: Include radiant socket glow in the root button's `box-shadow`: e.g., `box-shadow: 0 8px 24px rgba(0,0,0,0.65), 0 0 28px var(--accent-glow);`.
+    - Kinematic Spring Reactivity: Both native renderers animate the aura bloom from roughly `0.40` idle toward `0.90` while pressed using the runtime spring. This is renderer-owned aura behavior, not a reason to add a child CSS animation.
 """.trimIndent()
+    }
 
     private fun renderVisualProfileOrCustomDirective(
         defaultProfileTitle: String,
@@ -1049,7 +1441,7 @@ $defaultProfileBody
      * so the AI's final instruction is the interactive "ask first" message rather than "output HTML".
      */
     private fun renderOutputContract(options: AiDesignOptions): String {
-        if (options.userRequest.isBlank()) return ""
+        if (!options.hasCustomRequest() && !options.hasCustomVisualIntent()) return ""
         return "### OUTPUT FORMAT CONTRACT:\nReturn ONLY the complete, self-contained HTML/CSS inside a single ```html ... ``` code block. Do NOT include any markdown conversation, explanations, or extraneous text."
     }
 
@@ -1066,24 +1458,57 @@ ${NxprcPresets.getSyntaxSkeleton(control, category, widthDp, heightDp)}
 
     internal fun generateAbxyPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         val resolved = DesignResolver.resolve(control, category, options)
-        val profile = when (control.uppercase()) {
-            NexpadKeys.X -> ColorProfile("Vibrant Sapphire Blue", "#00B0FF", "rgba(0, 176, 255, 0.6)", "linear-gradient(145deg, #0284c7 0%, #0369a1 50%, #0c4a6e 100%)")
-            NexpadKeys.Y -> ColorProfile("Radiant Solar Yellow", "#FFCC00", "rgba(255, 204, 0, 0.6)", "linear-gradient(145deg, #eab308 0%, #ca8a04 50%, #713f12 100%)")
-            NexpadKeys.B -> ColorProfile("Vibrant Crimson Red", "#FF3366", "rgba(255, 51, 102, 0.6)", "linear-gradient(145deg, #f43f5e 0%, #e11d48 50%, #881337 100%)")
-            else -> ColorProfile("Vibrant Emerald Green", "#4ADE80", "rgba(74, 222, 128, 0.6)", "linear-gradient(145deg, #10b981 0%, #059669 50%, #047857 100%)")
+
+        // Console-aware color profile for ABXY buttons only (with User Custom Color precedence)
+        val profile = if (!options.color.isNullOrBlank()) {
+            ColorProfile("User Custom Color (${options.color})", options.color, "rgba(255, 255, 255, 0.65)", "linear-gradient(145deg, ${options.color} 0%, #1a1a1a 100%)")
+        } else if (options.consoleMode == ConsoleMode.PLAYSTATION) {
+            when (control.uppercase()) {
+                NexpadKeys.A  -> ColorProfile("PlayStation Blue",  "#3F8FE0", "rgba(63, 143, 224, 0.65)", "linear-gradient(145deg, #1a5fa8 0%, #0e3d70 50%, #071e38 100%)")
+                NexpadKeys.B  -> ColorProfile("PlayStation Red",   "#E6474E", "rgba(230, 71, 78, 0.65)",  "linear-gradient(145deg, #b52830 0%, #7a1117 50%, #3d0508 100%)")
+                NexpadKeys.X  -> ColorProfile("PlayStation Pink",  "#E055B8", "rgba(224, 85, 184, 0.65)", "linear-gradient(145deg, #a8207c 0%, #70105a 50%, #380630 100%)")
+                NexpadKeys.Y  -> ColorProfile("PlayStation Green", "#3FD25A", "rgba(63, 210, 90, 0.65)",  "linear-gradient(145deg, #19a83a 0%, #0e6f22 50%, #073812 100%)")
+                else          -> ColorProfile("PlayStation Blue",  "#3F8FE0", "rgba(63, 143, 224, 0.65)", "linear-gradient(145deg, #1a5fa8 0%, #0e3d70 50%, #071e38 100%)")
+            }
+        } else {
+            // Xbox (default)
+            when (control.uppercase()) {
+                NexpadKeys.X -> ColorProfile("Vibrant Sapphire Blue",  "#00B0FF", "rgba(0, 176, 255, 0.6)",    "linear-gradient(145deg, #0284c7 0%, #0369a1 50%, #0c4a6e 100%)")
+                NexpadKeys.Y -> ColorProfile("Radiant Solar Yellow",   "#FFCC00", "rgba(255, 204, 0, 0.6)",    "linear-gradient(145deg, #eab308 0%, #ca8a04 50%, #713f12 100%)")
+                NexpadKeys.B -> ColorProfile("Vibrant Crimson Red",    "#FF3366", "rgba(255, 51, 102, 0.6)",   "linear-gradient(145deg, #f43f5e 0%, #e11d48 50%, #881337 100%)")
+                else         -> ColorProfile("Vibrant Emerald Green",  "#4ADE80", "rgba(74, 222, 128, 0.6)",   "linear-gradient(145deg, #10b981 0%, #059669 50%, #047857 100%)")
+            }
         }
+
+        val rawSeedProfile = NxprcSeedEngine.resolve(control, category, options.seed, options.componentName)
+        val seedProfile = if (options.seed == null || !options.color.isNullOrBlank()) {
+            rawSeedProfile.copy(palette = profile)
+        } else {
+            rawSeedProfile
+        }
+
+        // PS label hint for the visual realism directive (only used when PS mode active)
+        val psLabelHint = if (options.consoleMode == ConsoleMode.PLAYSTATION) {
+            val psSymbol = when (control.uppercase()) {
+                NexpadKeys.A -> "✕ (Cross)"
+                NexpadKeys.B -> "○ (Circle)"
+                NexpadKeys.X -> "□ (Square)"
+                NexpadKeys.Y -> "△ (Triangle)"
+                else         -> control
+            }
+            "\n    5. **PlayStation Label**: The center label is the PlayStation symbol $psSymbol — render it as a geometric vector SVG or unicode glyph with the authentic DualSense/DualShock style."
+        } else ""
 
         return """
 ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Face Action Button for NEXPAD.
 
-### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control (Standard Gamepad Face Button)
-- **Category [GLOBAL-REQUIRED]**: $category
-- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
-- **Standard Color Profile [RECOMMENDED]**: ${profile.name} (Accent: ${profile.hexCode}, Glow: ${profile.glowRgba})
-- **Standard Core [RECOMMENDED]**: ${profile.coreGradient}
+${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, profile, "Standard Gamepad Face Button")}
+
+${renderUserRequest(options)}
+
+${renderDesignParameters(options)}
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Momentary discrete user actuation with tactile depression and instant spring release.
@@ -1092,12 +1517,12 @@ You are an expert gamepad UI/UX designer and CSS shader artist creating a custom
 - **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. The silhouette is completely yours: circle, hexagon, rounded rect, diamond, shield, or organic silhouette. Preserve the user's requested shape.
 
 ${renderVisualProfileOrCustomDirective(
-    "CONSOLE/XBOX INDUSTRIAL REALISM",
+    if (options.consoleMode == ConsoleMode.PLAYSTATION) "CONSOLE/PLAYSTATION INDUSTRIAL REALISM" else "CONSOLE/XBOX INDUSTRIAL REALISM",
     """
     1. **Matte Polycarbonate Body & Optical Depth**: Rich dual-cast molding — deep chassis base tones (`#14171e`, `#1c202a`, `#08090c`) with perimeter chamfer highlights, NOT flat monochrome or pure `#000`.
     2. **Physical Contact Shadows & Recessed Socket**: Elevated dome seated inside subtle socket well (`box-shadow: 0 8px 24px rgba(0,0,0,0.65), inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -6px 12px rgba(0,0,0,0.7)`).
     3. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested.
-    4. **Legible High-Contrast Letterform**: Prominent center glyph ($control) with multi-stop 3D text shadow.
+    4. **Legible High-Contrast Letterform**: Prominent center glyph ($control) with multi-stop 3D text shadow.$psLabelHint
     """.trimIndent(),
     options
 )}
@@ -1118,11 +1543,7 @@ The schema is a convenience, not a limitation. Users may describe any additional
 
 ${resolved.toPromptSpecification()}
 
-${renderDesignParameters(options)}
-
 ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
-
-${renderUserRequest(options)}
 
 ${renderOutputContract(options)}
 """.trimIndent()
@@ -1130,12 +1551,46 @@ ${renderOutputContract(options)}
 
     internal fun generateDpadPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         val resolved = DesignResolver.resolve(control, category, options)
+        val seedProfile = NxprcSeedEngine.resolve(control, category, options.seed, options.componentName)
+        val isFullDpad = control.uppercase() == NexpadKeys.DPAD
         val arrowGlyph = when (control.uppercase()) {
             NexpadKeys.DOWN -> "▼"
             NexpadKeys.LEFT -> "◀"
             NexpadKeys.RIGHT -> "▶"
-            NexpadKeys.DPAD -> "❖"
+            NexpadKeys.DPAD -> "▲ UP, ▼ DOWN, ◀ LEFT, ▶ RIGHT"
             else -> "▲"
+        }
+        val roleDesc = if (isFullDpad) "Full 4-Way Gamepad D-Pad (Integrated 4-Button Cross)" else "Directional Arrow Button"
+        val directionalLabelNote = if (isFullDpad) {
+            """
+- **D-Pad Taxonomy (5 Controls)**: Discrete keys (`UP`, `DOWN`, `LEFT`, `RIGHT`) are single individual buttons placed one by one. The 4-Way D-Pad (`DPAD`, ${widthDp}px x ${heightDp}px) is the COMPLETE integrated gamepad pad containing all 4 directional buttons / arms (`UP`, `DOWN`, `LEFT`, `RIGHT`) in one unified mechanism.
+- **Directional Markings [COMPONENT-REQUIRED]**: 4 Cardinal Directions: `▲ UP`, `▼ DOWN`, `◀ LEFT`, `▶ RIGHT` arranged along the four arms/quadrants around the central rocker pivot cup (`.dpad-pivot`). Do NOT use a single center placeholder glyph; all 4 cardinal directions must be explicitly present on their respective physical arms.
+            """.trimIndent()
+        } else {
+            "- **Directional Glyph [RECOMMENDED]**: $arrowGlyph"
+        }
+
+        val affordance = if (isFullDpad) {
+            "Directional Cross & Rocker Pivot Affordance — authentic console 4-way cross or cardinal cluster with 4 distinct physical directional arms projecting from a central concave thumb rest cup (`.dpad-pivot`), resting in a recessed circular chassis socket well, with tactile spring depression (`transform: scale(var(--press-scale));` centered in-place; do NOT use `translateY` on root button to prevent mobile layout clipping by default, unless explicitly demanded by the user per the Universal Law of User Supremacy)."
+        } else {
+            "Clear directional affordance, directional slope shading along travel axis, tactile spring depression (`transform: scale(var(--press-scale));` centered in-place; do NOT use `translateY` on root button to prevent mobile layout clipping by default, unless explicitly demanded by the user per the Universal Law of User Supremacy)."
+        }
+
+        val realismGuidance = if (isFullDpad) {
+            """
+            1. **Textured Matte ABS Plastic & Chassis Housing**: Deep chassis body tones (`#14171e`, `#1c202a`, `#08090c`) with a recessed circular socket well (`border-radius: 50%`) with perimeter bevels and cavity drop shadow.
+            2. **Authentic 4-Arm Cross Architecture (Anti-Squircle Rule)**: ⚠️ DO NOT generate a flat square or squircle button with 4 arrows printed on it! A real gamepad D-Pad sculpts 4 distinct physical directional arms / buttons (UP, DOWN, LEFT, RIGHT) radiating cardinally from a central pivot (forming an authentic 12-sided physical cross shape `+` via vertical `.dpad-arm-v` and horizontal `.dpad-arm-h` cross bars, or 4 cardinal arm button plates `.dpad-arm-top`, `.dpad-arm-bottom`, `.dpad-arm-left`, `.dpad-arm-right` as seen in Android Button Studio `RealisticDPad.kt` and `CapsulesDPad.kt`).
+            3. **Central Concave Rocker Pivot Well**: Console D-pads pivot around a central spherical cup (`.dpad-pivot` or circular indent with radial gradient and highlight rim). This physically guides the player's thumb between cardinal vectors.
+            4. **Crisp 4-Cardinal Directional Chevrons**: Delineate all 4 directions with high-contrast markings (`▲` UP, `▼` DOWN, `◀` LEFT, `▶` RIGHT) or illuminated LED indicators positioned on their respective physical arms.
+            5. **In-Place Rocker Kinematics**: On press (`:active`), use centered uniform scale (`transform: scale(var(--press-scale));`) matching native mobile gamepad kinematics without shifting the root button out of its layout slot.
+            """.trimIndent()
+        } else {
+            """
+            1. **Textured Matte ABS Plastic**: Deep chassis body tones (`#14171e`, `#1c202a`, `#08090c`) with subtle perimeter bevels, NOT flat grey or pure `#000`.
+            2. **Directional Travel Bevel**: Individual directional keycap with tactile inward slope/bevel angled along the direction of travel, communicating tactile inward tilt.
+            3. **High-Contrast Directional Indicator**: Crisp directional indicator (arrow glyph $arrowGlyph, chevron, or vector path) with high contrast against the dark textured housing.
+            4. **In-Place Actuation Kinematics**: On press (`:active`), use centered uniform scale (`transform: scale(var(--press-scale));`) matching native mobile gamepad kinematics without shifting the root button out of its layout slot.
+            """.trimIndent()
         }
 
         return """
@@ -1143,26 +1598,22 @@ ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller D-Pad Component for NEXPAD.
 
-### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control (${if (control.uppercase() == NexpadKeys.DPAD) "Unified 4-Way Cross Pad" else "Directional Arrow Button"})
-- **Category [GLOBAL-REQUIRED]**: $category
-- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px;
-- **Directional Glyph [RECOMMENDED]**: $arrowGlyph
+${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, roleDesc, "dpad-btn")}
+$directionalLabelNote
+
+${renderUserRequest(options)}
+
+${renderDesignParameters(options)}
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Directional navigation with crisp actuation along cardinal or diagonal axes.
-- **Visual Affordance [RECOMMENDED]**: Clear directional affordance, central rocker pivot affordance, distinct directional touch zones.
+- **Visual Affordance [RECOMMENDED]**: $affordance
 - **Optional Visual Language [OPTIONAL]**: Recessed pivot well, laser-etched chevron markings, sloped directional gradients, tactile nubs.
 - **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. Cross, wedge, arrow, star, disc, or organic form are all valid. Preserve the user's requested shape.
 
 ${renderVisualProfileOrCustomDirective(
     "CONSOLE/XBOX INDUSTRIAL REALISM",
-    """
-    1. **Textured Matte ABS Plastic**: Deep chassis body tones (`#14171e`, `#1c202a`, `#08090c`) with subtle perimeter bevels, NOT flat grey or pure `#000`.
-    2. **Central Rocker Pivot Mechanics**: Authentic console D-pads rock around a central spherical pivot. When designing a 4-way cross or dish, include a recessed central pivot well (`::before` circular indent) simulating the physical rocker mechanism. When designing an individual directional button, slope the gradient along the direction of travel to communicate tactile inward tilt.
-    3. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic directional pads prioritize tactile finger purchase, molded cardinal bevels, and crisp physical contact shadows.
-    4. **High-Contrast Cardinal Directional Affordance**: Crisp directional indicators (arrow glyph $arrowGlyph, chevron, or vector path) with high contrast against the dark textured housing.
-    """.trimIndent(),
+    realismGuidance,
     options
 )}
 
@@ -1180,11 +1631,7 @@ The schema is a convenience, not a limitation. Users may describe any additional
 
 ${resolved.toPromptSpecification()}
 
-${renderDesignParameters(options)}
-
 ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
-
-${renderUserRequest(options)}
 
 ${renderOutputContract(options)}
 """.trimIndent()
@@ -1192,27 +1639,31 @@ ${renderOutputContract(options)}
 
     internal fun generateTriggerPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         val resolved = DesignResolver.resolve(control, category, options)
+        val seedProfile = NxprcSeedEngine.resolve(control, category, options.seed, options.componentName)
+        val triggerRole = if (control.uppercase() == NexpadKeys.LT) "Left Trigger" else "Right Trigger"
+
         return """
 ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Analog Trigger for NEXPAD.
 
-### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control (${if (control.uppercase() == NexpadKeys.LT) "Left Trigger" else "Right Trigger"})
-- **Category [GLOBAL-REQUIRED]**: $category
-- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
+${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, triggerRole, "trigger-btn")}
 - **Labels [RECOMMENDED]**: Primary "$control"
+
+${renderUserRequest(options)}
+
+${renderDesignParameters(options)}
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Analog progressive pull, pressure, and travel communication (throttle, brake, aim, fire).
-- **Visual Affordance [RECOMMENDED]**: Analog Travel Affordance — progressive travel, depth, directional pull cues, active travel displacement (`scaleY(0.94) translateY(4px)`).
+- **Visual Affordance [RECOMMENDED]**: Analog Travel Affordance — progressive travel, depth, directional pull cues, tactile spring depression (`transform: scale(var(--press-scale));` centered in-place; by default, do NOT use `translateY` or any position mobility animation on press to prevent mobile layout clipping, unless explicitly demanded by the user per the Universal Law of User Supremacy).
 - **Optional Visual Language [OPTIONAL]**: Horizontal friction ribs, stippling, curved rake paddle angle, digital pressure telemetry.
 - **Geometry [USER-OVERRIDE]**: `data-category` is metadata, not a shape instruction. Ergonomic curved paddle, angular wedge, minimal capsule, or custom silhouette. Preserve the user's requested shape.
 
 ${renderVisualProfileOrCustomDirective(
     "CONSOLE/XBOX INDUSTRIAL REALISM",
     """
-    1. **Progressive Analog Travel Mechanics**: Authentic analog triggers communicate progressive depth and travel within the bounding box (${widthDp}px x ${heightDp}px) with a gradient receding into the controller housing cavity, communicating analog travel and finger placement.
+    1. **Progressive Analog Travel Mechanics (Zero Mobility Displacement)**: Authentic analog triggers communicate progressive depth and travel within the bounding box (${widthDp}px x ${heightDp}px) with a gradient receding into the controller housing cavity, communicating analog travel and finger placement. On press (`:active`), use centered uniform scale (`transform: scale(var(--press-scale));`) matching native mobile gamepad kinematics with ZERO downward mobility, displacement, or translation (`translateY: 0`) by default. Depth and travel must be rendered via internal gauge meter fill or shading, keeping the trigger stationary in its compact mobile slot — UNLESS the user explicitly demands mobility, plunge, or translation, in which case the Universal Law of User Supremacy strictly supersedes default restrictions and you must fulfill the user's demand!
     2. **Molded Traction Ribs**: Physical molded horizontal friction ridges (via Flexbox column or `::before` layered shadows) providing authentic fingertip grip for throttling, braking, or aiming.
     3. **High-Contrast Clean Typography**: Prominent primary key indicator ("$control", font-size 26-30px, weight 900). Keep the typography clean and authentic to real console gamepads without artificial secondary sub-labels.
     4. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic triggers focus on ergonomic paddle curvature, molded grip traction, and deep socket shadow wells.
@@ -1223,7 +1674,7 @@ ${renderVisualProfileOrCustomDirective(
 ${engineBoundaries("trigger-btn", widthDp, heightDp, options)}
 
 ### USER CUSTOMIZATION SCHEMA:
-The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults:
+The schema is a convenience, not a limitation. Users may describe any additional visual, structural, material, symbolic, or interaction concept in SPECIAL INSTRUCTIONS or free-form text. The AI follows explicit user customization above all defaults (Universal Law of User Supremacy: User is God):
 - **STYLE**: [e.g. Carbon Fiber Racing / Brembo Red Performance / Cyberpunk Neon Telemetry / Tactical Military]
 - **COLOR / ACCENT**: [e.g. Racing Red / Neon Magenta / Titanium Gray / Custom palette]
 - **SHAPE / SILHOUETTE**: [e.g. Ergonomic curved paddle / Angular wedge / Modern capsule / Asymmetric blade / Custom contour (Default: Ergonomic Curved Paddle)]
@@ -1234,11 +1685,7 @@ The schema is a convenience, not a limitation. Users may describe any additional
 
 ${resolved.toPromptSpecification()}
 
-${renderDesignParameters(options)}
-
 ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
-
-${renderUserRequest(options)}
 
 ${renderOutputContract(options)}
 """.trimIndent()
@@ -1246,15 +1693,19 @@ ${renderOutputContract(options)}
 
     internal fun generateBumperPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         val resolved = DesignResolver.resolve(control, category, options)
+        val seedProfile = NxprcSeedEngine.resolve(control, category, options.seed, options.componentName)
+        val bumperRole = if (control.uppercase() == NexpadKeys.LB) "Left Bumper" else "Right Bumper"
+
         return """
 ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Shoulder Bumper for NEXPAD.
 
-### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control (${if (control.uppercase() == NexpadKeys.LB) "Left Bumper" else "Right Bumper"})
-- **Category [GLOBAL-REQUIRED]**: $category
-- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
+${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, bumperRole)}
+
+${renderUserRequest(options)}
+
+${renderDesignParameters(options)}
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Shallow tactile shoulder lever/rocker actuation with crisp microswitch click feedback.
@@ -1267,7 +1718,7 @@ ${renderVisualProfileOrCustomDirective(
     """
     1. **Physical Shoulder Lever/Rocker Architecture**: Authentic gamepad bumpers are physical shoulder levers seated directly in a recessed chassis housing seam or socket on the controller shell, rather than floating abstract pills. The lever surface catches ambient light along its top shoulder contour.
     2. **Convex Curvature Specular Sheen**: Specular highlight arc communicating convex molded polycarbonate catching studio light.
-    3. **Microswitch Click Actuation**: Unlike analog triggers, shoulder bumpers use crisp tactile microswitches with shallow travel displacement (`scale(${SpringPhysics.BUMPER.pressScaleFormatted}) translateY(2px)`) and snappy spring return (`${SpringPhysics.BUMPER.toDeclarations()}`).
+    3. **Microswitch Click Actuation**: Unlike analog triggers, shoulder bumpers use crisp tactile microswitches with snappy spring return (`scale(${SpringPhysics.BUMPER.pressScaleFormatted})`) and zero mobile displacement (`${SpringPhysics.BUMPER.toDeclarations()}`).
     4. **Restrained Detailing & Tactile Lighting**: Avoid unsolicited cyberpunk/neon glow clutter unless explicitly requested. Authentic bumpers feature clean industrial dark tones (`#2c3342` to `#0c0e13`), chassis seam contact shadows, and crisp high-contrast labels.
     """.trimIndent(),
     options
@@ -1286,11 +1737,7 @@ The schema is a convenience, not a limitation. Users may describe any additional
 
 ${resolved.toPromptSpecification()}
 
-${renderDesignParameters(options)}
-
 ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
-
-${renderUserRequest(options)}
 
 ${renderOutputContract(options)}
 """.trimIndent()
@@ -1298,15 +1745,17 @@ ${renderOutputContract(options)}
 
     internal fun generateStickPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         val resolved = DesignResolver.resolve(control, category, options)
+        val seedProfile = NxprcSeedEngine.resolve(control, category, options.seed, options.componentName)
         return """
 ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Analog Thumbstick Component for NEXPAD.
 
-### TARGET COMPONENT IDENTITY:
-- **Control Key [COMPONENT-REQUIRED]**: $control (Analog Thumbstick - NO center click button)
-- **Category [GLOBAL-REQUIRED]**: $category
-- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
+${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, "Analog Thumbstick - NO center click button")}
+
+${renderUserRequest(options)}
+
+${renderDesignParameters(options)}
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Continuous 360-degree analog navigation. IMPORTANT: In NEXPAD, Analog Joysticks have NO center button or click mechanism. Stick click is strictly separated into standalone LSB/RSB buttons to prevent accidental clicks while dragging.
@@ -1364,11 +1813,7 @@ The schema is a convenience, not a limitation. Users may describe any additional
 
 ${resolved.toPromptSpecification()}
 
-${renderDesignParameters(options)}
-
 ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
-
-${renderUserRequest(options)}
 
 ${renderOutputContract(options)}
 """.trimIndent()
@@ -1376,6 +1821,7 @@ ${renderOutputContract(options)}
 
     internal fun generateStickButtonPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         val resolved = DesignResolver.resolve(control, category, options)
+        val seedProfile = NxprcSeedEngine.resolve(control, category, options.seed, options.componentName)
         val clickLabel = if (control.uppercase() == NexpadKeys.RSB || control.uppercase() == "RSB") "Right Stick Click (RSB / R3)" else "Left Stick Click (LSB / L3)"
 
         return """
@@ -1383,10 +1829,11 @@ ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller Stick Click Button Component for NEXPAD.
 
-### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control ($clickLabel)
-- **Category [GLOBAL-REQUIRED]**: $category (Specialized Thumbstick Click Button under Sticks category, compiled as BUTTON)
-- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
+${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, clickLabel)}
+
+${renderUserRequest(options)}
+
+${renderDesignParameters(options)}
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Instant tactile thumbstick cap depression / axial click ($clickLabel action). Unlike continuous 360° analog sticks, this is a dedicated digital button for reliable, rapid stick clicks during high-intensity gameplay.
@@ -1426,11 +1873,7 @@ Before outputting, verify your component against this checklist:
 
 ${resolved.toPromptSpecification()}
 
-${renderDesignParameters(options)}
-
 ${renderStarterTemplate(control, "BUTTON", widthDp, heightDp, options)}
-
-${renderUserRequest(options)}
 
 ${renderOutputContract(options)}
 """.trimIndent()
@@ -1438,6 +1881,7 @@ ${renderOutputContract(options)}
 
     internal fun generateTouchpadPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         val resolved = DesignResolver.resolve(control, category, options)
+        val seedProfile = NxprcSeedEngine.resolve(control, category, options.seed, options.componentName)
         val isLeft = control.equals("LTP", ignoreCase = true)
         val padRole = if (isLeft) "Left Touch Movement Pad (Floating Dynamic-Center Stick)" else "Right Touch Camera Look Pad (Free-Look Swipe Trackpad)"
         val interactionDesc = if (isLeft) {
@@ -1449,11 +1893,11 @@ ${renderOutputContract(options)}
         return """
 ${genAiHeader()}
 
-### TARGET COMPONENT IDENTITY:
-- **Canonical Control Key [GLOBAL-REQUIRED]**: $control
-- **Component Role**: $padRole
-- **Category [GLOBAL-REQUIRED]**: $category (Touchpad Surface under Sticks category)
-- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px; (canvas bounding box)
+${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, padRole)}
+
+${renderUserRequest(options)}
+
+${renderDesignParameters(options)}
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: $interactionDesc IMPORTANT: Touchpads are pure flat, stationary laptop-style trackpad surfaces. Strictly NO center button, NO center dot, NO movable ring, and NO tap-to-click mechanism. Stick click is strictly separated into standalone LSB/RSB buttons to prevent accidental sprint or melee triggers during camera panning or movement. The touchpad operates as a pure continuous speed-to-distance surface.
@@ -1483,11 +1927,7 @@ The schema is a convenience, not a limitation. Users may describe any additional
 
 ${resolved.toPromptSpecification()}
 
-${renderDesignParameters(options)}
-
 ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
-
-${renderUserRequest(options)}
 
 ${renderOutputContract(options)}
 """.trimIndent()
@@ -1495,15 +1935,19 @@ ${renderOutputContract(options)}
 
     internal fun generateSystemPrompt(control: String, category: String, widthDp: Int, heightDp: Int, options: AiDesignOptions): String {
         val resolved = DesignResolver.resolve(control, category, options)
+        val seedProfile = NxprcSeedEngine.resolve(control, category, options.seed, options.componentName)
+        val systemRole = when(control.uppercase()) { NexpadKeys.MENU, NexpadKeys.START -> "Menu / Pause / Start"; NexpadKeys.VIEW, NexpadKeys.BACK -> "View / Back / Select"; else -> "Home / Guide / Nexus" }
+
         return """
 ${genAiHeader()}
 
 You are an expert gamepad UI/UX designer and CSS shader artist creating a custom virtual controller System/Utility Button for NEXPAD.
 
-### TARGET COMPONENT IDENTITY:
-- **Button Key [COMPONENT-REQUIRED]**: $control (${when(control.uppercase()) { NexpadKeys.MENU, NexpadKeys.START -> "Menu / Pause / Start"; NexpadKeys.VIEW, NexpadKeys.BACK -> "View / Back / Select"; else -> "Home / Guide / Nexus" }})
-- **Category [GLOBAL-REQUIRED]**: $category
-- **Target Dimensions [GLOBAL-REQUIRED]**: width: ${widthDp}px; height: ${heightDp}px;
+${NxprcSeedEngine.renderTargetIdentityBlock(control, category, widthDp, heightDp, seedProfile, null, systemRole)}
+
+${renderUserRequest(options)}
+
+${renderDesignParameters(options)}
 
 ### CATEGORY SEMANTICS & INTERACTION MEANING:
 - **Interaction Meaning [COMPONENT-REQUIRED]**: Secondary console utility actions (menu, pause, guide, view, options).
@@ -1520,7 +1964,7 @@ ${renderVisualProfileOrCustomDirective(
        - `VIEW`: Overlapping dual windows/rectangles symbol (`⧉`) or vector path.
        - `HOME` / `GUIDE`: Central nexus orb / emblem with subtle radial glow and chamfered bezel ring.
     3. **Zero Text Collision on Graphic Buttons**: Iconographic system buttons (such as MENU hamburger bars or VIEW windows) must NEVER have automatic text stamped over their icons. The icon itself is the visual identity.
-    4. **Restrained Lighting & Tactile Click**: Subtle recessed socket well (`box-shadow: inset 0 1px 3px rgba(255,255,255,0.25), inset 0 -3px 6px rgba(0,0,0,0.75)`), matte chassis darks, and shallow tactile micro-travel (`scale(0.92) translateY(2px)`).
+    4. **Restrained Lighting & Tactile Click**: Subtle recessed socket well (`box-shadow: inset 0 1px 3px rgba(255,255,255,0.25), inset 0 -3px 6px rgba(0,0,0,0.75)`), matte chassis darks, and shallow tactile micro-click (`scale(0.92)` with zero displacement).
     """.trimIndent(),
     options
 )}
@@ -1538,11 +1982,7 @@ The schema is a convenience, not a limitation. Users may describe any additional
 
 ${resolved.toPromptSpecification()}
 
-${renderDesignParameters(options)}
-
 ${renderStarterTemplate(control, category, widthDp, heightDp, options)}
-
-${renderUserRequest(options)}
 
 ${renderOutputContract(options)}
 """.trimIndent()

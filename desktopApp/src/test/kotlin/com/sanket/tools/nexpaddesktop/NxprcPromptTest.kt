@@ -2,18 +2,24 @@ package com.sanket.tools.nexpaddesktop
 
 import com.sanket.tools.nexpaddesktop.plugins.AbxyPromptStrategy
 import com.sanket.tools.nexpaddesktop.plugins.AiDesignOptions
+import com.sanket.tools.nexpaddesktop.plugins.AnimationIntensity
 import com.sanket.tools.nexpaddesktop.plugins.BumperPromptStrategy
 import com.sanket.tools.nexpaddesktop.plugins.ColorProfile
 import com.sanket.tools.nexpaddesktop.plugins.Complexity
 import com.sanket.tools.nexpaddesktop.plugins.ComplexityBudget
 import com.sanket.tools.nexpaddesktop.plugins.ComponentPromptRegistry
+import com.sanket.tools.nexpaddesktop.plugins.ConsoleMode
 import com.sanket.tools.nexpaddesktop.plugins.Creativity
+import com.sanket.tools.nexpaddesktop.plugins.DesignFreedom
+import com.sanket.tools.nexpaddesktop.plugins.DetailPriority
 import com.sanket.tools.nexpaddesktop.plugins.DpadPromptStrategy
 import com.sanket.tools.nexpaddesktop.plugins.Fidelity
 import com.sanket.tools.nexpaddesktop.plugins.GeometryOptions
 import com.sanket.tools.nexpaddesktop.plugins.ModelCapability
 import com.sanket.tools.nexpaddesktop.plugins.NxprcAiPromptBuilder
 import com.sanket.tools.nexpaddesktop.plugins.NxprcHtmlCssConverter
+import com.sanket.tools.nexpaddesktop.plugins.NxprcPresets
+import com.sanket.tools.nexpaddesktop.plugins.Originality
 import com.sanket.tools.nexpaddesktop.plugins.SpringPhysics
 import com.sanket.tools.nexpaddesktop.plugins.CategoryDefaultsRegistry
 import com.sanket.tools.nexpaddesktop.plugins.DesignResolver
@@ -560,15 +566,15 @@ class NxprcPromptTest {
         assertFalse(6 in doc.canvas.capLayerIndices, "Layer #6 (.tick-s) must be stationary on base")
         assertFalse(7 in doc.canvas.capLayerIndices, "Layer #7 (.tick-w) must be stationary on base")
 
-        // Sparkles (layers 11, 12) must remain stationary on base
-        assertFalse(11 in doc.canvas.capLayerIndices, "Layer #11 (.sparkle-a) must be stationary on base")
-        assertFalse(12 in doc.canvas.capLayerIndices, "Layer #12 (.sparkle-b) must be stationary on base")
+        // Sparkles (layers 8, 9) must remain stationary on base
+        assertFalse(8 in doc.canvas.capLayerIndices, "Layer #8 (.sparkle-a) must be stationary on base")
+        assertFalse(9 in doc.canvas.capLayerIndices, "Layer #9 (.sparkle-b) must be stationary on base")
 
-        // Thumb cap elements (layers 2, 8, 9, 10, 13) must be in capLayerIndices
+        // Thumb cap elements (layers 2, 10, 11, 12, 13) must be in capLayerIndices
         assertTrue(2 in doc.canvas.capLayerIndices, "Layer #2 (.stick-cap) must move")
-        assertTrue(8 in doc.canvas.capLayerIndices, "Layer #8 (.cap-shine) must move")
-        assertTrue(9 in doc.canvas.capLayerIndices, "Layer #9 (.knurled-ring) must move")
-        assertTrue(10 in doc.canvas.capLayerIndices, "Layer #10 (.knurled-ring-inner) must move")
+        assertTrue(10 in doc.canvas.capLayerIndices, "Layer #10 (.cap-shine) must move")
+        assertTrue(11 in doc.canvas.capLayerIndices, "Layer #11 (.knurled-ring) must move")
+        assertTrue(12 in doc.canvas.capLayerIndices, "Layer #12 (.knurled-ring-inner) must move")
         assertTrue(13 in doc.canvas.capLayerIndices, "Layer #13 (CenterGlyph) must move")
     }
 
@@ -719,6 +725,52 @@ class NxprcPromptTest {
         assertFalse(prompt.contains("Elongated vertical paddle silhouette"), "Prescriptive elongated paddle leaked into QA checklist")
         assertFalse(prompt.contains("PULL"), "Prescriptive PULL sub-label leaked into trigger prompt")
         assertFalse(prompt.contains("BRAKE"), "Prescriptive BRAKE sub-label leaked into trigger prompt")
+        assertFalse(prompt.contains("translateY(4px)"), "translateY(4px) must not leak into trigger prompt")
+        assertFalse(prompt.contains("translateY(2px)"), "translateY(2px) must not leak into trigger prompt")
+        assertFalse(prompt.contains("translateY(3px)"), "translateY(3px) must not leak into trigger prompt")
+        assertFalse(prompt.contains("scaleY(0.94)"), "scaleY(0.94) must not leak into trigger prompt")
+        assertTrue(prompt.contains("scale(var(--press-scale))"), "Trigger prompt should recommend scale(var(--press-scale))")
+        assertTrue(prompt.contains("ZERO-MOBILITY"), "Trigger prompt must enforce ZERO-MOBILITY")
+        assertTrue(prompt.contains("ZERO downward mobility"), "Trigger prompt must mandate ZERO downward mobility")
+    }
+
+    @Test
+    fun allPresetsHaveZeroTranslateYDisplacement() {
+        val presets = listOf(
+            NxprcPresets.PRESET_CYBER_REACTOR,
+            NxprcPresets.PRESET_CRIMSON_OCTA,
+            NxprcPresets.PRESET_SPEED_TURBO,
+            NxprcPresets.PRESET_NEO_TACTILE_A,
+            NxprcPresets.PRESET_NEO_TACTILE_B,
+            NxprcPresets.PRESET_NEO_TACTILE_X,
+            NxprcPresets.PRESET_NEO_TACTILE_Y,
+            NxprcPresets.PRESET_TRIGGER_LT,
+            NxprcPresets.PRESET_TRIGGER_RT,
+            NxprcPresets.PRESET_BUMPER_LB,
+            NxprcPresets.PRESET_BUMPER_RB,
+            NxprcPresets.PRESET_STICK_BUTTON_LSB,
+            NxprcPresets.PRESET_STICK_BUTTON_RSB,
+            NxprcPresets.PRESET_SYSTEM_MENU,
+            NxprcPresets.PRESET_SYSTEM_VIEW,
+            NxprcPresets.PRESET_SYSTEM_HOME,
+            NxprcPresets.PRESET_SYSTEM_SHARE,
+            NxprcPresets.createPresetMacroPaddle("M1")
+        )
+        presets.forEach { presetHtml ->
+            assertFalse(presetHtml.contains("translateY"), "Preset must not contain translateY: $presetHtml")
+        }
+    }
+
+    @Test
+    fun dpadPromptEnforces4WayCardinalArchitectureAndZeroDisplacement() {
+        val prompt = NxprcHtmlCssConverter.generateAiPrompt("DPAD", "DPAD", 140, 140)
+
+        assertTrue(prompt.contains("4 Cardinal Directions: `▲ UP`, `▼ DOWN`, `◀ LEFT`, `▶ RIGHT`"), "D-Pad prompt must contain 4 cardinal directions")
+        assertTrue(prompt.contains(".dpad-pivot"), "D-Pad prompt must reference .dpad-pivot central rocker well")
+        assertTrue(prompt.contains("Directional Cross & Rocker Pivot Affordance"), "Missing directional cross & rocker pivot affordance")
+        assertTrue(prompt.contains("scale(var(--press-scale))"), "D-Pad prompt must recommend scale(var(--press-scale))")
+        assertFalse(prompt.contains("translateY(2px)"), "translateY(2px) must not leak into D-Pad prompt")
+        assertFalse(prompt.contains("❖"), "Placeholder ❖ glyph must not leak into 4-way D-Pad prompt")
     }
 
     @Test
@@ -1231,6 +1283,12 @@ class NxprcPromptTest {
         assertTrue(defaultPhysics.toDeclarations().contains("--press-scale: 0.92;"))
         assertTrue(defaultPhysics.toRootBlock().contains(":root {"))
 
+        val triggerPhysics = SpringPhysics.TRIGGER
+        assertEquals(0.68f, triggerPhysics.damping)
+        assertEquals(440f, triggerPhysics.stiffness)
+        assertEquals(0.95f, triggerPhysics.pressScale)
+        assertEquals("0.95", triggerPhysics.pressScaleFormatted)
+
         val bumperPhysics = SpringPhysics.BUMPER
         assertEquals(0.75f, bumperPhysics.damping)
         assertEquals(520f, bumperPhysics.stiffness)
@@ -1240,6 +1298,12 @@ class NxprcPromptTest {
         assertEquals(0.72f, stickButtonPhysics.damping)
         assertEquals(480f, stickButtonPhysics.stiffness)
         assertEquals("0.90", stickButtonPhysics.pressScaleFormatted)
+
+        val dpadPhysics = SpringPhysics.DPAD
+        assertEquals(0.68f, dpadPhysics.damping)
+        assertEquals(460f, dpadPhysics.stiffness)
+        assertEquals(0.95f, dpadPhysics.pressScale)
+        assertEquals("0.95", dpadPhysics.pressScaleFormatted)
 
         // Bridge to :protocol SpringPhysicsDef
         val protocolDef = defaultPhysics.toSpringPhysicsDef()
@@ -1900,6 +1964,31 @@ class NxprcPromptTest {
             frontierPrompt.contains("SECTION F1 — COMPILATION PIPELINE TRANSPARENCY"),
             "Frontier prompt MUST contain Frontier depth sections"
         )
+        assertTrue(
+            frontierPrompt.contains("SECTION F8 — NATIVE HARDWARE AMBIENT ANIMATION ENGINES"),
+            "Frontier prompt MUST contain Section F8 ambient animation engines"
+        )
+        assertFalse(
+            frontierPrompt.contains("SECTION F9 — ANALOG JOYSTICK ARCHITECTURE"),
+            "Button A prompt must NOT contain joystick-specific Section F9"
+        )
+        listOf("LS", "RS").forEach { stickControl ->
+            val frontierJoystickPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = stickControl,
+                category = "JOYSTICK",
+                widthDp = 96,
+                heightDp = 96,
+                options = AiDesignOptions(modelCapability = ModelCapability.FRONTIER)
+            )
+            assertTrue(
+                frontierJoystickPrompt.contains("SECTION F9 — ANALOG JOYSTICK ARCHITECTURE & THUMB-CAP DECOUPLING"),
+                "Joystick $stickControl prompt MUST contain Section F9 joystick decoupling"
+            )
+        }
+        assertTrue(
+            frontierPrompt.contains("SECTION F10 — NATIVE HARDWARE SHADER & SKIA COMPILATION"),
+            "Frontier prompt MUST contain Section F10 native shaders"
+        )
     }
 
     @Test
@@ -2143,6 +2232,850 @@ class NxprcPromptTest {
         // Layer 7: Center glyph 'A'
         val glyph = doc.canvas.layers[7] as com.sanket.tools.nexpad.nxprc.CanvasLayer.CenterGlyph
         assertEquals("A", glyph.text, "Glyph text must be 'A'")
+    }
+
+    @Test
+    fun testTierAutomaticBindingAndStylePromptIntegration() {
+        // Compact tier binds to Simple complexity & Clean density
+        val compactOpts = AiDesignOptions(modelCapability = ModelCapability.COMPACT)
+        assertEquals(Complexity.SIMPLE, compactOpts.complexity)
+        assertEquals(VisualDensity.CLEAN, compactOpts.visualDensity)
+        assertEquals(Creativity.LOW, compactOpts.creativity)
+
+        // Standard tier binds to Auto complexity & Balanced density
+        val standardOpts = AiDesignOptions(modelCapability = ModelCapability.STANDARD)
+        assertEquals(Complexity.AUTO, standardOpts.complexity)
+        assertEquals(VisualDensity.BALANCED, standardOpts.visualDensity)
+        assertEquals(Creativity.MEDIUM, standardOpts.creativity)
+
+        // Frontier tier binds to Extreme/Unlimited complexity & Dense density, with unlimited context tokens
+        val frontierOpts = AiDesignOptions(modelCapability = ModelCapability.FRONTIER)
+        assertEquals(Complexity.EXTREME, frontierOpts.complexity)
+        assertEquals(VisualDensity.DENSE, frontierOpts.visualDensity)
+        assertEquals(Creativity.HIGH, frontierOpts.creativity)
+        assertEquals(Int.MAX_VALUE, ModelCapability.FRONTIER.maxContextTokens)
+        assertTrue(frontierOpts.complexity.budget.isUnlimitedLayers)
+        assertTrue(frontierOpts.complexity.budget.isUnlimitedSvg)
+
+        // Frontier prompt contains Section F0 for unlimited architectural freedom
+        val frontierBasePrompt = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = frontierOpts
+        )
+        assertTrue(frontierBasePrompt.contains("SECTION F0 — UNLIMITED ARCHITECTURAL EXPRESSION & ZERO COMPLEXITY CAPS"))
+        assertTrue(frontierBasePrompt.contains("No Layer Limit") || frontierBasePrompt.contains("Unlimited Layering"))
+
+        // Default empty request enters interactive mode (user dictates style to AI directly in chat)
+        val defaultStandardPrompt = NxprcAiPromptBuilder.buildPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(modelCapability = ModelCapability.STANDARD)
+        )
+        assertTrue(defaultStandardPrompt.contains("INTERACTIVE MODE"))
+
+        // User custom style integration when provided programmatically
+        val themedPrompt = NxprcAiPromptBuilder.buildPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(
+                modelCapability = ModelCapability.FRONTIER,
+                style = "Cyberpunk Neon",
+                userRequest = "Cyberpunk Neon"
+            )
+        )
+        assertTrue(themedPrompt.contains("Cyberpunk Neon"))
+        assertTrue(themedPrompt.contains("<user_request>"))
+        assertTrue(themedPrompt.contains("### USER CUSTOM DESIGN DIRECTIVE [AUTHORITATIVE]"))
+    }
+
+    private data class ControlAuditSpec(
+        val control: String,
+        val category: String,
+        val expectedRootClass: String,
+        val isJoystick: Boolean = false,
+        val widthDp: Int = 96,
+        val heightDp: Int = 96
+    )
+
+    @Test
+    fun testFullMatrixDeepAuditAllButtonsAndTiers() {
+        val controlsToAudit = listOf(
+            // 1. ABXY Face Action Buttons
+            ControlAuditSpec("A", "BUTTON", "nexpad-btn"),
+            ControlAuditSpec("B", "BUTTON", "nexpad-btn"),
+            ControlAuditSpec("X", "BUTTON", "nexpad-btn"),
+            ControlAuditSpec("Y", "BUTTON", "nexpad-btn"),
+
+            // 2. D-Pad Directional Controls
+            ControlAuditSpec("UP", "DPAD", "dpad-btn"),
+            ControlAuditSpec("DOWN", "DPAD", "dpad-btn"),
+            ControlAuditSpec("LEFT", "DPAD", "dpad-btn"),
+            ControlAuditSpec("RIGHT", "DPAD", "dpad-btn"),
+            ControlAuditSpec("DPAD", "DPAD", "dpad-btn", widthDp = 140, heightDp = 140),
+
+            // 3. Triggers
+            ControlAuditSpec("LT", "TRIGGER", "trigger-btn", widthDp = 110, heightDp = 140),
+            ControlAuditSpec("RT", "TRIGGER", "trigger-btn", widthDp = 110, heightDp = 140),
+
+            // 4. Bumpers
+            ControlAuditSpec("LB", "BUMPER", "bumper-btn", widthDp = 120, heightDp = 60),
+            ControlAuditSpec("RB", "BUMPER", "bumper-btn", widthDp = 120, heightDp = 60),
+
+            // 5. Analog Joysticks (Movable Thumb-Cap Decoupling enabled)
+            ControlAuditSpec("LS", "JOYSTICK", "stick-btn", isJoystick = true, widthDp = 130, heightDp = 130),
+            ControlAuditSpec("RS", "JOYSTICK", "stick-btn", isJoystick = true, widthDp = 130, heightDp = 130),
+
+            // 6. Thumbstick Click Buttons (Digital button, NOT joystick, F9 excluded)
+            ControlAuditSpec("LSB", "STICKS", "stick-btn-ctl", isJoystick = false, widthDp = 72, heightDp = 72),
+            ControlAuditSpec("RSB", "STICKS", "stick-btn-ctl", isJoystick = false, widthDp = 72, heightDp = 72),
+
+            // 7. Touchpad Surfaces (Continuous trackpad, NOT joystick, F9 excluded)
+            ControlAuditSpec("LTP", "STICKS", "touchpad-ctl", isJoystick = false, widthDp = 180, heightDp = 180),
+            ControlAuditSpec("RTP", "STICKS", "touchpad-ctl", isJoystick = false, widthDp = 180, heightDp = 180),
+
+            // 8. System & Utility Buttons
+            ControlAuditSpec("MENU", "SYSTEM", "system-btn", isJoystick = false, widthDp = 70, heightDp = 70),
+            ControlAuditSpec("VIEW", "SYSTEM", "system-btn", isJoystick = false, widthDp = 70, heightDp = 70),
+            ControlAuditSpec("GUIDE", "SYSTEM", "system-btn", isJoystick = false, widthDp = 84, heightDp = 84),
+            ControlAuditSpec("SHARE", "SYSTEM", "system-btn", isJoystick = false, widthDp = 70, heightDp = 70),
+
+            // 9. Macro Paddles
+            ControlAuditSpec("M1", "MACRO", "system-btn", isJoystick = false, widthDp = 72, heightDp = 72)
+        )
+
+        controlsToAudit.forEach { spec ->
+            val tag = "[${spec.control}/${spec.category}]"
+
+            // ── COMPACT TIER AUDIT ──
+            val compactPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = spec.control,
+                category = spec.category,
+                widthDp = spec.widthDp,
+                heightDp = spec.heightDp,
+                options = AiDesignOptions(modelCapability = ModelCapability.COMPACT)
+            )
+
+            assertTrue(
+                compactPrompt.contains("SECTION 1 — STRICT COMPILER & ENGINE CONTRACT (LEAN COMPACT MODE)"),
+                "$tag Compact missing Lean Compact Mode anchor"
+            )
+            assertTrue(
+                compactPrompt.contains("class=\"${spec.expectedRootClass}\""),
+                "$tag Compact missing root class ${spec.expectedRootClass}"
+            )
+            assertTrue(
+                compactPrompt.contains(".${spec.expectedRootClass}:active"),
+                "$tag Compact missing active selector for ${spec.expectedRootClass}"
+            )
+            assertTrue(
+                compactPrompt.contains("width: ${spec.widthDp}px; height: ${spec.heightDp}px;"),
+                "$tag Compact missing explicit ${spec.widthDp}px x ${spec.heightDp}px bounds"
+            )
+            assertTrue(compactPrompt.contains("--spring-damping:"), "$tag Compact missing spring-damping")
+            assertTrue(compactPrompt.contains("--spring-stiffness:"), "$tag Compact missing spring-stiffness")
+            assertTrue(compactPrompt.contains("--press-scale:"), "$tag Compact missing press-scale")
+            assertTrue(compactPrompt.contains("ZERO MOBILITY PRESS MANDATE"), "$tag Compact missing ZERO MOBILITY PRESS MANDATE")
+            assertTrue(compactPrompt.contains("zero mobile displacement"), "$tag Compact missing zero mobile displacement")
+            assertFalse(compactPrompt.contains("translateY(2px)"), "$tag Compact leaked translateY(2px)")
+            assertFalse(compactPrompt.contains("translateY(3px)"), "$tag Compact leaked translateY(3px)")
+            assertFalse(compactPrompt.contains("translateY(4px)"), "$tag Compact leaked translateY(4px)")
+
+            // Strict Compact Exclusion Boundaries
+            assertFalse(
+                compactPrompt.contains("SECTION 1 — INSTRUCTION PRIORITY & CONFLICT RESOLUTION"),
+                "$tag Compact leaked Standard Section 1"
+            )
+            assertFalse(
+                compactPrompt.contains("SECTION 2 — RULE CLASSIFICATION HIERARCHY"),
+                "$tag Compact leaked Standard Section 2"
+            )
+            assertFalse(
+                compactPrompt.contains("SECTION 5 — HARD COMPILER CONTRACT & STRICT BOUNDARIES"),
+                "$tag Compact leaked Standard Section 5"
+            )
+            assertFalse(
+                compactPrompt.contains("SECTION 10 — GEOMETRY & VISUAL QA CHECKLIST"),
+                "$tag Compact leaked Standard Section 10"
+            )
+            assertFalse(
+                compactPrompt.contains("SECTION F0 — UNLIMITED ARCHITECTURAL EXPRESSION"),
+                "$tag Compact leaked Frontier Section F0"
+            )
+            assertFalse(
+                compactPrompt.contains("SECTION F1 — COMPILATION PIPELINE TRANSPARENCY"),
+                "$tag Compact leaked Frontier Section F1"
+            )
+            assertFalse(
+                compactPrompt.contains("SECTION F8 — NATIVE HARDWARE AMBIENT ANIMATION ENGINES"),
+                "$tag Compact leaked Frontier Section F8"
+            )
+            assertFalse(
+                compactPrompt.contains("SECTION F9 — ANALOG JOYSTICK ARCHITECTURE"),
+                "$tag Compact leaked Frontier Section F9"
+            )
+            assertFalse(
+                compactPrompt.contains("SECTION F10 — NATIVE HARDWARE SHADER"),
+                "$tag Compact leaked Frontier Section F10"
+            )
+
+            // ── STANDARD TIER AUDIT ──
+            val standardPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = spec.control,
+                category = spec.category,
+                widthDp = spec.widthDp,
+                heightDp = spec.heightDp,
+                options = AiDesignOptions(modelCapability = ModelCapability.STANDARD)
+            )
+
+            assertTrue(
+                standardPrompt.contains("SECTION 1 — INSTRUCTION PRIORITY & CONFLICT RESOLUTION"),
+                "$tag Standard missing Section 1"
+            )
+            assertTrue(
+                standardPrompt.contains("SECTION 2 — RULE CLASSIFICATION HIERARCHY"),
+                "$tag Standard missing Section 2"
+            )
+            assertTrue(
+                standardPrompt.contains("SECTION 3 — USER CREATIVE AUTHORITY & FREE-HAND MODE"),
+                "$tag Standard missing Section 3"
+            )
+            assertTrue(
+                standardPrompt.contains("SECTION 4 — INTERPRETATION & FIDELITY MODES"),
+                "$tag Standard missing Section 4"
+            )
+            assertTrue(
+                standardPrompt.contains("SECTION 5 — HARD COMPILER CONTRACT & STRICT BOUNDARIES"),
+                "$tag Standard missing Section 5"
+            )
+            assertTrue(
+                standardPrompt.contains("SECTION 6 — COMPILER CAPABILITIES — WHAT PRIMITIVES ARE BEST FOR:"),
+                "$tag Standard missing Section 6"
+            )
+            assertTrue(
+                standardPrompt.contains("SECTION 7 — ARCHITECTURAL PATTERN:"),
+                "$tag Standard missing Section 7"
+            )
+            assertTrue(
+                standardPrompt.contains("SECTION 7B — ATMOSPHERIC AURA & RGB SOCKET LIGHTING ENGINE"),
+                "$tag Standard missing Section 7B"
+            )
+            assertTrue(
+                standardPrompt.contains("SECTION 8 — DESIGN QUALITY CRITERIA"),
+                "$tag Standard missing Section 8"
+            )
+            assertTrue(
+                standardPrompt.contains("SECTION 9 — ADAPTATION RULES"),
+                "$tag Standard missing Section 9"
+            )
+            assertTrue(
+                standardPrompt.contains("SECTION 10 — GEOMETRY & VISUAL QA CHECKLIST"),
+                "$tag Standard missing Section 10"
+            )
+            assertTrue(
+                standardPrompt.contains("class=\"${spec.expectedRootClass}\""),
+                "$tag Standard missing root class ${spec.expectedRootClass}"
+            )
+            assertTrue(
+                standardPrompt.contains(".${spec.expectedRootClass}:active"),
+                "$tag Standard missing active selector for ${spec.expectedRootClass}"
+            )
+            assertTrue(
+                standardPrompt.contains("width: ${spec.widthDp}px; height: ${spec.heightDp}px;"),
+                "$tag Standard missing explicit bounds"
+            )
+            assertTrue(standardPrompt.contains("--spring-damping:"), "$tag Standard missing spring-damping")
+            assertTrue(standardPrompt.contains("--spring-stiffness:"), "$tag Standard missing spring-stiffness")
+            assertTrue(standardPrompt.contains("ZERO MOBILITY PRESS MANDATE"), "$tag Standard missing ZERO MOBILITY PRESS MANDATE")
+            assertTrue(standardPrompt.contains("STRICT MOBILE ZERO-MOBILITY / ZERO-DISPLACEMENT MANDATE"), "$tag Standard missing ZERO-DISPLACEMENT MANDATE")
+            assertFalse(standardPrompt.contains("translateY(2px)"), "$tag Standard leaked translateY(2px)")
+            assertFalse(standardPrompt.contains("translateY(3px)"), "$tag Standard leaked translateY(3px)")
+            assertFalse(standardPrompt.contains("translateY(4px)"), "$tag Standard leaked translateY(4px)")
+
+            // Strict Standard Exclusion Boundaries
+            assertFalse(
+                standardPrompt.contains("LEAN COMPACT MODE"),
+                "$tag Standard leaked Compact Mode"
+            )
+            assertFalse(
+                standardPrompt.contains("SECTION F0 — UNLIMITED ARCHITECTURAL EXPRESSION"),
+                "$tag Standard leaked Frontier Section F0"
+            )
+            assertFalse(
+                standardPrompt.contains("SECTION F1 — COMPILATION PIPELINE TRANSPARENCY"),
+                "$tag Standard leaked Frontier Section F1"
+            )
+            assertFalse(
+                standardPrompt.contains("SECTION F8 — NATIVE HARDWARE AMBIENT ANIMATION ENGINES"),
+                "$tag Standard leaked Frontier Section F8"
+            )
+            assertFalse(
+                standardPrompt.contains("SECTION F9 — ANALOG JOYSTICK ARCHITECTURE"),
+                "$tag Standard leaked Frontier Section F9"
+            )
+            assertFalse(
+                standardPrompt.contains("SECTION F10 — NATIVE HARDWARE SHADER"),
+                "$tag Standard leaked Frontier Section F10"
+            )
+
+            // ── FRONTIER TIER AUDIT ──
+            val frontierPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = spec.control,
+                category = spec.category,
+                widthDp = spec.widthDp,
+                heightDp = spec.heightDp,
+                options = AiDesignOptions(modelCapability = ModelCapability.FRONTIER)
+            )
+
+            // Frontier includes Standard foundation
+            assertTrue(
+                frontierPrompt.contains("SECTION 1 — INSTRUCTION PRIORITY & CONFLICT RESOLUTION"),
+                "$tag Frontier missing Section 1"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION 5 — HARD COMPILER CONTRACT & STRICT BOUNDARIES"),
+                "$tag Frontier missing Section 5"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION 10 — GEOMETRY & VISUAL QA CHECKLIST"),
+                "$tag Frontier missing Section 10"
+            )
+
+            // Frontier includes all F0–F10 blueprint sections
+            assertTrue(
+                frontierPrompt.contains("SECTION F0 — UNLIMITED ARCHITECTURAL EXPRESSION & ZERO COMPLEXITY CAPS"),
+                "$tag Frontier missing Section F0"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION F1 — COMPILATION PIPELINE TRANSPARENCY (FRONTIER DEPTH)"),
+                "$tag Frontier missing Section F1"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION F2 — LAYER TYPE MAPPING"),
+                "$tag Frontier missing Section F2"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION F3 — SVG PATH PRE-BAKING PIPELINE"),
+                "$tag Frontier missing Section F3"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION F4 — AFFINE TRANSFORM DECOMPOSITION"),
+                "$tag Frontier missing Section F4"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION F5 — SPRING PHYSICS KINEMATICS"),
+                "$tag Frontier missing Section F5"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION F6 — CLASSIFIER INTELLIGENCE"),
+                "$tag Frontier missing Section F6"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION F7 — MANDATORY 5-STEP REASONING PROTOCOL"),
+                "$tag Frontier missing Section F7"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION F8 — NATIVE HARDWARE AMBIENT ANIMATION ENGINES (IDLE LOOPS)"),
+                "$tag Frontier missing Section F8"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION F10 — NATIVE HARDWARE SHADER & SKIA COMPILATION"),
+                "$tag Frontier missing Section F10"
+            )
+            assertTrue(
+                frontierPrompt.contains("SECTION F11 — ATMOSPHERIC AURA & RGB SOCKET LIGHTING ENGINE"),
+                "$tag Frontier missing Section F11"
+            )
+
+            // CRITICAL CONDITIONAL F9 CHECK: Strictly for joysticks (LS, RS) only
+            if (spec.isJoystick) {
+                assertTrue(
+                    frontierPrompt.contains("SECTION F9 — ANALOG JOYSTICK ARCHITECTURE & THUMB-CAP DECOUPLING"),
+                    "$tag Frontier Joystick MUST contain Section F9"
+                )
+                assertTrue(
+                    frontierPrompt.contains("data-layer-role=\"thumb-cap\""),
+                    "$tag Frontier Joystick missing thumb-cap role specification"
+                )
+                assertTrue(
+                    frontierPrompt.contains("data-layer-role=\"base\""),
+                    "$tag Frontier Joystick missing base role specification"
+                )
+                assertTrue(
+                    frontierPrompt.contains("+20,000"),
+                    "$tag Frontier Joystick missing +20,000 z-order elevation"
+                )
+            } else {
+                assertFalse(
+                    frontierPrompt.contains("SECTION F9 — ANALOG JOYSTICK ARCHITECTURE"),
+                    "$tag Frontier non-joystick button must NOT leak Section F9"
+                )
+                assertFalse(
+                    frontierPrompt.contains("THUMB-CAP DECOUPLING"),
+                    "$tag Frontier non-joystick button must NOT leak thumb-cap decoupling"
+                )
+            }
+
+            if (spec.category == "TRIGGER") {
+                assertTrue(
+                    frontierPrompt.contains("SECTION F9-TRIGGER — ANALOG TRIGGER ARCHITECTURE & RECEDING PADDLE KINEMATICS"),
+                    "$tag Frontier Trigger MUST contain Section F9-TRIGGER"
+                )
+                assertTrue(
+                    frontierPrompt.contains("MOBILE ZERO-DISPLACEMENT CONTRACT"),
+                    "$tag Frontier Trigger missing zero-displacement contract"
+                )
+                assertTrue(
+                    frontierPrompt.contains("scale(var(--press-scale))"),
+                    "$tag Frontier Trigger missing in-place scale(var(--press-scale))"
+                )
+            }
+
+            if (spec.category == "DPAD") {
+                assertTrue(
+                    frontierPrompt.contains("SECTION F9-DPAD — DIRECTIONAL PAD ARCHITECTURE & 4-WAY CARDINAL KINEMATICS"),
+                    "$tag Frontier DPAD MUST contain Section F9-DPAD"
+                )
+                assertTrue(
+                    frontierPrompt.contains("MOBILE ZERO-DISPLACEMENT CONTRACT"),
+                    "$tag Frontier DPAD missing zero-displacement contract"
+                )
+                assertTrue(
+                    frontierPrompt.contains("scale(var(--press-scale))"),
+                    "$tag Frontier DPAD missing in-place scale(var(--press-scale))"
+                )
+            }
+
+            assertTrue(
+                frontierPrompt.contains("class=\"${spec.expectedRootClass}\""),
+                "$tag Frontier missing root class ${spec.expectedRootClass}"
+            )
+            assertTrue(
+                frontierPrompt.contains(".${spec.expectedRootClass}:active"),
+                "$tag Frontier missing active selector for ${spec.expectedRootClass}"
+            )
+            assertTrue(
+                frontierPrompt.contains("width: ${spec.widthDp}px; height: ${spec.heightDp}px;"),
+                "$tag Frontier missing explicit bounds"
+            )
+            assertTrue(frontierPrompt.contains("--spring-damping:"), "$tag Frontier missing spring-damping")
+            assertTrue(frontierPrompt.contains("--spring-stiffness:"), "$tag Frontier missing spring-stiffness")
+            assertTrue(frontierPrompt.contains("ZERO MOBILITY PRESS MANDATE"), "$tag Frontier missing ZERO MOBILITY PRESS MANDATE")
+            assertTrue(frontierPrompt.contains("STRICT MOBILE ZERO-MOBILITY / ZERO-DISPLACEMENT MANDATE"), "$tag Frontier missing ZERO-DISPLACEMENT MANDATE")
+            assertFalse(frontierPrompt.contains("translateY(2px)"), "$tag Frontier leaked translateY(2px)")
+            assertFalse(frontierPrompt.contains("translateY(3px)"), "$tag Frontier leaked translateY(3px)")
+            assertFalse(frontierPrompt.contains("translateY(4px)"), "$tag Frontier leaked translateY(4px)")
+
+            // ── MONOTONIC PROMPT LENGTH PROGRESSION ──
+            assertTrue(
+                compactPrompt.length < standardPrompt.length,
+                "$tag Compact prompt (${compactPrompt.length} chars) must be strictly shorter than Standard prompt (${standardPrompt.length} chars)"
+            )
+            assertTrue(
+                standardPrompt.length < frontierPrompt.length,
+                "$tag Standard prompt (${standardPrompt.length} chars) must be strictly shorter than Frontier prompt (${frontierPrompt.length} chars)"
+            )
+
+            // ── CROSS-CLASS ACTIVE SELECTOR ISOLATION ──
+            if (spec.expectedRootClass != "nexpad-btn") {
+                assertFalse(
+                    compactPrompt.contains(".nexpad-btn:active"),
+                    "$tag Compact leaked .nexpad-btn:active selector"
+                )
+                assertFalse(
+                    standardPrompt.contains(".nexpad-btn:active"),
+                    "$tag Standard leaked .nexpad-btn:active selector"
+                )
+                assertFalse(
+                    frontierPrompt.contains(".nexpad-btn:active"),
+                    "$tag Frontier leaked .nexpad-btn:active selector"
+                )
+            }
+        }
+    }
+
+    @Test
+    fun testPresetCompilationAcrossAllCategories() {
+        val presets = listOf(
+            "A" to NxprcHtmlCssConverter.PRESET_ULTRA_NEXPAD_A,
+            "DPAD_UP" to NxprcHtmlCssConverter.PRESET_DPAD_UP,
+            "TRIGGER_LT" to NxprcHtmlCssConverter.PRESET_TRIGGER_LT,
+            "BUMPER_LB" to NxprcHtmlCssConverter.PRESET_BUMPER_LB,
+            "THUMBSTICK_LS" to NxprcHtmlCssConverter.PRESET_THUMBSTICK_LS,
+            "SYSTEM_MENU" to NxprcHtmlCssConverter.PRESET_SYSTEM_MENU,
+            "STICK_BUTTON_LSB" to NxprcHtmlCssConverter.PRESET_STICK_BUTTON_LSB,
+            "TOUCHPAD_LTP" to NxprcHtmlCssConverter.PRESET_TOUCHPAD_LTP
+        )
+
+        presets.forEach { (name, html) ->
+            val doc = NxprcHtmlCssConverter.convert(html, "id_$name", name)
+            assertTrue(doc.canvas.layers.isNotEmpty(), "Compiled preset $name produced 0 layers")
+            assertTrue(doc.manifest.springPhysics.enabled, "Compiled preset $name has springPhysics disabled")
+        }
+    }
+
+    @Test
+    fun testUniversalLawOfUserSupremacyEnshrinedAcrossAllTiersAndCategories() {
+        val capabilities = listOf(
+            ModelCapability.COMPACT,
+            ModelCapability.STANDARD,
+            ModelCapability.FRONTIER
+        )
+
+        capabilities.forEach { cap ->
+            val triggerPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = "LT",
+                category = "TRIGGER",
+                widthDp = 110,
+                heightDp = 140,
+                options = AiDesignOptions(modelCapability = cap)
+            )
+
+            assertTrue(
+                triggerPrompt.contains("UNIVERSAL LAW OF USER SUPREMACY"),
+                "$cap prompt must contain UNIVERSAL LAW OF USER SUPREMACY"
+            )
+            assertTrue(
+                triggerPrompt.contains("User is God") || triggerPrompt.contains("User is Sovereign") || triggerPrompt.contains("user is sovereign"),
+                "$cap prompt must enshrine user supremacy / user is sovereign / user is god"
+            )
+            assertTrue(
+                triggerPrompt.contains("Universal Law of User Supremacy"),
+                "$cap prompt must mention Universal Law of User Supremacy in rules"
+            )
+
+            val dpadPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = "DPAD",
+                category = "DPAD",
+                widthDp = 140,
+                heightDp = 140,
+                options = AiDesignOptions(modelCapability = cap)
+            )
+
+            assertTrue(
+                dpadPrompt.contains("UNIVERSAL LAW OF USER SUPREMACY"),
+                "$cap D-Pad prompt must contain UNIVERSAL LAW OF USER SUPREMACY"
+            )
+            assertTrue(
+                dpadPrompt.contains("Universal Law of User Supremacy"),
+                "$cap D-Pad prompt must reference Universal Law of User Supremacy"
+            )
+        }
+    }
+
+    @Test
+    fun testDesignParametersUpgradeAndDefaultsAcrossModelTiers() {
+        val compactOpts = AiDesignOptions(modelCapability = ModelCapability.COMPACT)
+        assertEquals(DesignFreedom.GUIDED, compactOpts.designFreedom)
+        assertEquals(AnimationIntensity.SUBTLE, compactOpts.animationIntensity)
+        assertEquals(DetailPriority.BALANCED, compactOpts.detailPriority)
+        assertEquals(Originality.FAITHFUL, compactOpts.originality)
+
+        val standardOpts = AiDesignOptions(modelCapability = ModelCapability.STANDARD)
+        assertEquals(DesignFreedom.GUIDED, standardOpts.designFreedom)
+        assertEquals(AnimationIntensity.SUBTLE, standardOpts.animationIntensity)
+        assertEquals(DetailPriority.BALANCED, standardOpts.detailPriority)
+        assertEquals(Originality.INSPIRED, standardOpts.originality)
+
+        val frontierOpts = AiDesignOptions(modelCapability = ModelCapability.FRONTIER)
+        assertEquals(DesignFreedom.OPEN, frontierOpts.designFreedom)
+        assertEquals(AnimationIntensity.ACTIVE, frontierOpts.animationIntensity)
+        assertEquals(DetailPriority.BALANCED, frontierOpts.detailPriority)
+        assertEquals(Originality.EXPERIMENTAL, frontierOpts.originality)
+
+        val customOpts = AiDesignOptions(
+            designFreedom = DesignFreedom.OPEN,
+            animationIntensity = AnimationIntensity.DYNAMIC,
+            detailPriority = DetailPriority.MATERIAL,
+            originality = Originality.EXPERIMENTAL
+        )
+        val prompt = NxprcHtmlCssConverter.generateAiPrompt("A", "BUTTON", 96, 96, options = customOpts)
+        assertTrue(prompt.contains("DESIGN FREEDOM"))
+        assertTrue(prompt.contains("Open (unconstrained creative freedom"))
+        assertTrue(prompt.contains("ANIMATION INTENSITY"))
+        assertTrue(prompt.contains("Dynamic (high-energy motion"))
+        assertTrue(prompt.contains("DETAIL PRIORITY"))
+        assertTrue(prompt.contains("Material (tactile surface shaders"))
+        assertTrue(prompt.contains("ORIGINALITY"))
+        assertTrue(prompt.contains("Experimental (radical"))
+    }
+
+    @Test
+    fun testPrecedenceNoticeInResolvedDesign() {
+        val resolvedDefault = DesignResolver.resolve("LT", "TRIGGER")
+        val specDefault = resolvedDefault.toPromptSpecification()
+        assertTrue(specDefault.contains("PRECEDENCE NOTICE"))
+        assertTrue(specDefault.contains("CATEGORY_DEFAULT"))
+        assertTrue(specDefault.contains("provide default context ONLY"))
+        assertTrue(specDefault.contains("zero override authority against user instructions"))
+
+        val resolvedCustom = DesignResolver.resolve(
+            "LT", "TRIGGER",
+            AiDesignOptions(color = "#FF00FF", shape = "Diamond Shard")
+        )
+        val specCustom = resolvedCustom.toPromptSpecification()
+        assertTrue(specCustom.contains("[USER]"))
+        assertTrue(specCustom.contains("#FF00FF"))
+        assertTrue(specCustom.contains("Diamond Shard"))
+    }
+
+    @Test
+    fun testFiveLayersOfInstructionAuthorityInEngineBoundaries() {
+        val standardAndFrontier = listOf(
+            ModelCapability.STANDARD,
+            ModelCapability.FRONTIER
+        )
+
+        standardAndFrontier.forEach { cap ->
+            val prompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = "A",
+                category = "BUTTON",
+                widthDp = 96,
+                heightDp = 96,
+                options = AiDesignOptions(modelCapability = cap)
+            )
+
+            assertTrue(prompt.contains("SECTION 1 — INSTRUCTION PRIORITY & CONFLICT RESOLUTION (5 LAYERS OF AUTHORITY)"), "Missing Section 1 in $cap")
+            assertTrue(prompt.contains("Layer 1: Non-Negotiable Compiler Safety"), "Missing Layer 1 in $cap")
+            assertTrue(prompt.contains("Layer 2: Component Semantics"), "Missing Layer 2 in $cap")
+            assertTrue(prompt.contains("Layer 3: User's Explicit Customization"), "Missing Layer 3 in $cap")
+            assertTrue(prompt.contains("Layer 4: AI Creative Interpretation"), "Missing Layer 4 in $cap")
+            assertTrue(prompt.contains("Layer 5: Category Defaults & Fallback Hardware Profiles"), "Missing Layer 5 in $cap")
+            assertTrue(prompt.contains("Universal Law of User Supremacy"), "Missing Universal Law in $cap")
+        }
+
+        val compactPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(modelCapability = ModelCapability.COMPACT)
+        )
+        assertTrue(compactPrompt.contains("SECTION 1 — STRICT COMPILER & ENGINE CONTRACT (LEAN COMPACT MODE)"))
+    }
+
+    @Test
+    fun testInvertedUserRequestOrderAcrossAllEightCategories() {
+        val userReq = "CYBERPUNK_GLOWING_KATANA_NEON_TEST_SENTINEL"
+        val testCases = listOf(
+            Triple("A", "BUTTON", 96 to 96),
+            Triple("UP", "DPAD", 140 to 140),
+            Triple("LT", "TRIGGER", 110 to 140),
+            Triple("LB", "BUMPER", 130 to 70),
+            Triple("LS", "JOYSTICK", 160 to 160),
+            Triple("LSB", "BUTTON", 100 to 100),
+            Triple("LTP", "TOUCHPAD", 200 to 150),
+            Triple("MENU", "SYSTEM", 64 to 64)
+        )
+
+        testCases.forEach { (control, category, dims) ->
+            val (w, h) = dims
+            val prompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = control,
+                category = category,
+                widthDp = w,
+                heightDp = h,
+                options = AiDesignOptions(userRequest = userReq)
+            )
+
+            val userReqIndex = prompt.indexOf(userReq)
+            val categorySemanticsIndex = prompt.indexOf("### CATEGORY SEMANTICS & INTERACTION MEANING:")
+
+            assertTrue(userReqIndex != -1, "User request must be present in $control ($category) prompt")
+            assertTrue(categorySemanticsIndex != -1, "Category semantics must be present in $control ($category) prompt")
+            assertTrue(
+                userReqIndex < categorySemanticsIndex,
+                "User request (index $userReqIndex) must appear BEFORE category semantics (index $categorySemanticsIndex) in $control ($category)"
+            )
+        }
+    }
+
+    @Test
+    fun testPlayStationNeoTactilePresetsHaveAuthenticColorsAndLabels() {
+        val cross = NxprcPresets.PRESET_NEO_TACTILE_PS_CROSS
+        assertTrue(cross.contains("--accent-core: #3F8FE0"), "PS Cross must use PlayStation Blue #3F8FE0")
+        assertTrue(cross.contains("<span class=\"btn-label\">✕</span>"), "PS Cross must use ✕ label")
+        assertTrue(cross.contains("data-control=\"A\""), "PS Cross maps to A button position")
+
+        val circle = NxprcPresets.PRESET_NEO_TACTILE_PS_CIRCLE
+        assertTrue(circle.contains("--accent-core: #E6474E"), "PS Circle must use PlayStation Red #E6474E")
+        assertTrue(circle.contains("<span class=\"btn-label\">○</span>"), "PS Circle must use ○ label")
+        assertTrue(circle.contains("data-control=\"B\""), "PS Circle maps to B button position")
+
+        val square = NxprcPresets.PRESET_NEO_TACTILE_PS_SQUARE
+        assertTrue(square.contains("--accent-core: #E055B8"), "PS Square must use PlayStation Pink #E055B8")
+        assertTrue(square.contains("<span class=\"btn-label\">□</span>"), "PS Square must use □ label")
+        assertTrue(square.contains("data-control=\"X\""), "PS Square maps to X button position")
+
+        val triangle = NxprcPresets.PRESET_NEO_TACTILE_PS_TRIANGLE
+        assertTrue(triangle.contains("--accent-core: #3FD25A"), "PS Triangle must use PlayStation Green #3FD25A")
+        assertTrue(triangle.contains("<span class=\"btn-label\">△</span>"), "PS Triangle must use △ label")
+        assertTrue(triangle.contains("data-control=\"Y\""), "PS Triangle maps to Y button position")
+    }
+
+    @Test
+    fun testXboxNeoTactilePresetsHaveAuthenticColorsAndLabels() {
+        val a = NxprcPresets.PRESET_NEO_TACTILE_A
+        assertTrue(a.contains("--accent-core: #00FFA3"), "Xbox A must use emerald green")
+        assertTrue(a.contains("<span class=\"btn-label\">A</span>"), "Xbox A must use A label")
+
+        val b = NxprcPresets.PRESET_NEO_TACTILE_B
+        assertTrue(b.contains("--accent-core: #FF2A6D"), "Xbox B must use red/pink")
+        assertTrue(b.contains("<span class=\"btn-label\">B</span>"), "Xbox B must use B label")
+
+        val x = NxprcPresets.PRESET_NEO_TACTILE_X
+        assertTrue(x.contains("--accent-core: #00E5FF"), "Xbox X must use cyan-blue")
+        assertTrue(x.contains("<span class=\"btn-label\">X</span>"), "Xbox X must use X label")
+
+        val y = NxprcPresets.PRESET_NEO_TACTILE_Y
+        assertTrue(y.contains("--accent-core: #FFD600"), "Xbox Y must use yellow")
+        assertTrue(y.contains("<span class=\"btn-label\">Y</span>"), "Xbox Y must use Y label")
+    }
+
+    @Test
+    fun testGetReferenceTemplateConsoleModeSwitchingOnlyForAbxy() {
+        // In PlayStation mode, ABXY returns PS presets
+        assertEquals(NxprcPresets.PRESET_NEO_TACTILE_PS_CROSS, NxprcPresets.getReferenceTemplate("A", "BUTTON", ConsoleMode.PLAYSTATION))
+        assertEquals(NxprcPresets.PRESET_NEO_TACTILE_PS_CIRCLE, NxprcPresets.getReferenceTemplate("B", "BUTTON", ConsoleMode.PLAYSTATION))
+        assertEquals(NxprcPresets.PRESET_NEO_TACTILE_PS_SQUARE, NxprcPresets.getReferenceTemplate("X", "BUTTON", ConsoleMode.PLAYSTATION))
+        assertEquals(NxprcPresets.PRESET_NEO_TACTILE_PS_TRIANGLE, NxprcPresets.getReferenceTemplate("Y", "BUTTON", ConsoleMode.PLAYSTATION))
+
+        // In Xbox mode (default), ABXY returns Xbox presets
+        assertEquals(NxprcPresets.PRESET_NEO_TACTILE_A, NxprcPresets.getReferenceTemplate("A", "BUTTON", ConsoleMode.XBOX))
+        assertEquals(NxprcPresets.PRESET_NEO_TACTILE_B, NxprcPresets.getReferenceTemplate("B", "BUTTON", ConsoleMode.XBOX))
+        assertEquals(NxprcPresets.PRESET_NEO_TACTILE_X, NxprcPresets.getReferenceTemplate("X", "BUTTON", ConsoleMode.XBOX))
+        assertEquals(NxprcPresets.PRESET_NEO_TACTILE_Y, NxprcPresets.getReferenceTemplate("Y", "BUTTON", ConsoleMode.XBOX))
+
+        // Non-ABXY controls (Triggers, D-Pad, etc.) are UNTOUCHED by ConsoleMode
+        val dpadUpXbox = NxprcPresets.getReferenceTemplate("UP", "DPAD", ConsoleMode.XBOX)
+        val dpadUpPS = NxprcPresets.getReferenceTemplate("UP", "DPAD", ConsoleMode.PLAYSTATION)
+        assertEquals(dpadUpXbox, dpadUpPS, "D-Pad must be identical across console modes")
+
+        val ltXbox = NxprcPresets.getReferenceTemplate("LT", "TRIGGER", ConsoleMode.XBOX)
+        val ltPS = NxprcPresets.getReferenceTemplate("LT", "TRIGGER", ConsoleMode.PLAYSTATION)
+        assertEquals(ltXbox, ltPS, "Triggers must be identical across console modes")
+    }
+
+    @Test
+    fun testAiPromptBuilderConsoleAwareColorsAndLabels() {
+        val psPromptA = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(consoleMode = ConsoleMode.PLAYSTATION)
+        )
+        assertTrue(psPromptA.contains("#3F8FE0"), "PS A/Cross prompt must reference PS blue #3F8FE0")
+        assertTrue(psPromptA.contains("PlayStation Blue"), "PS A/Cross prompt must describe PlayStation Blue")
+        assertTrue(psPromptA.contains("✕ (Cross)"), "PS A/Cross prompt must include ✕ (Cross) symbol guidance")
+
+        val psPromptB = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "B",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(consoleMode = ConsoleMode.PLAYSTATION)
+        )
+        assertTrue(psPromptB.contains("#E6474E"), "PS B/Circle prompt must reference PS red #E6474E")
+        assertTrue(psPromptB.contains("PlayStation Red"), "PS B/Circle prompt must describe PlayStation Red")
+        assertTrue(psPromptB.contains("○ (Circle)"), "PS B/Circle prompt must include ○ (Circle) symbol guidance")
+
+        val xboxPromptA = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(consoleMode = ConsoleMode.XBOX)
+        )
+        assertTrue(xboxPromptA.contains("#4ADE80"), "Xbox A prompt must reference emerald green")
+        assertFalse(xboxPromptA.contains("PlayStation Blue"), "Xbox prompt must not describe PlayStation Blue")
+    }
+
+    @Test
+    fun auditAllThreeCapabilityTiersCompactStandardFrontier() {
+        val tiers = listOf(
+            ModelCapability.COMPACT,
+            ModelCapability.STANDARD,
+            ModelCapability.FRONTIER
+        )
+
+        tiers.forEach { tier ->
+            val prompt = NxprcHtmlCssConverter.generateAiPrompt(
+                control = "A",
+                category = "BUTTON",
+                widthDp = 96,
+                heightDp = 96,
+                options = AiDesignOptions(modelCapability = tier)
+            )
+
+            // General invariant for all tiers
+            assertTrue(prompt.isNotBlank(), "Prompt must not be empty for $tier")
+            assertTrue(prompt.contains("class=\"nexpad-btn\""), "Must contain root button class for $tier")
+            assertTrue(prompt.contains("Output Contract", ignoreCase = true), "Must contain output contract for $tier")
+
+            val approxTokens = prompt.length / 4
+            println("TIER AUDIT: $tier -> charLength: ${prompt.length}, approxTokens: $approxTokens")
+
+            when (tier) {
+                ModelCapability.COMPACT -> {
+                    // COMPACT tier must use lean engine boundaries
+                    assertTrue(prompt.contains("SECTION 1 — STRICT COMPILER & ENGINE CONTRACT (LEAN COMPACT MODE)"), "Compact mode must use lean contract")
+                    assertFalse(prompt.contains("SECTION F0 — UNLIMITED ARCHITECTURAL EXPRESSION"), "Compact mode must NOT contain Frontier sections")
+                    assertFalse(prompt.contains("SECTION F1 — COMPILATION PIPELINE TRANSPARENCY"), "Compact mode must NOT contain Frontier sections")
+                    assertTrue(approxTokens < 5000, "Compact prompt approx tokens ($approxTokens) exceeds budget")
+                }
+                ModelCapability.STANDARD -> {
+                    // STANDARD tier must include 5 layers of authority & Golden Rule
+                    assertTrue(prompt.contains("5 LAYERS OF AUTHORITY"), "Standard mode must include 5 layers of authority")
+                    assertTrue(prompt.contains("Universal Law of User Supremacy"), "Standard mode must include Universal Law of User Supremacy")
+                    assertFalse(prompt.contains("SECTION F0 — UNLIMITED ARCHITECTURAL EXPRESSION"), "Standard mode must NOT contain Frontier sections")
+                    assertTrue(approxTokens < 8000, "Standard prompt approx tokens ($approxTokens) exceeds budget")
+                }
+                ModelCapability.FRONTIER -> {
+                    // FRONTIER tier must include deep architectural transparency
+                    assertTrue(prompt.contains("SECTION F0 — UNLIMITED ARCHITECTURAL EXPRESSION"), "Frontier mode must contain Section F0")
+                    assertTrue(prompt.contains("SECTION F1 — COMPILATION PIPELINE TRANSPARENCY"), "Frontier mode must contain Section F1")
+                    assertTrue(prompt.contains("SECTION F2 — LAYER TYPE MAPPING"), "Frontier mode must contain Section F2")
+                    assertTrue(prompt.contains("SECTION F3 — SVG PATH PRE-BAKING PIPELINE"), "Frontier mode must contain Section F3")
+                    assertTrue(prompt.contains("SECTION F5 — SPRING PHYSICS KINEMATICS"), "Frontier mode must contain Section F5")
+                }
+            }
+        }
+    }
+
+    @Test
+    fun auditCustomColorVsConsoleDefaultColorInPrompts() {
+        // Case 1: User explicitly specifies a custom color (e.g. Hot Pink)
+        val customColorPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(
+                color = "Hot Pink #FF1493",
+                userRequest = "Make a neon hot pink cyberpunk button",
+                consoleMode = ConsoleMode.PLAYSTATION
+            )
+        )
+        // User custom color must be recorded with USER source in specification
+        assertTrue(customColorPrompt.contains("Hot Pink #FF1493 [USER]"), "User's explicit custom color must be marked [USER]")
+        assertTrue(customColorPrompt.contains("Make a neon hot pink cyberpunk button"), "User's prompt request must be included")
+
+        // Case 2: User does not specify color (Default Console mode)
+        val defaultXboxPrompt = NxprcHtmlCssConverter.generateAiPrompt(
+            control = "A",
+            category = "BUTTON",
+            widthDp = 96,
+            heightDp = 96,
+            options = AiDesignOptions(consoleMode = ConsoleMode.XBOX)
+        )
+        assertTrue(defaultXboxPrompt.contains("[CATEGORY_DEFAULT]"), "Default color must be marked [CATEGORY_DEFAULT]")
     }
 }
 
