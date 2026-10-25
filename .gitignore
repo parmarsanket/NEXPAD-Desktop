@@ -45,3 +45,8 @@ redist/ViGEmBusSetup.exe
 docs/**/*.png
 docs/*.png
 docs/images/
+
+# Scratch and temporary dumps
+TestCP.kt
+drivers.txt
+*.log

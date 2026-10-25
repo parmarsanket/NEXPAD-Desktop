@@ -333,6 +333,7 @@ To enable motion controls (gyro steering / aiming) in console emulators:
 ```
 
 - 📖 **[`HISTORY.md`](./HISTORY.md)** — Chronological engineering log of all development milestones.
+- 📝 **[`CHANGELOG.md`](./CHANGELOG.md)** — Semantic release notes and feature changelog.
 - 🏛️ **[`ARCHITECTURE.md`](./ARCHITECTURE.md)** — Deep technical specification of the JNA ViGEmClient binding, WinUSB AOA bulk endpoints, and NIO UdpServer.
 - 🤖 **[`AGENTS.md`](./AGENTS.md)** — Machine-readable technical reference, boundaries, and deterministic commands for AI coding assistants.
 - 📜 **[`GRADLE_COMMANDS.md`](./GRADLE_COMMANDS.md)** — Quick reference cheat-sheet for running, testing, building, and packaging.
