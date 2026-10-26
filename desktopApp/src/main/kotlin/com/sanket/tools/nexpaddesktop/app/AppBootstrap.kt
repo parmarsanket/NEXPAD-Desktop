@@ -12,6 +12,7 @@ import com.sanket.tools.nexpaddesktop.connection.ActiveTransport
 import com.sanket.tools.nexpaddesktop.connection.ConnectionCoordinator
 import com.sanket.tools.nexpaddesktop.connection.DriverInstallState
 import com.sanket.tools.nexpaddesktop.connection.wifi.DsuServer
+import com.sanket.tools.nexpaddesktop.driver.ViGEmBusInstaller
 import com.sanket.tools.nexpaddesktop.driver.GamepadDriverManager
 import com.sanket.tools.nexpaddesktop.driver.GyroProcessor
 import com.sanket.tools.nexpaddesktop.driver.InputPipeline
@@ -192,6 +193,78 @@ object AppBootstrap {
             }
         }
         viewModel.onInstallAoaDriver = onInstallAoaDriver
+
+        val onInstallViGEmDriver: () -> Unit = {
+            if (!viewModel.isViGEmInstalling) {
+                viewModel.isViGEmInstalling = true
+                viewModel.vigemInstallProgress = 0.05f
+                viewModel.vigemInstallStatusText = "Locating ViGEmBus installer package..."
+
+                scope.launch(Dispatchers.IO) {
+                    val installer = ViGEmBusInstaller.resolveInstallerFile()
+                        ?: ViGEmBusInstaller.downloadInstaller { progress, status ->
+                            viewModel.vigemInstallProgress = progress
+                            viewModel.vigemInstallStatusText = status
+                        }
+
+                    if (installer == null || !installer.exists()) {
+                        viewModel.isViGEmInstalling = false
+                        viewModel.vigemInstallStatusText = "Installer could not be found or downloaded."
+                        return@launch
+                    }
+
+                    viewModel.vigemInstallProgress = 0.15f
+                    viewModel.vigemInstallStatusText = "Requesting Administrator approval..."
+
+                    val target = WindowsElevation.ProcessTarget(
+                        executable = installer,
+                        arguments = "/quiet /norestart"
+                    )
+
+                    when (val result = WindowsElevation.runElevated(target, onProgress = { progress, status ->
+                        viewModel.vigemInstallProgress = progress
+                        viewModel.vigemInstallStatusText = status
+                    })) {
+                        is WindowsElevation.Result.Success -> {
+                            if (result.exitCode == 0 || result.exitCode == 3010) {
+                                viewModel.vigemInstallProgress = 1.0f
+                                viewModel.vigemInstallStatusText = "ViGEmBus Driver Installed Successfully!"
+
+                                // Re-connect driver to initialize virtual controller
+                                driverManager.switchController(viewModel.activeController, scope) { connected ->
+                                    viewModel.isDriverConnected = connected
+                                }
+
+                                viewModel.showDriverSuccessToast = true
+                                viewModel.driverSuccessToastMessage = "ViGEmBus driver installed! Virtual gamepads are active."
+                                viewModel.onShowTrayNotification?.invoke(
+                                    "ViGEmBus Driver Installed",
+                                    "ViGEmBus driver ready! Virtual gamepads enabled."
+                                )
+
+                                delay(3000)
+                                viewModel.isViGEmInstalling = false
+                                viewModel.vigemInstallStatusText = ""
+                            } else {
+                                viewModel.isViGEmInstalling = false
+                                viewModel.vigemInstallStatusText = "Installer exited with code ${result.exitCode}."
+                            }
+                        }
+                        is WindowsElevation.Result.UserCancelled -> {
+                            viewModel.isViGEmInstalling = false
+                            viewModel.vigemInstallProgress = 0f
+                            viewModel.vigemInstallStatusText = "Installation was cancelled."
+                        }
+                        is WindowsElevation.Result.Error -> {
+                            viewModel.isViGEmInstalling = false
+                            viewModel.vigemInstallProgress = 0f
+                            viewModel.vigemInstallStatusText = "Elevation error: ${result.message}"
+                        }
+                    }
+                }
+            }
+        }
+        viewModel.onInstallViGEmDriver = onInstallViGEmDriver
 
         // ══════════════════════════════════════════════════════════
         //  DRIVER LIFECYCLE — Re-create driver when controller type changes

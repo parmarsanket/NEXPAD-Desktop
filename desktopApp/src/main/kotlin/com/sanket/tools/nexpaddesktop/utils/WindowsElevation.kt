@@ -73,10 +73,20 @@ object WindowsElevation {
 
             val logFile = File("C:\\Users\\Public\\nexpad_driver_install.log")
             var lastLogReadPos = 0L
+            val isViGEm = target.executable.name.contains("ViGEm", ignoreCase = true)
 
-            onProgress?.invoke(0.12f, "Initializing driver installer engine...")
+            if (isViGEm) {
+                onProgress?.invoke(0.50f, "Installing ViGEmBus kernel driver into Windows...")
+            } else {
+                onProgress?.invoke(0.12f, "Initializing driver installer engine...")
+            }
 
             while (System.currentTimeMillis() - startTime < maxWaitMs) {
+                if (isViGEm) {
+                    val elapsed = System.currentTimeMillis() - startTime
+                    val progress = (0.50f + (elapsed.toFloat() / 12000f) * 0.40f).coerceAtMost(0.92f)
+                    onProgress?.invoke(progress, "Configuring virtual gamepad devices...")
+                }
                 // Live stream driver installation output from the background process
                 if (logFile.exists() && logFile.length() > lastLogReadPos) {
                     try {
@@ -134,7 +144,7 @@ object WindowsElevation {
             }
 
             if (exitFound && Kernel32.INSTANCE.GetExitCodeProcess(hProcess, exitCodeRef)) {
-                if (exitCodeRef.value == 0) {
+                if (exitCodeRef.value == 0 || exitCodeRef.value == 3010) {
                     onProgress?.invoke(1.0f, "Driver Installed Successfully!")
                 }
                 Result.Success(exitCodeRef.value)

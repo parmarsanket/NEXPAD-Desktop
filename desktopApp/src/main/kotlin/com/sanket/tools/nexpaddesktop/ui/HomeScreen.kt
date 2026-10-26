@@ -60,6 +60,10 @@ fun HomeScreen(
         showDriverSuccessDialog = viewModel.showDriverSuccessDialog,
         onDismissDriverSuccessDialog = { viewModel.dismissDriverSuccessDialog() },
         onInstallAoaDriver = viewModel.onInstallAoaDriver,
+        isViGEmInstalling = viewModel.isViGEmInstalling,
+        vigemInstallProgress = viewModel.vigemInstallProgress,
+        vigemInstallStatusText = viewModel.vigemInstallStatusText,
+        onInstallViGEmDriver = viewModel.onInstallViGEmDriver,
         isDeveloperOptionsEnabled = viewModel.isDeveloperOptionsEnabled,
         onDeveloperOptionsChange = { viewModel.updateDeveloperOptionsEnabled(it) },
         streamingPort = viewModel.streamingPort,
@@ -83,6 +87,10 @@ fun HomeScreen(
     showDriverSuccessDialog: Boolean = false,
     onDismissDriverSuccessDialog: () -> Unit = {},
     onInstallAoaDriver: () -> Unit = {},
+    isViGEmInstalling: Boolean = false,
+    vigemInstallProgress: Float = 0f,
+    vigemInstallStatusText: String = "",
+    onInstallViGEmDriver: () -> Unit = {},
     isDeveloperOptionsEnabled: Boolean = false,
     onDeveloperOptionsChange: (Boolean) -> Unit = {},
     streamingPort: Int = 9999,
@@ -122,7 +130,12 @@ fun HomeScreen(
 
             // ── ViGEmBus Driver Warning Banner ──
             if (!isDriverConnected) {
-                DriverWarningBanner()
+                DriverWarningBanner(
+                    isInstalling = isViGEmInstalling,
+                    installProgress = vigemInstallProgress,
+                    installStatusText = vigemInstallStatusText,
+                    onInstallDriver = onInstallViGEmDriver
+                )
                 Spacer(modifier = Modifier.height(16.dp))
             }
 

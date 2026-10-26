@@ -80,6 +80,22 @@ class DesktopViewModel(
         get() = connectionViewModel.onInstallAoaDriver
         set(value) { connectionViewModel.onInstallAoaDriver = value }
 
+    var isViGEmInstalling: Boolean
+        get() = connectionViewModel.isViGEmInstalling
+        set(value) { connectionViewModel.isViGEmInstalling = value }
+
+    var vigemInstallProgress: Float
+        get() = connectionViewModel.vigemInstallProgress
+        set(value) { connectionViewModel.vigemInstallProgress = value }
+
+    var vigemInstallStatusText: String
+        get() = connectionViewModel.vigemInstallStatusText
+        set(value) { connectionViewModel.vigemInstallStatusText = value }
+
+    var onInstallViGEmDriver: () -> Unit
+        get() = connectionViewModel.onInstallViGEmDriver
+        set(value) { connectionViewModel.onInstallViGEmDriver = value }
+
     fun dismissDriverSuccessToast() = connectionViewModel.dismissDriverSuccessToast()
     fun dismissDriverSuccessDialog() = connectionViewModel.dismissDriverSuccessDialog()
     fun updateConnectedDevice(name: String?, transport: ActiveTransport) =

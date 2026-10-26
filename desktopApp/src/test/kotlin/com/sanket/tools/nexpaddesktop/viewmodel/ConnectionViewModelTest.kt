@@ -24,6 +24,9 @@ class ConnectionViewModelTest {
         assertNull(viewModel.connectedDeviceName)
         assertEquals(ActiveTransport.NONE, viewModel.activeTransport)
         assertEquals(DriverInstallState.IDLE, viewModel.driverInstallState)
+        assertFalse(viewModel.isViGEmInstalling)
+        assertEquals(0f, viewModel.vigemInstallProgress)
+        assertEquals("", viewModel.vigemInstallStatusText)
     }
 
     @Test

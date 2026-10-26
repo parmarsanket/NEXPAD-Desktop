@@ -28,6 +28,10 @@ class ConnectionViewModel : BaseViewModel() {
     var showDriverSuccessDialog by mutableStateOf(false)
 
     var onInstallAoaDriver: () -> Unit = {}
+    var isViGEmInstalling by mutableStateOf(false)
+    var vigemInstallProgress by mutableStateOf(0f)
+    var vigemInstallStatusText by mutableStateOf("")
+    var onInstallViGEmDriver: () -> Unit = {}
 
     fun dismissDriverSuccessToast() {
         showDriverSuccessToast = false
