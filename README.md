@@ -12,8 +12,8 @@
       <img src="https://img.shields.io/badge/Download-GitHub%20Release%20v1.0.0-2da44e?style=for-the-badge&logo=github&logoColor=white" alt="Download GitHub Release" height="36"/>
     </a>
     &nbsp;&nbsp;
-    <a href="https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0">
-      <img src="https://img.shields.io/badge/Microsoft%20Store-Coming%20Soon-0078D4?style=for-the-badge&logo=microsoft-store&logoColor=white" alt="Microsoft Store" height="36"/>
+    <a href="https://apps.microsoft.com/detail/9PL9KK50R4TC">
+      <img src="https://img.shields.io/badge/Microsoft%20Store-Get%20it%20now-0078D4?style=for-the-badge&logo=microsoft-store&logoColor=white" alt="Microsoft Store" height="36"/>
     </a>
   </p>
 
@@ -73,7 +73,7 @@ Select your platform to download or install the pre-compiled production release:
 | Platform | Download | Details |
 |---|---|---|
 | **Windows (Setup)** | [**Download `NEXPAD_Desktop_Setup.exe`**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) | **Recommended:** Complete All-in-One installer. Automatically installs NEXPAD Desktop and configures the bundled ViGEmBus kernel driver. |
-| **Microsoft Store** | [**Get it from Microsoft Store**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) | Official native package for Windows 10 & 11 via the Microsoft Store *(Coming Soon / In Review)*. |
+| **Microsoft Store** | [**Get it from Microsoft Store**](https://apps.microsoft.com/detail/9PL9KK50R4TC) | Official native package for Windows 10 & 11 via the Microsoft Store. |
 | **Standalone MSI** | [**Download `NEXPAD-Desktop.msi`**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) | Standard Windows Installer package for silent or enterprise network deployments. |
 | **Portable Package** | [**Download `NEXPAD-Desktop.zip`**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) | Standalone portable archive with bundled `redist/` drivers. Extract and run without admin elevation. |
 
@@ -82,7 +82,7 @@ Select your platform to download or install the pre-compiled production release:
 | Platform | Download | Details |
 |---|---|---|
 | **Google Play** | [**Get it on Google Play**](https://play.google.com/store/apps/details?id=com.sanket.tools.nexpad) | Official release for Android smartphones and tablets (supports Android 6.0+ / API 23+). |
-| **Direct APK** | [**Download `NEXPAD-Mobile.apk`**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) | Standalone direct `.apk` binary release for offline installation and sideloading. |
+| **Direct APK** | [**Download `app-release.apk`**](https://github.com/parmarsanket/NEXPAD/releases/tag/v1.0.0) | Standalone direct `.apk` binary release for offline installation and sideloading. |
 
 ### 📦 Standalone Packages & Assets
 
@@ -91,10 +91,10 @@ For direct downloads, offline installers, or manual installation, fetch the asse
 [![Download Standalone Binaries](https://img.shields.io/badge/GitHub%20Releases-Download%20v1.0.0%20Assets-2ea44f?style=for-the-badge&logo=github&logoColor=white)](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0)
 
 **Standalone assets available on GitHub Releases:**
-* 🪟 **Windows Setup**: `NEXPAD_Desktop_Setup.exe` (Complete All-in-One Installer with bundled ViGEmBus driver)
-* 🧰 **Windows MSI**: `NEXPAD-Desktop.msi` (Enterprise Windows Installer)
-* 💼 **Windows Portable**: `NEXPAD-Desktop-portable.zip` (Portable ZIP archive with bundled `redist/` drivers)
-* 🤖 **Android Companion**: `NEXPAD-Mobile.apk` (Production signed APK)
+* 🪟 **Windows Setup**: [`NEXPAD_Desktop_Setup.exe`](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) (Complete All-in-One Installer with bundled ViGEmBus driver)
+* 🧰 **Windows MSI**: [`NEXPAD-Desktop.msi`](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) (Enterprise Windows Installer)
+* 💼 **Windows Portable**: [`NEXPAD-Desktop-portable.zip`](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) (Portable ZIP archive with bundled `redist/` drivers)
+* 🤖 **Android Companion**: [`app-release.apk`](https://github.com/parmarsanket/NEXPAD/releases/tag/v1.0.0) (Production signed APK)
 
 ---
 
