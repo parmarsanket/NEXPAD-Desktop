@@ -72,10 +72,8 @@ Select your platform to download or install the pre-compiled production release:
 
 | Platform | Download | Details |
 |---|---|---|
-| **Windows (Setup)** | [**Download `NEXPAD_Desktop_Setup.exe`**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) | **Recommended:** Complete All-in-One installer. Automatically installs NEXPAD Desktop and configures the bundled ViGEmBus kernel driver. |
-| **Microsoft Store** | [**Get it from Microsoft Store**](https://apps.microsoft.com/detail/9PL9KK50R4TC) | Official native package for Windows 10 & 11 via the Microsoft Store. |
-| **Standalone MSI** | [**Download `NEXPAD-Desktop.msi`**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) | Standard Windows Installer package for silent or enterprise network deployments. |
-| **Portable Package** | [**Download `NEXPAD-Desktop.zip`**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) | Standalone portable archive with bundled `redist/` drivers. Extract and run without admin elevation. |
+| **Microsoft Store** | [**Get it from Microsoft Store**](https://apps.microsoft.com/detail/9PL9KK50R4TC) | **Recommended:** Official native verified package for Windows 10 & 11 with automatic background updates. |
+| **GitHub Release** | [**Download `NEXPAD_Desktop_Setup.exe`**](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) | Standalone All-in-One installer (118 MB). Automatically bundles and configures the ViGEmBus kernel driver. |
 
 ### 📱 Mobile (Android Companion)
 
@@ -92,8 +90,6 @@ For direct downloads, offline installers, or manual installation, fetch the asse
 
 **Standalone assets available on GitHub Releases:**
 * 🪟 **Windows Setup**: [`NEXPAD_Desktop_Setup.exe`](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) (Complete All-in-One Installer with bundled ViGEmBus driver)
-* 🧰 **Windows MSI**: [`NEXPAD-Desktop.msi`](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) (Enterprise Windows Installer)
-* 💼 **Windows Portable**: [`NEXPAD-Desktop-portable.zip`](https://github.com/parmarsanket/NEXPAD-Desktop/releases/tag/v1.0.0) (Portable ZIP archive with bundled `redist/` drivers)
 * 🤖 **Android Companion**: [`app-release.apk`](https://github.com/parmarsanket/NEXPAD/releases/tag/v1.0.0) (Production signed APK)
 
 ---
